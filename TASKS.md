@@ -28,7 +28,23 @@
 - [x] Define final footer navigation
 - [x] Define Stitch screen inventory
 - [x] Define supporting screens to add only as needed
+- [x] Create client intake checklist
 - [x] Create planning documentation
+
+## Phase 0.5: Client Intake
+
+- [ ] Receive Thai PDPA Privacy Policy
+- [ ] Receive Thai Terms of Service
+- [ ] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
+- [ ] Receive company name, tax ID, billing address, parcel sender address, and support contact
+- [ ] Receive doctor bio, education, specialty, license number, consultation fee, schedule, and official profile photo
+- [ ] Receive product catalog with FDA numbers, prices, images, stock, and prescription-required flags
+- [ ] Receive pharmacy and pharmacist license data
+- [ ] Receive prescription verification, medicine preparation, and shipment SOPs
+- [ ] Confirm PromptPay phone/tax ID, bank account name, bank, and secure storage location
+- [ ] Choose SlipOK or EasySlip and receive API details securely
+- [ ] Receive article content, article categories, community rules, and moderation policy
+- [ ] Receive or export Stitch source/tokens/assets
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
 

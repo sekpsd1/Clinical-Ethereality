@@ -104,6 +104,13 @@ Community and Profile:
 - Obtain or reference the finalized Stitch token/specification export before implementation
 - Map Stitch colors, typography, spacing, radius, glass surfaces, shadows, and footer navigation into Tailwind
 - Confirm whether any Stitch source files can be exported for exact tokens, images, and spacing values
+- Collect client intake materials listed in `CLIENT_INTAKE.md`
+- Confirm PDPA Privacy Policy, Terms of Service, health-data consent, teleconsultation consent, refund/cancellation policy, and community guidelines
+- Confirm company legal name, tax ID, billing address, parcel sender address, and support contact
+- Confirm doctor onboarding data, medical license, consultation fee, schedule, and official profile photo
+- Confirm product catalog, FDA numbers, medical-standard product images, prices, stock, and prescription requirements
+- Confirm pharmacy license data, pharmacist license data, and prescription verification SOP
+- Confirm PromptPay account, bank account details, and SlipOK/EasySlip provider/API details
 
 ## Proposed MVP
 
@@ -194,7 +201,7 @@ Use this structure when implementation starts:
 ## Workspace Notes
 
 - The workspace contains planning documentation and is initialized as a git repository
-- Latest pushed planning commit: `7ed2f16 Add planning architecture docs`
+- Latest pushed planning commit: `18b9ab2 Document Stitch navigation plan`
 - No application framework has been installed
 - No dependencies have been added
 - No database schema has been generated
