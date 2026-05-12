@@ -3,6 +3,7 @@ import type { Config } from "tailwindcss";
 export const stitchTokens = {
   color: {
     background: "#eef7f4",
+    app: "#f7f9fb",
     surface: "#ffffff",
     glass: "rgba(255, 255, 255, 0.76)",
     primary: "#0f8f83",
@@ -23,13 +24,17 @@ export const stitchTokens = {
   },
   shadow: {
     glass: "0 18px 40px rgba(24, 73, 68, 0.10)",
-    footer: "0 -12px 28px rgba(24, 73, 68, 0.10)"
+    footer: "0 -12px 28px rgba(24, 73, 68, 0.10)",
+    bottomNav: "0 -4px 24px rgba(0, 0, 0, 0.04)",
+    doctor: "0 8px 32px rgba(0, 96, 103, 0.05)",
+    chip: "0 1px 1px rgba(0, 0, 0, 0.05)"
   }
 } as const;
 
 export const stitchTailwindTheme = {
   colors: {
     background: stitchTokens.color.background,
+    app: stitchTokens.color.app,
     surface: stitchTokens.color.surface,
     glass: stitchTokens.color.glass,
     primary: stitchTokens.color.primary,
@@ -59,10 +64,18 @@ export const stitchTailwindTheme = {
   },
   boxShadow: {
     glass: stitchTokens.shadow.glass,
-    footer: stitchTokens.shadow.footer
+    footer: stitchTokens.shadow.footer,
+    "bottom-nav": stitchTokens.shadow.bottomNav,
+    doctor: stitchTokens.shadow.doctor,
+    chip: stitchTokens.shadow.chip
   },
   backdropBlur: {
-    glass: "18px"
+    glass: "18px",
+    topbar: "12px",
+    card: "6px"
+  },
+  backgroundImage: {
+    "primary-gradient": "linear-gradient(162deg, #006067 0%, #007b83 100%)"
   },
   zIndex: {
     footer: "40",
