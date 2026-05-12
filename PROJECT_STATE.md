@@ -33,6 +33,8 @@ The project does not yet contain application code. The current repository state 
 - UI/UX source of truth: finalized Stitch design specification
 - Frontend architecture priority: reusable mobile-first components for LINE LIFF
 - State management direction: server-first with Server Components, Server Actions, React Hook Form for complex forms, URL state for filters, and minimal client context
+- Final customer footer navigation: `Consult | Store | Community | Profile`
+- Implementation priority: build the 16 reviewed Stitch screens first, then add only supporting connector screens needed to complete the MVP flow
 
 ## Architecture Summary
 
@@ -56,6 +58,33 @@ Core route areas:
 - Admin operations
 - Webhooks for payment and Zoom events
 
+## Stitch Screen Inventory
+
+Consult:
+
+- Doctor list
+- Doctor profile and booking
+- Consultation PromptPay checkout
+- Waiting room
+- Live consultation
+- Advice log
+
+Store:
+
+- Health marketplace
+- Product detail
+- Store checkout
+- Payment success and tracking
+
+Community and Profile:
+
+- User profile
+- Community hub
+- Create new post
+- Article/post detail and comments
+- Notification center
+- Community search results
+
 ## Decisions Still Needed
 
 - Confirm exact MVP scope
@@ -69,11 +98,12 @@ Core route areas:
 - Confirm Zoom SDK implementation approach
 - Choose Slip Verification API provider
 - Decide whether Thai QR payments are manual-review MVP or fully automated after slip verification
-- Decide whether community is MVP or phase two
+- Community is included in MVP using the reviewed Stitch screens
 - Decide whether delivery tracking is internal status only or carrier-integrated
 - Define brand direction and visual identity
 - Obtain or reference the finalized Stitch token/specification export before implementation
 - Map Stitch colors, typography, spacing, radius, glass surfaces, shadows, and footer navigation into Tailwind
+- Confirm whether any Stitch source files can be exported for exact tokens, images, and spacing values
 
 ## Proposed MVP
 
@@ -84,6 +114,11 @@ The first build should likely include:
 - Stitch-based design system implementation
 - Tailwind theme mapped from Stitch tokens
 - Reusable UI primitives and domain components
+- Final customer footer navigation: `Consult | Store | Community | Profile`
+- Consult flow from doctor list through advice log
+- Store flow from marketplace through payment success and tracking
+- Community flow from hub through post creation, detail/comments, notifications, and search
+- Profile hub with settings links
 - Role-based access control and permission helpers
 - Admin dashboard
 - Customer/patient profiles
@@ -103,6 +138,21 @@ The first build should likely include:
 - Notifications foundation
 - Reward points foundation
 - Audit metadata on sensitive entities
+
+## Supporting Screens To Add Only As Needed
+
+- Booking confirmation
+- Payment pending
+- Payment rejected
+- Appointment detail
+- Prescription verification status
+- Order from prescription
+- Order detail
+- Saved articles
+- Shipping addresses
+- Settings
+
+These screens should reuse Stitch-derived components and visual patterns from the 16 reviewed screens. Do not create unrelated new UI patterns.
 
 ## App Folder Structure
 
@@ -129,7 +179,7 @@ Use this structure when implementation starts:
 - Follow the Stitch design system strictly.
 - Do not redesign finalized UI.
 - Use Stitch as the source of truth for Tailwind tokens and reusable components.
-- Maintain one shared footer navigation implementation across all screens.
+- Maintain one shared footer navigation implementation with `Consult | Store | Community | Profile`.
 - Keep layouts mobile-first for LINE LIFF.
 - Prefer server-first state management and avoid global client state unless justified.
 
@@ -143,7 +193,8 @@ Use this structure when implementation starts:
 
 ## Workspace Notes
 
-- The workspace contains planning documentation and is not initialized as a git repository
+- The workspace contains planning documentation and is initialized as a git repository
+- Latest pushed planning commit: `7ed2f16 Add planning architecture docs`
 - No application framework has been installed
 - No dependencies have been added
 - No database schema has been generated

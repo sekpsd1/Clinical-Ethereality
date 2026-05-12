@@ -274,6 +274,83 @@ Build the component system from the finalized Stitch screens in this order:
 5. Build domain components.
 6. Compose full screens only after the component catalog is stable.
 
+## Final App Navigation
+
+Use one shared footer navigation across the customer LINE LIFF app:
+
+```txt
+Consult | Store | Community | Profile
+```
+
+Navigation mapping:
+
+- `Consult`: doctor selection, doctor profile and booking, consultation payment, waiting room, live consultation, advice log.
+- `Store`: health marketplace, product detail, prescription medicine ordering, checkout, payment success, order tracking.
+- `Community`: community hub, create post, article/post detail, comments, search results, notifications entry points.
+- `Profile`: user profile, advice history, orders or medicine list, saved articles, shipping address, settings, logout.
+
+Footer rules:
+
+- `FooterNav` is the single implementation for customer-facing footer navigation.
+- Root screens should show footer navigation.
+- Deep task screens may keep footer navigation when Stitch shows it, but live consultation should hide it to reduce distraction.
+- Comment-focused screens should either hide footer navigation while the keyboard is open or reserve safe-area spacing above it.
+- Payment and checkout screens should keep the active tab from the parent flow: consult payments use `Consult`, store checkout uses `Store`.
+- Notification Center is a sub-screen, not a root tab. It opens from header/profile/community entry points and routes users to the relevant destination.
+
+## Stitch Screen Map
+
+Consult screens already designed:
+
+- `ConsultDoctorList`: browse/search doctors and categories.
+- `DoctorBooking`: doctor profile, calendar, time slot selection, booking CTA.
+- `ConsultPaymentCheckout`: PromptPay payment and slip upload for consultation booking.
+- `ConsultWaitingRoom`: payment-confirmed waiting room, countdown, device check, join room button.
+- `LiveConsultation`: Zoom/live consultation mode with chat, call controls, and prescription attachment.
+- `AdviceLog`: consultation summary, doctor note, prescription items, PDF download, and order medicine CTA.
+
+Store screens already designed:
+
+- `HealthMarketplace`: marketplace home, category shortcuts, recommended products, cart entry.
+- `ProductDetail`: medication detail, prescription required notice, advice log selector, sticky purchase CTA.
+- `StoreCheckout`: order summary, PromptPay QR, slip upload, delivery address, payment submit.
+- `PaymentSuccessTracking`: verified payment result, pharmacy preparation timeline, shipment/order tracking.
+
+Community/Profile screens already designed:
+
+- `UserProfile`: profile hub, verified member status, advice count, posts count, settings links, logout.
+- `CommunityHub`: featured verified content, category chips, feed cards, likes/comments/share.
+- `CreatePost`: new post form, image upload, category selector, post CTA.
+- `ArticleDetail`: article/post detail, action bar, comments, sticky comment composer.
+- `NotificationCenter`: notifications list, unread state, mark-all-read, routing to related content/order/consult events.
+- `CommunitySearchResults`: search keyword, filter chips, result cards, author meta, likes.
+
+Implementation should create the screens above first before adding extra flows.
+
+## Missing Supporting Screens
+
+Build these only as needed to connect the designed MVP flows:
+
+- `BookingConfirmation`: lightweight confirmation between booking selection and consult payment.
+- `PaymentPending`: shown after slip upload while verification is pending.
+- `PaymentRejected`: shown when slip verification fails, with re-upload path.
+- `AppointmentDetail`: consult appointment status, schedule, doctor info, and entry to waiting room.
+- `PrescriptionVerificationStatus`: shows whether pharmacist verification is pending, approved, or rejected.
+- `OrderFromPrescription`: focused store entry for medicines from an advice log.
+- `OrderDetail`: detailed order status beyond the success/tracking summary.
+- `SavedArticles`: accessible from Profile.
+- `ShippingAddresses`: accessible from Profile and checkout.
+- `Settings`: account, notification, privacy, and logout settings.
+
+Defer these until after the designed screens are implemented:
+
+- Advanced admin console
+- Full doctor back office
+- Full pharmacist back office
+- Carrier-integrated delivery tracking
+- AI-assisted notes or content
+- Marketing and promotion management
+
 ## Tailwind Theme Structure
 
 Tailwind should mirror Stitch tokens rather than define a separate design language.
@@ -362,6 +439,18 @@ Domain components:
 - `NotificationItem`
 - `RewardPointsSummary`
 - `AdminActionBar`
+- `DoctorCard`
+- `BookingCalendar`
+- `TimeSlotButton`
+- `PromptPayQrPanel`
+- `PaymentStatusBadge`
+- `SlipUploadBox`
+- `AdviceLogSelector`
+- `OrderTrackingTimeline`
+- `CommunityPostCard`
+- `SearchResultCard`
+- `CommentComposer`
+- `ProfileSettingsItem`
 
 Component rules:
 
@@ -370,6 +459,7 @@ Component rules:
 - Components should use Stitch variants instead of local style overrides.
 - Avoid page-only components unless a pattern appears once and cannot reasonably be reused.
 - Keep footer navigation consistent by using one shared `FooterNav`.
+- Build the designed Stitch screens before inventing new page patterns.
 
 ## UI Component Naming Convention
 

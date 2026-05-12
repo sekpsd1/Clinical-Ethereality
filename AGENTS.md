@@ -47,6 +47,7 @@ Implementation structure:
 - Keep routes in `app/*` thin.
 - Treat the Stitch specification as the source of truth for all UI and UX.
 - Do not redesign finalized Stitch screens.
+- Build the reviewed Stitch screens first before adding new flows.
 - Put domain logic in `features/*`.
 - Put reusable UI in `components/*`.
 - Put design tokens, variants, and component contracts in `lib/design-system/*`.
@@ -77,6 +78,15 @@ If protected health information will be stored in production, use vendors that c
 ## UI Guidance
 
 Build mobile-first LINE LIFF screens from the finalized Stitch design system. Favor clear, uncluttered layouts for customers, doctors, pharmacists, and admins, but do not reinterpret or redesign finalized Stitch layouts.
+
+Final customer footer navigation:
+
+- `Consult`
+- `Store`
+- `Community`
+- `Profile`
+
+Use one shared `FooterNav` implementation for these tabs. Payment and checkout screens keep the active tab of the parent flow. Live consultation should hide footer navigation to reduce distraction. Notification Center is a sub-screen, not a root footer tab.
 
 Use:
 
@@ -114,6 +124,14 @@ Reusable component rules:
 - Use domain component names such as `ProductCard`, `OrderCard`, `ConsultationCard`, and `PrescriptionCard`.
 - Keep `FooterNav` as the single source for footer navigation across all screens.
 - Keep screen-specific styling out of domain components unless Stitch requires it.
+
+Stitch screen priority:
+
+- Consult: doctor list, doctor booking, consult payment checkout, waiting room, live consultation, advice log.
+- Store: marketplace, product detail, checkout, payment success and tracking.
+- Community/Profile: profile, community hub, create post, article detail/comments, notification center, search results.
+
+Supporting screens such as booking confirmation, payment pending/rejected, appointment detail, prescription verification status, order detail, saved articles, shipping addresses, and settings should be added only when needed to connect the designed MVP flows.
 
 ## Documentation Practice
 

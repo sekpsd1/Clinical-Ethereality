@@ -22,6 +22,12 @@
 - [x] Define reusable component plan
 - [x] Define UI component naming convention
 - [x] Define frontend state management approach
+- [x] Review Stitch Consult screens
+- [x] Review Stitch Store screens
+- [x] Review Stitch Community/Profile screens
+- [x] Define final footer navigation
+- [x] Define Stitch screen inventory
+- [x] Define supporting screens to add only as needed
 - [x] Create planning documentation
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
@@ -34,7 +40,7 @@
 - [ ] Define Stitch-based design tokens in `lib/design-system/tokens.ts`
 - [ ] Define Stitch variants in `lib/design-system/variants.ts`
 - [ ] Define reusable component contracts from Stitch
-- [ ] Define persistent shared `FooterNav`
+- [ ] Define persistent shared `FooterNav` with `Consult`, `Store`, `Community`, and `Profile`
 - [ ] Define photography usage rules from Stitch
 - [ ] Define low-modal interaction patterns based on Stitch
 - [ ] Add lucide-react
@@ -115,9 +121,56 @@
 - [ ] Build `StatusBadge`
 - [ ] Build `BottomSheet`
 - [ ] Build `EmptyState`
+- [ ] Build `DoctorCard`
+- [ ] Build `BookingCalendar`
+- [ ] Build `TimeSlotButton`
+- [ ] Build `PromptPayQrPanel`
+- [ ] Build `SlipUploadBox`
+- [ ] Build `PaymentStatusBadge`
+- [ ] Build `OrderTrackingTimeline`
+- [ ] Build `CommunityPostCard`
+- [ ] Build `ArticleCard`
+- [ ] Build `CommentComposer`
+- [ ] Build `NotificationItem`
+- [ ] Build `ProfileSettingsItem`
 - [ ] Build reusable domain cards and rows from Stitch patterns
 
-## Phase 5: Admin Dashboard
+## Phase 5: Consult Stitch Screens
+
+- [ ] Build doctor list screen
+- [ ] Build doctor profile and booking screen
+- [ ] Build consultation PromptPay checkout screen
+- [ ] Build consultation waiting room screen
+- [ ] Build live consultation screen shell
+- [ ] Build advice log screen
+- [ ] Add booking confirmation supporting screen if needed
+- [ ] Add payment pending/rejected supporting screens if needed
+- [ ] Add appointment detail supporting screen if needed
+- [ ] Add prescription verification status supporting screen if needed
+
+## Phase 6: Store Stitch Screens
+
+- [ ] Build health marketplace screen
+- [ ] Build product detail screen
+- [ ] Build store checkout screen
+- [ ] Build payment success and tracking screen
+- [ ] Add order from prescription supporting screen if needed
+- [ ] Add order detail supporting screen if needed
+- [ ] Validate prescription-required purchase flow
+
+## Phase 7: Community And Profile Stitch Screens
+
+- [ ] Build user profile screen
+- [ ] Build community hub screen
+- [ ] Build create post screen
+- [ ] Build article/post detail and comments screen
+- [ ] Build notification center screen
+- [ ] Build community search results screen
+- [ ] Add saved articles supporting screen if needed
+- [ ] Add shipping addresses supporting screen if needed
+- [ ] Add settings supporting screen if needed
+
+## Phase 8: Admin Dashboard
 
 - [ ] Build authenticated dashboard shell
 - [ ] Add navigation
@@ -132,7 +185,7 @@
 - [ ] Add reported community content module
 - [ ] Add recent patient and order activity module
 
-## Phase 6: Customer And Commerce Workflows
+## Phase 9: Customer And Commerce Workflows
 
 - [ ] Build product browsing
 - [ ] Build product detail view
@@ -147,7 +200,7 @@
 - [ ] Integrate Slip Verification API
 - [ ] Build inventory management
 
-## Phase 7: Consultation And Pharmacy Workflows
+## Phase 10: Consultation And Pharmacy Workflows
 
 - [ ] Build doctor consultation list
 - [ ] Build patient log access for doctors
@@ -158,7 +211,7 @@
 - [ ] Build medicine preparation workflow
 - [ ] Build pharmacist order status updates
 
-## Phase 8: Articles, Community, And Notifications
+## Phase 11: Articles, Community, And Notifications
 
 - [ ] Build articles
 - [ ] Build article comments
@@ -170,11 +223,12 @@
 - [ ] Build reward points earning and spending rules
 - [ ] Add audit metadata for sensitive actions
 
-## Phase 9: Quality And Deployment
+## Phase 12: Quality And Deployment
 
 - [ ] Add unit tests for permission helpers
 - [ ] Add component tests for reusable Stitch-based UI primitives
 - [ ] Verify footer navigation consistency across screens
+- [ ] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [ ] Verify mobile-first LINE LIFF viewport behavior
 - [ ] Add integration tests for protected workflows
 - [ ] Add Playwright smoke tests
