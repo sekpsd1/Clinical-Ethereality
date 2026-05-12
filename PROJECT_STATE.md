@@ -6,9 +6,9 @@ Clinical Ethereality
 
 ## Phase
 
-Planning and architecture.
+Project scaffolding and frontend foundation.
 
-The project does not yet contain application code. The current repository state is intended to capture product direction, technical recommendations, and implementation tasks before the app is generated.
+The project now contains a minimal Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold. The implementation remains intentionally thin: it establishes the app shell, design-system token locations, shared customer footer navigation, and route placeholders without building the full backend integration or redesigning finalized Stitch screens.
 
 ## Current Decisions
 
@@ -202,10 +202,12 @@ Use this structure when implementation starts:
 
 - The workspace contains planning documentation and is initialized as a git repository
 - Latest pushed planning commit: `18b9ab2 Document Stitch navigation plan`
-- No application framework has been installed
-- No dependencies have been added
-- No database schema has been generated
+- Application framework scaffold has started with Next.js 15, React 19, TypeScript, and Tailwind CSS
+- Dependencies have been added through npm with `package-lock.json`
+- Prisma has a placeholder MySQL schema only; domain models and migrations are deferred until the MVP entity boundary is confirmed
+- Customer app routes currently redirect from `/` into the Stitch navigation shell at `/consult`
+- Shared customer footer navigation is implemented with the final tabs: `Consult | Store | Community | Profile`
 
 ## Next Recommended Step
 
-Confirm the MVP boundary, MySQL host, LINE LIFF/JWT details, Zoom SDK setup, Thai QR and slip verification flow, and prescription/pharmacy compliance expectations, then scaffold the app with the selected stack.
+Import or reference the finalized Stitch source/tokens/assets, then map exact Stitch tokens into Tailwind and build the reusable primitive components before composing the reviewed Stitch screens.

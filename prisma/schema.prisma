@@ -1,0 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Database models are intentionally deferred until the MVP entity boundary is confirmed.

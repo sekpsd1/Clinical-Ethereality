@@ -49,26 +49,26 @@
 ## Phase 1: Project Scaffolding And Frontend Foundation
 
 - [ ] Initialize git repository, if desired
-- [ ] Scaffold Next.js 15 app with React 19 and TypeScript
-- [ ] Add Tailwind CSS
+- [x] Scaffold Next.js 15 app with React 19 and TypeScript
+- [x] Add Tailwind CSS
 - [ ] Import or document the finalized Stitch specification
-- [ ] Map Stitch tokens into Tailwind theme structure
-- [ ] Define Stitch-based design tokens in `lib/design-system/tokens.ts`
-- [ ] Define Stitch variants in `lib/design-system/variants.ts`
-- [ ] Define reusable component contracts from Stitch
-- [ ] Define persistent shared `FooterNav` with `Consult`, `Store`, `Community`, and `Profile`
+- [x] Map Stitch tokens into Tailwind theme structure
+- [x] Define Stitch-based design tokens in `lib/design-system/tokens.ts`
+- [x] Define Stitch variants in `lib/design-system/variants.ts`
+- [x] Define reusable component contracts from Stitch
+- [x] Define persistent shared `FooterNav` with `Consult`, `Store`, `Community`, and `Profile`
 - [ ] Define photography usage rules from Stitch
 - [ ] Define low-modal interaction patterns based on Stitch
-- [ ] Add lucide-react
-- [ ] Add formatting and linting
-- [ ] Add Prisma
-- [ ] Configure MySQL connection
+- [x] Add lucide-react
+- [x] Add formatting and linting
+- [x] Add Prisma
+- [x] Configure MySQL connection
 - [ ] Establish Next.js Server Actions conventions
-- [ ] Create recommended folder structure
-- [ ] Create `components/ui`, `components/layout`, and `components/navigation`
-- [ ] Create `lib/design-system`
-- [ ] Create initial app layout
-- [ ] Create protected app route group
+- [x] Create recommended folder structure
+- [x] Create `components/ui`, `components/layout`, and `components/navigation`
+- [x] Create `lib/design-system`
+- [x] Create initial app layout
+- [x] Create protected app route group
 - [ ] Create public auth routes
 - [ ] Create webhook route handler placeholders
 

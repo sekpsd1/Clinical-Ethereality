@@ -796,4 +796,6 @@ Deployment requirements:
 
 ## Current Status
 
-Planning and architecture documents have been created. The next step is to confirm MVP boundaries, MySQL hosting, Cloudinary versus S3, LINE LIFF channel setup, Zoom SDK setup, Slip Verification API provider, and compliance expectations before implementation begins.
+Planning and architecture documents have been created, and Phase 1 scaffold has started. The repo now has a minimal Next.js 15, React 19, TypeScript, and Tailwind CSS foundation with shared customer footer navigation for `Consult | Store | Community | Profile`.
+
+The current implementation is intentionally thin. It does not include full backend integration, finalized Stitch screen composition, or Prisma domain models yet. The next step is to import or reference finalized Stitch tokens/assets and continue building reusable primitives from the reviewed Stitch screens.
