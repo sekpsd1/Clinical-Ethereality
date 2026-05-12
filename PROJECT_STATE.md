@@ -6,9 +6,9 @@ Clinical Ethereality
 
 ## Phase
 
-Project scaffolding and frontend foundation.
+Consult frontend implementation.
 
-The project now contains a minimal Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold. The implementation remains intentionally thin: it establishes the app shell, design-system token locations, shared customer footer navigation, and route placeholders without building the full backend integration or redesigning finalized Stitch screens.
+The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold plus the first customer Consult flow screens converted from Figma/Stitch references. The implementation remains frontend-only: it uses static mock data and local image assets, establishes route structure and visual flow, but does not yet include backend integration, authentication, database models, payment verification, Zoom SDK, or admin scheduling.
 
 ## Current Decisions
 
@@ -62,12 +62,12 @@ Core route areas:
 
 Consult:
 
-- Doctor list
-- Doctor profile and booking
-- Consultation PromptPay checkout
-- Waiting room
-- Live consultation
-- Advice log
+- Doctor list: implemented at `/consult`
+- Doctor profile and booking: implemented at `/consult/booking/somchai`
+- Consultation PromptPay checkout: implemented at `/consult/payment`
+- Waiting room: implemented at `/consult/waiting-room`
+- Live consultation: implemented at `/consult/live`
+- Advice log: implemented at `/consult/advice-log`
 
 Store:
 
@@ -190,6 +190,42 @@ Use this structure when implementation starts:
 - Keep layouts mobile-first for LINE LIFF.
 - Prefer server-first state management and avoid global client state unless justified.
 
+## Current Implementation Handoff
+
+Completed in the current frontend pass:
+
+- Project scaffold: Next.js 15.5, React 19, TypeScript strict mode, Tailwind CSS, ESLint, Prisma placeholder schema, and `package-lock.json`.
+- App shell: shared customer `AppShell`, global `TopAppBar`, and shared `FooterNav` for root customer areas.
+- Design system foundation: Stitch-inspired tokens in `lib/design-system/tokens.ts`, variants helper, component contracts, and added shadows/backgrounds needed by the Consult screens.
+- Consult doctor list: `/consult`, implemented from Figma with doctor cards, search bar, filter chips, local doctor images, and booking CTA.
+- Doctor booking: `/consult/booking/somchai`, implemented from Figma with doctor bio card, calendar mock, time slots, and booking CTA.
+- Consult payment checkout: `/consult/payment`, implemented from Figma with booking summary, PromptPay QR, slip upload mock, and payment submit CTA.
+- Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
+- Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
+- Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.
+- Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
+- Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
+- Local dev server was restarted cleanly at `http://localhost:3001`.
+
+Known frontend caveats:
+
+- Consult screens use static mock data only.
+- Some deep-flow screens intentionally use custom headers/footers based on Stitch references instead of the root `FooterNav`.
+- `LiveConsultation` and `AdviceLog` were refined from Stitch `.zip` exports, not live Figma MCP, because the Starter plan MCP read quota was exhausted.
+- Running `next build` while `next dev` is active can corrupt `.next` dev chunks on this Windows setup. After builds, stop dev server, clear `.next`, and restart `npm run dev -- -p 3001`.
+
+Not implemented yet:
+
+- LINE LIFF/JWT authentication and route protection.
+- Prisma domain models, migrations, seed data, and database queries.
+- Admin schedule editor for doctor availability.
+- Server Actions for booking, payment submission, slip upload, or slot locking.
+- Thai QR generation and Slip Verification API integration.
+- Zoom SDK integration for live consultations.
+- File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
+- Store, Community, Profile, Admin, pharmacist, and doctor back-office workflows beyond placeholders.
+- Automated tests beyond lint/build/typecheck.
+
 ## Risk Notes
 
 - Compliance requirements affect vendor selection and architecture
@@ -207,7 +243,8 @@ Use this structure when implementation starts:
 - Prisma has a placeholder MySQL schema only; domain models and migrations are deferred until the MVP entity boundary is confirmed
 - Customer app routes currently redirect from `/` into the Stitch navigation shell at `/consult`
 - Shared customer footer navigation is implemented with the final tabs: `Consult | Store | Community | Profile`
+- Latest implemented frontend area: customer Consult flow from doctor list through advice log
 
 ## Next Recommended Step
 
-Import or reference the finalized Stitch source/tokens/assets, then map exact Stitch tokens into Tailwind and build the reusable primitive components before composing the reviewed Stitch screens.
+Start the next Stitch flow, preferably Store (`HealthMarketplace`, `ProductDetail`, `StoreCheckout`, `PaymentSuccessTracking`), or begin backend foundations for doctor availability/admin scheduling if the Consult flow should become data-driven next.

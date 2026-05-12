@@ -51,14 +51,14 @@
 - [ ] Initialize git repository, if desired
 - [x] Scaffold Next.js 15 app with React 19 and TypeScript
 - [x] Add Tailwind CSS
-- [ ] Import or document the finalized Stitch specification
+- [x] Import or document the finalized Stitch specification
 - [x] Map Stitch tokens into Tailwind theme structure
 - [x] Define Stitch-based design tokens in `lib/design-system/tokens.ts`
 - [x] Define Stitch variants in `lib/design-system/variants.ts`
 - [x] Define reusable component contracts from Stitch
 - [x] Define persistent shared `FooterNav` with `Consult`, `Store`, `Community`, and `Profile`
-- [ ] Define photography usage rules from Stitch
-- [ ] Define low-modal interaction patterns based on Stitch
+- [x] Define photography usage rules from Stitch
+- [x] Define low-modal interaction patterns based on Stitch
 - [x] Add lucide-react
 - [x] Add formatting and linting
 - [x] Add Prisma
@@ -124,24 +124,24 @@
 
 ## Phase 4: Reusable UI Component System
 
-- [ ] Build `AppShell`
+- [x] Build `AppShell`
 - [ ] Build `Screen`
 - [ ] Build `SafeArea`
-- [ ] Build `FooterNav`
-- [ ] Build `TopBar`
-- [ ] Build `GlassSurface`
+- [x] Build `FooterNav`
+- [x] Build `TopBar`
+- [x] Build `GlassSurface`
 - [ ] Build `Button`
 - [ ] Build `IconButton`
 - [ ] Build `TextField`
 - [ ] Build `SearchField`
-- [ ] Build `StatusBadge`
+- [x] Build `StatusBadge`
 - [ ] Build `BottomSheet`
 - [ ] Build `EmptyState`
-- [ ] Build `DoctorCard`
-- [ ] Build `BookingCalendar`
-- [ ] Build `TimeSlotButton`
-- [ ] Build `PromptPayQrPanel`
-- [ ] Build `SlipUploadBox`
+- [x] Build `DoctorCard`
+- [x] Build `BookingCalendar`
+- [x] Build `TimeSlotButton`
+- [x] Build `PromptPayQrPanel`
+- [x] Build `SlipUploadBox`
 - [ ] Build `PaymentStatusBadge`
 - [ ] Build `OrderTrackingTimeline`
 - [ ] Build `CommunityPostCard`
@@ -153,12 +153,12 @@
 
 ## Phase 5: Consult Stitch Screens
 
-- [ ] Build doctor list screen
-- [ ] Build doctor profile and booking screen
-- [ ] Build consultation PromptPay checkout screen
-- [ ] Build consultation waiting room screen
-- [ ] Build live consultation screen shell
-- [ ] Build advice log screen
+- [x] Build doctor list screen
+- [x] Build doctor profile and booking screen
+- [x] Build consultation PromptPay checkout screen
+- [x] Build consultation waiting room screen
+- [x] Build live consultation screen shell
+- [x] Build advice log screen
 - [ ] Add booking confirmation supporting screen if needed
 - [ ] Add payment pending/rejected supporting screens if needed
 - [ ] Add appointment detail supporting screen if needed

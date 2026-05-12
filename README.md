@@ -796,6 +796,17 @@ Deployment requirements:
 
 ## Current Status
 
-Planning and architecture documents have been created, and Phase 1 scaffold has started. The repo now has a minimal Next.js 15, React 19, TypeScript, and Tailwind CSS foundation with shared customer footer navigation for `Consult | Store | Community | Profile`.
+Planning and architecture documents have been created, and frontend implementation has started. The repo now has a Next.js 15, React 19, TypeScript, and Tailwind CSS foundation with shared customer footer navigation for `Consult | Store | Community | Profile`.
 
-The current implementation is intentionally thin. It does not include full backend integration, finalized Stitch screen composition, or Prisma domain models yet. The next step is to import or reference finalized Stitch tokens/assets and continue building reusable primitives from the reviewed Stitch screens.
+The current implementation is intentionally frontend-only. The customer Consult flow has been mocked from Figma/Stitch references from doctor list through advice log, but it does not include authentication, Prisma domain models, real booking, real payment verification, Zoom SDK, or admin scheduling yet.
+
+Implemented Consult routes:
+
+- `/consult`
+- `/consult/booking/somchai`
+- `/consult/payment`
+- `/consult/waiting-room`
+- `/consult/live`
+- `/consult/advice-log`
+
+Latest verification passed with `npm run lint`, `npm run build`, and `npx tsc --noEmit`.

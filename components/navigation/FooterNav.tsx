@@ -30,6 +30,15 @@ const footerItems = [
 
 export function FooterNav() {
   const pathname = usePathname();
+  const usesCustomFooter =
+    pathname.startsWith("/consult/payment") ||
+    pathname.startsWith("/consult/waiting-room") ||
+    pathname.startsWith("/consult/live") ||
+    pathname.startsWith("/consult/advice-log");
+
+  if (usesCustomFooter) {
+    return null;
+  }
 
   return (
     <nav

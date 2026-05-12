@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Search, Star } from "lucide-react";
 
 type Doctor = {
@@ -105,12 +106,12 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
 
         <div className="mt-auto flex items-center justify-between pt-2.5">
           <p className="text-xs font-bold leading-4 text-primary">{doctor.price}</p>
-          <button
-            type="button"
+          <Link
+            href="/consult/booking/somchai"
             className="h-[27px] rounded-full bg-primary-gradient px-3 text-[10px] font-bold leading-[15px] text-white shadow-chip"
           >
             จองคำปรึกษา
-          </button>
+          </Link>
         </div>
       </div>
     </article>
