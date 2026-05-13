@@ -4,16 +4,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
+import { actionError, actionSuccess, formDataToObject, type FormActionState } from "@/lib/actions/server-actions";
 import { upsertProductSchema } from "@/features/admin/products/schema";
 
-export type AdminProductActionState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-function formDataToObject(formData: FormData) {
-  return Object.fromEntries(formData.entries());
-}
+export type AdminProductActionState = FormActionState;
 
 export async function upsertProductAction(
   _previousState: AdminProductActionState,
@@ -23,10 +17,7 @@ export async function upsertProductAction(
   const parsed = upsertProductSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
-    return {
-      status: "error",
-      message: "Product details are invalid. Check slug, name, and price."
-    };
+    return actionError("Product details are invalid. Check slug, name, and price.", parsed.error);
   }
 
   const { productId, ...productData } = parsed.data;
@@ -86,18 +77,12 @@ export async function upsertProductAction(
       }
     });
   } catch {
-    return {
-      status: "error",
-      message: "Product could not be saved. Check for duplicate slug and try again."
-    };
+    return actionError("Product could not be saved. Check for duplicate slug and try again.");
   }
 
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
 
-  return {
-    status: "success",
-    message: productId ? "Product updated." : "Product created."
-  };
+  return actionSuccess(productId ? "Product updated." : "Product created.");
 }

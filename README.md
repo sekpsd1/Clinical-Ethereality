@@ -614,6 +614,17 @@ Server Action groups:
 - `features/notifications/actions.ts`: mark read, mark all read.
 - `features/rewards/actions.ts`: award points, spend points, adjust points.
 
+Server Action conventions:
+
+- Keep route files thin; place first-party mutations in the owning `features/*/actions.ts` module.
+- Start each action file with `"use server"` and keep browser-only code out of action modules.
+- Parse `FormData` through Zod schemas before reading business fields.
+- Use `lib/actions/server-actions.ts` for shared form-action state, recoverable validation errors, and `FormData` conversion in new action work.
+- Resolve the authenticated session and enforce permissions before sensitive reads or writes.
+- Wrap multi-record state changes in Prisma transactions.
+- Write audit logs for sensitive payment, prescription, order, inventory, moderation, reward, and staff-account changes.
+- Revalidate every affected route after successful state changes; redirect only after durable writes are complete.
+
 Route handlers:
 
 - `GET /auth/line`: LINE LIFF auth entry screen for customer sessions.

@@ -63,7 +63,7 @@
 - [x] Add formatting and linting
 - [x] Add Prisma
 - [x] Configure MySQL connection
-- [ ] Establish Next.js Server Actions conventions
+- [x] Establish Next.js Server Actions conventions
 - [x] Create recommended folder structure
 - [x] Create `components/ui`, `components/layout`, and `components/navigation`
 - [x] Create `lib/design-system`

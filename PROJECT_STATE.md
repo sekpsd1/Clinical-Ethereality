@@ -16,6 +16,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Primary experience: authenticated platform for customers/patients, doctors, pharmacists, and admins
 - Architecture pattern: modular monolith inside a single Next.js app
 - Primary mutation pattern: Next.js Server Actions
+- Server Action convention: new first-party mutations live in owning `features/*/actions.ts` modules, validate `FormData` with Zod before use, enforce session permissions before sensitive reads/writes, use Prisma transactions for multi-record changes, write audit logs for sensitive state transitions, and return shared typed form action state helpers from `lib/actions/server-actions.ts` for recoverable errors
 - Route handlers reserved for LINE callback, webhooks, health checks, and integration endpoints
 - Recommended frontend framework: Next.js 15 with App Router and React 19
 - Recommended language: TypeScript
@@ -324,9 +325,10 @@ Completed in the current frontend pass:
 - Audit trail: `/admin/audit` lists recent sensitive action logs for admins, backed by the new Prisma `AuditLog` model and shared audit writer used by payment, order, prescription, moderation, inventory, product, reward, and user-management actions.
 - Admin schedule editor: `/admin/schedules` provides an admin-only doctor availability editor for approved doctors, including weekday/time ranges, slot length, active/inactive status, and audit records for schedule changes.
 - Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
+- Server Action convention helper: `lib/actions/server-actions.ts` now centralizes form action state, `FormData` conversion, and success/error helpers for new feature actions; the admin product catalog action has been migrated as the first reference implementation.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
-- Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
+- Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
 
 Known frontend caveats:
