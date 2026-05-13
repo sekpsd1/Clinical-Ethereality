@@ -91,7 +91,7 @@
 - [x] Add permission helpers
 - [x] Protect customer app routes
 - [x] Add initial patient-only route boundary through authenticated customer routes
-- [ ] Add doctor access boundaries for assigned patients
+- [x] Add doctor access boundaries for assigned patients
 - [x] Add initial pharmacist access boundaries for prescriptions
 - [x] Document initial auth and permission decisions in `PROJECT_STATE.md`
 
@@ -241,8 +241,8 @@
 
 ## Phase 10: Consultation And Pharmacy Workflows
 
-- [ ] Build doctor consultation list
-- [ ] Build patient log access for doctors
+- [x] Build doctor consultation list
+- [x] Build patient log access for doctors
 - [ ] Build Zoom SDK video consultation room integration
 - [ ] Build prescription writing workflow
 - [x] Build pharmacist prescription queue

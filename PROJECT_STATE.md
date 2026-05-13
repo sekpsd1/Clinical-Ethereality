@@ -36,6 +36,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Admin payment review foundation: `/admin/payments` now reads Prisma payment, order, customer, and item records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for manual PromptPay slip verification or rejection
 - Admin order management foundation: `/admin/orders` now reads Prisma order, customer, item, payment, and shipment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for moving orders through preparation, shipped, and delivered states
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
+- Doctor consultation and patient log foundation: `/doctor/consultations` and `/doctor/patients` now read Prisma consultation, patient, and prescription records scoped to the signed-in doctor profile when a database is available, fall back to DB-offline/profile-missing empty states, and allow admins to view all doctor queues for operations support
 - Pharmacist prescription queue foundation: `/pharmacist/prescriptions` now reads Prisma prescription, patient, doctor, consultation, and linked order-item records when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for manual prescription verification or rejection
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
@@ -112,6 +113,8 @@ Admin:
 - Admin payment review: implemented at `/admin/payments` as a role-protected Prisma-backed PromptPay review queue with manual verify/reject actions
 - Admin order management: implemented at `/admin/orders` as a role-protected Prisma-backed fulfillment queue with manual preparation/shipped/delivered actions
 - Admin inventory management: implemented at `/admin/inventory` as a role-protected Prisma-backed stock queue with manual quantity and threshold updates
+- Doctor consultation queue: implemented at `/doctor/consultations` as a role-protected Prisma-backed consultation queue scoped to the signed-in doctor profile
+- Doctor patient logs: implemented at `/doctor/patients` as a role-protected Prisma-backed patient history view scoped to assigned consultations
 - Pharmacist prescription queue: implemented at `/pharmacist/prescriptions` as a role-protected Prisma-backed verification queue with manual verify/reject actions
 - Pharmacist medicine preparation: implemented at `/pharmacist/orders` as a role-protected Prisma-backed fulfillment queue with manual preparation/shipped/delivered actions
 
@@ -254,6 +257,8 @@ Completed in the current frontend pass:
 - Admin payment review: `/admin/payments` establishes the first data-backed payment queue with order/customer context and manual verify/reject Server Actions.
 - Admin order management: `/admin/orders` establishes the first data-backed fulfillment queue with order/customer/item/payment/shipment context and guarded status update Server Actions.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
+- Doctor consultations: `/doctor/consultations` establishes the first doctor back-office queue with doctor-scoped consultation/patient/prescription context and DB-offline/profile-missing fallbacks.
+- Doctor patient logs: `/doctor/patients` establishes doctor-scoped patient history summaries from assigned consultations and prescriptions.
 - Pharmacist prescriptions: `/pharmacist/prescriptions` establishes the first pharmacist back-office queue with prescription/patient/doctor/consultation context and guarded verify/reject Server Actions.
 - Pharmacist medicine preparation: `/pharmacist/orders` establishes the first pharmacist fulfillment queue with paid/preparing/shipped orders and guarded preparation, shipment, and delivery status update Server Actions.
 - Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
@@ -279,7 +284,7 @@ Not implemented yet:
 - Thai QR generation and Slip Verification API integration.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Backend-backed Store, Community, Profile, broader doctor workflows, and pharmacist workflows beyond prescription verification and medicine preparation.
+- Backend-backed Store, Community, Profile, broader doctor workflows beyond consultation lists and patient logs, and pharmacist workflows beyond prescription verification and medicine preparation.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes

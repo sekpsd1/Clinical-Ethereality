@@ -21,6 +21,10 @@ export async function requireAdminSession() {
   return requireRoleSession(["admin"]);
 }
 
+export async function requireDoctorSession() {
+  return requireRoleSession(["doctor", "admin"]);
+}
+
 export async function requirePharmacistSession() {
   return requireRoleSession(["pharmacist", "admin"]);
 }
