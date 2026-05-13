@@ -247,8 +247,8 @@
 - [ ] Build prescription writing workflow
 - [x] Build pharmacist prescription queue
 - [x] Build prescription verification workflow
-- [ ] Build medicine preparation workflow
-- [ ] Build pharmacist order status updates
+- [x] Build medicine preparation workflow
+- [x] Build pharmacist order status updates
 
 ## Phase 11: Articles, Community, And Notifications
 

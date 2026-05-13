@@ -13,7 +13,7 @@ const pharmacistNavItems = [
   },
   {
     label: "จัดยา",
-    href: "/pharmacist/prescriptions",
+    href: "/pharmacist/orders",
     icon: PackageCheck
   }
 ] as const;
