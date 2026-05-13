@@ -42,6 +42,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
+- Database migration foundation: Prisma initial migration `20260513120000_init` now captures the current MySQL schema for auth, staff profiles, consultations, prescriptions, commerce, inventory, payments, shipments, community, notifications, and reward records
 - Initial role assignment: LINE LIFF sessions default to `customer`; doctor, pharmacist, and admin roles remain reserved for the future invitation/approval flow
 - Permission enforcement direction: reusable server helpers in `lib/permissions/*` should be called from Server Actions and route handlers before sensitive reads or writes
 - Integration route placeholders: `/api/auth/line/callback`, `/api/webhooks/payments`, and `/api/webhooks/zoom` now exist as guarded placeholders; payment and Zoom persistence remain intentionally unimplemented until providers are selected
@@ -277,7 +278,7 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- Prisma migrations and business-domain queries beyond auth/staff approvals.
+- Business-domain queries beyond the current admin, doctor, and pharmacist back-office foundations.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.

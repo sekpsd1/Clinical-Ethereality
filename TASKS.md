@@ -120,7 +120,7 @@
 - [x] Add all indexes and unique constraints from schema proposal
 - [x] Add initial auth indexes and unique LINE user constraint
 - [x] Add initial doctor/pharmacist user and license constraints
-- [ ] Add migrations
+- [x] Add migrations
 - [x] Add seed data for local development
 
 ## Phase 3.5: API And Domain Structure
