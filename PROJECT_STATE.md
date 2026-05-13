@@ -39,6 +39,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
 - Admin notification foundation: `/admin/notifications` now reads recent Prisma notification records and active/pending recipients when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for sending in-app notifications
+- Customer notification foundation: `/notifications` now reads the signed-in user's Prisma in-app notifications, keeps the Stitch notification layout, maps notification types back to existing app destinations, and includes a customer-owned mark-read Server Action
 - Doctor consultation, patient log, and prescription writing foundation: `/doctor/consultations` and `/doctor/patients` now read Prisma consultation, patient, and prescription records scoped to the signed-in doctor profile when a database is available, fall back to DB-offline/profile-missing empty states, allow admins to view all doctor queues for operations support, and include a doctor/admin Server Action for submitting prescription notes to pharmacist verification
 - Pharmacist prescription queue foundation: `/pharmacist/prescriptions` now reads Prisma prescription, patient, doctor, consultation, and linked order-item records when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for manual prescription verification or rejection
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
@@ -107,7 +108,7 @@ Community and Profile:
 - Community hub: implemented at `/community`
 - Create new post: implemented at `/community/create`
 - Article/post detail and comments: implemented at `/community/vitamin-c-tips`
-- Notification center: implemented at `/notifications`
+- Notification center: implemented at `/notifications` and backed by customer-owned Prisma in-app notifications
 - Community search results: implemented at `/community/search`
 
 Admin:
@@ -251,7 +252,7 @@ Completed in the current frontend pass:
 - Community hub: `/community`, implemented from Stitch zip reference with custom community header, search field, verified featured content card, category chips, and community feed cards.
 - Create new post: `/community/create`, implemented from Stitch zip reference with custom compose header, topic/content inputs, image upload area, category selector chips, post CTA, and terms note.
 - Article detail and comments: `/community/vitamin-c-tips`, implemented from Stitch zip reference with fixed detail header, hero article image, glass content card, interaction bar, comment list, and sticky comment composer.
-- Notification center: `/notifications`, implemented from Stitch zip reference with custom notification header, mark-read action, latest updates heading, unread notification glow, read cards, system update, and promotion card.
+- Notification center: `/notifications`, implemented from Stitch zip reference with custom notification header, latest updates heading, unread notification glow, read cards, and Prisma-backed customer in-app notification records with mark-read actions.
 - Community search results: `/community/search`, implemented from Stitch zip reference with search keyword, filter chips, result cards, author meta, likes, comments, and community footer context.
 - Prisma auth models: `User` and `AuthSession` have been added with role/status enums, `lineUserId` uniqueness, session status, refresh token hash storage, and expiry indexes.
 - Auth/session foundation: `/api/auth/line/session` verifies a LINE LIFF ID token through LINE, upserts the customer `User`, creates an `AuthSession`, and issues httpOnly JWT access/refresh cookies using the Prisma user ID.
@@ -267,6 +268,7 @@ Completed in the current frontend pass:
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
 - Admin notifications: `/admin/notifications` establishes the first data-backed notification sender with active/pending recipient selection and recent notification review.
+- Customer notifications: `/notifications` establishes the first customer data-backed notification center with user-scoped Prisma reads, DB-offline fallback, existing destination mapping, and a guarded mark-read Server Action.
 - Doctor consultations: `/doctor/consultations` establishes the first doctor back-office queue with doctor-scoped consultation/patient/prescription context, DB-offline/profile-missing fallbacks, and guarded prescription note submission to pharmacist verification.
 - Doctor patient logs: `/doctor/patients` establishes doctor-scoped patient history summaries from assigned consultations and prescriptions.
 - Pharmacist prescriptions: `/pharmacist/prescriptions` establishes the first pharmacist back-office queue with prescription/patient/doctor/consultation context and guarded verify/reject Server Actions.
@@ -287,7 +289,7 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- Business-domain queries beyond the current admin, doctor, and pharmacist back-office foundations.
+- Business-domain queries beyond the current admin, doctor, pharmacist, and customer notification foundations.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.
