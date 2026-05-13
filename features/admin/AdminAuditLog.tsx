@@ -6,29 +6,29 @@ export function AdminAuditLog({ data }: { data: AdminAuditLogData }) {
   return (
     <div className="space-y-5">
       <section className="rounded-[8px] bg-primary-gradient p-5 text-white shadow-card">
-        <p className="text-label font-bold uppercase text-white/75">Audit Trail</p>
-        <h2 className="mt-2 font-headline text-2xl font-bold">Sensitive action history</h2>
+        <p className="text-label font-bold uppercase text-white/75">บันทึกการตรวจสอบ</p>
+        <h2 className="mt-2 font-headline text-2xl font-bold">ประวัติการดำเนินการสำคัญ</h2>
         <p className="mt-2 text-sm leading-6 text-white/80">
-          Payment, prescription, fulfillment, stock, moderation, reward, and staff-account changes are recorded here for operational review.
+          การชำระเงิน ใบสั่งยา การจัดส่ง สต็อก การดูแลชุมชน แต้มสะสม และบัญชีเจ้าหน้าที่ จะถูกบันทึกไว้เพื่อตรวจสอบย้อนหลัง
         </p>
       </section>
 
       <section className="grid grid-cols-2 gap-3">
-        <SummaryTile icon="total" label="Total logs" value={data.summary.total} />
-        <SummaryTile icon="payment" label="Payments" value={data.summary.payment} />
-        <SummaryTile icon="prescription" label="Prescriptions" value={data.summary.prescription} />
-        <SummaryTile icon="operations" label="Operations" value={data.summary.operations} />
+        <SummaryTile icon="total" label="รายการทั้งหมด" value={data.summary.total} />
+        <SummaryTile icon="payment" label="การชำระเงิน" value={data.summary.payment} />
+        <SummaryTile icon="prescription" label="ใบสั่งยา" value={data.summary.prescription} />
+        <SummaryTile icon="operations" label="งานปฏิบัติการ" value={data.summary.operations} />
       </section>
 
       {data.unavailable ? (
         <section className="rounded-[8px] border border-border bg-white/85 p-4 text-sm text-muted shadow-payment-card">
-          Audit logs are unavailable because the database could not be reached.
+          ไม่สามารถโหลดบันทึกการตรวจสอบได้ กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล
         </section>
       ) : null}
 
       {!data.unavailable && data.logs.length === 0 ? (
         <section className="rounded-[8px] border border-border bg-white/85 p-4 text-sm text-muted shadow-payment-card">
-          No sensitive actions have been recorded yet.
+          ยังไม่มีบันทึกการดำเนินการสำคัญ
         </section>
       ) : null}
 
@@ -69,8 +69,8 @@ function AuditLogCard({ log }: { log: AdminAuditLogItem }) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
-        <InfoTile label="Actor" value={log.actor} />
-        <InfoTile label="Created" value={log.createdAt} />
+        <InfoTile label="ผู้ดำเนินการ" value={log.actor} />
+        <InfoTile label="เวลาบันทึก" value={log.createdAt} />
       </dl>
 
       <pre className="mt-4 max-h-44 overflow-auto rounded-[8px] bg-slate-50 p-3 text-[11px] leading-5 text-slate-600">

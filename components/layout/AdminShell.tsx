@@ -37,7 +37,7 @@ const adminNavItems = [
     icon: ShieldAlert
   },
   {
-    label: "Audit",
+    label: "บันทึก",
     href: "/admin/audit",
     icon: ScrollText
   }
