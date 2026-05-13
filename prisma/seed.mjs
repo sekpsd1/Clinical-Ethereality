@@ -235,6 +235,54 @@ async function upsertConsultation({ customerId, doctorId }) {
   });
 }
 
+async function upsertDoctorAvailability(doctorId) {
+  const slots = [
+    {
+      weekday: 1,
+      startTime: "09:00",
+      endTime: "12:00",
+      slotMinutes: 30,
+      isActive: true,
+      notes: "รับปรึกษา follow-up และเคสผิวพรรณ"
+    },
+    {
+      weekday: 3,
+      startTime: "13:00",
+      endTime: "16:00",
+      slotMinutes: 30,
+      isActive: true,
+      notes: "เปิดสำหรับ teleconsult"
+    }
+  ];
+
+  for (const slot of slots) {
+    const existing = await prisma.doctorAvailability.findFirst({
+      where: {
+        doctorId,
+        weekday: slot.weekday,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      }
+    });
+
+    if (existing) {
+      await prisma.doctorAvailability.update({
+        where: {
+          id: existing.id
+        },
+        data: slot
+      });
+    } else {
+      await prisma.doctorAvailability.create({
+        data: {
+          doctorId,
+          ...slot
+        }
+      });
+    }
+  }
+}
+
 async function upsertPrescription({ consultationId, customerId, doctorId, pharmacistId }) {
   const existing = await prisma.prescription.findFirst({
     where: {
@@ -623,6 +671,7 @@ async function main() {
     }
   });
   const products = await upsertProducts(admin.id);
+  await upsertDoctorAvailability(doctor.id);
   const prescriptionProduct = products.find((product) => product.slug === "clinical-retinoid-cream") ?? products[0];
   const consultation = await upsertConsultation({
     customerId: customer.id,

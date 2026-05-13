@@ -203,8 +203,28 @@ model Doctor {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   consultations Consultation[]
   prescriptions Prescription[]
+  availability  DoctorAvailability[]
 
   @@index([status])
+}
+
+model DoctorAvailability {
+  id          String   @id @default(cuid())
+  doctorId    String
+  weekday     Int
+  startTime   String   @db.VarChar(5)
+  endTime     String   @db.VarChar(5)
+  slotMinutes Int      @default(30)
+  isActive    Boolean  @default(true)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@index([weekday])
+  @@index([isActive])
 }
 
 model Pharmacist {

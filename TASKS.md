@@ -245,6 +245,7 @@
 
 - [x] Build doctor consultation list
 - [x] Build patient log access for doctors
+- [x] Build admin schedule editor for doctor availability
 - [ ] Build Zoom SDK video consultation room integration
 - [x] Build prescription writing workflow
 - [x] Build pharmacist prescription queue

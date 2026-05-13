@@ -8,7 +8,7 @@ Clinical Ethereality
 
 Backend authentication and user persistence foundation.
 
-The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold, the reviewed static customer Stitch screens, the first backend foundation for LINE LIFF authentication, Prisma-backed users/auth sessions, doctor/pharmacist profile models, JWT sessions, role/permission helpers, protected customer routes, and an initial role-protected admin dashboard shell. The customer UI remains static and unchanged; the backend foundation does not yet include payment verification, Zoom SDK, or admin scheduling.
+The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold, the reviewed static customer Stitch screens, the first backend foundation for LINE LIFF authentication, Prisma-backed users/auth sessions, doctor/pharmacist profile models, JWT sessions, role/permission helpers, protected customer routes, and an initial role-protected admin dashboard shell. The customer UI remains static and unchanged; the backend foundation does not yet include Zoom SDK or full customer booking slot locking.
 
 ## Current Decisions
 
@@ -52,6 +52,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Pharmacist prescription queue foundation: `/pharmacist/prescriptions` now reads Prisma prescription, patient, doctor, consultation, and linked order-item records when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for manual prescription verification or rejection
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
 - Audit metadata foundation: Prisma now includes an `AuditLog` model and `/admin/audit` review screen; sensitive checkout, payment, fulfillment, prescription, moderation, inventory, product, reward, and staff-account actions write role-aware audit entries with entity metadata
+- Admin schedule editor foundation: Prisma now includes `DoctorAvailability`, and `/admin/schedules` lets admins add, view, activate, or pause approved doctor availability slots with audit logging
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -308,6 +309,7 @@ Completed in the current frontend pass:
 - Pharmacist prescriptions: `/pharmacist/prescriptions` establishes the first pharmacist back-office queue with prescription/patient/doctor/consultation context and guarded verify/reject Server Actions.
 - Pharmacist medicine preparation: `/pharmacist/orders` establishes the first pharmacist fulfillment queue with paid/preparing/shipped orders and guarded preparation, shipment, and delivery status update Server Actions.
 - Audit trail: `/admin/audit` lists recent sensitive action logs for admins, backed by the new Prisma `AuditLog` model and shared audit writer used by payment, order, prescription, moderation, inventory, product, reward, and user-management actions.
+- Admin schedule editor: `/admin/schedules` provides an admin-only doctor availability editor for approved doctors, including weekday/time ranges, slot length, active/inactive status, and audit records for schedule changes.
 - Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
@@ -326,7 +328,7 @@ Not implemented yet:
 
 - Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, customer order tracking, and customer article interaction foundations.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
-- Admin schedule editor for doctor availability.
+- Broader booking integration still needs slot locking and customer-facing availability reads; admin doctor availability editing is implemented.
 - Server Actions for booking, full slip upload storage, or slot locking.
 - Production PromptPay requires `THAI_QR_PROMPTPAY_ID` to be configured securely; dynamic Thai QR payload generation is implemented for store checkout orders.
 - Zoom SDK integration for live consultations.
