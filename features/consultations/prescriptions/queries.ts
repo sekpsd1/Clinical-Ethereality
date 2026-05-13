@@ -8,12 +8,12 @@ import type { CustomerPrescriptionItem, CustomerPrescriptionsData } from "@/feat
 type PrescriptionRecord = Awaited<ReturnType<typeof getPrescriptionsForCustomer>>[number];
 
 const statusLabels: Record<PrescriptionStatus, string> = {
-  draft: "Draft",
-  pending_verification: "Pharmacist review",
-  verified: "Verified",
-  rejected: "Rejected",
-  dispensed: "Dispensed",
-  archived: "Archived"
+  draft: "ฉบับร่าง",
+  pending_verification: "รอเภสัชกรตรวจ",
+  verified: "ตรวจผ่านแล้ว",
+  rejected: "ต้องแก้ไข",
+  dispensed: "จ่ายยาแล้ว",
+  archived: "เก็บถาวร"
 };
 
 function getPrescriptionsForCustomer(userId: string) {
@@ -49,7 +49,7 @@ function getPrescriptionsForCustomer(userId: string) {
 
 function formatDate(date: Date | null): string {
   if (!date) {
-    return "Time not recorded";
+    return "ยังไม่มีเวลาบันทึก";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -80,7 +80,7 @@ function getStatusTone(status: PrescriptionStatus): CustomerPrescriptionItem["st
 
 function getProductSummary(prescription: PrescriptionRecord): string {
   if (prescription.orderItems.length === 0) {
-    return "No medicine order is linked yet";
+    return "ยังไม่มีคำสั่งซื้อยาที่เชื่อมโยง";
   }
 
   return prescription.orderItems.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
@@ -96,43 +96,43 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean) {
   if (status === "pending_verification") {
     return {
       title: "Waiting for pharmacist verification",
-      body: "The pharmacy team is checking the doctor note before medicine preparation can start.",
-      ctaLabel: "View advice log",
+      body: "ทีมเภสัชกรกำลังตรวจบันทึกจากแพทย์ ก่อนเริ่มจัดเตรียมยา",
+      ctaLabel: "ดูสรุปคำแนะนำ",
       ctaHref: "/consult/advice-log"
     };
   }
 
   if (status === "verified" && !hasOrder) {
     return {
-      title: "Prescription verified",
-      body: "The prescription is ready. Add the prescribed medicine from the store flow when the catalog item is available.",
-      ctaLabel: "Browse store",
+      title: "ใบสั่งยาตรวจผ่านแล้ว",
+      body: "ใบสั่งยาพร้อมใช้งานแล้ว สามารถเลือกซื้อยาตามรายการที่มีในร้านค้าได้",
+      ctaLabel: "ไปที่ร้านค้า",
       ctaHref: "/store"
     };
   }
 
   if (status === "verified" || status === "dispensed") {
     return {
-      title: "Follow medicine order",
-      body: "This prescription is linked to an order. Track payment, pharmacy preparation, and shipment in orders.",
-      ctaLabel: "Track order",
+      title: "ติดตามคำสั่งซื้อยา",
+      body: "ใบสั่งยานี้เชื่อมกับคำสั่งซื้อแล้ว สามารถติดตามการชำระเงิน การจัดเตรียมยา และการจัดส่งได้",
+      ctaLabel: "ติดตามคำสั่งซื้อ",
       ctaHref: "/store/orders"
     };
   }
 
   if (status === "rejected") {
     return {
-      title: "Prescription needs doctor review",
-      body: "The pharmacist rejected this prescription. The doctor can revise and resubmit it from the consultation queue.",
-      ctaLabel: "View advice log",
+      title: "ใบสั่งยาต้องให้แพทย์แก้ไข",
+      body: "เภสัชกรไม่อนุมัติใบสั่งยานี้ แพทย์สามารถปรับแก้และส่งตรวจใหม่ได้จากคิวการปรึกษา",
+      ctaLabel: "ดูสรุปคำแนะนำ",
       ctaHref: "/consult/advice-log"
     };
   }
 
   return {
-    title: "Prescription in progress",
-    body: "The care team is still preparing this prescription record.",
-    ctaLabel: "View consult",
+    title: "กำลังดำเนินการใบสั่งยา",
+    body: "ทีมดูแลกำลังเตรียมข้อมูลใบสั่งยานี้",
+    ctaLabel: "ดูหน้าปรึกษา",
     ctaHref: "/consult"
   };
 }
@@ -146,11 +146,11 @@ function mapPrescription(prescription: PrescriptionRecord): CustomerPrescription
     status: prescription.status,
     statusLabel: statusLabels[prescription.status],
     statusTone: getStatusTone(prescription.status),
-    doctorName: prescription.doctor.user.displayName ?? "Doctor",
+    doctorName: prescription.doctor.user.displayName ?? "แพทย์",
     pharmacistName: prescription.pharmacist?.user.displayName ?? null,
     consultationDate: formatDate(prescription.consultation.scheduledAt ?? prescription.consultation.createdAt),
     verifiedAt: prescription.verifiedAt ? formatDate(prescription.verifiedAt) : null,
-    notes: prescription.notes ?? "No prescription note has been added yet.",
+    notes: prescription.notes ?? "ยังไม่มีบันทึกใบสั่งยา",
     productSummary: getProductSummary(prescription),
     linkedOrderCode: getLinkedOrderCode(prescription),
     nextStepTitle: nextStep.title,

@@ -15,21 +15,21 @@ export function PrescriptionStatusScreen({ data }: { data: CustomerPrescriptions
 
       <main className="space-y-5 px-6 pt-24">
         <section className="rounded-[24px] border border-white/40 bg-white/75 p-5 shadow-payment-card backdrop-blur-payment">
-          <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">Prescription verification</p>
-          <h1 className="mt-2 text-2xl font-extrabold leading-8 text-primary">Medicine readiness</h1>
+          <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">สถานะใบสั่งยา</p>
+          <h1 className="mt-2 text-2xl font-extrabold leading-8 text-primary">ความพร้อมของยา</h1>
           <div className="mt-5 grid grid-cols-3 gap-2">
-            <SummaryTile label="Review" value={data.summary.pending} />
-            <SummaryTile label="Ready" value={data.summary.verified} />
-            <SummaryTile label="Needs edit" value={data.summary.rejected} />
+            <SummaryTile label="รอตรวจ" value={data.summary.pending} />
+            <SummaryTile label="พร้อมจ่าย" value={data.summary.verified} />
+            <SummaryTile label="ต้องแก้ไข" value={data.summary.rejected} />
           </div>
         </section>
 
         {data.unavailable ? (
-          <EmptyState title="Prescription status is unavailable" body="Check the database connection and try again from the consultation flow." />
+          <EmptyState title="ไม่สามารถโหลดสถานะใบสั่งยาได้" body="กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล แล้วลองเปิดจากหน้าการปรึกษาอีกครั้ง" />
         ) : null}
 
         {!data.unavailable && data.prescriptions.length === 0 ? (
-          <EmptyState title="No prescriptions yet" body="Verified prescriptions from your doctor consultations will appear here." />
+          <EmptyState title="ยังไม่มีใบสั่งยา" body="ใบสั่งยาจากการปรึกษาแพทย์จะแสดงที่นี่เมื่อมีการบันทึกเข้าระบบ" />
         ) : null}
 
         <section className="space-y-4">
@@ -45,10 +45,10 @@ export function PrescriptionStatusScreen({ data }: { data: CustomerPrescriptions
 function PrescriptionTopBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-header mx-auto flex h-16 max-w-[480px] items-center bg-white/70 px-6 shadow-booking-top backdrop-blur-payment">
-      <Link href="/consult/advice-log" aria-label="Back to advice log" className="flex size-10 items-center justify-start text-primary">
+      <Link href="/consult/advice-log" aria-label="กลับไปหน้าสรุปคำแนะนำ" className="flex size-10 items-center justify-start text-primary">
         <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.25} />
       </Link>
-      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-primary">Prescription status</h1>
+      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-primary">สถานะใบสั่งยา</h1>
     </header>
   );
 }
@@ -72,20 +72,20 @@ function PrescriptionCard({ prescription }: { prescription: CustomerPrescription
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-base font-extrabold leading-6 text-[#191c1e]">{prescription.productSummary}</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-[#3e494a]">Doctor: {prescription.doctorName}</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[#3e494a]">แพทย์: {prescription.doctorName}</p>
           </div>
         </div>
         <StatusBadge tone={prescription.statusTone}>{prescription.statusLabel}</StatusBadge>
       </div>
 
       <div className="mt-4 grid gap-3">
-        <InfoRow icon={FileClock} label="Consultation" value={prescription.consultationDate} />
-        <InfoRow icon={ShieldCheck} label="Pharmacist" value={prescription.pharmacistName ?? "Not assigned yet"} />
-        <InfoRow icon={PackageCheck} label="Linked order" value={prescription.linkedOrderCode ?? "No linked order yet"} />
+        <InfoRow icon={FileClock} label="การปรึกษา" value={prescription.consultationDate} />
+        <InfoRow icon={ShieldCheck} label="เภสัชกร" value={prescription.pharmacistName ?? "ยังไม่ได้มอบหมาย"} />
+        <InfoRow icon={PackageCheck} label="คำสั่งซื้อที่เกี่ยวข้อง" value={prescription.linkedOrderCode ?? "ยังไม่มีคำสั่งซื้อ"} />
       </div>
 
       <div className="mt-4 rounded-[18px] bg-[#f7f9fb]/85 p-4">
-        <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">Doctor note</p>
+        <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">บันทึกจากแพทย์</p>
         <p className="mt-2 text-sm leading-6 text-[#3e494a]">{prescription.notes}</p>
       </div>
 
@@ -130,7 +130,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
         href="/consult"
         className="mt-5 flex h-12 w-full items-center justify-center rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking"
       >
-        Back to consult
+        กลับไปหน้าปรึกษา
       </Link>
     </section>
   );
