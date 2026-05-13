@@ -259,7 +259,7 @@
 - [ ] Build content reporting for articles and comments
 - [x] Build admin moderation workflow
 - [x] Minimize admin moderation steps
-- [ ] Build notifications
+- [x] Build notifications
 - [ ] Build reward points earning and spending rules
 - [ ] Add audit metadata for sensitive actions
 
