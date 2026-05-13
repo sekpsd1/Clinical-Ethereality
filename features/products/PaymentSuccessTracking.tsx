@@ -84,6 +84,9 @@ export function PaymentSuccessTracking() {
         </section>
 
         <section className="flex flex-col items-center gap-6 pt-4">
+          <Link href="/store/orders" className="text-sm font-bold tracking-wide text-primary underline-offset-4 hover:underline">
+            ดูคำสั่งซื้อของฉัน
+          </Link>
           <Link href="/store" className="text-sm font-bold tracking-wide text-primary underline-offset-4 hover:underline">
             กลับสู่หน้าหลัก
           </Link>

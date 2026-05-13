@@ -231,8 +231,8 @@
 - [ ] Build cart workflow
 - [ ] Build checkout foundation
 - [ ] Build Thai QR payment instruction flow
-- [ ] Build customer order list
-- [ ] Build customer order tracking
+- [x] Build customer order list
+- [x] Build customer order tracking
 - [x] Build admin order management
 - [x] Minimize admin order management steps
 - [ ] Build slip upload and payment review workflow

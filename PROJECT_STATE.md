@@ -35,6 +35,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions with inline success/error feedback for approving staff roles and suspending users
 - Admin payment review foundation: `/admin/payments` now reads Prisma payment, order, customer, and item records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for manual PromptPay slip verification or rejection
 - Admin order management foundation: `/admin/orders` now reads Prisma order, customer, item, payment, and shipment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for moving orders through preparation, shipped, and delivered states
+- Customer order tracking foundation: `/store/orders` now reads the signed-in customer's Prisma orders, items, latest payment, and latest shipment records, falls back to a DB-offline empty state, and shows a compact mobile order timeline without changing the existing Stitch store screens
 - Admin product catalog foundation: `/admin/products` now reads Prisma product and inventory context when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for creating and updating product catalog details, prices, prescription requirements, and product status
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
@@ -101,6 +102,7 @@ Store:
 - Product detail: implemented at `/store/paracetamol-500mg`
 - Store checkout: implemented at `/store/checkout`
 - Payment success and tracking: implemented at `/store/payment-success`
+- Customer order list and tracking: implemented at `/store/orders` as a supporting data-backed screen
 
 Community and Profile:
 
@@ -117,6 +119,7 @@ Admin:
 - Admin user and role approvals: implemented at `/admin/users` as a role-protected Prisma-backed approval queue with DB-offline fallback
 - Admin payment review: implemented at `/admin/payments` as a role-protected Prisma-backed PromptPay review queue with manual verify/reject actions
 - Admin order management: implemented at `/admin/orders` as a role-protected Prisma-backed fulfillment queue with manual preparation/shipped/delivered actions
+- Customer order tracking: implemented at `/store/orders` as an authenticated Prisma-backed customer order list with payment and shipment timeline context
 - Admin product catalog: implemented at `/admin/products` as a role-protected Prisma-backed catalog management screen with create/update actions
 - Admin inventory management: implemented at `/admin/inventory` as a role-protected Prisma-backed stock queue with manual quantity and threshold updates
 - Admin moderation: implemented at `/admin/moderation` as a role-protected Prisma-backed community content queue with restore/hide/archive actions
@@ -248,6 +251,7 @@ Completed in the current frontend pass:
 - Store product detail: `/store/paracetamol-500mg`, implemented from Stitch zip reference with custom detail header, product hero, prescription-required warning, advice log selector, description card, and sticky buy CTA.
 - Store checkout: `/store/checkout`, implemented from Stitch zip reference with order item cards, PromptPay QR payment summary, slip upload area, delivery address, and payment confirmation CTA.
 - Store payment success and tracking: `/store/payment-success`, implemented from Stitch zip reference with slip verification result, pharmacy preparation timeline, main-store return action, and pharmacy sync badge.
+- Customer order tracking: `/store/orders` adds a supporting customer-owned Prisma-backed order list with payment state, shipment state, tracking number, and status timeline; `/store/payment-success` links into it.
 - User profile: `/profile`, implemented from Stitch zip reference with custom profile header, teal verified member hero, advice/posts stats, settings menu rows, logout action, and app version note.
 - Community hub: `/community`, implemented from Stitch zip reference with custom community header, search field, verified featured content card, category chips, and community feed cards.
 - Create new post: `/community/create`, implemented from Stitch zip reference with custom compose header, topic/content inputs, image upload area, category selector chips, post CTA, and terms note.
@@ -264,6 +268,7 @@ Completed in the current frontend pass:
 - Admin user approvals: `/admin/users` establishes the UI for role requests, current/requested role review, approve/suspend controls, approval safeguards, Prisma query structure, and Server Action boundaries.
 - Admin payment review: `/admin/payments` establishes the first data-backed payment queue with order/customer context and manual verify/reject Server Actions.
 - Admin order management: `/admin/orders` establishes the first data-backed fulfillment queue with order/customer/item/payment/shipment context and guarded status update Server Actions.
+- Customer order tracking: `/store/orders` establishes the first customer-facing commerce read model with user-scoped order, item, payment, and shipment data plus DB-offline and empty states.
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
@@ -289,7 +294,7 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- Business-domain queries beyond the current admin, doctor, pharmacist, and customer notification foundations.
+- Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, and customer order tracking foundations.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.
