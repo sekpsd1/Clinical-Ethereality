@@ -819,6 +819,7 @@ Implemented Store routes:
 Implemented Community/Profile routes:
 
 - `/community`
+- `/community/search`
 - `/community/create`
 - `/community/vitamin-c-tips`
 - `/notifications`

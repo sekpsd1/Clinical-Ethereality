@@ -51,14 +51,14 @@ export function CommunityHub() {
 
       <main className="mx-auto w-full max-w-mobile">
         <section className="px-7 pt-5">
-          <label className="relative block">
+          <Link href="/community/search" className="relative block">
             <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-primary/60">
               <Search aria-hidden="true" className="size-6" strokeWidth={2.25} />
             </span>
             <span className="flex h-16 items-center rounded-full bg-white/70 pl-16 pr-6 text-sm text-slate-400 shadow-sm backdrop-blur-[24px]">
               ค้นหาบทความหรือหัวข้อสุขภาพ
             </span>
-          </label>
+          </Link>
         </section>
 
         <section className="mt-8 px-7">
@@ -117,7 +117,7 @@ function CommunityHeader() {
           <Link href="/community/create" aria-label="Create post" className="rounded-full p-2 text-primary">
             <PenLine aria-hidden="true" className="size-6" strokeWidth={2.25} />
           </Link>
-          <Link href="/community" aria-label="Search community" className="rounded-full p-2 text-slate-500">
+          <Link href="/community/search" aria-label="Search community" className="rounded-full p-2 text-slate-500">
             <Search aria-hidden="true" className="size-7" strokeWidth={2.25} />
           </Link>
         </div>

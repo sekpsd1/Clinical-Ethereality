@@ -83,7 +83,7 @@ Community and Profile:
 - Create new post: implemented at `/community/create`
 - Article/post detail and comments: implemented at `/community/vitamin-c-tips`
 - Notification center: implemented at `/notifications`
-- Community search results
+- Community search results: implemented at `/community/search`
 
 ## Decisions Still Needed
 
@@ -212,6 +212,7 @@ Completed in the current frontend pass:
 - Create new post: `/community/create`, implemented from Stitch zip reference with custom compose header, topic/content inputs, image upload area, category selector chips, post CTA, and terms note.
 - Article detail and comments: `/community/vitamin-c-tips`, implemented from Stitch zip reference with fixed detail header, hero article image, glass content card, interaction bar, comment list, and sticky comment composer.
 - Notification center: `/notifications`, implemented from Stitch zip reference with custom notification header, mark-read action, latest updates heading, unread notification glow, read cards, system update, and promotion card.
+- Community search results: `/community/search`, implemented from Stitch zip reference with search keyword, filter chips, result cards, author meta, likes, comments, and community footer context.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
@@ -233,7 +234,7 @@ Not implemented yet:
 - Thai QR generation and Slip Verification API integration.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Store, Community, Profile, Admin, pharmacist, and doctor back-office workflows beyond placeholders.
+- Backend-backed Store, Community, Profile, Admin, pharmacist, and doctor back-office workflows beyond static placeholders.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes
@@ -257,4 +258,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-Store Stitch flow is complete. Continue Community/Profile Stitch screens with `CommunitySearchResults`, or begin backend foundations for doctor availability/admin scheduling if the Consult flow should become data-driven next.
+The reviewed static Stitch customer screens are complete. Begin backend foundations for LINE LIFF/JWT authentication, doctor availability/admin scheduling, or Prisma domain schema depending on the next implementation priority.

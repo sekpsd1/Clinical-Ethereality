@@ -181,7 +181,7 @@
 - [x] Build create post screen
 - [x] Build article/post detail and comments screen
 - [x] Build notification center screen
-- [ ] Build community search results screen
+- [x] Build community search results screen
 - [ ] Add saved articles supporting screen if needed
 - [ ] Add shipping addresses supporting screen if needed
 - [ ] Add settings supporting screen if needed

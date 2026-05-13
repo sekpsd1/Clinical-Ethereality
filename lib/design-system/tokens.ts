@@ -73,6 +73,11 @@ export const stitchTailwindTheme = {
     section: ["1rem", { lineHeight: "1.5rem" }],
     title: ["1.75rem", { lineHeight: "2.125rem" }]
   },
+  fontFamily: {
+    headline: ["Manrope", "var(--font-geist-sans)", "Inter", "ui-sans-serif", "system-ui"],
+    body: ["Inter", "var(--font-geist-sans)", "ui-sans-serif", "system-ui"],
+    label: ["Inter", "var(--font-geist-sans)", "ui-sans-serif", "system-ui"]
+  },
   maxWidth: {
     mobile: "430px"
   },
