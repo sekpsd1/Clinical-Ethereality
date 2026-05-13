@@ -878,4 +878,10 @@ Implemented Community/Profile routes:
 - `/notifications`
 - `/profile`
 
-Latest verification passed with `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
+Quality checks:
+
+- `npm run lint`
+- `npm run typecheck`
+- `npx prisma validate`
+- `npm run build`
+- `npm run test:e2e` for Playwright smoke coverage of core customer and staff routes on a mobile viewport.

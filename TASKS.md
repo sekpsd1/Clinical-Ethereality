@@ -275,7 +275,7 @@
 - [x] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [x] Verify mobile-first LINE LIFF viewport behavior
 - [ ] Add integration tests for protected workflows
-- [ ] Add Playwright smoke tests
+- [x] Add Playwright smoke tests
 - [ ] Configure preview deployments
 - [ ] Configure staging environment
 - [ ] Configure production environment
