@@ -225,6 +225,7 @@
 
 ## Phase 9: Customer And Commerce Workflows
 
+- [x] Build admin product catalog management
 - [ ] Build product browsing
 - [ ] Build product detail view
 - [ ] Build cart workflow

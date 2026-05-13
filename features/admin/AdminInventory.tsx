@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Boxes, PackageCheck, ShieldAlert } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminInventoryForm } from "@/features/admin/AdminInventoryForm";
@@ -79,9 +80,14 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-headline text-lg font-bold text-text">รายการสต็อก</h2>
-          <StatusBadge tone={data.unavailable ? "danger" : "success"}>
-            {data.unavailable ? "ฐานข้อมูลออฟไลน์" : "พร้อมใช้งาน"}
-          </StatusBadge>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/products" className="text-xs font-bold text-primary">
+              Products
+            </Link>
+            <StatusBadge tone={data.unavailable ? "danger" : "success"}>
+              {data.unavailable ? "ฐานข้อมูลออฟไลน์" : "พร้อมใช้งาน"}
+            </StatusBadge>
+          </div>
         </div>
 
         {data.unavailable ? (
