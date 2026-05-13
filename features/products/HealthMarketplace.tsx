@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClipboardPlus, Leaf, Lock, Pill, Search, ShoppingCart, Sparkles, Syringe } from "lucide-react";
+import type { StoreMarketplaceData, StoreProductListItem } from "@/features/products/types";
 
 type Category = {
   label: string;
@@ -7,17 +8,7 @@ type Category = {
   locked?: boolean;
 };
 
-type Product = {
-  name: string;
-  price: string;
-  imageAlt: string;
-  media: "gel" | "vitamin" | "kit";
-  href: "/store" | "/store/paracetamol-500mg";
-  cta: string;
-  requiresPrescription?: boolean;
-  description?: string;
-  featured?: boolean;
-};
+type Product = StoreProductListItem;
 
 const categories: Category[] = [
   { label: "ตรวจเชื้อ HPV/STD", icon: ClipboardPlus },
@@ -28,37 +19,53 @@ const categories: Category[] = [
 
 const products: Product[] = [
   {
+    id: "fallback-antiviral-gel",
     name: "Antiviral Gel",
+    slug: "clinical-retinoid-cream",
     price: "฿1,200",
     imageAlt: "Antiviral gel tube in clinical packaging",
     media: "gel",
-    href: "/store/paracetamol-500mg",
+    href: "/store/clinical-retinoid-cream",
     cta: "ดูรายละเอียด",
-    requiresPrescription: true
+    requiresPrescription: true,
+    description: null,
+    stockLabel: "พร้อมจัดส่ง",
+    featured: false
   },
   {
+    id: "fallback-vitamin",
     name: "Multi-Vitamin 30 Tabs",
+    slug: "vitamin-c-complex",
     price: "฿450",
     imageAlt: "Multi-vitamin bottle on a studio background",
     media: "vitamin",
-    href: "/store",
-    cta: "ลงตะกร้า"
+    href: "/store/vitamin-c-complex",
+    cta: "ดูสินค้า",
+    requiresPrescription: false,
+    description: null,
+    stockLabel: "พร้อมจัดส่ง",
+    featured: false
   },
   {
+    id: "fallback-kit",
     name: "แพ็กเกจตรวจ HPV (Home Kit)",
+    slug: "paracetamol-500mg",
     price: "฿2,500",
     imageAlt: "HPV home testing kit with clinical packaging",
     media: "kit",
-    href: "/store",
+    href: "/store/paracetamol-500mg",
     cta: "สั่งซื้อชุดตรวจ",
     description: "ชุดตรวจหาเชื้อ HPV ด้วยตนเองที่บ้าน แม่นยำ และเป็นส่วนตัว",
+    requiresPrescription: false,
+    stockLabel: "พร้อมจัดส่ง",
     featured: true
   }
 ];
 
-export function HealthMarketplace() {
-  const standardProducts = products.filter((product) => !product.featured);
-  const featuredProduct = products.find((product) => product.featured);
+export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
+  const marketplaceProducts = data.products.length > 0 ? data.products : products;
+  const standardProducts = marketplaceProducts.filter((product) => !product.featured);
+  const featuredProduct = marketplaceProducts.find((product) => product.featured) ?? marketplaceProducts[0];
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-6 pb-8 text-[#3e494a]">
@@ -88,6 +95,12 @@ export function HealthMarketplace() {
             ดูทั้งหมด
           </Link>
         </div>
+
+        {data.unavailable ? (
+          <p className="mt-4 rounded-[18px] bg-white/70 px-4 py-3 text-xs font-semibold leading-5 text-[#93000a] shadow-[0_8px_24px_rgba(0,96,103,0.04)]">
+            ไม่สามารถโหลดสินค้าแบบสดจากฐานข้อมูลได้ กำลังแสดงรายการสำรอง
+          </p>
+        ) : null}
 
         <div className="mt-8 grid grid-cols-2 gap-4">
           {standardProducts.map((product) => (
@@ -163,6 +176,7 @@ function ProductCard({ product }: { product: Product }) {
       <div className="mt-5 min-w-0">
         <h3 className="truncate text-[18px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
         <p className="mt-2 text-[23px] font-extrabold leading-7 text-primary">{product.price}</p>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
       </div>
 
       <Link
@@ -186,6 +200,7 @@ function FeaturedProductCard({ product }: { product: Product }) {
         <h3 className="text-[19px] font-bold leading-7 text-[#191c1e]">{product.name}</h3>
         <p className="mt-3 text-[13px] leading-5 text-[#3e494a]">{product.description}</p>
         <p className="mt-4 text-[25px] font-extrabold leading-8 text-primary">{product.price}</p>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
         <Link
           href={product.href}
           className="mt-auto flex h-10 w-[142px] items-center justify-center rounded-full bg-primary-gradient px-4 text-[12px] font-bold text-white shadow-chip"

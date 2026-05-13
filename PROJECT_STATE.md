@@ -38,6 +38,8 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Customer order tracking foundation: `/store/orders` now reads the signed-in customer's Prisma orders, items, latest payment, and latest shipment records, falls back to a DB-offline empty state, and shows a compact mobile order timeline without changing the existing Stitch store screens
 - Customer checkout foundation: `/store/checkout` now submits through a customer-owned Server Action that creates Prisma order, order item, PromptPay payment-review, shipment placeholder, inventory reservation, and notification records before redirecting to `/store/orders`
 - Admin product catalog foundation: `/admin/products` now reads Prisma product and inventory context when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for creating and updating product catalog details, prices, prescription requirements, and product status
+- Customer product browsing foundation: `/store` now reads active Prisma products with inventory context, preserves the reviewed Stitch marketplace layout, falls back to the existing static product list when the database is unavailable, and links product cards into data-backed detail pages
+- Customer product detail foundation: `/store/[slug]` and `/store/paracetamol-500mg` now read active Prisma product and inventory context while preserving the reviewed Stitch detail layout, including prescription warning visibility and DB-offline fallback behavior
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
 - Customer community article foundation: `/community/vitamin-c-tips` now reads a published Prisma article with visible comments and like counts, and includes customer-owned Server Actions for toggling article likes and creating visible comments
@@ -286,6 +288,8 @@ Completed in the current frontend pass:
 - Slip verification boundary: `/api/payments/verify-slip` establishes a provider-neutral route and client for SlipOK/EasySlip automatic slip checks using API keys, normalized verification results, and guarded payment/order updates.
 - Customer slip verification UI: `/store/orders` now lets customers submit pending payment slips through the provider-neutral verification boundary using automatic local QR extraction when available, manual QR payload fallback, or hosted slip image URL fallback.
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
+- Customer product browsing: `/store` now renders active Prisma products with inventory availability labels and provider-safe fallback content without redesigning the Stitch marketplace.
+- Customer product details: `/store/[slug]` now renders active Prisma product detail data, with `/store/paracetamol-500mg` kept as a compatible existing route.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
 - Customer article interactions: `/community/vitamin-c-tips` establishes the first customer-facing community write path for article likes and comments with permission enforcement and revalidation.
@@ -319,7 +323,7 @@ Not implemented yet:
 - Thai QR generation for real dynamic payment payloads.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Backend-backed Store, Community, Profile, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
+- Backend-backed cart workflow, broader Community/Profile data, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes

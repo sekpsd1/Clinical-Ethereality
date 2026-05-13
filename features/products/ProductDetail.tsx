@@ -10,29 +10,57 @@ import {
   ShoppingCart,
   UserRound
 } from "lucide-react";
+import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 
-export function ProductDetail() {
+const fallbackProduct: StoreProductDetailItem = {
+  id: "fallback-paracetamol",
+  name: "Paracetamol 500mg",
+  slug: "paracetamol-500mg",
+  price: "฿1,200",
+  description: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
+  imageAlt: "Premium medical bottle of Paracetamol 500mg",
+  media: "kit",
+  href: "/store/paracetamol-500mg",
+  cta: "สั่งซื้อทันที",
+  requiresPrescription: false,
+  stockLabel: "พร้อมจัดส่ง",
+  featured: false,
+  longDescription: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า"
+};
+
+export function ProductDetail({ data }: { data: StoreProductDetailData }) {
+  const product = data.product ?? fallbackProduct;
+
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-[#3e494a]">
       <ProductDetailHeader />
-      <ProductHero />
+      <ProductHero product={product} />
 
       <main className="relative z-10 -mt-10 flex flex-col gap-6 px-7">
+        {data.unavailable || !data.product ? (
+          <section className="rounded-[24px] border border-[#ba1a1a]/20 bg-white/80 p-4 text-sm font-semibold leading-6 text-[#93000a] shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+            {data.unavailable ? "ไม่สามารถโหลดรายละเอียดสินค้าจากฐานข้อมูลได้ กำลังแสดงข้อมูลสำรอง" : "ไม่พบสินค้านี้ในแคตตาล็อกที่เปิดใช้งาน กำลังแสดงข้อมูลสำรอง"}
+          </section>
+        ) : null}
+
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <div className="mb-5 flex flex-col gap-2">
-            <h1 className="text-[22px] font-extrabold leading-7 text-[#191c1e]">Paracetamol 500mg</h1>
-            <p className="text-[22px] font-bold leading-7 text-[#191c1e]">฿1,200</p>
+            <h1 className="text-[22px] font-extrabold leading-7 text-[#191c1e]">{product.name}</h1>
+            <p className="text-[22px] font-bold leading-7 text-[#191c1e]">{product.price}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e797a]">{product.stockLabel}</p>
           </div>
 
-          <div className="flex gap-3 rounded-[16px] border border-[#ba1a1a]/20 bg-white/50 p-4 text-[#93000a]">
-            <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 fill-[#ba1a1a] text-[#ba1a1a]" />
-            <div>
-              <p className="text-sm font-bold leading-tight">Prescription Required (ต้องมีใบสั่งแพทย์)</p>
-              <p className="mt-1 text-xs leading-5">
-                ยาตัวนี้ต้องได้รับการตรวจสอบจากแพทย์ก่อนทำการสั่งซื้อ
-              </p>
+          {product.requiresPrescription ? (
+            <div className="flex gap-3 rounded-[16px] border border-[#ba1a1a]/20 bg-white/50 p-4 text-[#93000a]">
+              <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 fill-[#ba1a1a] text-[#ba1a1a]" />
+              <div>
+                <p className="text-sm font-bold leading-tight">Prescription Required (ต้องมีใบสั่งแพทย์)</p>
+                <p className="mt-1 text-xs leading-5">
+                  ยาตัวนี้ต้องได้รับการตรวจสอบจากแพทย์ก่อนทำการสั่งซื้อ
+                </p>
+              </div>
             </div>
-          </div>
+          ) : null}
         </section>
 
         <section className="flex flex-col gap-4">
@@ -90,9 +118,7 @@ export function ProductDetail() {
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <h2 className="mb-4 text-base font-extrabold leading-6 text-primary">รายละเอียดสินค้า</h2>
           <div className="space-y-4 text-sm leading-7 text-[#3e494a]">
-            <p>
-              เจลต้านไวรัสคุณภาพสูง ออกแบบมาเพื่อการรักษาเฉพาะที่ มีประสิทธิภาพในการยับยั้งการแพร่กระจายของเชื้อไวรัสในระยะเริ่มต้น
-            </p>
+            <p>{product.longDescription}</p>
             <div className="flex items-center gap-3 font-semibold text-primary">
               <ShieldCheck aria-hidden="true" className="size-5 fill-primary text-white" />
               <span>ผ่านการทดสอบทางคลินิก</span>
@@ -137,13 +163,20 @@ function ProductDetailHeader() {
   );
 }
 
-function ProductHero() {
+function ProductHero({ product }: { product: StoreProductDetailItem }) {
+  const heroClass =
+    product.media === "vitamin"
+      ? "relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_58%,#ffb15d_0%,#e95f12_62%,#c9480d_100%)]"
+      : product.media === "gel"
+        ? "relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_25%_18%,rgba(122,213,221,0.35),transparent_24%),linear-gradient(145deg,#0d3438,#09282d_58%,#071c21)]"
+        : "relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#ffffff_0%,#f8fbfb_48%,#eef3f2_100%)]";
+
   return (
     <section className="mt-16 aspect-square w-full overflow-hidden bg-[#eceef0]">
       <div
         role="img"
-        aria-label="Premium medical bottle of Paracetamol 500mg"
-        className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#ffffff_0%,#f8fbfb_48%,#eef3f2_100%)]"
+        aria-label={product.imageAlt}
+        className={heroClass}
       >
         <div className="absolute bottom-[18%] left-[23%] h-4 w-[20%] rounded-full bg-black/10 blur-md" />
         <div className="absolute bottom-[18%] left-[18%] h-6 w-[19%] rotate-[-2deg] rounded-full bg-white shadow-[0_10px_20px_rgba(0,0,0,0.18)]">

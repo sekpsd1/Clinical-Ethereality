@@ -226,8 +226,8 @@
 ## Phase 9: Customer And Commerce Workflows
 
 - [x] Build admin product catalog management
-- [ ] Build product browsing
-- [ ] Build product detail view
+- [x] Build product browsing
+- [x] Build product detail view
 - [ ] Build cart workflow
 - [x] Build checkout foundation
 - [ ] Build Thai QR payment instruction flow
