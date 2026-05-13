@@ -4,31 +4,31 @@ import { cn } from "@/lib/design-system/variants";
 
 const adminNavItems = [
   {
-    label: "Overview",
+    label: "ภาพรวม",
     href: "/admin",
     icon: ShieldCheck,
     active: true
   },
   {
-    label: "Users",
+    label: "ผู้ใช้",
     href: "/admin/users",
     icon: UsersRound,
     active: false
   },
   {
-    label: "Payments",
+    label: "ชำระเงิน",
     href: "/admin",
     icon: CreditCard,
     active: false
   },
   {
-    label: "Orders",
+    label: "คำสั่งซื้อ",
     href: "/admin",
     icon: PackageCheck,
     active: false
   },
   {
-    label: "Clinical",
+    label: "คลินิก",
     href: "/admin",
     icon: ClipboardCheck,
     active: false
@@ -41,12 +41,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-header border-b border-border/70 bg-white/85 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-topbar">
         <div className="mx-auto flex w-full max-w-mobile items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-label font-bold uppercase text-primary">Admin</p>
-            <h1 className="truncate font-headline text-xl font-bold text-text">Clinical Operations</h1>
+            <p className="text-label font-bold uppercase text-primary">ผู้ดูแล</p>
+            <h1 className="truncate font-headline text-xl font-bold text-text">งานปฏิบัติการคลินิก</h1>
           </div>
           <button
             type="button"
-            aria-label="Notifications"
+            aria-label="การแจ้งเตือน"
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
           >
             <Bell aria-hidden="true" className="size-5" strokeWidth={2.2} />
@@ -59,7 +59,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <nav
-        aria-label="Admin"
+        aria-label="ผู้ดูแลระบบ"
         className="fixed inset-x-0 bottom-0 z-footer border-t border-white/30 bg-white/85 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-bottom-nav backdrop-blur-topbar"
       >
         <div className="mx-auto grid w-full max-w-mobile grid-cols-5 gap-1">

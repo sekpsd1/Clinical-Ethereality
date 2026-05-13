@@ -35,6 +35,106 @@ enum StaffProfileStatus {
   archived
 }
 
+enum ConsultationStatus {
+  requested
+  pending_payment
+  scheduled
+  live
+  completed
+  cancelled
+}
+
+enum PrescriptionStatus {
+  draft
+  pending_verification
+  verified
+  rejected
+  dispensed
+  archived
+}
+
+enum ProductStatus {
+  draft
+  active
+  archived
+}
+
+enum OrderStatus {
+  pending_payment
+  payment_review
+  paid
+  preparing
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentMethod {
+  promptpay
+}
+
+enum PaymentStatus {
+  pending_slip
+  pending_review
+  verified
+  rejected
+  refunded
+}
+
+enum ShipmentStatus {
+  pending
+  preparing
+  shipped
+  delivered
+  failed
+  cancelled
+}
+
+enum ArticleStatus {
+  draft
+  published
+  hidden
+  archived
+}
+
+enum CommentStatus {
+  visible
+  hidden
+  archived
+}
+
+enum NotificationChannel {
+  in_app
+  line
+  email
+  sms
+}
+
+enum NotificationType {
+  system
+  consultation
+  order
+  payment
+  prescription
+  community
+  reward
+}
+
+enum RewardPointDirection {
+  earn
+  spend
+  adjust
+  expire
+}
+
+enum RewardPointSource {
+  consultation
+  order
+  community
+  admin_adjustment
+}
+
 model User {
   id            String        @id @default(cuid())
   lineUserId    String        @unique
@@ -52,6 +152,17 @@ model User {
   authSessions      AuthSession[]
   doctorProfile     Doctor?
   pharmacistProfile Pharmacist?
+  consultations     Consultation[]     @relation("PatientConsultations")
+  prescriptions     Prescription[]     @relation("PatientPrescriptions")
+  orders            Order[]
+  articles          Article[]          @relation("ArticleAuthor")
+  comments          Comment[]
+  likes             Like[]
+  notifications     Notification[]
+  rewardPoints      RewardPoint[]
+  reviewedPayments  Payment[]          @relation("PaymentReviewer")
+  updatedInventory  Inventory[]        @relation("InventoryUpdater")
+  updatedShipments  ShipmentTracking[] @relation("ShipmentUpdater")
 
   @@index([role])
   @@index([status])
@@ -88,7 +199,9 @@ model Doctor {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
+  prescriptions Prescription[]
 
   @@index([status])
 }
@@ -103,7 +216,273 @@ model Pharmacist {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
 
   @@index([status])
+}
+
+model Consultation {
+  id            String             @id @default(cuid())
+  patientId     String
+  doctorId      String
+  status        ConsultationStatus @default(requested)
+  scheduledAt   DateTime?
+  zoomMeetingId String?
+  zoomJoinUrl   String?            @db.Text
+  summary       String?            @db.Text
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  patient       User           @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  prescriptions Prescription[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model Prescription {
+  id             String             @id @default(cuid())
+  consultationId String
+  patientId      String
+  doctorId       String
+  pharmacistId   String?
+  status         PrescriptionStatus @default(draft)
+  notes          String?            @db.Text
+  verifiedAt     DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  patient      User         @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor       Doctor       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  pharmacist   Pharmacist?  @relation(fields: [pharmacistId], references: [id], onDelete: SetNull)
+  orderItems   OrderItem[]
+
+  @@index([consultationId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([pharmacistId])
+  @@index([status])
+  @@index([verifiedAt])
+}
+
+model Product {
+  id                   String        @id @default(cuid())
+  name                 String
+  slug                 String        @unique
+  description          String?       @db.Text
+  price                Decimal       @db.Decimal(10, 2)
+  imageUrl             String?       @db.Text
+  requiresPrescription Boolean       @default(false)
+  status               ProductStatus @default(draft)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  inventory  Inventory?
+  orderItems OrderItem[]
+
+  @@index([status])
+  @@index([requiresPrescription])
+}
+
+model Inventory {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  quantity          Int      @default(0)
+  reservedQuantity  Int      @default(0)
+  lowStockThreshold Int      @default(0)
+  updatedById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation("InventoryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  status        OrderStatus @default(pending_payment)
+  subtotal      Decimal     @db.Decimal(10, 2)
+  discountTotal Decimal     @default(0) @db.Decimal(10, 2)
+  shippingTotal Decimal     @default(0) @db.Decimal(10, 2)
+  grandTotal    Decimal     @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items     OrderItem[]
+  payments  Payment[]
+  shipments ShipmentTracking[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  productId      String
+  prescriptionId String?
+  quantity       Int
+  unitPrice      Decimal  @db.Decimal(10, 2)
+  lineTotal      Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([prescriptionId])
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  orderId             String
+  method              PaymentMethod @default(promptpay)
+  amount              Decimal       @db.Decimal(10, 2)
+  status              PaymentStatus @default(pending_slip)
+  qrPayload           String?       @db.Text
+  slipImageUrl        String?       @db.Text
+  verificationPayload Json?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reviewedBy User? @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([reviewedById])
+  @@index([reviewedAt])
+}
+
+model ShipmentTracking {
+  id             String         @id @default(cuid())
+  orderId        String
+  carrier        String?
+  trackingNumber String?
+  status         ShipmentStatus @default(pending)
+  eventsJson     Json?
+  updatedById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("ShipmentUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([trackingNumber])
+  @@index([updatedById])
+}
+
+model Article {
+  id            String        @id @default(cuid())
+  authorId      String
+  title         String
+  slug          String        @unique
+  coverImageUrl String?       @db.Text
+  body          String        @db.Text
+  status        ArticleStatus @default(draft)
+  publishedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  author   User      @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  comments Comment[]
+  likes    Like[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([publishedAt])
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  articleId String
+  userId    String
+  parentId  String?
+  body      String        @db.Text
+  status    CommentStatus @default(visible)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  article Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies Comment[] @relation("CommentReplies")
+  likes   Like[]
+
+  @@index([articleId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([status])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String?
+  commentId String?
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@unique([userId, commentId])
+  @@index([articleId])
+  @@index([commentId])
+}
+
+model Notification {
+  id           String              @id @default(cuid())
+  userId       String
+  type         NotificationType
+  channel      NotificationChannel @default(in_app)
+  title        String
+  body         String?             @db.Text
+  readAt       DateTime?
+  metadataJson Json?
+  createdAt    DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([channel])
+  @@index([readAt])
+  @@index([createdAt])
+}
+
+model RewardPoint {
+  id         String               @id @default(cuid())
+  userId     String
+  sourceType RewardPointSource
+  sourceId   String?
+  points     Int
+  direction  RewardPointDirection
+  expiresAt  DateTime?
+  createdAt  DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sourceType])
+  @@index([sourceId])
+  @@index([direction])
+  @@index([expiresAt])
 }

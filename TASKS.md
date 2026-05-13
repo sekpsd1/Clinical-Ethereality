@@ -70,7 +70,7 @@
 - [x] Create initial app layout
 - [x] Create protected app route group
 - [x] Create public auth route handlers for LINE session exchange, session refresh, current session, and logout
-- [ ] Create webhook route handler placeholders
+- [x] Create webhook route handler placeholders
 
 ## Phase 2: Authentication And Authorization
 
@@ -101,27 +101,27 @@
 - [x] Model auth sessions
 - [x] Model doctors
 - [x] Model pharmacists
-- [ ] Model consultations
-- [ ] Model prescriptions
-- [ ] Model products
-- [ ] Model inventory
-- [ ] Model orders
-- [ ] Model order_items
-- [ ] Model payments
-- [ ] Model shipment_tracking
-- [ ] Model articles
-- [ ] Model comments
-- [ ] Model likes
-- [ ] Model notifications
-- [ ] Model reward_points
-- [ ] Add all enums for roles, statuses, payment states, and reward point directions
+- [x] Model consultations
+- [x] Model prescriptions
+- [x] Model products
+- [x] Model inventory
+- [x] Model orders
+- [x] Model order_items
+- [x] Model payments
+- [x] Model shipment_tracking
+- [x] Model articles
+- [x] Model comments
+- [x] Model likes
+- [x] Model notifications
+- [x] Model reward_points
+- [x] Add all enums for roles, statuses, payment states, and reward point directions
 - [x] Add initial auth enums for user role, account status, and auth session status
 - [x] Add staff profile status enum
-- [ ] Add all indexes and unique constraints from schema proposal
+- [x] Add all indexes and unique constraints from schema proposal
 - [x] Add initial auth indexes and unique LINE user constraint
 - [x] Add initial doctor/pharmacist user and license constraints
 - [ ] Add migrations
-- [ ] Add seed data for local development
+- [x] Add seed data for local development
 
 ## Phase 3.5: API And Domain Structure
 
@@ -130,7 +130,7 @@
 - [ ] Create domain service files
 - [ ] Create Zod validation schemas
 - [x] Create permission helpers
-- [ ] Add route handlers for LINE callback, payment webhook, Zoom webhook, and health check
+- [x] Add route handlers for LINE callback, payment webhook, Zoom webhook, and health check
 
 ## Phase 4: Reusable UI Component System
 
@@ -210,12 +210,12 @@
 - [x] Add static low-stock inventory module
 - [x] Add static reported community content module
 - [x] Add static recent patient and order activity module
-- [ ] Connect admin dashboard modules to Prisma queries
+- [x] Connect admin dashboard modules to Prisma queries
 - [x] Build static admin user and role approval management screen
 - [x] Connect admin user and role approval screen to Prisma query structure
 - [x] Add admin role approval and user suspension Server Action boundaries
-- [ ] Add inline success/error feedback for admin role approval actions
-- [ ] Add seed data for admin user approval queue
+- [x] Add inline success/error feedback for admin role approval actions
+- [x] Add seed data for admin user approval queue
 
 ## Phase 9: Customer And Commerce Workflows
 

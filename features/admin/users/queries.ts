@@ -37,21 +37,21 @@ function getRequestedRole(user: UserWithStaffProfiles): Role {
 function getStaffProfileText(user: UserWithStaffProfiles): string {
   if (user.doctorProfile) {
     return user.doctorProfile.licenseNumber
-      ? `Doctor license ${user.doctorProfile.licenseNumber}`
-      : "Doctor profile awaiting license data";
+      ? `ใบอนุญาตแพทย์ ${user.doctorProfile.licenseNumber}`
+      : "โปรไฟล์แพทย์รอข้อมูลใบอนุญาต";
   }
 
   if (user.pharmacistProfile) {
     return user.pharmacistProfile.licenseNumber
-      ? `Pharmacist license ${user.pharmacistProfile.licenseNumber}`
-      : "Pharmacist profile awaiting license data";
+      ? `ใบอนุญาตเภสัชกร ${user.pharmacistProfile.licenseNumber}`
+      : "โปรไฟล์เภสัชกรรอข้อมูลใบอนุญาต";
   }
 
-  return "LINE-linked customer account";
+  return "บัญชีลูกค้าที่เชื่อมต่อ LINE";
 }
 
 function formatSubmittedAt(date: Date): string {
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat("th-TH", {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(date);
@@ -60,7 +60,7 @@ function formatSubmittedAt(date: Date): string {
 function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
   return {
     id: user.id,
-    name: user.displayName ?? "Unnamed LINE user",
+    name: user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     lineId: user.lineUserId,
     currentRole: toRole(user.role),
     requestedRole: getRequestedRole(user),

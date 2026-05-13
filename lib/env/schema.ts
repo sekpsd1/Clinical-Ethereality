@@ -12,6 +12,8 @@ export const envSchema = z.object({
   LINE_CHANNEL_ID: z.string().optional(),
   LINE_CHANNEL_SECRET: z.string().optional(),
   LINE_LOGIN_CALLBACK_URL: z.string().url().optional(),
+  PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+  ZOOM_WEBHOOK_SECRET: z.string().optional(),
   ENABLE_DEV_AUTH_BYPASS: z
     .enum(["true", "false"])
     .default("false")

@@ -238,7 +238,7 @@ clinical-ethereality/
   prisma/
     schema.prisma
     migrations/
-    seed.ts
+    seed.mjs
   public/
     images/
   tests/
@@ -627,6 +627,11 @@ Route handlers:
 - `POST /api/webhooks/zoom`: receive Zoom meeting lifecycle events if enabled.
 - `GET /api/health`: deployment and monitoring health check.
 
+Current integration placeholders:
+
+- `/api/auth/line/callback` redirects safe internal callback state back into the app and returns `501` for unconfigured POST handling.
+- `/api/webhooks/payments` and `/api/webhooks/zoom` require configured webhook secrets and return `501` until provider-specific persistence is implemented.
+
 Permission pattern:
 
 - Customer/patient: own profile, own consultations, own prescriptions where allowed, own orders, articles, comments, likes, notifications, and reward points.
@@ -759,7 +764,15 @@ Current admin foundation:
 - `/admin/users` reads Prisma users with doctor/pharmacist profiles when the database is available and shows a DB-offline empty state otherwise.
 - Admin user approval Server Actions exist for approving doctor/pharmacist/admin roles and suspending users; inline success/error UX is still pending.
 - Prisma now includes one-to-one `Doctor` and `Pharmacist` profile models linked to `User`, with staff approval status and license fields ready for data-backed workflows.
+- Local seed data lives in `prisma/seed.mjs` and can populate the admin approval queue plus sample products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records after the schema is pushed to a local MySQL database.
 - Data-backed admin queues and management screens are still pending.
+
+Local database setup for the current foundation:
+
+1. Set `DATABASE_URL` in `.env.local` to a local MySQL database.
+2. Run `npm run db:push` to apply the current Prisma schema.
+3. Run `npm run db:seed` to create local development users and sample workflow records for the admin dashboard.
+4. Use the local admin dev bypass on `/auth/line` when `ENABLE_DEV_AUTH_BYPASS=true`.
 
 Design principles:
 

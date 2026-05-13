@@ -31,11 +31,14 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Refresh session storage: refresh tokens are stored only as SHA-256 hashes on `AuthSession` records and are rotated on refresh
 - Route protection: customer app routes redirect unauthenticated users to `/auth/line`; future `/admin`, `/doctor`, and `/pharmacist` routes have role boundaries in middleware
 - Local development access: `ENABLE_DEV_AUTH_BYPASS=true` enables `/api/auth/dev-session` and local customer/admin buttons on `/auth/line`; this is disabled in production and does not replace LINE LIFF for MVP
-- Admin foundation: `/admin` now has an admin-only shell and static operational overview; data-backed queues and management screens are still pending
-- Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for approving staff roles and suspending users
+- Admin foundation: `/admin` now has an admin-only shell and operational overview backed by Prisma counts for user approvals, consultations, payments, prescriptions, orders, inventory, and hidden community content when the database is available
+- Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions with inline success/error feedback for approving staff roles and suspending users
+- Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
+- Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
 - Initial role assignment: LINE LIFF sessions default to `customer`; doctor, pharmacist, and admin roles remain reserved for the future invitation/approval flow
 - Permission enforcement direction: reusable server helpers in `lib/permissions/*` should be called from Server Actions and route handlers before sensitive reads or writes
+- Integration route placeholders: `/api/auth/line/callback`, `/api/webhooks/payments`, and `/api/webhooks/zoom` now exist as guarded placeholders; payment and Zoom persistence remain intentionally unimplemented until providers are selected
 - Recommended video call integration: Zoom SDK
 - Recommended payment approach: Thai QR plus Slip Verification API
 - Recommended deployment: Vercel app with managed MySQL
@@ -253,7 +256,7 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- Remaining Prisma domain models, migrations, seed data, and business-domain queries beyond auth.
+- Prisma migrations and business-domain queries beyond auth/staff approvals.
 - Admin approval UX feedback, broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.
@@ -284,4 +287,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-The reviewed static Stitch customer screens are complete, the initial LINE LIFF/JWT plus Prisma user/session/staff profile foundation is in place with customer route protection, and the admin dashboard/user approval shell now has Prisma query/action boundaries. Next recommended backend step: add local seed data or begin doctor availability/admin scheduling behind role boundaries.
+The reviewed static Stitch customer screens are complete, the initial LINE LIFF/JWT plus Prisma user/session/staff profile foundation is in place with customer route protection, and the admin dashboard/user approval shell now has Prisma query/action boundaries plus local seed data. The first full domain schema foundation is also modeled in Prisma. Next recommended backend step: run the schema against a local MySQL database, seed the approval queue, then begin domain queries and admin scheduling behind role boundaries.

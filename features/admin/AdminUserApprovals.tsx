@@ -1,13 +1,13 @@
-import { CheckCircle2, Clock3, ShieldAlert, Stethoscope, UserRound, XCircle } from "lucide-react";
+import { Clock3, ShieldAlert, Stethoscope, UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/design-system/variants";
-import { approveStaffRoleAction, updateUserStatusAction } from "@/features/admin/users/actions";
+import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import type { AdminUserApprovalItem, AdminUserApprovalsData } from "@/features/admin/users/types";
 
 const auditItems = [
-  "Role changes require admin session and audit note.",
-  "Doctor and pharmacist approval should wait for license data.",
-  "Suspension should be non-destructive and preserve historical records."
+  "การเปลี่ยนสิทธิ์ต้องมีเซสชันผู้ดูแลและบันทึกตรวจสอบ",
+  "การอนุมัติแพทย์และเภสัชกรควรรอข้อมูลใบอนุญาต",
+  "การระงับบัญชีควรไม่ลบข้อมูลและต้องเก็บประวัติไว้"
 ] as const;
 
 const roleIcons = {
@@ -17,8 +17,24 @@ const roleIcons = {
   pharmacist: ShieldAlert
 } as const;
 
+const roleLabels: Record<string, string> = {
+  admin: "ผู้ดูแลระบบ",
+  customer: "ลูกค้า",
+  doctor: "แพทย์",
+  pharmacist: "เภสัชกร"
+};
+
+const statusLabels: Record<string, string> = {
+  active: "ใช้งานอยู่",
+  approved: "อนุมัติแล้ว",
+  archived: "เก็บถาวร",
+  pending_review: "รอตรวจสอบ",
+  rejected: "ปฏิเสธแล้ว",
+  suspended: "ระงับใช้งาน"
+};
+
 function formatRole(role: string): string {
-  return role.charAt(0).toUpperCase() + role.slice(1);
+  return roleLabels[role] ?? role;
 }
 
 function getStatusTone(user: AdminUserApprovalItem): "neutral" | "success" | "warning" | "danger" {
@@ -38,26 +54,25 @@ function getStatusTone(user: AdminUserApprovalItem): "neutral" | "success" | "wa
 }
 
 function formatStatus(user: AdminUserApprovalItem): string {
-  return (user.staffStatus ?? user.status)
-    .split("_")
-    .map((part) => formatRole(part))
-    .join(" ");
+  const status = user.staffStatus ?? user.status;
+
+  return statusLabels[status] ?? status;
 }
 
 export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
   const approvalSummary = [
     {
-      label: "Pending review",
+      label: "รอตรวจสอบ",
       value: String(data.summary.pendingReview),
       tone: "warning"
     },
     {
-      label: "Approved staff",
+      label: "บุคลากรอนุมัติแล้ว",
       value: String(data.summary.approvedStaff),
       tone: "success"
     },
     {
-      label: "Suspended",
+      label: "ระงับใช้งาน",
       value: String(data.summary.suspended),
       tone: "danger"
     }
@@ -66,10 +81,10 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Access control</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Users and role approvals</h2>
+        <p className="text-label font-bold uppercase text-white/75">ควบคุมการเข้าถึง</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">ผู้ใช้และการอนุมัติสิทธิ์</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          Review LINE-linked users before granting doctor, pharmacist, or admin privileges.
+          ตรวจสอบผู้ใช้ที่เชื่อมต่อ LINE ก่อนให้สิทธิ์แพทย์ เภสัชกร หรือผู้ดูแลระบบ
         </p>
       </section>
 
@@ -79,7 +94,7 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
             <p className="font-headline text-2xl font-bold text-text">{item.value}</p>
             <p className="mt-1 min-h-8 text-[10px] font-semibold leading-4 text-muted">{item.label}</p>
             <div className="mt-2">
-              <StatusBadge tone={item.tone}>{item.tone === "warning" ? "Queue" : item.tone === "success" ? "OK" : "Hold"}</StatusBadge>
+              <StatusBadge tone={item.tone}>{item.tone === "warning" ? "คิว" : item.tone === "success" ? "ผ่าน" : "พักไว้"}</StatusBadge>
             </div>
           </div>
         ))}
@@ -87,17 +102,17 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Approval queue</h2>
-          <StatusBadge tone={data.unavailable ? "danger" : "success"}>{data.unavailable ? "DB offline" : "Live"}</StatusBadge>
+          <h2 className="font-headline text-lg font-bold text-text">คิวอนุมัติ</h2>
+          <StatusBadge tone={data.unavailable ? "danger" : "success"}>{data.unavailable ? "ฐานข้อมูลออฟไลน์" : "พร้อมใช้งาน"}</StatusBadge>
         </div>
 
         {data.unavailable ? (
           <EmptyQueue
-            title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before using live admin approval queues."
+            title="ยังไม่ได้เชื่อมต่อฐานข้อมูล"
+            body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนใช้คิวอนุมัติจริงของผู้ดูแล"
           />
         ) : data.users.length === 0 ? (
-          <EmptyQueue title="No users to review" body="LINE-linked users and staff role requests will appear here." />
+          <EmptyQueue title="ไม่มีผู้ใช้ที่ต้องตรวจสอบ" body="ผู้ใช้ที่เชื่อมต่อ LINE และคำขอสิทธิ์บุคลากรจะแสดงที่นี่" />
         ) : null}
 
         {data.users.map((user) => {
@@ -123,8 +138,8 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="Current" value={formatRole(user.currentRole)} />
-                <InfoTile label="Requested" value={formatRole(user.requestedRole)} />
+                <InfoTile label="ปัจจุบัน" value={formatRole(user.currentRole)} />
+                <InfoTile label="สิทธิ์ที่ขอ" value={formatRole(user.requestedRole)} />
               </div>
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
@@ -132,32 +147,7 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
                   <Clock3 aria-hidden="true" className="size-3.5 shrink-0" />
                   <span className="truncate">{user.submittedAt}</span>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <form action={updateUserStatusAction}>
-                    <input type="hidden" name="userId" value={user.id} />
-                    <input type="hidden" name="status" value="suspended" />
-                    <button
-                      type="submit"
-                      className="inline-flex size-9 items-center justify-center rounded-full border border-danger/20 bg-danger/10 text-danger"
-                      aria-label={`Suspend ${user.name}`}
-                    >
-                      <XCircle aria-hidden="true" className="size-4" strokeWidth={2.1} />
-                    </button>
-                  </form>
-                  {user.requestedRole !== "customer" ? (
-                    <form action={approveStaffRoleAction}>
-                      <input type="hidden" name="userId" value={user.id} />
-                      <input type="hidden" name="role" value={user.requestedRole} />
-                      <button
-                        type="submit"
-                        className="inline-flex size-9 items-center justify-center rounded-full bg-primary text-white"
-                        aria-label={`Approve ${user.name}`}
-                      >
-                        <CheckCircle2 aria-hidden="true" className="size-4" strokeWidth={2.1} />
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
+                <AdminUserActionButtons user={user} />
               </div>
             </article>
           );
@@ -165,7 +155,7 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
       </section>
 
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
-        <h2 className="font-headline text-lg font-bold text-text">Approval safeguards</h2>
+        <h2 className="font-headline text-lg font-bold text-text">มาตรการคุมการอนุมัติ</h2>
         <div className="mt-3 flex flex-col">
           {auditItems.map((item, index) => (
             <div key={item} className={cn("flex gap-3 py-3", index !== auditItems.length - 1 && "border-b border-border/70")}>
