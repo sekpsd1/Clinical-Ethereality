@@ -256,8 +256,8 @@
 - [ ] Build article comments
 - [ ] Build likes
 - [ ] Build content reporting for articles and comments
-- [ ] Build admin moderation workflow
-- [ ] Minimize admin moderation steps
+- [x] Build admin moderation workflow
+- [x] Minimize admin moderation steps
 - [ ] Build notifications
 - [ ] Build reward points earning and spending rules
 - [ ] Add audit metadata for sensitive actions
