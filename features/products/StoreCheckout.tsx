@@ -30,7 +30,14 @@ const checkoutItems: CheckoutItem[] = [
   }
 ];
 
-export function StoreCheckout() {
+export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
+  const checkoutError =
+    checkoutStatus === "failed"
+      ? "ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาตรวจสอบสินค้าและลองอีกครั้ง"
+      : checkoutStatus === "invalid"
+        ? "ข้อมูลคำสั่งซื้อไม่ถูกต้อง กรุณาลองอีกครั้ง"
+        : null;
+
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[radial-gradient(circle_at_top_right,#e0f2f1_0%,#f7f9fb_100%)] pb-8 text-[#191c1e]">
       <CheckoutHeader />
@@ -113,6 +120,11 @@ export function StoreCheckout() {
         </section>
 
         <section className="pb-12 pt-1 text-center">
+          {checkoutError ? (
+            <p className="mb-4 rounded-[18px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-sm font-semibold leading-6 text-[#93000a]">
+              {checkoutError}
+            </p>
+          ) : null}
           <form action={createStoreCheckoutOrderAction}>
             <input type="hidden" name="productSlugs" value="paracetamol-500mg" />
             <input type="hidden" name="productSlugs" value="vitamin-c-complex" />

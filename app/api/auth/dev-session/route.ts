@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { setSessionCookies } from "@/lib/auth/session";
 import type { AuthSession } from "@/lib/auth/types";
+import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 
 const devSessionRequestSchema = z.object({
@@ -12,6 +13,51 @@ function isDevBypassAllowed(): boolean {
   const env = getAppEnv();
 
   return process.env.NODE_ENV !== "production" && env.ENABLE_DEV_AUTH_BYPASS;
+}
+
+const devLineUserIds = {
+  customer: "seed-line-customer",
+  doctor: "seed-line-doctor-approved",
+  pharmacist: "seed-line-pharmacist-approved",
+  admin: "seed-line-admin"
+} as const;
+
+async function getDevSession(role: keyof typeof devLineUserIds): Promise<AuthSession> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        lineUserId: devLineUserIds[role]
+      },
+      select: {
+        id: true,
+        lineUserId: true,
+        role: true,
+        displayName: true,
+        avatarUrl: true,
+        status: true
+      }
+    });
+
+    if (user?.status === "active" && user.role === role) {
+      return {
+        userId: user.id,
+        lineUserId: user.lineUserId,
+        role: user.role,
+        displayName: user.displayName ?? `Local ${role}`,
+        pictureUrl: user.avatarUrl ?? undefined
+      };
+    }
+  } catch {
+    // Keep the local bypass usable before the database is available.
+  }
+
+  return {
+    userId: `dev:${role}`,
+    lineUserId: `dev-line-${role}`,
+    role,
+    displayName: `Local ${role}`,
+    pictureUrl: undefined
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -26,13 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const role = parsed.data.role;
-  const session: AuthSession = {
-    userId: `dev:${role}`,
-    lineUserId: `dev-line-${role}`,
-    role,
-    displayName: `Local ${role}`,
-    pictureUrl: undefined
-  };
+  const session = await getDevSession(role);
   const response = NextResponse.json({
     ok: true,
     session
