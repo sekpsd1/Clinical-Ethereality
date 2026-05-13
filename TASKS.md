@@ -263,7 +263,7 @@
 - [x] Build notifications
 - [x] Back customer notification center with Prisma notifications
 - [x] Build reward points earning and spending rules
-- [ ] Add audit metadata for sensitive actions
+- [x] Add audit metadata for sensitive actions
 
 ## Phase 12: Quality And Deployment
 

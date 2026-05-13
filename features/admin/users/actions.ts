@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { approveStaffRoleSchema, updateUserStatusSchema } from "@/features/admin/users/schema";
 
 export type AdminUserActionState = {
@@ -80,6 +81,17 @@ export async function approveStaffRoleAction(
           }
         });
       }
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "user.approve_staff_role",
+        entityType: "user",
+        entityId: parsed.data.userId,
+        metadata: {
+          role: parsed.data.role,
+          status: "active"
+        }
+      });
     });
   } catch {
     return {
@@ -118,13 +130,25 @@ export async function updateUserStatusAction(
   }
 
   try {
-    await prisma.user.update({
-      where: {
-        id: parsed.data.userId
-      },
-      data: {
-        status: parsed.data.status
-      }
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: parsed.data.userId
+        },
+        data: {
+          status: parsed.data.status
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "user.update_status",
+        entityType: "user",
+        entityId: parsed.data.userId,
+        metadata: {
+          status: parsed.data.status
+        }
+      });
     });
   } catch {
     return {

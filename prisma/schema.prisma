@@ -160,6 +160,7 @@ model User {
   likes             Like[]
   notifications     Notification[]
   rewardPoints      RewardPoint[]
+  auditLogs         AuditLog[]         @relation("ActorAuditLogs")
   reviewedPayments  Payment[]          @relation("PaymentReviewer")
   updatedInventory  Inventory[]        @relation("InventoryUpdater")
   updatedShipments  ShipmentTracking[] @relation("ShipmentUpdater")
@@ -485,4 +486,21 @@ model RewardPoint {
   @@index([sourceId])
   @@index([direction])
   @@index([expiresAt])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  action       String   @db.VarChar(80)
+  entityType   String   @db.VarChar(80)
+  entityId     String?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+
+  actor User? @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

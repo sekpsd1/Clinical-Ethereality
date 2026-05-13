@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { canReadOwnRecord, hasPermission } from "@/lib/permissions";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 
@@ -106,6 +107,19 @@ export async function POST(request: NextRequest) {
             orderId: payment.order.id,
             href: "/store/orders"
           }
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "payment.provider_verify_slip",
+        entityType: "payment",
+        entityId: payment.id,
+        metadata: {
+          orderId: payment.order.id,
+          provider: result.provider,
+          ok: result.ok,
+          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
         }
       });
     });

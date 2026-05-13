@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ClipboardCheck, CreditCard, PackageCheck, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
+import { Bell, ClipboardCheck, CreditCard, PackageCheck, ScrollText, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
 const adminNavItems = [
@@ -35,6 +35,11 @@ const adminNavItems = [
     label: "Moderation",
     href: "/admin/moderation",
     icon: ShieldAlert
+  },
+  {
+    label: "Audit",
+    href: "/admin/audit",
+    icon: ScrollText
   }
 ] as const;
 
@@ -67,7 +72,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         aria-label="ผู้ดูแลระบบ"
         className="fixed inset-x-0 bottom-0 z-footer border-t border-white/30 bg-white/85 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-bottom-nav backdrop-blur-topbar"
       >
-        <div className="mx-auto grid w-full max-w-mobile grid-cols-6 gap-1">
+        <div className="mx-auto grid w-full max-w-mobile grid-cols-7 gap-1">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);

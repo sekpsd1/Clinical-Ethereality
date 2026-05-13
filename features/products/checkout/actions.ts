@@ -8,6 +8,7 @@ import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
@@ -153,6 +154,20 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
             orderId: order.id,
             href: "/store/orders"
           }
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "order.create_checkout",
+        entityType: "order",
+        entityId: order.id,
+        metadata: {
+          paymentMethod: "promptpay",
+          paymentStatus: "pending_slip",
+          orderStatus: "pending_payment",
+          itemCount: products.reduce((total, product) => total + (quantities.get(product.slug) ?? 1), 0),
+          hasPromptPayPayload: Boolean(qrPayload)
         }
       });
 

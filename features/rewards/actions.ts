@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { spendRewardPoints, rewardRules } from "@/features/rewards/rules";
 
 export async function redeemWellnessCreditAction(): Promise<void> {
@@ -14,6 +15,16 @@ export async function redeemWellnessCreditAction(): Promise<void> {
       sourceType: "admin_adjustment",
       sourceId: `wellness-credit:${Date.now()}`,
       points: rewardRules.wellnessCredit.points
+    });
+
+    await writeAuditLog(tx, {
+      actorId: session.userId,
+      action: "reward.redeem_wellness_credit",
+      entityType: "reward_point",
+      entityId: session.userId,
+      metadata: {
+        points: rewardRules.wellnessCredit.points
+      }
     });
 
     await tx.notification.create({

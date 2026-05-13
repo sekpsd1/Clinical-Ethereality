@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateOrderFulfillmentSchema } from "@/features/admin/orders/schema";
 
 export type AdminOrderActionState = {
@@ -72,6 +73,17 @@ export async function updateOrderFulfillmentAction(
           status: "preparing",
           updatedById: session.userId
         });
+
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: "order.mark_preparing",
+          entityType: "order",
+          entityId: order.id,
+          metadata: {
+            previousStatus: order.status,
+            nextStatus: "preparing"
+          }
+        });
       }
 
       if (parsed.data.action === "mark_shipped") {
@@ -92,6 +104,17 @@ export async function updateOrderFulfillmentAction(
           status: "shipped",
           updatedById: session.userId
         });
+
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: "order.mark_shipped",
+          entityType: "order",
+          entityId: order.id,
+          metadata: {
+            previousStatus: order.status,
+            nextStatus: "shipped"
+          }
+        });
       }
 
       if (parsed.data.action === "mark_delivered") {
@@ -111,6 +134,17 @@ export async function updateOrderFulfillmentAction(
         await upsertLatestShipment(tx, order.id, order.shipments[0]?.id, {
           status: "delivered",
           updatedById: session.userId
+        });
+
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: "order.mark_delivered",
+          entityType: "order",
+          entityId: order.id,
+          metadata: {
+            previousStatus: order.status,
+            nextStatus: "delivered"
+          }
         });
       }
     });

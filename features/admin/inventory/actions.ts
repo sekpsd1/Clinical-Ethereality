@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateInventorySchema } from "@/features/admin/inventory/schema";
 
 export type AdminInventoryActionState = {
@@ -52,15 +53,29 @@ export async function updateInventoryAction(
       };
     }
 
-    await prisma.inventory.update({
-      where: {
-        id: parsed.data.inventoryId
-      },
-      data: {
-        quantity: parsed.data.quantity,
-        lowStockThreshold: parsed.data.lowStockThreshold,
-        updatedById: session.userId
-      }
+    await prisma.$transaction(async (tx) => {
+      await tx.inventory.update({
+        where: {
+          id: parsed.data.inventoryId
+        },
+        data: {
+          quantity: parsed.data.quantity,
+          lowStockThreshold: parsed.data.lowStockThreshold,
+          updatedById: session.userId
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "inventory.update",
+        entityType: "inventory",
+        entityId: parsed.data.inventoryId,
+        metadata: {
+          quantity: parsed.data.quantity,
+          lowStockThreshold: parsed.data.lowStockThreshold,
+          reservedQuantity: inventory.reservedQuantity
+        }
+      });
     });
   } catch {
     return {

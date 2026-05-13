@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { reviewPaymentSchema } from "@/features/admin/payments/schema";
 
 export type AdminPaymentActionState = {
@@ -73,6 +74,17 @@ export async function reviewPaymentAction(
         },
         data: {
           status: parsed.data.status === "verified" ? "preparing" : "pending_payment"
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "payment.manual_review",
+        entityType: "payment",
+        entityId: payment.id,
+        metadata: {
+          orderId: payment.orderId,
+          status: parsed.data.status
         }
       });
     });

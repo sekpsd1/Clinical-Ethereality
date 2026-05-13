@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireDoctorSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { submitPrescriptionSchema } from "@/features/doctor/consultations/schema";
 
 export type DoctorPrescriptionActionState = {
@@ -83,16 +84,40 @@ export async function submitPrescriptionAction(
             verifiedAt: null
           }
         });
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: "prescription.submit_for_verification",
+          entityType: "prescription",
+          entityId: latestPrescription.id,
+          metadata: {
+            consultationId: consultation.id,
+            patientId: consultation.patientId,
+            previousStatus: latestPrescription.status,
+            nextStatus: "pending_verification"
+          }
+        });
         return;
       }
 
-      await tx.prescription.create({
+      const prescription = await tx.prescription.create({
         data: {
           consultationId: consultation.id,
           patientId: consultation.patientId,
           doctorId: consultation.doctorId,
           notes: parsed.data.notes,
           status: "pending_verification"
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "prescription.submit_for_verification",
+        entityType: "prescription",
+        entityId: prescription.id,
+        metadata: {
+          consultationId: consultation.id,
+          patientId: consultation.patientId,
+          nextStatus: "pending_verification"
         }
       });
     });

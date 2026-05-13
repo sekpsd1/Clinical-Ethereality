@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requirePharmacistSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { reviewPrescriptionSchema } from "@/features/pharmacist/prescriptions/schema";
 
 export type PharmacistPrescriptionActionState = {
@@ -72,6 +73,18 @@ export async function reviewPrescriptionAction(
         data: {
           status: parsed.data.status,
           verifiedAt: parsed.data.status === "verified" ? new Date() : null,
+          pharmacistId: pharmacist?.id ?? prescription.pharmacistId
+        }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "prescription.review",
+        entityType: "prescription",
+        entityId: prescription.id,
+        metadata: {
+          previousStatus: prescription.status,
+          nextStatus: parsed.data.status,
           pharmacistId: pharmacist?.id ?? prescription.pharmacistId
         }
       });

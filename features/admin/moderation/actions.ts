@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateModerationItemSchema } from "@/features/admin/moderation/schema";
 
 export type AdminModerationActionState = {
@@ -18,7 +19,7 @@ export async function updateModerationItemAction(
   _previousState: AdminModerationActionState,
   formData: FormData
 ): Promise<AdminModerationActionState> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const parsed = updateModerationItemSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
@@ -31,26 +32,54 @@ export async function updateModerationItemAction(
   const { action, itemId, itemType } = parsed.data;
 
   try {
-    if (itemType === "article") {
-      await prisma.article.update({
-        where: {
-          id: itemId
-        },
-        data: {
-          status: action === "restore" ? "published" : action === "hide" ? "hidden" : "archived",
-          publishedAt: action === "restore" ? new Date() : undefined
-        }
-      });
-    } else {
-      await prisma.comment.update({
-        where: {
-          id: itemId
-        },
-        data: {
-          status: action === "restore" ? "visible" : action === "hide" ? "hidden" : "archived"
-        }
-      });
-    }
+    await prisma.$transaction(async (tx) => {
+      if (itemType === "article") {
+        const item = await tx.article.update({
+          where: {
+            id: itemId
+          },
+          data: {
+            status: action === "restore" ? "published" : action === "hide" ? "hidden" : "archived",
+            publishedAt: action === "restore" ? new Date() : undefined
+          },
+          select: {
+            status: true
+          }
+        });
+
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: `moderation.${action}`,
+          entityType: "article",
+          entityId: itemId,
+          metadata: {
+            nextStatus: item.status
+          }
+        });
+      } else {
+        const item = await tx.comment.update({
+          where: {
+            id: itemId
+          },
+          data: {
+            status: action === "restore" ? "visible" : action === "hide" ? "hidden" : "archived"
+          },
+          select: {
+            status: true
+          }
+        });
+
+        await writeAuditLog(tx, {
+          actorId: session.userId,
+          action: `moderation.${action}`,
+          entityType: "comment",
+          entityId: itemId,
+          metadata: {
+            nextStatus: item.status
+          }
+        });
+      }
+    });
   } catch {
     return {
       status: "error",
