@@ -151,13 +151,13 @@ function AttachmentCard() {
 function Actions() {
   return (
     <section className="space-y-3 pt-4">
-      <button
-        type="button"
+      <Link
+        href="/consult/prescriptions"
         className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-gradient py-4 text-base font-bold text-white shadow-selected-date"
       >
         <ShoppingCart aria-hidden="true" className="size-6" strokeWidth={2.2} />
         สั่งซื้อยาตามใบสั่งแพทย์
-      </button>
+      </Link>
       <button
         type="button"
         className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-primary/20 py-4 text-base font-bold text-primary"

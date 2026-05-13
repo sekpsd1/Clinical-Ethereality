@@ -21,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/consult/payment") ||
     pathname.startsWith("/consult/waiting-room") ||
     pathname.startsWith("/consult/live") ||
+    pathname.startsWith("/consult/prescriptions") ||
     pathname.startsWith("/consult/advice-log");
 
   return (

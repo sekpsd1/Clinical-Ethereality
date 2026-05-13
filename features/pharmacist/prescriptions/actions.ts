@@ -37,6 +37,7 @@ export async function reviewPrescriptionAction(
         },
         select: {
           id: true,
+          patientId: true,
           pharmacistId: true,
           status: true
         }
@@ -88,6 +89,23 @@ export async function reviewPrescriptionAction(
           pharmacistId: pharmacist?.id ?? prescription.pharmacistId
         }
       });
+
+      await tx.notification.create({
+        data: {
+          userId: prescription.patientId,
+          type: "prescription",
+          channel: "in_app",
+          title: parsed.data.status === "verified" ? "Prescription verified" : "Prescription needs doctor revision",
+          body:
+            parsed.data.status === "verified"
+              ? "The pharmacist verified your prescription. You can now follow the medicine order step."
+              : "The pharmacist rejected the prescription. Your doctor can revise and submit it again.",
+          metadataJson: {
+            prescriptionId: prescription.id,
+            href: "/consult/prescriptions"
+          }
+        }
+      });
     });
   } catch {
     return {
@@ -98,6 +116,8 @@ export async function reviewPrescriptionAction(
 
   revalidatePath("/admin");
   revalidatePath("/pharmacist/prescriptions");
+  revalidatePath("/consult/prescriptions");
+  revalidatePath("/notifications");
 
   return {
     status: "success",

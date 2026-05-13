@@ -96,6 +96,20 @@ export async function submitPrescriptionAction(
             nextStatus: "pending_verification"
           }
         });
+        await tx.notification.create({
+          data: {
+            userId: consultation.patientId,
+            type: "prescription",
+            channel: "in_app",
+            title: "Prescription sent for verification",
+            body: "Your doctor sent the prescription to the pharmacist for review.",
+            metadataJson: {
+              prescriptionId: latestPrescription.id,
+              consultationId: consultation.id,
+              href: "/consult/prescriptions"
+            }
+          }
+        });
         return;
       }
 
@@ -120,6 +134,20 @@ export async function submitPrescriptionAction(
           nextStatus: "pending_verification"
         }
       });
+      await tx.notification.create({
+        data: {
+          userId: consultation.patientId,
+          type: "prescription",
+          channel: "in_app",
+          title: "Prescription sent for verification",
+          body: "Your doctor sent the prescription to the pharmacist for review.",
+          metadataJson: {
+            prescriptionId: prescription.id,
+            consultationId: consultation.id,
+            href: "/consult/prescriptions"
+          }
+        }
+      });
     });
   } catch {
     return {
@@ -132,6 +160,8 @@ export async function submitPrescriptionAction(
   revalidatePath("/doctor/patients");
   revalidatePath("/pharmacist/prescriptions");
   revalidatePath("/admin");
+  revalidatePath("/consult/prescriptions");
+  revalidatePath("/notifications");
 
   return {
     status: "success",

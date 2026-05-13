@@ -56,6 +56,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Customer booking slot integration: `/consult/booking/somchai` now reads active `DoctorAvailability` slots for the approved seed doctor and creates a pending-payment consultation from the selected slot before redirecting to consultation payment
 - Customer appointment detail foundation: `/consult/appointments/[consultationId]` now reads Prisma consultation data scoped to the signed-in customer, shows doctor, scheduled date/time, consultation status, fee, and routes the next CTA to consultation payment, waiting room, advice log, or rebooking based on status
 - Consultation payment status foundation: `/consult/payment?consultation=...` now reads the signed-in customer's Prisma consultation, generates PromptPay QR instructions from the configured PromptPay ID, submits slip QR payload or hosted slip image URL through the provider-neutral SlipOK/EasySlip client, moves verified consultations to `scheduled`, and shows rejected/provider-error states without adding a new payment schema
+- Customer prescription status foundation: `/consult/prescriptions` now reads Prisma prescriptions scoped to the signed-in customer, shows doctor/pharmacist context, verification status, linked medicine order context, and next-step CTAs for advice log, store browsing, or order tracking
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -111,6 +112,7 @@ Consult:
 - Waiting room: implemented at `/consult/waiting-room`
 - Live consultation: implemented at `/consult/live`
 - Advice log: implemented at `/consult/advice-log`
+- Prescription verification status: implemented at `/consult/prescriptions`
 
 Store:
 
@@ -267,6 +269,7 @@ Completed in the current frontend pass:
 - Customer booking integration: `/consult/booking/somchai` keeps the reviewed booking layout while replacing static time buttons with active doctor availability slots from Prisma and a guarded Server Action that creates a pending-payment consultation.
 - Customer appointment detail: `/consult/appointments/[consultationId]` adds the supporting booking confirmation/detail screen after a slot is booked, scoped to the signed-in customer and linked from consultation notifications.
 - Customer consultation payment verification: `/consult/payment?consultation=...` now verifies consultation payment slips with the configured SlipOK/EasySlip provider and moves verified appointments into the waiting-room path.
+- Customer prescription status: `/consult/prescriptions` adds the supporting status screen for pharmacist verification and linked medicine order context, with notifications from doctor submission and pharmacist review.
 - Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
 - Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
 - Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.

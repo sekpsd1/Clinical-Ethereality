@@ -56,6 +56,7 @@ function mapHref(notification: CustomerNotificationRecord): CustomerNotification
     href === "/community/vitamin-c-tips" ||
     href === "/store/payment-success" ||
     href === "/store" ||
+    href === "/consult/prescriptions" ||
     href === "/consult/advice-log" ||
     (typeof href === "string" && href.startsWith("/consult/appointments/"))
   ) {
@@ -66,8 +67,12 @@ function mapHref(notification: CustomerNotificationRecord): CustomerNotification
     return "/community/vitamin-c-tips";
   }
 
-  if (notification.type === "order" || notification.type === "payment" || notification.type === "prescription") {
+  if (notification.type === "order" || notification.type === "payment") {
     return "/store/payment-success";
+  }
+
+  if (notification.type === "prescription") {
+    return "/consult/prescriptions";
   }
 
   if (notification.type === "consultation") {

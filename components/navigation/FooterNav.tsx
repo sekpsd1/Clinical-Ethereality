@@ -34,6 +34,7 @@ export function FooterNav() {
     pathname.startsWith("/consult/payment") ||
     pathname.startsWith("/consult/waiting-room") ||
     pathname.startsWith("/consult/live") ||
+    pathname.startsWith("/consult/prescriptions") ||
     pathname.startsWith("/consult/advice-log");
 
   if (usesCustomFooter) {
