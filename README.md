@@ -882,6 +882,7 @@ Quality checks:
 
 - `npm run lint`
 - `npm run typecheck`
+- `npm run test:unit` for permission helper unit coverage.
 - `npx prisma validate`
 - `npm run build`
 - `npm run test:e2e` for Playwright smoke coverage of core customer and staff routes on a mobile viewport.

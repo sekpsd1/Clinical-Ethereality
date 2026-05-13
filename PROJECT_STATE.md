@@ -329,9 +329,10 @@ Completed in the current frontend pass:
 - Customer footer navigation consistency: customer app screens now use the shared `FooterNav` with final labels `Consult | Store | Community | Profile`; consult payment, waiting room, prescription status, and advice log keep `Consult` active through the shared footer, notification center remains a sub-screen without a root active tab, and live consultation hides the footer to reduce distraction.
 - Mobile LINE LIFF viewport verification: browser checks against `http://localhost:3001` covered the customer consult, consultation payment, waiting room, live consultation, advice log, prescription status, store, product detail, cart, checkout, order tracking, community, article detail, create post, search, notifications, profile, and rewards routes. The pass confirmed no visible app errors, shared footer availability on customer routes, fixed action controls clearing the footer on representative product/article screens, and live consultation remaining footer-free.
 - Playwright smoke test foundation: `playwright.config.ts` and `tests/e2e/smoke.spec.ts` now run Pixel 5-sized smoke coverage for customer app routes, live consultation footer hiding, and admin/doctor/pharmacist role routes through the local dev auth bypass. `npm run test:e2e` passed with 21 smoke tests.
+- Permission unit test foundation: `vitest.config.ts` and `tests/unit/permissions.test.ts` now cover supported role detection, role-permission matrix expectations, admin permission coverage, assertion failures, own-record reads, and assigned-record reads. `npm run test:unit` passed with 27 tests.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
-- Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, `npm run test:e2e`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
+- Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
 
 Known frontend caveats:
@@ -353,7 +354,7 @@ Not implemented yet:
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
 - Broader Community/Profile data beyond the current article interaction and reporting flows, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
-- Automated tests beyond the current Playwright smoke coverage, lint, build, and typecheck.
+- Automated tests beyond the current permission unit coverage, Playwright smoke coverage, lint, build, and typecheck.
 
 ## Risk Notes
 
