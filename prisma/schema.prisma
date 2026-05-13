@@ -7,4 +7,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Database models are intentionally deferred until the MVP entity boundary is confirmed.
+enum UserRole {
+  customer
+  doctor
+  pharmacist
+  admin
+}
+
+enum AccountStatus {
+  active
+  pending_review
+  suspended
+  archived
+}
+
+enum AuthSessionStatus {
+  active
+  revoked
+  expired
+}
+
+enum StaffProfileStatus {
+  pending_review
+  approved
+  rejected
+  suspended
+  archived
+}
+
+model User {
+  id            String        @id @default(cuid())
+  lineUserId    String        @unique
+  displayName   String?
+  email         String?
+  phone         String?
+  avatarUrl     String?
+  role          UserRole      @default(customer)
+  status        AccountStatus @default(active)
+  rewardBalance Int           @default(0)
+  lastLoginAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  authSessions      AuthSession[]
+  doctorProfile     Doctor?
+  pharmacistProfile Pharmacist?
+
+  @@index([role])
+  @@index([status])
+}
+
+model AuthSession {
+  id               String            @id @default(cuid())
+  userId           String
+  refreshTokenHash String?           @db.VarChar(128)
+  status           AuthSessionStatus @default(active)
+  userAgent        String?
+  ipAddress        String?           @db.VarChar(45)
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Doctor {
+  id              String             @id @default(cuid())
+  userId          String             @unique
+  licenseNumber   String?            @unique
+  specialty       String?
+  bio             String?            @db.Text
+  consultationFee Int?
+  status          StaffProfileStatus @default(pending_review)
+  approvedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Pharmacist {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  licenseNumber String?            @unique
+  pharmacyName  String?
+  status        StaffProfileStatus @default(pending_review)
+  approvedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}

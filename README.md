@@ -101,6 +101,8 @@ Selected stack:
 - Database: MySQL
 - ORM: Prisma
 - Authentication: LINE LIFF plus JWT
+- Customer entry: LINE Mini App/LINE LIFF is required; customers without LINE must create or use a LINE account before accessing the app
+- Email login: deferred until after the LINE Mini App MVP is complete; email may be captured as profile/contact data first
 - Storage: Cloudinary or S3-compatible object storage
 - Video call: Zoom SDK
 - Payment: Thai QR plus Slip Verification API
@@ -144,7 +146,7 @@ Core domains:
 
 Recommended request flow:
 
-1. User enters through LINE LIFF or an authenticated app route.
+1. User enters through LINE Mini App/LINE LIFF or an authenticated app route.
 2. Middleware verifies JWT state and resolves the current user role.
 3. Route-level loaders fetch only role-appropriate data through domain services.
 4. Forms submit to Server Actions with Zod validation.
@@ -509,6 +511,7 @@ The app should use a relational database because the domain has clear entities, 
 Main database entities:
 
 - users
+- auth_sessions
 - doctors
 - pharmacists
 - consultations
@@ -528,6 +531,7 @@ Main database entities:
 Entity responsibilities:
 
 - users: shared account, LINE identity, JWT session subject, role, profile, and patient-facing data
+- auth_sessions: persisted login sessions with refresh token hashes, expiry, revocation state, user agent, and IP metadata
 - doctors: doctor credentials, availability, consultation settings, and approval state
 - pharmacists: pharmacist credentials, pharmacy workflow permissions, and approval state
 - consultations: doctor-patient consultation requests, scheduling, Zoom session references, and status
@@ -549,6 +553,7 @@ Entity responsibilities:
 Suggested Prisma model direction:
 
 - `users`: `id`, `lineUserId`, `displayName`, `email`, `phone`, `avatarUrl`, `role`, `status`, `rewardBalance`, `createdAt`, `updatedAt`
+- `auth_sessions`: `id`, `userId`, `refreshTokenHash`, `status`, `userAgent`, `ipAddress`, `expiresAt`, `revokedAt`, `createdAt`, `updatedAt`
 - `doctors`: `id`, `userId`, `licenseNumber`, `specialty`, `bio`, `status`, `approvedAt`, `createdAt`, `updatedAt`
 - `pharmacists`: `id`, `userId`, `licenseNumber`, `status`, `approvedAt`, `createdAt`, `updatedAt`
 - `consultations`: `id`, `patientId`, `doctorId`, `status`, `scheduledAt`, `zoomMeetingId`, `zoomJoinUrl`, `summary`, `createdAt`, `updatedAt`
@@ -568,6 +573,7 @@ Suggested Prisma model direction:
 Key relationships:
 
 - One `user` can have one `doctor` profile or one `pharmacist` profile when applicable.
+- One `user` can have many `auth_sessions` for active LINE Mini App sessions.
 - One `user` can create many `orders`, `consultations`, `comments`, `likes`, `notifications`, and `reward_points`.
 - One `consultation` can produce prescriptions.
 - One `prescription` can be verified by a pharmacist and referenced by prescription-required order items.
@@ -577,7 +583,7 @@ Key relationships:
 
 Schema notes:
 
-- Use enums for user role, account status, consultation status, prescription status, order status, payment status, article status, notification channel, and reward direction.
+- Use enums for user role, account status, auth session status, consultation status, prescription status, order status, payment status, article status, notification channel, and reward direction.
 - Store third-party responses in JSON columns only for audit/debug fields, not as the primary business state.
 - Add indexes for `lineUserId`, `role`, `status`, `slug`, `scheduledAt`, `orderId`, `userId`, `doctorId`, `pharmacistId`, and tracking numbers.
 - Add unique constraints for product slugs, article slugs, LINE user IDs, doctor license numbers, pharmacist license numbers, and one like per user/content target.
@@ -610,6 +616,12 @@ Server Action groups:
 
 Route handlers:
 
+- `GET /auth/line`: LINE LIFF auth entry screen for customer sessions.
+- `POST /api/auth/line/session`: exchange a LINE LIFF ID token for app JWT cookies and a persisted auth session.
+- `GET /api/auth/session`: return the current app session.
+- `POST /api/auth/refresh`: rotate a persisted refresh session.
+- `POST /api/auth/logout`: revoke the current persisted refresh session and clear cookies.
+- `POST /api/auth/dev-session`: local-only customer/admin session bypass when `ENABLE_DEV_AUTH_BYPASS=true` and `NODE_ENV` is not production.
 - `POST /api/auth/line/callback`: handle LINE callback if the LIFF flow requires a server callback.
 - `POST /api/webhooks/payments`: receive payment or slip verification webhook callbacks.
 - `POST /api/webhooks/zoom`: receive Zoom meeting lifecycle events if enabled.
@@ -660,6 +672,7 @@ MVP exclusions:
 
 - Full automated carrier integration
 - Full automated payment capture beyond slip verification workflow
+- Customer email/password login before the LINE Mini App MVP is complete
 - AI-assisted clinical or content generation
 - Multi-location operations
 - Advanced marketing segmentation
@@ -683,8 +696,14 @@ MVP exclusions:
 
 The authentication system should support:
 
-- LINE LIFF login for customer/patient entry points
+- LINE Mini App/LINE LIFF login as the required customer/patient entry point
+- LINE identity as the primary customer account identity
+- No standalone customer email/password or guest account flow for MVP
+- Email login may be added only after the LINE Mini App MVP is complete
 - JWT session handling for app authorization
+- Prisma-backed users and auth sessions, with refresh tokens stored as hashes rather than raw tokens
+- Middleware protection for customer routes and role boundaries for future admin, doctor, and pharmacist areas
+- Local development bypass for previewing protected screens before LINE LIFF credentials are configured; production still requires LINE
 - Role-based access control
 - Role-scoped access for doctors, pharmacists, and admins
 - Separate permissions for customer, doctor, pharmacist, and admin
@@ -732,6 +751,15 @@ Admin workflows:
 - Moderate community posts, comments, and reports
 - Search patients and orders quickly
 - Export operational reports when needed
+
+Current admin foundation:
+
+- `/admin` is protected for admin sessions by middleware and a server-side admin guard.
+- The first admin screen is a static operational overview for role approvals, pending consultations, payment review, prescriptions, orders, low stock, reported content, and recent audit activity.
+- `/admin/users` reads Prisma users with doctor/pharmacist profiles when the database is available and shows a DB-offline empty state otherwise.
+- Admin user approval Server Actions exist for approving doctor/pharmacist/admin roles and suspending users; inline success/error UX is still pending.
+- Prisma now includes one-to-one `Doctor` and `Pharmacist` profile models linked to `User`, with staff approval status and license fields ready for data-backed workflows.
+- Data-backed admin queues and management screens are still pending.
 
 Design principles:
 

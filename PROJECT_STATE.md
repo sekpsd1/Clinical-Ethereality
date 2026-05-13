@@ -6,9 +6,9 @@ Clinical Ethereality
 
 ## Phase
 
-Consult frontend implementation.
+Backend authentication and user persistence foundation.
 
-The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold plus the first customer Consult flow screens converted from Figma/Stitch references. The implementation remains frontend-only: it uses static mock data and local image assets, establishes route structure and visual flow, but does not yet include backend integration, authentication, database models, payment verification, Zoom SDK, or admin scheduling.
+The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold, the reviewed static customer Stitch screens, the first backend foundation for LINE LIFF authentication, Prisma-backed users/auth sessions, doctor/pharmacist profile models, JWT sessions, role/permission helpers, protected customer routes, and an initial role-protected admin dashboard shell. The customer UI remains static and unchanged; the backend foundation does not yet include payment verification, Zoom SDK, or admin scheduling.
 
 ## Current Decisions
 
@@ -24,6 +24,18 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Recommended styling: Tailwind CSS implementing the finalized Stitch design system
 - Recommended backend approach: Next.js Server Actions
 - Recommended authentication: LINE LIFF plus JWT
+- User entry requirement: customers/patients must enter through the LINE Mini App/LINE LIFF experience; users without LINE must create or use a LINE account before accessing the app
+- Primary account identity: LINE user identity is the required customer identity source; no standalone email/password or guest customer account path is planned for MVP, and email login is deferred until after the LINE Mini App MVP is complete
+- Initial auth implementation: LINE LIFF ID token verification upserts a Prisma `User`, creates a Prisma `AuthSession`, and issues httpOnly JWT access and refresh cookies
+- Session subject: JWT `sub` now uses the Prisma `User.id`; LINE identity remains stored on `User.lineUserId`
+- Refresh session storage: refresh tokens are stored only as SHA-256 hashes on `AuthSession` records and are rotated on refresh
+- Route protection: customer app routes redirect unauthenticated users to `/auth/line`; future `/admin`, `/doctor`, and `/pharmacist` routes have role boundaries in middleware
+- Local development access: `ENABLE_DEV_AUTH_BYPASS=true` enables `/api/auth/dev-session` and local customer/admin buttons on `/auth/line`; this is disabled in production and does not replace LINE LIFF for MVP
+- Admin foundation: `/admin` now has an admin-only shell and static operational overview; data-backed queues and management screens are still pending
+- Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for approving staff roles and suspending users
+- Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
+- Initial role assignment: LINE LIFF sessions default to `customer`; doctor, pharmacist, and admin roles remain reserved for the future invitation/approval flow
+- Permission enforcement direction: reusable server helpers in `lib/permissions/*` should be called from Server Actions and route handlers before sensitive reads or writes
 - Recommended video call integration: Zoom SDK
 - Recommended payment approach: Thai QR plus Slip Verification API
 - Recommended deployment: Vercel app with managed MySQL
@@ -84,6 +96,11 @@ Community and Profile:
 - Article/post detail and comments: implemented at `/community/vitamin-c-tips`
 - Notification center: implemented at `/notifications`
 - Community search results: implemented at `/community/search`
+
+Admin:
+
+- Admin dashboard shell: implemented at `/admin` as a role-protected static operational overview
+- Admin user and role approvals: implemented at `/admin/users` as a role-protected Prisma-backed approval queue with DB-offline fallback
 
 ## Decisions Still Needed
 
@@ -213,6 +230,15 @@ Completed in the current frontend pass:
 - Article detail and comments: `/community/vitamin-c-tips`, implemented from Stitch zip reference with fixed detail header, hero article image, glass content card, interaction bar, comment list, and sticky comment composer.
 - Notification center: `/notifications`, implemented from Stitch zip reference with custom notification header, mark-read action, latest updates heading, unread notification glow, read cards, system update, and promotion card.
 - Community search results: `/community/search`, implemented from Stitch zip reference with search keyword, filter chips, result cards, author meta, likes, comments, and community footer context.
+- Prisma auth models: `User` and `AuthSession` have been added with role/status enums, `lineUserId` uniqueness, session status, refresh token hash storage, and expiry indexes.
+- Auth/session foundation: `/api/auth/line/session` verifies a LINE LIFF ID token through LINE, upserts the customer `User`, creates an `AuthSession`, and issues httpOnly JWT access/refresh cookies using the Prisma user ID.
+- Session route handlers: `/api/auth/session`, `/api/auth/refresh`, and `/api/auth/logout` expose current-session, refresh, and logout boundaries without changing the existing Stitch frontend.
+- LINE auth entry: `/auth/line` loads the LINE LIFF SDK, exchanges the ID token for an app session, attempts refresh first when possible, and redirects users back to their requested path.
+- Local dev bypass: `/api/auth/dev-session` can issue local-only customer/admin JWT cookies when `ENABLE_DEV_AUTH_BYPASS=true` and `NODE_ENV` is not production.
+- Route protection: middleware protects `/consult`, `/store`, `/community`, `/notifications`, and `/profile`, with role boundaries prepared for future `/admin`, `/doctor`, and `/pharmacist` routes.
+- Admin shell: `/admin` uses a dedicated operational layout with admin navigation and static queue modules for role approvals, consultations, payments, prescriptions, orders, stock, moderation, and audit activity.
+- Admin user approvals: `/admin/users` establishes the UI for role requests, current/requested role review, approve/suspend controls, approval safeguards, Prisma query structure, and Server Action boundaries.
+- Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
@@ -227,8 +253,8 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- LINE LIFF/JWT authentication and route protection.
-- Prisma domain models, migrations, seed data, and database queries.
+- Remaining Prisma domain models, migrations, seed data, and business-domain queries beyond auth.
+- Admin approval UX feedback, broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.
 - Thai QR generation and Slip Verification API integration.
@@ -258,4 +284,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-The reviewed static Stitch customer screens are complete. Begin backend foundations for LINE LIFF/JWT authentication, doctor availability/admin scheduling, or Prisma domain schema depending on the next implementation priority.
+The reviewed static Stitch customer screens are complete, the initial LINE LIFF/JWT plus Prisma user/session/staff profile foundation is in place with customer route protection, and the admin dashboard/user approval shell now has Prisma query/action boundaries. Next recommended backend step: add local seed data or begin doctor availability/admin scheduling behind role boundaries.

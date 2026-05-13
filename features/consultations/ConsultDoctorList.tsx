@@ -108,7 +108,7 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
           <p className="text-xs font-bold leading-4 text-primary">{doctor.price}</p>
           <Link
             href="/consult/booking/somchai"
-            className="h-[27px] rounded-full bg-primary-gradient px-3 text-[10px] font-bold leading-[15px] text-white shadow-chip"
+            className="inline-flex h-[27px] min-w-[84px] items-center justify-center rounded-full bg-primary-gradient px-3 text-center text-[10px] font-bold leading-none text-white shadow-chip"
           >
             จองคำปรึกษา
           </Link>

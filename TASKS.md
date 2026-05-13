@@ -69,32 +69,38 @@
 - [x] Create `lib/design-system`
 - [x] Create initial app layout
 - [x] Create protected app route group
-- [ ] Create public auth routes
+- [x] Create public auth route handlers for LINE session exchange, session refresh, current session, and logout
 - [ ] Create webhook route handler placeholders
 
 ## Phase 2: Authentication And Authorization
 
+- [x] Confirm LINE Mini App/LINE LIFF as the required customer entry path
+- [x] Confirm no standalone customer email/password or guest access for MVP
+- [x] Add local-only development auth bypass for previewing customer and admin screens
 - [ ] Configure LINE LIFF channel
-- [ ] Implement LINE LIFF login
-- [ ] Implement JWT issuing and validation
-- [ ] Implement JWT refresh or re-authentication strategy
-- [ ] Implement logout
-- [ ] Implement session handling
+- [x] Implement LINE LIFF client login entrypoint
+- [x] Implement LINE LIFF ID-token verification endpoint
+- [x] Implement JWT issuing and validation
+- [x] Implement persisted JWT refresh token revocation or re-authentication strategy
+- [x] Implement initial JWT refresh endpoint
+- [x] Implement logout
+- [x] Implement session handling
 - [ ] Implement doctor, pharmacist, and admin invitation flow
-- [ ] Define customer, doctor, pharmacist, and admin roles
-- [ ] Add role-scoped access for doctors, pharmacists, and admins
-- [ ] Add permission helpers
-- [ ] Protect sensitive routes
-- [ ] Add patient-only access boundaries
+- [x] Define customer, doctor, pharmacist, and admin roles
+- [x] Add initial route-level role boundaries for doctors, pharmacists, and admins
+- [x] Add permission helpers
+- [x] Protect customer app routes
+- [x] Add initial patient-only route boundary through authenticated customer routes
 - [ ] Add doctor access boundaries for assigned patients
 - [ ] Add pharmacist access boundaries for prescriptions and orders
-- [ ] Document permission rules beside implementation
+- [x] Document initial auth and permission decisions in `PROJECT_STATE.md`
 
 ## Phase 3: Database Foundation
 
-- [ ] Model users
-- [ ] Model doctors
-- [ ] Model pharmacists
+- [x] Model users
+- [x] Model auth sessions
+- [x] Model doctors
+- [x] Model pharmacists
 - [ ] Model consultations
 - [ ] Model prescriptions
 - [ ] Model products
@@ -108,8 +114,12 @@
 - [ ] Model likes
 - [ ] Model notifications
 - [ ] Model reward_points
-- [ ] Add enums for roles, statuses, payment states, and reward point directions
-- [ ] Add indexes and unique constraints from schema proposal
+- [ ] Add all enums for roles, statuses, payment states, and reward point directions
+- [x] Add initial auth enums for user role, account status, and auth session status
+- [x] Add staff profile status enum
+- [ ] Add all indexes and unique constraints from schema proposal
+- [x] Add initial auth indexes and unique LINE user constraint
+- [x] Add initial doctor/pharmacist user and license constraints
 - [ ] Add migrations
 - [ ] Add seed data for local development
 
@@ -119,7 +129,7 @@
 - [ ] Create feature query files
 - [ ] Create domain service files
 - [ ] Create Zod validation schemas
-- [ ] Create permission helpers
+- [x] Create permission helpers
 - [ ] Add route handlers for LINE callback, payment webhook, Zoom webhook, and health check
 
 ## Phase 4: Reusable UI Component System
@@ -188,18 +198,24 @@
 
 ## Phase 8: Admin Dashboard
 
-- [ ] Build authenticated dashboard shell
-- [ ] Add navigation
-- [ ] Use shared persistent `FooterNav`
-- [ ] Add role-aware navigation visibility
-- [ ] Add new users and role approvals module
-- [ ] Add pending consultations module
-- [ ] Add prescriptions awaiting verification module
-- [ ] Add orders awaiting preparation module
-- [ ] Add payments pending review module
-- [ ] Add low-stock inventory module
-- [ ] Add reported community content module
-- [ ] Add recent patient and order activity module
+- [x] Build authenticated dashboard shell
+- [x] Add admin navigation foundation
+- [x] Use dedicated admin persistent navigation
+- [x] Add role-aware admin route visibility
+- [x] Add static new users and role approvals module
+- [x] Add static pending consultations module
+- [x] Add static prescriptions awaiting verification module
+- [x] Add static orders awaiting preparation module
+- [x] Add static payments pending review module
+- [x] Add static low-stock inventory module
+- [x] Add static reported community content module
+- [x] Add static recent patient and order activity module
+- [ ] Connect admin dashboard modules to Prisma queries
+- [x] Build static admin user and role approval management screen
+- [x] Connect admin user and role approval screen to Prisma query structure
+- [x] Add admin role approval and user suspension Server Action boundaries
+- [ ] Add inline success/error feedback for admin role approval actions
+- [ ] Add seed data for admin user approval queue
 
 ## Phase 9: Customer And Commerce Workflows
 
@@ -257,6 +273,7 @@
 
 ## Later Candidates
 
+- [ ] Add customer email/password or magic-link login after the LINE Mini App MVP is complete
 - [ ] Full patient portal
 - [ ] Online appointment scheduling
 - [ ] Automated payment gateway capture

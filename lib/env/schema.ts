@@ -5,7 +5,21 @@ export const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1).optional(),
   JWT_SECRET: z.string().min(32).optional(),
-  NEXT_PUBLIC_LINE_LIFF_ID: z.string().optional()
+  JWT_ISSUER: z.string().default("clinical-ethereality"),
+  JWT_ACCESS_TOKEN_TTL: z.string().default("15m"),
+  JWT_REFRESH_TOKEN_TTL: z.string().default("30d"),
+  NEXT_PUBLIC_LINE_LIFF_ID: z.string().optional(),
+  LINE_CHANNEL_ID: z.string().optional(),
+  LINE_CHANNEL_SECRET: z.string().optional(),
+  LINE_LOGIN_CALLBACK_URL: z.string().url().optional(),
+  ENABLE_DEV_AUTH_BYPASS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true")
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
+
+export function getAppEnv(): AppEnv {
+  return envSchema.parse(process.env);
+}
