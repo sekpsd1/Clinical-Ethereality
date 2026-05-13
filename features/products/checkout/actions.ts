@@ -8,6 +8,8 @@ import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
+import { buildPromptPayPayload } from "@/lib/payments/promptpay";
+import { getAppEnv } from "@/lib/env/schema";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 import { CART_COOKIE_NAME } from "@/features/cart/cookies";
 
@@ -34,6 +36,16 @@ function getQuantities(productSlugs: string[]): Map<string, number> {
 
     return quantities;
   }, new Map<string, number>());
+}
+
+function getThaiQrPayload(amount: Prisma.Decimal): string | null {
+  const promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID;
+
+  if (!promptPayId) {
+    return null;
+  }
+
+  return buildPromptPayPayload(promptPayId, Number(amount));
 }
 
 export async function createStoreCheckoutOrderAction(formData: FormData): Promise<void> {
@@ -69,10 +81,11 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
       }
 
       const subtotal = products.reduce((total, product) => total.add(getLineTotal(product.price, quantities.get(product.slug) ?? 1)), new Prisma.Decimal(0));
+      const qrPayload = getThaiQrPayload(subtotal);
       const order = await tx.order.create({
         data: {
           userId: session.userId,
-          status: "payment_review",
+          status: "pending_payment",
           subtotal,
           discountTotal: new Prisma.Decimal(0),
           shippingTotal: new Prisma.Decimal(0),
@@ -89,11 +102,13 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
             create: {
               method: "promptpay",
               amount: subtotal,
-              status: "pending_review",
-              qrPayload: "promptpay://clinical-ethereality/demo-checkout",
+              status: "pending_slip",
+              qrPayload,
               verificationPayload: {
                 source: "customer_checkout_foundation",
-                note: "Slip upload storage is pending provider selection."
+                note: qrPayload
+                  ? "Dynamic Thai QR PromptPay payload generated for this order amount."
+                  : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
               }
             }
           },

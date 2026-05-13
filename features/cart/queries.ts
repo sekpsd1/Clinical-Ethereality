@@ -76,6 +76,7 @@ export async function getCustomerCart(): Promise<CartData> {
     return {
       items: [],
       itemCount: 0,
+      subtotalAmount: 0,
       subtotal: formatMoney(0)
     };
   }
@@ -98,12 +99,14 @@ export async function getCustomerCart(): Promise<CartData> {
     return {
       items,
       itemCount: items.reduce((total, item) => total + item.quantity, 0),
+      subtotalAmount: Number(subtotal),
       subtotal: formatMoney(subtotal)
     };
   } catch {
     return {
       items: [],
       itemCount: 0,
+      subtotalAmount: 0,
       subtotal: formatMoney(0),
       unavailable: true
     };

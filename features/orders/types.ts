@@ -18,6 +18,8 @@ export type CustomerOrderItem = {
   paymentId: string | null;
   paymentStatus: PaymentStatus | null;
   paymentLabel: string;
+  paymentQrPayload: string | null;
+  paymentQrDataUrl: string | null;
   paymentVerificationRequired: boolean;
   shipmentStatus: ShipmentStatus | null;
   shipmentLabel: string;

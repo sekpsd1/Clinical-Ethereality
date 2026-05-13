@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, CloudUpload, Edit3, MapPin } from "lucide-react";
 import { createStoreCheckoutOrderAction } from "@/features/products/checkout/actions";
 import type { CartData, CartItem } from "@/features/cart/types";
+import type { PromptPayInstruction } from "@/lib/payments/promptpay";
 
 type CheckoutItem = {
   slug: string;
@@ -34,7 +35,15 @@ const checkoutItems: CheckoutItem[] = [
   }
 ];
 
-export function StoreCheckout({ checkoutStatus, cart }: { checkoutStatus?: string; cart: CartData }) {
+export function StoreCheckout({
+  checkoutStatus,
+  cart,
+  promptPayInstruction
+}: {
+  checkoutStatus?: string;
+  cart: CartData;
+  promptPayInstruction: PromptPayInstruction;
+}) {
   const items = cart.items.length > 0 ? cart.items.map(mapCartItemToCheckoutItem) : checkoutItems;
   const total = cart.items.length > 0 ? cart.subtotal : "฿1,800.00";
   const checkoutError =
@@ -69,20 +78,31 @@ export function StoreCheckout({ checkoutStatus, cart }: { checkoutStatus?: strin
 
           <div className="rounded-[24px] bg-white p-6 shadow-[inset_0_2px_12px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
             <div className="mx-auto mb-5 flex w-full max-w-[252px] items-center justify-center rounded-[18px] border-2 border-slate-50 bg-white p-4">
-              <Image
-                src="/images/payments/promptpay-qr-1000.png"
-                alt="PromptPay QR code for store checkout payment"
-                width={224}
-                height={224}
-                className="h-auto w-full"
-                priority
-              />
+              {promptPayInstruction.qrDataUrl ? (
+                <Image
+                  src={promptPayInstruction.qrDataUrl}
+                  alt="Dynamic PromptPay QR code for store checkout payment"
+                  width={224}
+                  height={224}
+                  className="h-auto w-full"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex aspect-square w-full items-center justify-center rounded-[14px] bg-slate-50 p-4 text-center text-xs font-bold leading-5 text-[#3e494a]">
+                  Configure THAI_QR_PROMPTPAY_ID to show the dynamic QR code.
+                </div>
+              )}
             </div>
             <p className="text-center text-sm leading-6 text-[#3e494a]">
               กรุณาสแกน QR Code เพื่อชำระเงิน
               <br />
-              <span className="text-[10px] text-slate-400">Dynamic QR Code expires in 15:00</span>
+              <span className="text-[10px] text-slate-400">PromptPay {promptPayInstruction.promptPayIdLabel}</span>
             </p>
+            {promptPayInstruction.payload ? (
+              <p className="mt-4 break-all rounded-[14px] bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-500">
+                {promptPayInstruction.payload}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-6 space-y-3 border-t border-slate-200/50 pt-5">

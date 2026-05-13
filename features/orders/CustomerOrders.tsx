@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Check, PackageCheck, ReceiptText, Truck } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CustomerSlipVerification } from "@/features/orders/CustomerSlipVerification";
@@ -91,10 +92,49 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
         ))}
       </div>
 
+      {order.paymentVerificationRequired ? <PaymentInstructionPanel order={order} /> : null}
+
       {order.paymentVerificationRequired && order.paymentId ? (
         <CustomerSlipVerification paymentId={order.paymentId} orderCode={order.orderCode} />
       ) : null}
     </article>
+  );
+}
+
+function PaymentInstructionPanel({ order }: { order: CustomerOrderItem }) {
+  return (
+    <section className="mt-6 rounded-[20px] border border-[#bdc9ca]/20 bg-white/75 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#6e797a]">PromptPay</p>
+          <h3 className="mt-1 text-sm font-extrabold text-primary">Scan to pay {order.total}</h3>
+        </div>
+        <ReceiptText aria-hidden="true" className="size-5 shrink-0 text-primary" />
+      </div>
+
+      {order.paymentQrDataUrl ? (
+        <div className="mx-auto mt-4 flex w-full max-w-[220px] items-center justify-center rounded-[18px] bg-white p-3 shadow-qr-inset">
+          <Image
+            src={order.paymentQrDataUrl}
+            alt={`PromptPay QR code for ${order.orderCode}`}
+            width={196}
+            height={196}
+            className="h-auto w-full"
+            unoptimized
+          />
+        </div>
+      ) : (
+        <p className="mt-4 rounded-[14px] bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-[#3e494a]">
+          Dynamic QR is not configured yet. Add THAI_QR_PROMPTPAY_ID before accepting production payments.
+        </p>
+      )}
+
+      {order.paymentQrPayload ? (
+        <p className="mt-3 break-all rounded-[14px] bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-500">
+          {order.paymentQrPayload}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

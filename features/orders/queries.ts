@@ -2,6 +2,7 @@ import type { OrderStatus, PaymentStatus, ShipmentStatus } from "@prisma/client"
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
+import { getQrDataUrlFromPayload } from "@/lib/payments/promptpay";
 import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
 
 type CustomerOrderRecord = Awaited<ReturnType<typeof getOrdersForCustomer>>[number];
@@ -156,9 +157,10 @@ function getItemSummary(order: CustomerOrderRecord): string {
   return order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
 }
 
-function mapOrder(order: CustomerOrderRecord): CustomerOrderItem {
+async function mapOrder(order: CustomerOrderRecord): Promise<CustomerOrderItem> {
   const payment = order.payments[0] ?? null;
   const shipment = order.shipments[0] ?? null;
+  const paymentQrDataUrl = await getQrDataUrlFromPayload(payment?.qrPayload ?? null);
 
   return {
     id: order.id,
@@ -172,6 +174,8 @@ function mapOrder(order: CustomerOrderRecord): CustomerOrderItem {
     paymentId: payment?.id ?? null,
     paymentStatus: payment?.status ?? null,
     paymentLabel: payment ? paymentStatusLabels[payment.status] : "ยังไม่มีข้อมูลชำระเงิน",
+    paymentQrPayload: payment?.qrPayload ?? null,
+    paymentQrDataUrl,
     paymentVerificationRequired: payment ? ["pending_slip", "pending_review"].includes(payment.status) : false,
     shipmentStatus: shipment?.status ?? null,
     shipmentLabel: shipment ? shipmentStatusLabels[shipment.status] : "ยังไม่มีข้อมูลจัดส่ง",
@@ -187,7 +191,7 @@ export async function getCustomerOrders(session: PublicSession): Promise<Custome
 
   try {
     const orders = await getOrdersForCustomer(session.userId);
-    const orderItems = orders.map(mapOrder);
+    const orderItems = await Promise.all(orders.map(mapOrder));
 
     return {
       orders: orderItems,

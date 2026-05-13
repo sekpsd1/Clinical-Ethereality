@@ -63,6 +63,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Slip verification provider decision: the system should support SlipOK or EasySlip through environment configuration; provider-specific API keys, SlipOK branch ID, expected receiver name, and endpoint overrides must stay in environment variables and never be committed
 - Slip verification API boundary: `/api/payments/verify-slip` accepts a payment ID plus QR payload or image URL, enforces customer ownership/admin payment-review permission, calls the configured provider client, updates payment/order status, and creates an in-app payment notification
 - Customer slip verification UI: `/store/orders` now exposes a customer-owned slip verification panel for pending payments; it accepts a slip image, attempts local QR extraction with the browser Barcode Detector API, falls back to pasted QR payload or hosted slip image URL, and submits to `/api/payments/verify-slip` without introducing a storage provider decision
+- Thai QR payment instruction foundation: `/store/checkout` now generates a dynamic PromptPay EMV QR payload for the order amount when `THAI_QR_PROMPTPAY_ID` is configured, stores the payload on the Prisma payment record, and `/store/orders` renders the saved QR/payment payload beside slip verification instructions
 - Recommended deployment: Vercel app with managed MySQL
 - Recommended storage: Cloudinary or S3-compatible object storage for attachments and images
 - Recommended validation: Zod
@@ -289,6 +290,7 @@ Completed in the current frontend pass:
 - Customer checkout foundation: `/store/checkout` establishes the first customer-facing commerce write path with permission enforcement, Prisma transaction boundaries, payment-review records, inventory reservation, and notification creation.
 - Slip verification boundary: `/api/payments/verify-slip` establishes a provider-neutral route and client for SlipOK/EasySlip automatic slip checks using API keys, normalized verification results, and guarded payment/order updates.
 - Customer slip verification UI: `/store/orders` now lets customers submit pending payment slips through the provider-neutral verification boundary using automatic local QR extraction when available, manual QR payload fallback, or hosted slip image URL fallback.
+- Thai QR payment instructions: checkout and customer order tracking now use a generated PromptPay EMV payload and QR image for the exact order amount when `THAI_QR_PROMPTPAY_ID` is present; new orders remain pending payment until the customer submits a slip for verification.
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
 - Customer product browsing: `/store` now renders active Prisma products with inventory availability labels and provider-safe fallback content without redesigning the Stitch marketplace.
 - Customer product details: `/store/[slug]` now renders active Prisma product detail data, with `/store/paracetamol-500mg` kept as a compatible existing route.
@@ -324,7 +326,7 @@ Not implemented yet:
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, full slip upload storage, or slot locking.
-- Thai QR generation for real dynamic payment payloads.
+- Production PromptPay requires `THAI_QR_PROMPTPAY_ID` to be configured securely; dynamic Thai QR payload generation is implemented for store checkout orders.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
 - Broader Community/Profile data beyond the current article interaction and reporting flows, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.

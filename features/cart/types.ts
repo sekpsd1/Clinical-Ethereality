@@ -14,6 +14,7 @@ export type CartItem = {
 export type CartData = {
   items: CartItem[];
   itemCount: number;
+  subtotalAmount: number;
   subtotal: string;
   unavailable?: boolean;
 };

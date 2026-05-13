@@ -12,6 +12,7 @@ export const envSchema = z.object({
   LINE_CHANNEL_ID: z.string().optional(),
   LINE_CHANNEL_SECRET: z.string().optional(),
   LINE_LOGIN_CALLBACK_URL: z.string().url().optional(),
+  THAI_QR_PROMPTPAY_ID: z.string().optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
   SLIP_VERIFICATION_PROVIDER: z.enum(["slipok", "easyslip"]).optional(),
   SLIP_VERIFICATION_API_URL: z.string().url().optional(),
