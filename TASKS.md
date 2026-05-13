@@ -171,7 +171,7 @@
 - [x] Build live consultation screen shell
 - [x] Build advice log screen
 - [x] Add booking confirmation supporting screen if needed
-- [ ] Add payment pending/rejected supporting screens if needed
+- [x] Add payment pending/rejected supporting screens if needed
 - [x] Add appointment detail supporting screen if needed
 - [ ] Add prescription verification status supporting screen if needed
 
