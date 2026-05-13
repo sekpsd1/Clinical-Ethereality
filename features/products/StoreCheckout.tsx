@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, CloudUpload, Edit3, MapPin } from "lucide-react";
+import { createStoreCheckoutOrderAction } from "@/features/products/checkout/actions";
 
 type CheckoutItem = {
   name: string;
@@ -112,12 +113,16 @@ export function StoreCheckout() {
         </section>
 
         <section className="pb-12 pt-1 text-center">
-          <Link
-            href="/store/payment-success"
-            className="mb-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
-          >
-            แจ้งชำระเงินแล้ว
-          </Link>
+          <form action={createStoreCheckoutOrderAction}>
+            <input type="hidden" name="productSlugs" value="paracetamol-500mg" />
+            <input type="hidden" name="productSlugs" value="vitamin-c-complex" />
+            <button
+              type="submit"
+              className="mb-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
+            >
+              แจ้งชำระเงินแล้ว
+            </button>
+          </form>
           <p className="px-4 text-[10px] leading-4 text-[#3e494a]">
             By completing this transaction, you agree to our{" "}
             <span className="text-primary underline">Terms of Service</span> and{" "}

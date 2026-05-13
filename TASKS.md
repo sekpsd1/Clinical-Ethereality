@@ -229,7 +229,7 @@
 - [ ] Build product browsing
 - [ ] Build product detail view
 - [ ] Build cart workflow
-- [ ] Build checkout foundation
+- [x] Build checkout foundation
 - [ ] Build Thai QR payment instruction flow
 - [x] Build customer order list
 - [x] Build customer order tracking
