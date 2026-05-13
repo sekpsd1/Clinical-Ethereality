@@ -13,6 +13,11 @@ export const envSchema = z.object({
   LINE_CHANNEL_SECRET: z.string().optional(),
   LINE_LOGIN_CALLBACK_URL: z.string().url().optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+  SLIP_VERIFICATION_PROVIDER: z.enum(["slipok", "easyslip"]).optional(),
+  SLIP_VERIFICATION_API_URL: z.string().url().optional(),
+  SLIP_VERIFICATION_API_KEY: z.string().optional(),
+  SLIPOK_BRANCH_ID: z.string().optional(),
+  SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: z.string().optional(),
   ZOOM_WEBHOOK_SECRET: z.string().optional(),
   ENABLE_DEV_AUTH_BYPASS: z
     .enum(["true", "false"])

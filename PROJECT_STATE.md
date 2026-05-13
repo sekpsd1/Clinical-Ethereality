@@ -55,7 +55,9 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Permission enforcement direction: reusable server helpers in `lib/permissions/*` should be called from Server Actions and route handlers before sensitive reads or writes
 - Integration route placeholders: `/api/auth/line/callback`, `/api/webhooks/payments`, and `/api/webhooks/zoom` now exist as guarded placeholders; payment and Zoom persistence remain intentionally unimplemented until providers are selected
 - Recommended video call integration: Zoom SDK
-- Recommended payment approach: Thai QR plus Slip Verification API
+- Recommended payment approach: Thai QR plus automatic Slip Verification API using either SlipOK or EasySlip with API-key authentication
+- Slip verification provider decision: the system should support SlipOK or EasySlip through environment configuration; provider-specific API keys, SlipOK branch ID, expected receiver name, and endpoint overrides must stay in environment variables and never be committed
+- Slip verification API boundary: `/api/payments/verify-slip` accepts a payment ID plus QR payload or image URL, enforces customer ownership/admin payment-review permission, calls the configured provider client, updates payment/order status, and creates an in-app payment notification
 - Recommended deployment: Vercel app with managed MySQL
 - Recommended storage: Cloudinary or S3-compatible object storage for attachments and images
 - Recommended validation: Zod
@@ -147,7 +149,7 @@ Admin:
 - Decide whether HIPAA-eligible vendors and BAAs are required from day one
 - Decide whether customer product browsing and order tracking are public, authenticated, or hybrid
 - Confirm Zoom SDK implementation approach
-- Choose Slip Verification API provider
+- Choose final Slip Verification API provider: SlipOK or EasySlip
 - Decide whether Thai QR payments are manual-review MVP or fully automated after slip verification
 - Community is included in MVP using the reviewed Stitch screens
 - Decide whether delivery tracking is internal status only or carrier-integrated
@@ -186,7 +188,7 @@ The first build should likely include:
 - Inventory foundation
 - Orders, order items, and order status tracking
 - Thai QR payment instructions, slip upload, and payment review workflow
-- Slip Verification API integration boundary
+- SlipOK/EasySlip verification API boundary
 - Zoom consultation metadata and launch path
 - Patient history captured through users and consultations
 - Prescription creation
@@ -280,6 +282,7 @@ Completed in the current frontend pass:
 - Admin order management: `/admin/orders` establishes the first data-backed fulfillment queue with order/customer/item/payment/shipment context and guarded status update Server Actions.
 - Customer order tracking: `/store/orders` establishes the first customer-facing commerce read model with user-scoped order, item, payment, and shipment data plus DB-offline and empty states.
 - Customer checkout foundation: `/store/checkout` establishes the first customer-facing commerce write path with permission enforcement, Prisma transaction boundaries, payment-review records, inventory reservation, and notification creation.
+- Slip verification boundary: `/api/payments/verify-slip` establishes a provider-neutral route and client for SlipOK/EasySlip automatic slip checks using API keys, normalized verification results, and guarded payment/order updates.
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
