@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Check, PackageCheck, ReceiptText, Truck } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { CustomerSlipVerification } from "@/features/orders/CustomerSlipVerification";
 import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
 
 export function CustomerOrders({ data }: { data: CustomerOrdersData }) {
@@ -89,6 +90,10 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
           <TrackingStepRow key={step.title} step={step} isLast={index === order.steps.length - 1} />
         ))}
       </div>
+
+      {order.paymentVerificationRequired && order.paymentId ? (
+        <CustomerSlipVerification paymentId={order.paymentId} orderCode={order.orderCode} />
+      ) : null}
     </article>
   );
 }

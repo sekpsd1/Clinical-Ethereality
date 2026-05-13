@@ -235,10 +235,10 @@
 - [x] Build customer order tracking
 - [x] Build admin order management
 - [x] Minimize admin order management steps
-- [ ] Build slip upload and payment review workflow
+- [x] Build slip upload and payment review workflow
 - [x] Build admin manual payment review foundation
 - [x] Add SlipOK/EasySlip verification API boundary
-- [ ] Integrate selected Slip Verification API with final slip upload UI
+- [x] Integrate selected Slip Verification API with final slip upload UI
 - [x] Build inventory management
 
 ## Phase 10: Consultation And Pharmacy Workflows

@@ -15,8 +15,10 @@ export type CustomerOrderItem = {
   total: string;
   itemSummary: string;
   itemCount: number;
+  paymentId: string | null;
   paymentStatus: PaymentStatus | null;
   paymentLabel: string;
+  paymentVerificationRequired: boolean;
   shipmentStatus: ShipmentStatus | null;
   shipmentLabel: string;
   trackingNumber: string | null;

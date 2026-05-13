@@ -58,6 +58,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Recommended payment approach: Thai QR plus automatic Slip Verification API using either SlipOK or EasySlip with API-key authentication
 - Slip verification provider decision: the system should support SlipOK or EasySlip through environment configuration; provider-specific API keys, SlipOK branch ID, expected receiver name, and endpoint overrides must stay in environment variables and never be committed
 - Slip verification API boundary: `/api/payments/verify-slip` accepts a payment ID plus QR payload or image URL, enforces customer ownership/admin payment-review permission, calls the configured provider client, updates payment/order status, and creates an in-app payment notification
+- Customer slip verification UI: `/store/orders` now exposes a customer-owned slip verification panel for pending payments; it accepts a slip image, attempts local QR extraction with the browser Barcode Detector API, falls back to pasted QR payload or hosted slip image URL, and submits to `/api/payments/verify-slip` without introducing a storage provider decision
 - Recommended deployment: Vercel app with managed MySQL
 - Recommended storage: Cloudinary or S3-compatible object storage for attachments and images
 - Recommended validation: Zod
@@ -283,6 +284,7 @@ Completed in the current frontend pass:
 - Customer order tracking: `/store/orders` establishes the first customer-facing commerce read model with user-scoped order, item, payment, and shipment data plus DB-offline and empty states.
 - Customer checkout foundation: `/store/checkout` establishes the first customer-facing commerce write path with permission enforcement, Prisma transaction boundaries, payment-review records, inventory reservation, and notification creation.
 - Slip verification boundary: `/api/payments/verify-slip` establishes a provider-neutral route and client for SlipOK/EasySlip automatic slip checks using API keys, normalized verification results, and guarded payment/order updates.
+- Customer slip verification UI: `/store/orders` now lets customers submit pending payment slips through the provider-neutral verification boundary using automatic local QR extraction when available, manual QR payload fallback, or hosted slip image URL fallback.
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
@@ -314,7 +316,7 @@ Not implemented yet:
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, full slip upload storage, or slot locking.
-- Thai QR generation and Slip Verification API integration.
+- Thai QR generation for real dynamic payment payloads.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
 - Backend-backed Store, Community, Profile, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
