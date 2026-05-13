@@ -53,6 +53,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
 - Audit metadata foundation: Prisma now includes an `AuditLog` model and `/admin/audit` review screen; sensitive checkout, payment, fulfillment, prescription, moderation, inventory, product, reward, and staff-account actions write role-aware audit entries with entity metadata
 - Admin schedule editor foundation: Prisma now includes `DoctorAvailability`, and `/admin/schedules` lets admins add, view, activate, or pause approved doctor availability slots with audit logging
+- Customer booking slot integration: `/consult/booking/somchai` now reads active `DoctorAvailability` slots for the approved seed doctor and creates a pending-payment consultation from the selected slot before redirecting to consultation payment
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -261,6 +262,7 @@ Completed in the current frontend pass:
 - Consult doctor list: `/consult`, implemented from Figma with doctor cards, search bar, filter chips, local doctor images, and booking CTA.
 - Doctor booking: `/consult/booking/somchai`, implemented from Figma with doctor bio card, calendar mock, time slots, and booking CTA.
 - Consult payment checkout: `/consult/payment`, implemented from Figma with booking summary, PromptPay QR, slip upload mock, and payment submit CTA.
+- Customer booking integration: `/consult/booking/somchai` keeps the reviewed booking layout while replacing static time buttons with active doctor availability slots from Prisma and a guarded Server Action that creates a pending-payment consultation.
 - Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
 - Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
 - Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.
