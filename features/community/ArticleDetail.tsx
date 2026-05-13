@@ -1,31 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Heart, MessageSquare, Send, Share2 } from "lucide-react";
+import { createArticleCommentAction, toggleArticleLikeAction } from "@/features/community/article/actions";
+import type { CommunityArticleDetailData, CommunityCommentItem } from "@/features/community/article/types";
 
-type Comment = {
-  author: string;
-  time: string;
-  body: string;
-  verified?: boolean;
-  avatar: "somchai" | "pharmacist";
-};
-
-const comments: Comment[] = [
-  {
-    author: "K. Somchai",
-    time: "2 ชม. ที่แล้ว",
-    body: "ขอบคุณสำหรับข้อมูลครับ มีประโยชน์มากเลย",
-    avatar: "somchai"
-  },
-  {
-    author: "เภสัชกร อริสรา (Arisara)",
-    time: "45 นาที ที่แล้ว",
-    body: "ยินดีค่ะ หากมีข้อสงสัยเรื่องปริมาณที่ควรทาน สอบถามทิ้งไว้ได้เลยนะคะ",
-    verified: true,
-    avatar: "pharmacist"
-  }
-];
-
-export function ArticleDetail() {
+export function ArticleDetail({ article }: { article: CommunityArticleDetailData }) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[linear-gradient(180deg,#f7f9fb_0%,#eef3f4_100%)] pb-[calc(12rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <ArticleHeader />
@@ -38,23 +16,26 @@ export function ArticleDetail() {
         </section>
 
         <article className="relative z-10 mb-6 rounded-[24px] border border-white/30 bg-white/70 p-6 shadow-lg backdrop-blur-[24px]">
-          <h1 className="mb-5 text-[26px] font-extrabold leading-[1.18] text-primary">
-            แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด
-          </h1>
-          <p className="mb-7 text-[17px] leading-8 text-[#3e494a]">
-            การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายจะสามารถดูดซึมไปใช้ได้ทันทีตลอดทั้งวัน และควรแบ่งทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่...
-          </p>
+          <h1 className="mb-5 text-[26px] font-extrabold leading-[1.18] text-primary">{article.title}</h1>
+          <p className="mb-7 text-[17px] leading-8 text-[#3e494a]">{article.body}</p>
           <div className="flex items-center gap-5 text-base font-semibold tracking-wide text-[#6e797a]">
-            <span>342 ไลก์</span>
-            <span>56 ความคิดเห็น</span>
+            <span>{article.likesCount} ไลก์</span>
+            <span>{article.commentsCount} ความคิดเห็น</span>
           </div>
         </article>
 
         <section className="mb-10 flex items-center rounded-full border border-white/30 bg-white/70 p-2 shadow-sm backdrop-blur-[24px]">
-          <button type="button" className="flex flex-1 items-center justify-center gap-2 py-2 text-primary">
-            <Heart aria-hidden="true" className="size-6 fill-primary" />
-            <span className="text-sm font-bold">ถูกใจ</span>
-          </button>
+          <form action={toggleArticleLikeAction} className="flex flex-1">
+            <input type="hidden" name="articleId" value={article.id} />
+            <button
+              type="submit"
+              disabled={article.unavailable}
+              className="flex flex-1 items-center justify-center gap-2 py-2 text-primary disabled:text-[#6e797a]"
+            >
+              <Heart aria-hidden="true" className="size-6" fill={article.likedByViewer ? "#006067" : "none"} />
+              <span className="text-sm font-bold">ถูกใจ</span>
+            </button>
+          </form>
           <span className="h-5 w-px bg-[#bdc9ca]/30" />
           <button type="button" className="flex flex-1 items-center justify-center gap-2 py-2 text-[#3e494a]">
             <MessageSquare aria-hidden="true" className="size-6 fill-[#3e494a]" />
@@ -69,23 +50,38 @@ export function ArticleDetail() {
 
         <section className="space-y-6">
           <h2 className="px-2 text-base font-bold text-[#3e494a]">ความคิดเห็นล่าสุด</h2>
-          {comments.map((comment) => (
-            <CommentItem key={comment.author} comment={comment} />
+          {article.comments.length === 0 ? (
+            <p className="rounded-[24px] border border-white/30 bg-white/70 p-4 text-sm leading-6 text-[#3e494a] shadow-sm backdrop-blur-[24px]">
+              ยังไม่มีความคิดเห็น
+            </p>
+          ) : null}
+          {article.comments.map((comment) => (
+            <CommentItem key={comment.id} comment={comment} />
           ))}
         </section>
       </main>
 
       <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[45] px-5">
-        <div className="mx-auto flex h-16 w-full max-w-mobile items-center rounded-full border border-white/50 bg-white/70 p-2 shadow-2xl backdrop-blur-[24px]">
+        <form
+          action={createArticleCommentAction}
+          className="mx-auto flex h-16 w-full max-w-mobile items-center rounded-full border border-white/50 bg-white/70 p-2 shadow-2xl backdrop-blur-[24px]"
+        >
+          <input type="hidden" name="articleId" value={article.id} />
           <input
             type="text"
+            name="body"
             placeholder="แสดงความคิดเห็นของคุณ..."
             className="min-w-0 flex-1 border-0 bg-transparent px-4 text-sm outline-none placeholder:text-[#6e797a] focus:ring-0"
           />
-          <button type="button" aria-label="Send comment" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg">
+          <button
+            type="submit"
+            disabled={article.unavailable}
+            aria-label="Send comment"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg disabled:bg-[#6e797a]"
+          >
             <Send aria-hidden="true" className="size-6 fill-white" />
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -98,15 +94,13 @@ function ArticleHeader() {
         <Link href="/community" aria-label="Back to community" className="text-primary">
           <ArrowLeft aria-hidden="true" className="size-6" strokeWidth={2.4} />
         </Link>
-        <h1 className="truncate text-[21px] font-bold tracking-tight text-primary">
-          แชร์เคล็ดลับการทานวิตามินซี
-        </h1>
+        <h1 className="truncate text-[21px] font-bold tracking-tight text-primary">วิตามินซี</h1>
       </div>
     </header>
   );
 }
 
-function CommentItem({ comment }: { comment: Comment }) {
+function CommentItem({ comment }: { comment: CommunityCommentItem }) {
   return (
     <div className="flex gap-4">
       <span className={`size-10 shrink-0 overflow-hidden rounded-full shadow-sm ring-2 ${comment.verified ? "ring-[#96f1fa]" : "ring-white"}`}>

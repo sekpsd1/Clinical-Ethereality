@@ -406,6 +406,71 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
 }
 
 async function upsertCommunity({ adminUserId, customerId }) {
+  const publishedArticle = await prisma.article.upsert({
+    where: {
+      slug: "vitamin-c-tips"
+    },
+    update: {
+      authorId: adminUserId,
+      title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
+      body:
+        "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายสามารถดูดซึมไปใช้ได้ทันทีตลอดวัน และควรแบ่งรับประทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่ หากมีโรคประจำตัวหรือใช้ยาประจำควรปรึกษาแพทย์หรือเภสัชกรก่อนเริ่มอาหารเสริมใหม่",
+      status: "published",
+      publishedAt: new Date("2026-05-03T03:00:00.000Z")
+    },
+    create: {
+      authorId: adminUserId,
+      title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
+      slug: "vitamin-c-tips",
+      body:
+        "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายสามารถดูดซึมไปใช้ได้ทันทีตลอดวัน และควรแบ่งรับประทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่ หากมีโรคประจำตัวหรือใช้ยาประจำควรปรึกษาแพทย์หรือเภสัชกรก่อนเริ่มอาหารเสริมใหม่",
+      status: "published",
+      publishedAt: new Date("2026-05-03T03:00:00.000Z")
+    }
+  });
+
+  const visibleComment = await prisma.comment.findFirst({
+    where: {
+      articleId: publishedArticle.id,
+      userId: customerId,
+      status: "visible"
+    }
+  });
+
+  if (visibleComment) {
+    await prisma.comment.update({
+      where: {
+        id: visibleComment.id
+      },
+      data: {
+        body: "ขอบคุณสำหรับข้อมูลครับ มีประโยชน์มากเลย"
+      }
+    });
+  } else {
+    await prisma.comment.create({
+      data: {
+        articleId: publishedArticle.id,
+        userId: customerId,
+        body: "ขอบคุณสำหรับข้อมูลครับ มีประโยชน์มากเลย",
+        status: "visible"
+      }
+    });
+  }
+
+  await prisma.like.upsert({
+    where: {
+      userId_articleId: {
+        userId: customerId,
+        articleId: publishedArticle.id
+      }
+    },
+    update: {},
+    create: {
+      userId: customerId,
+      articleId: publishedArticle.id
+    }
+  });
+
   const article = await prisma.article.upsert({
     where: {
       slug: "seed-hidden-vitamin-c-review"

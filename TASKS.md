@@ -253,9 +253,9 @@
 
 ## Phase 11: Articles, Community, And Notifications
 
-- [ ] Build articles
-- [ ] Build article comments
-- [ ] Build likes
+- [x] Build articles
+- [x] Build article comments
+- [x] Build likes
 - [ ] Build content reporting for articles and comments
 - [x] Build admin moderation workflow
 - [x] Minimize admin moderation steps
