@@ -43,6 +43,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Customer community article foundation: `/community/vitamin-c-tips` now reads a published Prisma article with visible comments and like counts, and includes customer-owned Server Actions for toggling article likes and creating visible comments
 - Admin notification foundation: `/admin/notifications` now reads recent Prisma notification records and active/pending recipients when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for sending in-app notifications
 - Customer notification foundation: `/notifications` now reads the signed-in user's Prisma in-app notifications, keeps the Stitch notification layout, maps notification types back to existing app destinations, and includes a customer-owned mark-read Server Action
+- Customer reward foundation: `/profile/rewards` now reads Prisma reward ledgers and user balances, checkout and community comments award points through shared rules, and customers can spend 50 points for a wellness credit with a reward notification
 - Doctor consultation, patient log, and prescription writing foundation: `/doctor/consultations` and `/doctor/patients` now read Prisma consultation, patient, and prescription records scoped to the signed-in doctor profile when a database is available, fall back to DB-offline/profile-missing empty states, allow admins to view all doctor queues for operations support, and include a doctor/admin Server Action for submitting prescription notes to pharmacist verification
 - Pharmacist prescription queue foundation: `/pharmacist/prescriptions` now reads Prisma prescription, patient, doctor, consultation, and linked order-item records when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for manual prescription verification or rejection
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
@@ -110,6 +111,7 @@ Store:
 Community and Profile:
 
 - User profile: implemented at `/profile`
+- Reward points ledger: implemented at `/profile/rewards`
 - Community hub: implemented at `/community`
 - Create new post: implemented at `/community/create`
 - Article/post detail and comments: implemented at `/community/vitamin-c-tips`
@@ -259,6 +261,7 @@ Completed in the current frontend pass:
 - Store payment success and tracking: `/store/payment-success`, implemented from Stitch zip reference with slip verification result, pharmacy preparation timeline, main-store return action, and pharmacy sync badge.
 - Customer order tracking: `/store/orders` adds a supporting customer-owned Prisma-backed order list with payment state, shipment state, tracking number, and status timeline; `/store/payment-success` links into it.
 - User profile: `/profile`, implemented from Stitch zip reference with custom profile header, teal verified member hero, advice/posts stats, settings menu rows, logout action, and app version note.
+- Reward points ledger: `/profile/rewards` establishes a customer-owned points balance and ledger view with earn/spend rules, a 50-point wellness credit redemption action, and DB-offline/empty states.
 - Community hub: `/community`, implemented from Stitch zip reference with custom community header, search field, verified featured content card, category chips, and community feed cards.
 - Create new post: `/community/create`, implemented from Stitch zip reference with custom compose header, topic/content inputs, image upload area, category selector chips, post CTA, and terms note.
 - Article detail and comments: `/community/vitamin-c-tips`, implemented from Stitch zip reference with fixed detail header, hero article image, glass content card, interaction bar, comment list, and sticky comment composer.
@@ -283,6 +286,7 @@ Completed in the current frontend pass:
 - Customer article interactions: `/community/vitamin-c-tips` establishes the first customer-facing community write path for article likes and comments with permission enforcement and revalidation.
 - Admin notifications: `/admin/notifications` establishes the first data-backed notification sender with active/pending recipient selection and recent notification review.
 - Customer notifications: `/notifications` establishes the first customer data-backed notification center with user-scoped Prisma reads, DB-offline fallback, existing destination mapping, and a guarded mark-read Server Action.
+- Customer rewards: `/profile/rewards` establishes the first reward-points read/write path with shared earning rules for orders and comments, spending rules for wellness credit redemption, balance updates, ledger entries, and notification creation.
 - Doctor consultations: `/doctor/consultations` establishes the first doctor back-office queue with doctor-scoped consultation/patient/prescription context, DB-offline/profile-missing fallbacks, and guarded prescription note submission to pharmacist verification.
 - Doctor patient logs: `/doctor/patients` establishes doctor-scoped patient history summaries from assigned consultations and prescriptions.
 - Pharmacist prescriptions: `/pharmacist/prescriptions` establishes the first pharmacist back-office queue with prescription/patient/doctor/consultation context and guarded verify/reject Server Actions.

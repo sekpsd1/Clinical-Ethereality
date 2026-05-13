@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
+import { awardRewardPoints, getRewardExpiryDate, rewardRules } from "@/features/rewards/rules";
 
 const articleIdSchema = z.string().min(1);
 
@@ -66,15 +67,30 @@ export async function createArticleCommentAction(formData: FormData): Promise<vo
     return;
   }
 
-  await prisma.comment.create({
-    data: {
-      articleId: parsed.data.articleId,
+  await prisma.$transaction(async (tx) => {
+    const comment = await tx.comment.create({
+      data: {
+        articleId: parsed.data.articleId,
+        userId: session.userId,
+        body: parsed.data.body,
+        status: "visible"
+      },
+      select: {
+        id: true
+      }
+    });
+
+    await awardRewardPoints(tx, {
       userId: session.userId,
-      body: parsed.data.body,
-      status: "visible"
-    }
+      sourceType: "community",
+      sourceId: comment.id,
+      points: rewardRules.communityComment.points,
+      expiresAt: getRewardExpiryDate()
+    });
   });
 
   revalidatePath("/community");
   revalidatePath("/community/vitamin-c-tips");
+  revalidatePath("/profile");
+  revalidatePath("/profile/rewards");
 }

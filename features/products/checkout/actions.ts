@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
+import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 
 const checkoutSchema = z.object({
   productSlugs: z
@@ -128,6 +129,31 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
         }
       });
 
+      const rewardPoints = calculateOrderRewardPoints(subtotal);
+      const didAwardReward = await awardRewardPoints(tx, {
+        userId: session.userId,
+        sourceType: "order",
+        sourceId: order.id,
+        points: rewardPoints,
+        expiresAt: getRewardExpiryDate()
+      });
+
+      if (didAwardReward) {
+        await tx.notification.create({
+          data: {
+            userId: session.userId,
+            type: "reward",
+            channel: "in_app",
+            title: "ได้รับแต้มสะสม",
+            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อนี้`,
+            metadataJson: {
+              orderId: order.id,
+              href: "/profile/rewards"
+            }
+          }
+        });
+      }
+
       return order;
     });
 
@@ -141,6 +167,8 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
   revalidatePath("/admin/orders");
   revalidatePath("/pharmacist/orders");
   revalidatePath("/store/orders");
+  revalidatePath("/profile");
+  revalidatePath("/profile/rewards");
   revalidatePath("/notifications");
 
   redirect(`/store/orders?created=${orderId}`);
