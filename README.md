@@ -769,10 +769,11 @@ Current admin foundation:
 
 Local database setup for the current foundation:
 
-1. Set `DATABASE_URL` in `.env.local` to a local MySQL database.
-2. Run `npm run db:push` to apply the current Prisma schema.
-3. Run `npm run db:seed` to create local development users and sample workflow records for the admin dashboard.
-4. Use the local admin dev bypass on `/auth/line` when `ENABLE_DEV_AUTH_BYPASS=true`.
+1. Run `npm run db:up` to start the project-owned MySQL container `clinical-ethereality-db`.
+2. Set `DATABASE_URL` in `.env.local` to `mysql://root:clinical_local_password@127.0.0.1:3307/clinical_ethereality`.
+3. Run `npm run db:push` to apply the current Prisma schema.
+4. Run `npm run db:seed` to create local development users and sample workflow records for the admin dashboard.
+5. Use the local admin dev bypass on `/auth/line` when `ENABLE_DEV_AUTH_BYPASS=true`.
 
 Design principles:
 

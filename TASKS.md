@@ -216,6 +216,12 @@
 - [x] Add admin role approval and user suspension Server Action boundaries
 - [x] Add inline success/error feedback for admin role approval actions
 - [x] Add seed data for admin user approval queue
+- [x] Add data-backed admin payment review queue foundation
+- [x] Add manual admin payment verify/reject Server Action boundaries
+- [x] Add data-backed admin order management queue foundation
+- [x] Add manual admin order fulfillment Server Action boundaries
+- [x] Add data-backed admin inventory management queue foundation
+- [x] Add manual admin inventory update Server Action boundaries
 
 ## Phase 9: Customer And Commerce Workflows
 
@@ -226,11 +232,12 @@
 - [ ] Build Thai QR payment instruction flow
 - [ ] Build customer order list
 - [ ] Build customer order tracking
-- [ ] Build admin order management
-- [ ] Minimize admin order management steps
+- [x] Build admin order management
+- [x] Minimize admin order management steps
 - [ ] Build slip upload and payment review workflow
+- [x] Build admin manual payment review foundation
 - [ ] Integrate Slip Verification API
-- [ ] Build inventory management
+- [x] Build inventory management
 
 ## Phase 10: Consultation And Pharmacy Workflows
 

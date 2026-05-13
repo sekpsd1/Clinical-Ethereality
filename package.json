@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.mjs"
   },

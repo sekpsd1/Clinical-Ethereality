@@ -1,0 +1,22 @@
+name: clinical-ethereality
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: clinical-ethereality-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: clinical_local_password
+      MYSQL_DATABASE: clinical_ethereality
+    ports:
+      - "3307:3306"
+    volumes:
+      - clinical-ethereality-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pclinical_local_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clinical-ethereality-mysql-data:

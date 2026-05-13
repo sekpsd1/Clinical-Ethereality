@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell, ClipboardCheck, CreditCard, PackageCheck, ShieldCheck, UsersRound } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
@@ -6,36 +9,33 @@ const adminNavItems = [
   {
     label: "ภาพรวม",
     href: "/admin",
-    icon: ShieldCheck,
-    active: true
+    icon: ShieldCheck
   },
   {
     label: "ผู้ใช้",
     href: "/admin/users",
-    icon: UsersRound,
-    active: false
+    icon: UsersRound
   },
   {
     label: "ชำระเงิน",
-    href: "/admin",
-    icon: CreditCard,
-    active: false
+    href: "/admin/payments",
+    icon: CreditCard
   },
   {
     label: "คำสั่งซื้อ",
-    href: "/admin",
-    icon: PackageCheck,
-    active: false
+    href: "/admin/orders",
+    icon: PackageCheck
   },
   {
-    label: "คลินิก",
-    href: "/admin",
-    icon: ClipboardCheck,
-    active: false
+    label: "สต็อก",
+    href: "/admin/inventory",
+    icon: ClipboardCheck
   }
 ] as const;
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div className="min-h-dvh bg-app text-text">
       <header className="sticky top-0 z-header border-b border-border/70 bg-white/85 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-topbar">
@@ -65,15 +65,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto grid w-full max-w-mobile grid-cols-5 gap-1">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
+            const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
 
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                aria-current={item.active ? "page" : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex min-h-[50px] flex-col items-center justify-center rounded-[14px] px-1 text-[10px] font-bold text-muted transition-colors",
-                  item.active && "bg-primary/10 text-primary"
+                  isActive && "bg-primary/10 text-primary"
                 )}
               >
                 <Icon aria-hidden="true" className="size-5" strokeWidth={2.1} />

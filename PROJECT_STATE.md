@@ -33,6 +33,9 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Local development access: `ENABLE_DEV_AUTH_BYPASS=true` enables `/api/auth/dev-session` and local customer/admin buttons on `/auth/line`; this is disabled in production and does not replace LINE LIFF for MVP
 - Admin foundation: `/admin` now has an admin-only shell and operational overview backed by Prisma counts for user approvals, consultations, payments, prescriptions, orders, inventory, and hidden community content when the database is available
 - Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions with inline success/error feedback for approving staff roles and suspending users
+- Admin payment review foundation: `/admin/payments` now reads Prisma payment, order, customer, and item records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for manual PromptPay slip verification or rejection
+- Admin order management foundation: `/admin/orders` now reads Prisma order, customer, item, payment, and shipment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for moving orders through preparation, shipped, and delivered states
+- Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -104,6 +107,9 @@ Admin:
 
 - Admin dashboard shell: implemented at `/admin` as a role-protected static operational overview
 - Admin user and role approvals: implemented at `/admin/users` as a role-protected Prisma-backed approval queue with DB-offline fallback
+- Admin payment review: implemented at `/admin/payments` as a role-protected Prisma-backed PromptPay review queue with manual verify/reject actions
+- Admin order management: implemented at `/admin/orders` as a role-protected Prisma-backed fulfillment queue with manual preparation/shipped/delivered actions
+- Admin inventory management: implemented at `/admin/inventory` as a role-protected Prisma-backed stock queue with manual quantity and threshold updates
 
 ## Decisions Still Needed
 
@@ -241,8 +247,12 @@ Completed in the current frontend pass:
 - Route protection: middleware protects `/consult`, `/store`, `/community`, `/notifications`, and `/profile`, with role boundaries prepared for future `/admin`, `/doctor`, and `/pharmacist` routes.
 - Admin shell: `/admin` uses a dedicated operational layout with admin navigation and static queue modules for role approvals, consultations, payments, prescriptions, orders, stock, moderation, and audit activity.
 - Admin user approvals: `/admin/users` establishes the UI for role requests, current/requested role review, approve/suspend controls, approval safeguards, Prisma query structure, and Server Action boundaries.
+- Admin payment review: `/admin/payments` establishes the first data-backed payment queue with order/customer context and manual verify/reject Server Actions.
+- Admin order management: `/admin/orders` establishes the first data-backed fulfillment queue with order/customer/item/payment/shipment context and guarded status update Server Actions.
+- Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
+- Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
 
@@ -257,13 +267,13 @@ Known frontend caveats:
 Not implemented yet:
 
 - Prisma migrations and business-domain queries beyond auth/staff approvals.
-- Admin approval UX feedback, broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
+- Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Admin schedule editor for doctor availability.
 - Server Actions for booking, payment submission, slip upload, or slot locking.
 - Thai QR generation and Slip Verification API integration.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Backend-backed Store, Community, Profile, Admin, pharmacist, and doctor back-office workflows beyond static placeholders.
+- Backend-backed Store, Community, Profile, pharmacist, and doctor back-office workflows beyond static placeholders.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes
