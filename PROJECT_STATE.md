@@ -71,18 +71,18 @@ Consult:
 
 Store:
 
-- Health marketplace
-- Product detail
-- Store checkout
-- Payment success and tracking
+- Health marketplace: implemented at `/store`
+- Product detail: implemented at `/store/paracetamol-500mg`
+- Store checkout: implemented at `/store/checkout`
+- Payment success and tracking: implemented at `/store/payment-success`
 
 Community and Profile:
 
-- User profile
-- Community hub
-- Create new post
-- Article/post detail and comments
-- Notification center
+- User profile: implemented at `/profile`
+- Community hub: implemented at `/community`
+- Create new post: implemented at `/community/create`
+- Article/post detail and comments: implemented at `/community/vitamin-c-tips`
+- Notification center: implemented at `/notifications`
 - Community search results
 
 ## Decisions Still Needed
@@ -203,6 +203,15 @@ Completed in the current frontend pass:
 - Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
 - Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
 - Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.
+- Store health marketplace: `/store`, implemented from Stitch zip reference with custom marketplace header, search field, cart indicator, category cards, recommended product cards, and local product imagery.
+- Store product detail: `/store/paracetamol-500mg`, implemented from Stitch zip reference with custom detail header, product hero, prescription-required warning, advice log selector, description card, and sticky buy CTA.
+- Store checkout: `/store/checkout`, implemented from Stitch zip reference with order item cards, PromptPay QR payment summary, slip upload area, delivery address, and payment confirmation CTA.
+- Store payment success and tracking: `/store/payment-success`, implemented from Stitch zip reference with slip verification result, pharmacy preparation timeline, main-store return action, and pharmacy sync badge.
+- User profile: `/profile`, implemented from Stitch zip reference with custom profile header, teal verified member hero, advice/posts stats, settings menu rows, logout action, and app version note.
+- Community hub: `/community`, implemented from Stitch zip reference with custom community header, search field, verified featured content card, category chips, and community feed cards.
+- Create new post: `/community/create`, implemented from Stitch zip reference with custom compose header, topic/content inputs, image upload area, category selector chips, post CTA, and terms note.
+- Article detail and comments: `/community/vitamin-c-tips`, implemented from Stitch zip reference with fixed detail header, hero article image, glass content card, interaction bar, comment list, and sticky comment composer.
+- Notification center: `/notifications`, implemented from Stitch zip reference with custom notification header, mark-read action, latest updates heading, unread notification glow, read cards, system update, and promotion card.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, and `npx tsc --noEmit`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
@@ -210,6 +219,7 @@ Completed in the current frontend pass:
 Known frontend caveats:
 
 - Consult screens use static mock data only.
+- Store marketplace uses static mock data only.
 - Some deep-flow screens intentionally use custom headers/footers based on Stitch references instead of the root `FooterNav`.
 - `LiveConsultation` and `AdviceLog` were refined from Stitch `.zip` exports, not live Figma MCP, because the Starter plan MCP read quota was exhausted.
 - Running `next build` while `next dev` is active can corrupt `.next` dev chunks on this Windows setup. After builds, stop dev server, clear `.next`, and restart `npm run dev -- -p 3001`.
@@ -247,4 +257,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-Start the next Stitch flow, preferably Store (`HealthMarketplace`, `ProductDetail`, `StoreCheckout`, `PaymentSuccessTracking`), or begin backend foundations for doctor availability/admin scheduling if the Consult flow should become data-driven next.
+Store Stitch flow is complete. Continue Community/Profile Stitch screens with `CommunitySearchResults`, or begin backend foundations for doctor availability/admin scheduling if the Consult flow should become data-driven next.

@@ -809,4 +809,19 @@ Implemented Consult routes:
 - `/consult/live`
 - `/consult/advice-log`
 
+Implemented Store routes:
+
+- `/store`
+- `/store/paracetamol-500mg`
+- `/store/checkout`
+- `/store/payment-success`
+
+Implemented Community/Profile routes:
+
+- `/community`
+- `/community/create`
+- `/community/vitamin-c-tips`
+- `/notifications`
+- `/profile`
+
 Latest verification passed with `npm run lint`, `npm run build`, and `npx tsc --noEmit`.

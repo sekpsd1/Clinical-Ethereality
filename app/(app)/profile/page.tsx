@@ -1,12 +1,5 @@
-import { StitchedScreenPlaceholder } from "@/components/ui/StitchedScreenPlaceholder";
+import { UserProfile } from "@/features/profile/UserProfile";
 
 export default function ProfilePage() {
-  return (
-    <StitchedScreenPlaceholder
-      eyebrow="Profile"
-      title="User profile"
-      description="Profile hub will connect advice logs, order history, saved articles, shipping addresses, settings, and logout."
-      statusItems={["Member status", "Advice history", "Orders", "Settings"]}
-    />
-  );
+  return <UserProfile />;
 }

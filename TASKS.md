@@ -166,21 +166,21 @@
 
 ## Phase 6: Store Stitch Screens
 
-- [ ] Build health marketplace screen
-- [ ] Build product detail screen
-- [ ] Build store checkout screen
-- [ ] Build payment success and tracking screen
+- [x] Build health marketplace screen
+- [x] Build product detail screen
+- [x] Build store checkout screen
+- [x] Build payment success and tracking screen
 - [ ] Add order from prescription supporting screen if needed
 - [ ] Add order detail supporting screen if needed
 - [ ] Validate prescription-required purchase flow
 
 ## Phase 7: Community And Profile Stitch Screens
 
-- [ ] Build user profile screen
-- [ ] Build community hub screen
-- [ ] Build create post screen
-- [ ] Build article/post detail and comments screen
-- [ ] Build notification center screen
+- [x] Build user profile screen
+- [x] Build community hub screen
+- [x] Build create post screen
+- [x] Build article/post detail and comments screen
+- [x] Build notification center screen
 - [ ] Build community search results screen
 - [ ] Add saved articles supporting screen if needed
 - [ ] Add shipping addresses supporting screen if needed
