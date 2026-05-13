@@ -257,7 +257,7 @@
 - [x] Build articles
 - [x] Build article comments
 - [x] Build likes
-- [ ] Build content reporting for articles and comments
+- [x] Build content reporting for articles and comments
 - [x] Build admin moderation workflow
 - [x] Minimize admin moderation steps
 - [x] Build notifications

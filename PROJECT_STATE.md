@@ -44,6 +44,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
 - Customer community article foundation: `/community/vitamin-c-tips` now reads a published Prisma article with visible comments and like counts, and includes customer-owned Server Actions for toggling article likes and creating visible comments
+- Customer content reporting foundation: `/community/vitamin-c-tips` now includes customer report actions for articles and comments; reported content is moved to hidden moderation review, admin users receive in-app notifications, and `/admin/moderation` remains the review surface
 - Admin notification foundation: `/admin/notifications` now reads recent Prisma notification records and active/pending recipients when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for sending in-app notifications
 - Customer notification foundation: `/notifications` now reads the signed-in user's Prisma in-app notifications, keeps the Stitch notification layout, maps notification types back to existing app destinations, and includes a customer-owned mark-read Server Action
 - Customer reward foundation: `/profile/rewards` now reads Prisma reward ledgers and user balances, checkout and community comments award points through shared rules, and customers can spend 50 points for a wellness credit with a reward notification
@@ -295,6 +296,7 @@ Completed in the current frontend pass:
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
 - Customer article interactions: `/community/vitamin-c-tips` establishes the first customer-facing community write path for article likes and comments with permission enforcement and revalidation.
+- Customer content reporting: `/community/vitamin-c-tips` lets customers report articles and comments into the existing admin moderation queue without adding a separate reporting schema.
 - Admin notifications: `/admin/notifications` establishes the first data-backed notification sender with active/pending recipient selection and recent notification review.
 - Customer notifications: `/notifications` establishes the first customer data-backed notification center with user-scoped Prisma reads, DB-offline fallback, existing destination mapping, and a guarded mark-read Server Action.
 - Customer rewards: `/profile/rewards` establishes the first reward-points read/write path with shared earning rules for orders and comments, spending rules for wellness credit redemption, balance updates, ledger entries, and notification creation.
@@ -325,7 +327,7 @@ Not implemented yet:
 - Thai QR generation for real dynamic payment payloads.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Broader Community/Profile data, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
+- Broader Community/Profile data beyond the current article interaction and reporting flows, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes

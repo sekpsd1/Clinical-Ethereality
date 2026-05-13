@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Heart, MessageSquare, Send, Share2 } from "lucide-react";
-import { createArticleCommentAction, toggleArticleLikeAction } from "@/features/community/article/actions";
+import { ArrowLeft, CheckCircle2, Flag, Heart, MessageSquare, Send, Share2 } from "lucide-react";
+import { createArticleCommentAction, reportArticleAction, reportCommentAction, toggleArticleLikeAction } from "@/features/community/article/actions";
 import type { CommunityArticleDetailData, CommunityCommentItem } from "@/features/community/article/types";
 
 export function ArticleDetail({ article }: { article: CommunityArticleDetailData }) {
@@ -22,6 +22,18 @@ export function ArticleDetail({ article }: { article: CommunityArticleDetailData
             <span>{article.likesCount} ไลก์</span>
             <span>{article.commentsCount} ความคิดเห็น</span>
           </div>
+          <form action={reportArticleAction} className="mt-5">
+            <input type="hidden" name="itemId" value={article.id} />
+            <input type="hidden" name="reason" value="Reported from article detail screen" />
+            <button
+              type="submit"
+              disabled={article.unavailable}
+              className="inline-flex items-center gap-2 rounded-full bg-[#f7f9fb] px-4 py-2 text-xs font-bold text-[#93000a] disabled:text-[#6e797a]"
+            >
+              <Flag aria-hidden="true" className="size-4" />
+              รายงานบทความ
+            </button>
+          </form>
         </article>
 
         <section className="mb-10 flex items-center rounded-full border border-white/30 bg-white/70 p-2 shadow-sm backdrop-blur-[24px]">
@@ -117,6 +129,14 @@ function CommentItem({ comment }: { comment: CommunityCommentItem }) {
           <span className="shrink-0 text-[10px] text-[#6e797a]">{comment.time}</span>
         </div>
         <p className="text-sm leading-6 text-[#3e494a]">{comment.body}</p>
+        <form action={reportCommentAction} className="mt-3">
+          <input type="hidden" name="itemId" value={comment.id} />
+          <input type="hidden" name="reason" value="Reported from article comment list" />
+          <button type="submit" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#93000a]">
+            <Flag aria-hidden="true" className="size-3.5" />
+            รายงาน
+          </button>
+        </form>
       </div>
     </div>
   );
