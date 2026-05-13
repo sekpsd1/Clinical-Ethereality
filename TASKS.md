@@ -271,8 +271,8 @@
 
 - [ ] Add unit tests for permission helpers
 - [ ] Add component tests for reusable Stitch-based UI primitives
-- [ ] Verify footer navigation consistency across screens
-- [ ] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
+- [x] Verify footer navigation consistency across screens
+- [x] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [ ] Verify mobile-first LINE LIFF viewport behavior
 - [ ] Add integration tests for protected workflows
 - [ ] Add Playwright smoke tests

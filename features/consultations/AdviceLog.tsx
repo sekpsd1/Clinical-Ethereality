@@ -1,16 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Activity,
   CalendarDays,
   Download,
   FileDown,
   FileText,
-  MessageSquare,
   Pill,
   PlusSquare,
   ShoppingCart,
-  UserRound,
   X
 } from "lucide-react";
 
@@ -39,8 +36,6 @@ export function AdviceLog() {
         <AttachmentCard />
         <Actions />
       </main>
-
-      <AdviceBottomNav />
     </section>
   );
 }
@@ -166,37 +161,5 @@ function Actions() {
         ดาวน์โหลดใบสรุปผล (PDF)
       </button>
     </section>
-  );
-}
-
-function AdviceBottomNav() {
-  const items = [
-    { label: "Chat", icon: MessageSquare },
-    { label: "Advice", icon: FileText, active: true },
-    { label: "Health", icon: Activity },
-    { label: "Profile", icon: UserRound }
-  ];
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-footer mx-auto flex max-w-[480px] items-center justify-around rounded-t-[24px] bg-white/70 px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3 shadow-waiting-nav backdrop-blur-payment">
-      {items.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <button
-            key={item.label}
-            type="button"
-            className={
-              item.active
-                ? "flex flex-col items-center justify-center rounded-full bg-[#007b83]/10 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary"
-                : "flex flex-col items-center justify-center text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]"
-            }
-          >
-            <Icon aria-hidden="true" className="size-6" strokeWidth={2} />
-            <span className={item.active ? "mt-0.5" : "mt-1"}>{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
   );
 }

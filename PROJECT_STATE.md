@@ -326,6 +326,7 @@ Completed in the current frontend pass:
 - Admin schedule editor: `/admin/schedules` provides an admin-only doctor availability editor for approved doctors, including weekday/time ranges, slot length, active/inactive status, and audit records for schedule changes.
 - Permission foundation: reusable role and permission helpers live in `lib/permissions/*` for future Server Actions, route handlers, and domain services.
 - Server Action convention helper: `lib/actions/server-actions.ts` now centralizes form action state, `FormData` conversion, and success/error helpers for new feature actions; the admin product catalog action has been migrated as the first reference implementation.
+- Customer footer navigation consistency: customer app screens now use the shared `FooterNav` with final labels `Consult | Store | Community | Profile`; consult payment, waiting room, prescription status, and advice log keep `Consult` active through the shared footer, notification center remains a sub-screen without a root active tab, and live consultation hides the footer to reduce distraction.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
@@ -335,7 +336,7 @@ Known frontend caveats:
 
 - Consult screens are still mostly static, except booking availability and appointment detail now read Prisma consultation data.
 - Store marketplace and product detail now use Prisma-backed product data with fallback content.
-- Some deep-flow screens intentionally use custom headers/footers based on Stitch references instead of the root `FooterNav`.
+- Some deep-flow screens intentionally use custom headers based on Stitch references, while customer bottom navigation is centralized through the root `FooterNav` except for live consultation.
 - `LiveConsultation` and `AdviceLog` were refined from Stitch `.zip` exports, not live Figma MCP, because the Starter plan MCP read quota was exhausted.
 - Running `next build` while `next dev` is active can corrupt `.next` dev chunks on this Windows setup. After builds, stop dev server, clear `.next`, and restart `npm run dev -- -p 3001`.
 

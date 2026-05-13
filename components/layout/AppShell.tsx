@@ -7,6 +7,7 @@ import { cn } from "@/lib/design-system/variants";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const hidesFooter = pathname.startsWith("/consult/live");
   const usesCustomCanvas =
     pathname === "/notifications" ||
     pathname === "/community" ||
@@ -29,14 +30,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {usesFocusedHeader ? null : <TopAppBar />}
       <main
         className={cn(
-          "mx-auto flex min-h-dvh w-full max-w-mobile flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
+          "mx-auto flex min-h-dvh w-full max-w-mobile flex-col px-4",
+          hidesFooter ? "pb-0" : "pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
           usesCustomCanvas && "px-0",
           usesFocusedHeader ? "pt-0" : "pt-[calc(4rem+env(safe-area-inset-top))]"
         )}
       >
         {children}
       </main>
-      <FooterNav />
+      {hidesFooter ? null : <FooterNav />}
     </div>
   );
 }

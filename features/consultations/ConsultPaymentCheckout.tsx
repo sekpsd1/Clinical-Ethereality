@@ -6,11 +6,8 @@ import {
   CalendarDays,
   CheckCircle2,
   CloudUpload,
-  Home,
   Info,
-  ReceiptText,
-  ShieldAlert,
-  UserRound
+  ShieldAlert
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
@@ -70,8 +67,6 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
           />
         )}
       </div>
-
-      <PaymentBottomNav />
     </section>
   );
 }
@@ -283,37 +278,5 @@ function PaymentStateCard({
         {cta}
       </Link>
     </article>
-  );
-}
-
-function PaymentBottomNav() {
-  const items = [
-    { label: "Home", icon: Home },
-    { label: "Booking", icon: CalendarDays },
-    { label: "Payment", icon: ReceiptText, active: true },
-    { label: "Profile", icon: UserRound }
-  ];
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-footer mx-auto flex max-w-[480px] items-center justify-between rounded-t-[24px] bg-white/70 px-8 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 shadow-payment-nav backdrop-blur-payment">
-      {items.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <button
-            key={item.label}
-            type="button"
-            className={
-              item.active
-                ? "flex min-w-14 flex-col items-center justify-center rounded-full bg-[#0d9488] p-3 text-[10px] leading-[15px] tracking-normal text-white shadow-payment-active"
-                : "flex min-w-14 flex-col items-center justify-center p-2 text-[10px] leading-[15px] tracking-normal text-[#94a3b8]"
-            }
-          >
-            <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-            <span className="pt-1">{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
   );
 }

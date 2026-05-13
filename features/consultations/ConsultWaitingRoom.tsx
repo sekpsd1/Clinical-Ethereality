@@ -2,14 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Camera,
-  Home,
   Lock,
-  MessageSquare,
   MonitorCheck,
   Settings,
   ShieldCheck,
-  Stethoscope,
-  UserRound,
   Wifi
 } from "lucide-react";
 
@@ -25,8 +21,6 @@ export function ConsultWaitingRoom() {
         <PreparationChecklist />
         <FooterActions />
       </div>
-
-      <WaitingRoomBottomNav />
     </section>
   );
 }
@@ -173,37 +167,5 @@ function FooterActions() {
         <p className="text-center text-[11px] leading-[16.5px] text-[#3e494a]">ปุ่มจะเปิดให้กดเมื่อถึงเวลา</p>
       </div>
     </section>
-  );
-}
-
-function WaitingRoomBottomNav() {
-  const items = [
-    { label: "Home", icon: Home },
-    { label: "Vitals", icon: Stethoscope, active: true },
-    { label: "Chat", icon: MessageSquare },
-    { label: "Profile", icon: UserRound }
-  ];
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-footer mx-auto flex h-[95px] max-w-[480px] items-center justify-between rounded-t-[24px] bg-white/70 px-8 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 shadow-waiting-nav backdrop-blur-payment">
-      {items.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <button
-            key={item.label}
-            type="button"
-            className={
-              item.active
-                ? "flex min-w-16 flex-col items-center justify-center rounded-full bg-[#ccfbf1]/50 px-5 py-2 text-[10px] font-medium uppercase leading-[15px] tracking-normal text-[#134e4a]"
-                : "flex min-w-16 flex-col items-center justify-center px-5 py-2 text-[10px] font-medium uppercase leading-[15px] tracking-normal text-[#64748b]"
-            }
-          >
-            <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-            <span className="pt-1">{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
   );
 }
