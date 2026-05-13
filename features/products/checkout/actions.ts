@@ -2,12 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
+import { CART_COOKIE_NAME } from "@/features/cart/cookies";
 
 const checkoutSchema = z.object({
   productSlugs: z
@@ -26,6 +28,14 @@ function getLineTotal(price: Prisma.Decimal, quantity: number): Prisma.Decimal {
   return price.mul(quantity);
 }
 
+function getQuantities(productSlugs: string[]): Map<string, number> {
+  return productSlugs.reduce((quantities, slug) => {
+    quantities.set(slug, (quantities.get(slug) ?? 0) + 1);
+
+    return quantities;
+  }, new Map<string, number>());
+}
+
 export async function createStoreCheckoutOrderAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
   assertPermission(session, "order:create:self");
@@ -40,10 +50,12 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      const quantities = getQuantities(parsed.data.productSlugs);
+      const uniqueSlugs = Array.from(quantities.keys());
       const products = await tx.product.findMany({
         where: {
           slug: {
-            in: parsed.data.productSlugs
+            in: uniqueSlugs
           },
           status: "active"
         },
@@ -52,11 +64,11 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
         }
       });
 
-      if (products.length !== parsed.data.productSlugs.length) {
+      if (products.length !== uniqueSlugs.length) {
         throw new Error("Some products are unavailable.");
       }
 
-      const subtotal = products.reduce((total, product) => total.add(getLineTotal(product.price, 1)), new Prisma.Decimal(0));
+      const subtotal = products.reduce((total, product) => total.add(getLineTotal(product.price, quantities.get(product.slug) ?? 1)), new Prisma.Decimal(0));
       const order = await tx.order.create({
         data: {
           userId: session.userId,
@@ -68,9 +80,9 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           items: {
             create: products.map((product) => ({
               productId: product.id,
-              quantity: 1,
+              quantity: quantities.get(product.slug) ?? 1,
               unitPrice: product.price,
-              lineTotal: getLineTotal(product.price, 1)
+              lineTotal: getLineTotal(product.price, quantities.get(product.slug) ?? 1)
             }))
           },
           payments: {
@@ -108,7 +120,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
             },
             data: {
               reservedQuantity: {
-                increment: 1
+                increment: quantities.get(product.slug) ?? 1
               }
             }
           });
@@ -158,6 +170,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
     });
 
     orderId = result.id;
+    (await cookies()).delete(CART_COOKIE_NAME);
   } catch {
     redirect("/store/checkout?checkout=failed");
   }
@@ -166,6 +179,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
   revalidatePath("/admin/payments");
   revalidatePath("/admin/orders");
   revalidatePath("/pharmacist/orders");
+  revalidatePath("/store/cart");
   revalidatePath("/store/orders");
   revalidatePath("/profile");
   revalidatePath("/profile/rewards");

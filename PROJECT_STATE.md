@@ -40,6 +40,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Admin product catalog foundation: `/admin/products` now reads Prisma product and inventory context when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for creating and updating product catalog details, prices, prescription requirements, and product status
 - Customer product browsing foundation: `/store` now reads active Prisma products with inventory context, preserves the reviewed Stitch marketplace layout, falls back to the existing static product list when the database is unavailable, and links product cards into data-backed detail pages
 - Customer product detail foundation: `/store/[slug]` and `/store/paracetamol-500mg` now read active Prisma product and inventory context while preserving the reviewed Stitch detail layout, including prescription warning visibility and DB-offline fallback behavior
+- Customer cart workflow foundation: `/store/cart` now provides a server-owned cookie cart with Prisma-backed product and inventory reads, quantity updates, clear-cart behavior, product-detail add-to-cart actions, and checkout submission using cart quantities before converting the cart into an auditable order/payment/shipment record
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
 - Customer community article foundation: `/community/vitamin-c-tips` now reads a published Prisma article with visible comments and like counts, and includes customer-owned Server Actions for toggling article likes and creating visible comments
@@ -290,6 +291,7 @@ Completed in the current frontend pass:
 - Admin product catalog: `/admin/products` establishes data-backed product catalog create/update actions for name, slug, description, image URL, price, prescription requirement, and status.
 - Customer product browsing: `/store` now renders active Prisma products with inventory availability labels and provider-safe fallback content without redesigning the Stitch marketplace.
 - Customer product details: `/store/[slug]` now renders active Prisma product detail data, with `/store/paracetamol-500mg` kept as a compatible existing route.
+- Customer cart workflow: `/store/cart` now supports product-detail add-to-cart, cart quantity updates, clearing the cart, and checkout from cookie-cart contents into the existing Prisma order creation path.
 - Admin inventory management: `/admin/inventory` establishes the first data-backed stock queue with product/inventory context and guarded stock update Server Actions.
 - Admin moderation: `/admin/moderation` establishes the first data-backed community safety queue with article/comment context and guarded restore, hide, and archive Server Actions.
 - Customer article interactions: `/community/vitamin-c-tips` establishes the first customer-facing community write path for article likes and comments with permission enforcement and revalidation.
@@ -309,7 +311,7 @@ Completed in the current frontend pass:
 Known frontend caveats:
 
 - Consult screens use static mock data only.
-- Store marketplace uses static mock data only.
+- Store marketplace and product detail now use Prisma-backed product data with fallback content.
 - Some deep-flow screens intentionally use custom headers/footers based on Stitch references instead of the root `FooterNav`.
 - `LiveConsultation` and `AdviceLog` were refined from Stitch `.zip` exports, not live Figma MCP, because the Starter plan MCP read quota was exhausted.
 - Running `next build` while `next dev` is active can corrupt `.next` dev chunks on this Windows setup. After builds, stop dev server, clear `.next`, and restart `npm run dev -- -p 3001`.
@@ -323,7 +325,7 @@ Not implemented yet:
 - Thai QR generation for real dynamic payment payloads.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
-- Backend-backed cart workflow, broader Community/Profile data, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
+- Broader Community/Profile data, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
 - Automated tests beyond lint/build/typecheck.
 
 ## Risk Notes

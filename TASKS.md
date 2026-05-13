@@ -228,7 +228,7 @@
 - [x] Build admin product catalog management
 - [x] Build product browsing
 - [x] Build product detail view
-- [ ] Build cart workflow
+- [x] Build cart workflow
 - [x] Build checkout foundation
 - [ ] Build Thai QR payment instruction flow
 - [x] Build customer order list

@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   UserRound
 } from "lucide-react";
+import { addToCartAction } from "@/features/cart/actions";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 
 const fallbackProduct: StoreProductDetailItem = {
@@ -132,13 +133,17 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
 
       <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[45] px-7">
         <div className="mx-auto w-full max-w-mobile">
-          <Link
-            href="/store/checkout"
-            className="flex h-14 items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
-          >
-            <ShoppingCart aria-hidden="true" className="size-5" />
-            สั่งซื้อทันที
-          </Link>
+          <form action={addToCartAction}>
+            <input type="hidden" name="slug" value={product.slug} />
+            <input type="hidden" name="quantity" value="1" />
+            <button
+              type="submit"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
+            >
+              <ShoppingCart aria-hidden="true" className="size-5" />
+              เพิ่มลงตะกร้า
+            </button>
+          </form>
         </div>
       </div>
     </div>

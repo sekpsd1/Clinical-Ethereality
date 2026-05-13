@@ -2,8 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, CloudUpload, Edit3, MapPin } from "lucide-react";
 import { createStoreCheckoutOrderAction } from "@/features/products/checkout/actions";
+import type { CartData, CartItem } from "@/features/cart/types";
 
 type CheckoutItem = {
+  slug: string;
   name: string;
   pack: string;
   price: string;
@@ -14,6 +16,7 @@ type CheckoutItem = {
 
 const checkoutItems: CheckoutItem[] = [
   {
+    slug: "paracetamol-500mg",
     name: "Paracetamol 500mg",
     pack: "1 แผง (10 เม็ด)",
     price: "1,200.-",
@@ -22,6 +25,7 @@ const checkoutItems: CheckoutItem[] = [
     requiresPrescription: true
   },
   {
+    slug: "vitamin-c-complex",
     name: "Amoxicillin 500mg",
     pack: "1 แผง (10 เม็ด)",
     price: "600.-",
@@ -30,7 +34,9 @@ const checkoutItems: CheckoutItem[] = [
   }
 ];
 
-export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
+export function StoreCheckout({ checkoutStatus, cart }: { checkoutStatus?: string; cart: CartData }) {
+  const items = cart.items.length > 0 ? cart.items.map(mapCartItemToCheckoutItem) : checkoutItems;
+  const total = cart.items.length > 0 ? cart.subtotal : "฿1,800.00";
   const checkoutError =
     checkoutStatus === "failed"
       ? "ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาตรวจสอบสินค้าและลองอีกครั้ง"
@@ -46,7 +52,7 @@ export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
         <section className="space-y-6">
           <h1 className="px-1 text-xl font-extrabold tracking-tight text-primary">รายการสั่งซื้อ</h1>
           <div className="space-y-4">
-            {checkoutItems.map((item) => (
+            {items.map((item) => (
               <CheckoutItemCard key={item.name} item={item} />
             ))}
           </div>
@@ -57,7 +63,7 @@ export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
             <h2 className="text-lg font-bold leading-7 text-[#191c1e]">ชำระเงิน (Payment)</h2>
             <div className="text-right">
               <p className="text-[10px] uppercase tracking-[0.22em] text-[#3e494a]">Total Amount</p>
-              <p className="mt-1 text-2xl font-extrabold leading-7 text-primary">฿1,800.00</p>
+              <p className="mt-1 text-2xl font-extrabold leading-7 text-primary">{total}</p>
             </div>
           </div>
 
@@ -82,7 +88,7 @@ export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
           <div className="mt-6 space-y-3 border-t border-slate-200/50 pt-5">
             <div className="flex justify-between text-sm">
               <span className="text-[#3e494a]">Subtotal</span>
-              <span className="font-medium">฿1,800.00</span>
+              <span className="font-medium">{total}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[#3e494a]">Shipping</span>
@@ -126,8 +132,11 @@ export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
             </p>
           ) : null}
           <form action={createStoreCheckoutOrderAction}>
-            <input type="hidden" name="productSlugs" value="paracetamol-500mg" />
-            <input type="hidden" name="productSlugs" value="vitamin-c-complex" />
+            {items.flatMap((item) =>
+              Array.from({ length: getCheckoutQuantity(item) }, (_, index) => (
+                <input key={`${item.slug}-${index}`} type="hidden" name="productSlugs" value={item.slug} />
+              ))
+            )}
             <button
               type="submit"
               className="mb-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
@@ -144,6 +153,22 @@ export function StoreCheckout({ checkoutStatus }: { checkoutStatus?: string }) {
       </main>
     </div>
   );
+}
+
+function mapCartItemToCheckoutItem(item: CartItem): CheckoutItem {
+  return {
+    slug: item.slug,
+    name: item.name,
+    pack: item.stockLabel,
+    price: item.lineTotal,
+    quantity: `x ${item.quantity}`,
+    media: item.media === "vitamin" ? "amoxicillin" : "paracetamol",
+    requiresPrescription: item.requiresPrescription
+  };
+}
+
+function getCheckoutQuantity(item: CheckoutItem): number {
+  return Number(item.quantity.replace(/\D/g, "")) || 1;
 }
 
 function CheckoutHeader() {

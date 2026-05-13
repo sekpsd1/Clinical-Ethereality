@@ -129,11 +129,8 @@ function MarketplaceHeader() {
           <span className="truncate text-[16px] leading-6 text-[#9aa3a4]">ค้นหา...</span>
         </label>
 
-        <Link href="/store" aria-label="Cart" className="relative shrink-0 text-primary">
+        <Link href="/store/cart" aria-label="Cart" className="relative shrink-0 text-primary">
           <ShoppingCart aria-hidden="true" className="size-9" strokeWidth={2.6} />
-          <span className="absolute -right-1 -top-2 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold leading-none text-white">
-            2
-          </span>
         </Link>
       </div>
     </header>
