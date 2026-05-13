@@ -7,7 +7,7 @@ export type CustomerNotificationItem = {
   time: string;
   kind: NotificationType | "promo";
   unread: boolean;
-  href: "/community/vitamin-c-tips" | "/store/payment-success" | "/store" | "/consult/advice-log" | "/notifications";
+  href: string;
 };
 
 export type CustomerNotificationsData = {

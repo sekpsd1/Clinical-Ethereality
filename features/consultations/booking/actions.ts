@@ -97,7 +97,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           body: "กรุณาชำระค่าปรึกษาเพื่อยืนยันเวลานัดหมาย",
           metadataJson: {
             consultationId: consultation.id,
-            href: "/consult/payment"
+            href: `/consult/appointments/${consultation.id}`
           }
         }
       });
@@ -124,10 +124,11 @@ export async function createConsultationBookingAction(formData: FormData): Promi
   }
 
   revalidatePath("/consult/booking/somchai");
+  revalidatePath(`/consult/appointments/${consultationId}`);
   revalidatePath("/consult/payment");
   revalidatePath("/notifications");
   revalidatePath("/admin");
   revalidatePath("/admin/audit");
 
-  redirect(`/consult/payment?consultation=${consultationId}`);
+  redirect(`/consult/appointments/${consultationId}`);
 }

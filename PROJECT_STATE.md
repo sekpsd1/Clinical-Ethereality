@@ -54,6 +54,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Audit metadata foundation: Prisma now includes an `AuditLog` model and `/admin/audit` review screen; sensitive checkout, payment, fulfillment, prescription, moderation, inventory, product, reward, and staff-account actions write role-aware audit entries with entity metadata
 - Admin schedule editor foundation: Prisma now includes `DoctorAvailability`, and `/admin/schedules` lets admins add, view, activate, or pause approved doctor availability slots with audit logging
 - Customer booking slot integration: `/consult/booking/somchai` now reads active `DoctorAvailability` slots for the approved seed doctor and creates a pending-payment consultation from the selected slot before redirecting to consultation payment
+- Customer appointment detail foundation: `/consult/appointments/[consultationId]` now reads Prisma consultation data scoped to the signed-in customer, shows doctor, scheduled date/time, consultation status, fee, and routes the next CTA to consultation payment, waiting room, advice log, or rebooking based on status
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -263,6 +264,7 @@ Completed in the current frontend pass:
 - Doctor booking: `/consult/booking/somchai`, implemented from Figma with doctor bio card, calendar mock, time slots, and booking CTA.
 - Consult payment checkout: `/consult/payment`, implemented from Figma with booking summary, PromptPay QR, slip upload mock, and payment submit CTA.
 - Customer booking integration: `/consult/booking/somchai` keeps the reviewed booking layout while replacing static time buttons with active doctor availability slots from Prisma and a guarded Server Action that creates a pending-payment consultation.
+- Customer appointment detail: `/consult/appointments/[consultationId]` adds the supporting booking confirmation/detail screen after a slot is booked, scoped to the signed-in customer and linked from consultation notifications.
 - Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
 - Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
 - Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.
@@ -320,7 +322,7 @@ Completed in the current frontend pass:
 
 Known frontend caveats:
 
-- Consult screens use static mock data only.
+- Consult screens are still mostly static, except booking availability and appointment detail now read Prisma consultation data.
 - Store marketplace and product detail now use Prisma-backed product data with fallback content.
 - Some deep-flow screens intentionally use custom headers/footers based on Stitch references instead of the root `FooterNav`.
 - `LiveConsultation` and `AdviceLog` were refined from Stitch `.zip` exports, not live Figma MCP, because the Starter plan MCP read quota was exhausted.
@@ -330,8 +332,8 @@ Not implemented yet:
 
 - Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, customer order tracking, and customer article interaction foundations.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
-- Broader booking integration still needs slot locking and customer-facing availability reads; admin doctor availability editing is implemented.
-- Server Actions for booking, full slip upload storage, or slot locking.
+- Broader booking integration still needs formal slot locking beyond the current duplicate scheduled-time guard; admin doctor availability editing and customer-facing availability reads are implemented.
+- Full slip upload storage and formal slot locking.
 - Production PromptPay requires `THAI_QR_PROMPTPAY_ID` to be configured securely; dynamic Thai QR payload generation is implemented for store checkout orders.
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.

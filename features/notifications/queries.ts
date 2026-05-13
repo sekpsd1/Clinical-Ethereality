@@ -56,7 +56,8 @@ function mapHref(notification: CustomerNotificationRecord): CustomerNotification
     href === "/community/vitamin-c-tips" ||
     href === "/store/payment-success" ||
     href === "/store" ||
-    href === "/consult/advice-log"
+    href === "/consult/advice-log" ||
+    (typeof href === "string" && href.startsWith("/consult/appointments/"))
   ) {
     return href;
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { ArrowLeft, CheckCircle2, Clock, Stethoscope, Tag } from "lucide-react";
 import { markCustomerNotificationsReadAction } from "@/features/notifications/actions";
 import type { CustomerNotificationItem, CustomerNotificationsData } from "@/features/notifications/types";
@@ -70,7 +71,7 @@ function NotificationHeader({ unreadCount }: { unreadCount: number }) {
 function NotificationCard({ notification }: { notification: CustomerNotificationItem }) {
   return (
     <Link
-      href={notification.href}
+      href={notification.href as Route}
       className={
         notification.unread
           ? "relative block rounded-[24px] border border-primary/20 bg-white/65 p-5 shadow-[0_10px_30px_-10px_rgba(0,96,103,0.15)] backdrop-blur-[12px] transition-transform hover:-translate-y-0.5"

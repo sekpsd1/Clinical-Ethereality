@@ -17,6 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const usesFocusedHeader =
     usesCustomCanvas ||
     pathname.startsWith("/consult/booking") ||
+    pathname.startsWith("/consult/appointments") ||
     pathname.startsWith("/consult/payment") ||
     pathname.startsWith("/consult/waiting-room") ||
     pathname.startsWith("/consult/live") ||
