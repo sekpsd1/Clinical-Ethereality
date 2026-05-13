@@ -92,7 +92,7 @@ function getLinkedOrderCode(prescription: PrescriptionRecord): string | null {
   return order ? getOrderCode(order.id) : null;
 }
 
-function getNextStep(status: PrescriptionStatus, hasOrder: boolean) {
+function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescriptionId: string) {
   if (status === "pending_verification") {
     return {
       title: "Waiting for pharmacist verification",
@@ -106,8 +106,8 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean) {
     return {
       title: "ใบสั่งยาตรวจผ่านแล้ว",
       body: "ใบสั่งยาพร้อมใช้งานแล้ว สามารถเลือกซื้อยาตามรายการที่มีในร้านค้าได้",
-      ctaLabel: "ไปที่ร้านค้า",
-      ctaHref: "/store"
+      ctaLabel: "สั่งยาตามใบสั่งแพทย์",
+      ctaHref: `/store/prescriptions/${prescriptionId}`
     };
   }
 
@@ -139,7 +139,7 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean) {
 
 function mapPrescription(prescription: PrescriptionRecord): CustomerPrescriptionItem {
   const hasOrder = prescription.orderItems.length > 0;
-  const nextStep = getNextStep(prescription.status, hasOrder);
+  const nextStep = getNextStep(prescription.status, hasOrder, prescription.id);
 
   return {
     id: prescription.id,

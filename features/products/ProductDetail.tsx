@@ -133,7 +133,16 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
 
       <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[45] px-7">
         <div className="mx-auto w-full max-w-mobile">
-          <form action={addToCartAction}>
+          {product.requiresPrescription ? (
+            <Link
+              href="/consult/prescriptions"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
+            >
+              <ShoppingCart aria-hidden="true" className="size-5" />
+              เลือกจากใบสั่งยา
+            </Link>
+          ) : null}
+          <form action={addToCartAction} className={product.requiresPrescription ? "hidden" : undefined}>
             <input type="hidden" name="slug" value={product.slug} />
             <input type="hidden" name="quantity" value="1" />
             <button

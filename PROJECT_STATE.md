@@ -41,6 +41,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Customer product browsing foundation: `/store` now reads active Prisma products with inventory context, preserves the reviewed Stitch marketplace layout, falls back to the existing static product list when the database is unavailable, and links product cards into data-backed detail pages
 - Customer product detail foundation: `/store/[slug]` and `/store/paracetamol-500mg` now read active Prisma product and inventory context while preserving the reviewed Stitch detail layout, including prescription warning visibility and DB-offline fallback behavior
 - Customer cart workflow foundation: `/store/cart` now provides a server-owned cookie cart with Prisma-backed product and inventory reads, quantity updates, clear-cart behavior, product-detail add-to-cart actions, and checkout submission using cart quantities before converting the cart into an auditable order/payment/shipment record
+- Customer order-from-prescription foundation: `/store/prescriptions/[prescriptionId]` now reads a verified customer-owned prescription, lists active prescription-required products, creates a Prisma order with the selected product linked to `prescriptionId`, and redirects to customer order tracking
 - Admin inventory management foundation: `/admin/inventory` now reads Prisma product and inventory records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for updating stock quantity and low-stock thresholds
 - Admin moderation foundation: `/admin/moderation` now reads hidden and archived article/comment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for restoring, hiding, or archiving community content
 - Customer community article foundation: `/community/vitamin-c-tips` now reads a published Prisma article with visible comments and like counts, and includes customer-owned Server Actions for toggling article likes and creating visible comments
@@ -57,6 +58,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Customer appointment detail foundation: `/consult/appointments/[consultationId]` now reads Prisma consultation data scoped to the signed-in customer, shows doctor, scheduled date/time, consultation status, fee, and routes the next CTA to consultation payment, waiting room, advice log, or rebooking based on status
 - Consultation payment status foundation: `/consult/payment?consultation=...` now reads the signed-in customer's Prisma consultation, generates PromptPay QR instructions from the configured PromptPay ID, submits slip QR payload or hosted slip image URL through the provider-neutral SlipOK/EasySlip client, moves verified consultations to `scheduled`, and shows rejected/provider-error states without adding a new payment schema
 - Customer prescription status foundation: `/consult/prescriptions` now reads Prisma prescriptions scoped to the signed-in customer, shows doctor/pharmacist context, verification status, linked medicine order context, and next-step CTAs for advice log, store browsing, or order tracking
+- Prescription-required purchase guard: prescription-required product details now route customers to verified prescription status instead of direct cart add, and normal checkout rejects prescription-required cart products unless they are ordered through the verified prescription flow
 - Local seed data: `prisma/seed.mjs` creates development admin, customer, pending/approved doctor and pharmacist, suspended customer, products, inventory, consultation, prescription, order, payment, shipment, moderation, notification, and reward records for testing admin queues
 - Staff profile persistence: Prisma includes `Doctor` and `Pharmacist` profile models linked one-to-one with `User`, with license, status, approval, and basic workflow metadata
 - Domain schema foundation: Prisma now includes consultation, prescription, product, inventory, order, order item, payment, shipment tracking, article, comment, like, notification, and reward point models with core status enums, ownership relations, and indexes
@@ -121,6 +123,7 @@ Store:
 - Store checkout: implemented at `/store/checkout`
 - Payment success and tracking: implemented at `/store/payment-success`
 - Customer order list and tracking: implemented at `/store/orders` as a supporting data-backed screen
+- Order from prescription: implemented at `/store/prescriptions/[prescriptionId]`
 - Customer checkout submission: implemented from `/store/checkout` into Prisma order/payment/shipment records
 
 Community and Profile:
@@ -270,6 +273,7 @@ Completed in the current frontend pass:
 - Customer appointment detail: `/consult/appointments/[consultationId]` adds the supporting booking confirmation/detail screen after a slot is booked, scoped to the signed-in customer and linked from consultation notifications.
 - Customer consultation payment verification: `/consult/payment?consultation=...` now verifies consultation payment slips with the configured SlipOK/EasySlip provider and moves verified appointments into the waiting-room path.
 - Customer prescription status: `/consult/prescriptions` adds the supporting status screen for pharmacist verification and linked medicine order context, with notifications from doctor submission and pharmacist review.
+- Customer order from prescription: `/store/prescriptions/[prescriptionId]` lets customers convert a verified prescription into a linked medicine order while preserving payment, shipment, reward, inventory reservation, and audit behavior.
 - Waiting room: `/consult/waiting-room`, implemented from Figma with payment-confirmed status, countdown, doctor brief, preparation checklist, camera/mic test CTA, and join consultation CTA.
 - Live consultation: `/consult/live`, implemented from Stitch zip reference with compact video shell, chat transcript, prescription attachment, composer, and end-call CTA.
 - Advice log: `/consult/advice-log`, implemented from Stitch zip reference with doctor summary, medical note, prescription list, attachment, order medicine CTA, and PDF download CTA.

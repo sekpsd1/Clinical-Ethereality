@@ -1,10 +1,8 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { Prisma } from "@prisma/client";
-import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
@@ -12,31 +10,10 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
-import { CART_COOKIE_NAME } from "@/features/cart/cookies";
-
-const checkoutSchema = z.object({
-  productSlugs: z
-    .union([z.string(), z.array(z.string())])
-    .transform((value) => (Array.isArray(value) ? value : [value]))
-    .pipe(z.array(z.string().min(1)).min(1).max(10))
-});
+import { createPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
 
 function formDataToObject(formData: FormData) {
-  return {
-    productSlugs: formData.getAll("productSlugs")
-  };
-}
-
-function getLineTotal(price: Prisma.Decimal, quantity: number): Prisma.Decimal {
-  return price.mul(quantity);
-}
-
-function getQuantities(productSlugs: string[]): Map<string, number> {
-  return productSlugs.reduce((quantities, slug) => {
-    quantities.set(slug, (quantities.get(slug) ?? 0) + 1);
-
-    return quantities;
-  }, new Map<string, number>());
+  return Object.fromEntries(formData.entries());
 }
 
 function getThaiQrPayload(amount: Prisma.Decimal): string | null {
@@ -49,43 +26,70 @@ function getThaiQrPayload(amount: Prisma.Decimal): string | null {
   return buildPromptPayPayload(promptPayId, Number(amount));
 }
 
-export async function createStoreCheckoutOrderAction(formData: FormData): Promise<void> {
+export async function createPrescriptionOrderAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
   assertPermission(session, "order:create:self");
+  assertPermission(session, "prescription:read:self");
 
-  const parsed = checkoutSchema.safeParse(formDataToObject(formData));
+  const parsed = createPrescriptionOrderSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
-    redirect("/store/checkout?checkout=invalid");
+    redirect("/consult/prescriptions?order=invalid");
   }
 
   let orderId: string | null = null;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const quantities = getQuantities(parsed.data.productSlugs);
-      const uniqueSlugs = Array.from(quantities.keys());
-      const products = await tx.product.findMany({
+      const prescription = await tx.prescription.findFirst({
         where: {
-          slug: {
-            in: uniqueSlugs
-          },
-          status: "active"
+          id: parsed.data.prescriptionId,
+          patientId: session.userId,
+          status: "verified"
+        },
+        select: {
+          id: true,
+          patientId: true,
+          orderItems: {
+            select: {
+              orderId: true
+            },
+            take: 1
+          }
+        }
+      });
+
+      if (!prescription) {
+        throw new Error("Prescription is not ready for order creation.");
+      }
+
+      if (prescription.orderItems.length > 0) {
+        throw new Error("Prescription already has a linked order.");
+      }
+
+      const product = await tx.product.findFirst({
+        where: {
+          id: parsed.data.productId,
+          status: "active",
+          requiresPrescription: true
         },
         include: {
           inventory: true
         }
       });
 
-      if (products.length !== uniqueSlugs.length) {
-        throw new Error("Some products are unavailable.");
+      if (!product) {
+        throw new Error("Prescription product was not found.");
       }
 
-      if (products.some((product) => product.requiresPrescription)) {
-        throw new Error("Prescription-required products must be ordered from a verified prescription.");
+      const availableQuantity = Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
+
+      if (availableQuantity <= 0) {
+        throw new Error("Prescription product is out of stock.");
       }
 
-      const subtotal = products.reduce((total, product) => total.add(getLineTotal(product.price, quantities.get(product.slug) ?? 1)), new Prisma.Decimal(0));
+      const quantity = 1;
+      const subtotal = product.price.mul(quantity);
       const qrPayload = getThaiQrPayload(subtotal);
       const order = await tx.order.create({
         data: {
@@ -96,12 +100,13 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           shippingTotal: new Prisma.Decimal(0),
           grandTotal: subtotal,
           items: {
-            create: products.map((product) => ({
+            create: {
               productId: product.id,
-              quantity: quantities.get(product.slug) ?? 1,
+              prescriptionId: prescription.id,
+              quantity,
               unitPrice: product.price,
-              lineTotal: getLineTotal(product.price, quantities.get(product.slug) ?? 1)
-            }))
+              lineTotal: subtotal
+            }
           },
           payments: {
             create: {
@@ -110,9 +115,10 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
               status: "pending_slip",
               qrPayload,
               verificationPayload: {
-                source: "customer_checkout_foundation",
+                source: "prescription_order",
+                prescriptionId: prescription.id,
                 note: qrPayload
-                  ? "Dynamic Thai QR PromptPay payload generated for this order amount."
+                  ? "Dynamic Thai QR PromptPay payload generated for this prescription order."
                   : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
               }
             }
@@ -121,8 +127,9 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
             create: {
               status: "pending",
               eventsJson: {
-                source: "customer_checkout_foundation",
-                message: "Order created and waiting for payment review."
+                source: "prescription_order",
+                prescriptionId: prescription.id,
+                message: "Prescription order created and waiting for payment review."
               }
             }
           }
@@ -132,19 +139,17 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
         }
       });
 
-      for (const product of products) {
-        if (product.inventory) {
-          await tx.inventory.update({
-            where: {
-              productId: product.id
-            },
-            data: {
-              reservedQuantity: {
-                increment: quantities.get(product.slug) ?? 1
-              }
+      if (product.inventory) {
+        await tx.inventory.update({
+          where: {
+            productId: product.id
+          },
+          data: {
+            reservedQuantity: {
+              increment: quantity
             }
-          });
-        }
+          }
+        });
       }
 
       await tx.notification.create({
@@ -152,10 +157,11 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           userId: session.userId,
           type: "order",
           channel: "in_app",
-          title: "คำสั่งซื้ออยู่ระหว่างตรวจสอบ",
-          body: "ทีมงานได้รับคำสั่งซื้อและกำลังตรวจสอบการชำระเงิน",
+          title: "สร้างคำสั่งซื้อยาตามใบสั่งแพทย์แล้ว",
+          body: "กรุณาชำระเงินและส่งสลิปเพื่อให้ห้องยาจัดเตรียมสินค้า",
           metadataJson: {
             orderId: order.id,
+            prescriptionId: prescription.id,
             href: "/store/orders"
           }
         }
@@ -163,14 +169,14 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
 
       await writeAuditLog(tx, {
         actorId: session.userId,
-        action: "order.create_checkout",
+        action: "order.create_from_prescription",
         entityType: "order",
         entityId: order.id,
         metadata: {
-          paymentMethod: "promptpay",
+          prescriptionId: prescription.id,
+          productId: product.id,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
-          itemCount: products.reduce((total, product) => total + (quantities.get(product.slug) ?? 1), 0),
           hasPromptPayPayload: Boolean(qrPayload)
         }
       });
@@ -191,7 +197,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
             type: "reward",
             channel: "in_app",
             title: "ได้รับแต้มสะสม",
-            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อนี้`,
+            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อยาตามใบสั่งแพทย์`,
             metadataJson: {
               orderId: order.id,
               href: "/profile/rewards"
@@ -204,16 +210,16 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
     });
 
     orderId = result.id;
-    (await cookies()).delete(CART_COOKIE_NAME);
   } catch {
-    redirect("/store/checkout?checkout=failed");
+    redirect(`/store/prescriptions/${parsed.data.prescriptionId}?order=failed`);
   }
 
   revalidatePath("/admin");
   revalidatePath("/admin/payments");
   revalidatePath("/admin/orders");
   revalidatePath("/pharmacist/orders");
-  revalidatePath("/store/cart");
+  revalidatePath("/consult/prescriptions");
+  revalidatePath(`/store/prescriptions/${parsed.data.prescriptionId}`);
   revalidatePath("/store/orders");
   revalidatePath("/profile");
   revalidatePath("/profile/rewards");

@@ -181,9 +181,9 @@
 - [x] Build product detail screen
 - [x] Build store checkout screen
 - [x] Build payment success and tracking screen
-- [ ] Add order from prescription supporting screen if needed
+- [x] Add order from prescription supporting screen if needed
 - [ ] Add order detail supporting screen if needed
-- [ ] Validate prescription-required purchase flow
+- [x] Validate prescription-required purchase flow
 
 ## Phase 7: Community And Profile Stitch Screens
 
