@@ -1,38 +1,25 @@
 # Clinical Ethereality Handoff
 
-Use this file when starting a new chat because the previous context is nearly full.
+Use this file when starting a new chat so the next agent can continue with low context usage.
 
 ## Latest State
 
 - Repository: `C:\Projects\clinical-ethereality`
 - Branch: `main`
-- Latest pushed commit: `Build community search results screen`
-- Implementation status: frontend-only static mock UI from Stitch/Figma references
-- Stack: Next.js 15, React 19, TypeScript, Tailwind CSS, lucide-react
-- Shared customer footer navigation: `Consult | Store | Community | Profile`
-- Latest local dev URL: `http://localhost:3001`
+- Latest pushed commit: `466e4e0 Add auth foundation and admin approval shell`
+- Stack: Next.js 15, React 19, TypeScript, Tailwind CSS, Prisma, MySQL target
+- Local dev URL: `http://localhost:3001`
+- Customer MVP auth direction: LINE Mini App / LINE LIFF only
+- Email login: deferred until after the LINE Mini App MVP is complete
+- Local preview: `.env.local` enables `ENABLE_DEV_AUTH_BYPASS=true` and is gitignored
 
 ## Completed Work
 
-### Project Foundation
+### Frontend Static Stitch Screens
 
-- Next.js 15 + React 19 + TypeScript strict mode scaffold
-- Tailwind CSS setup
-- Prisma placeholder schema
-- ESLint/build/typecheck scripts
-- Customer route group: `app/(app)`
-- Shared app shell:
-  - `components/layout/AppShell.tsx`
-  - `components/layout/TopAppBar.tsx`
-  - `components/navigation/FooterNav.tsx`
-- Design-system foundation:
-  - `lib/design-system/tokens.ts`
-  - `lib/design-system/variants.ts`
-  - `lib/design-system/component-contracts.ts`
+Customer screens are implemented as static Stitch-inspired UI and should not be redesigned.
 
-### Consult Frontend Flow
-
-Implemented routes:
+Consult:
 
 - `/consult`
 - `/consult/booking/somchai`
@@ -41,37 +28,14 @@ Implemented routes:
 - `/consult/live`
 - `/consult/advice-log`
 
-Notes:
-
-- Consult flow is complete as static UI.
-- No real booking, slot locking, payment verification, Zoom SDK, or backend data yet.
-
-### Store Frontend Flow
-
-Implemented routes:
+Store:
 
 - `/store`
 - `/store/paracetamol-500mg`
 - `/store/checkout`
 - `/store/payment-success`
 
-Implemented components:
-
-- `features/products/HealthMarketplace.tsx`
-- `features/products/ProductDetail.tsx`
-- `features/products/StoreCheckout.tsx`
-- `features/products/PaymentSuccessTracking.tsx`
-
-Notes:
-
-- Store Stitch flow is complete as static UI.
-- CTA path connects marketplace -> product detail -> checkout -> payment success.
-- Product/media visuals are local CSS-controlled visuals instead of remote Stitch image URLs to avoid browser scaling issues.
-- Payment QR currently uses local placeholder assets from `public/images/payments`.
-
-### Community/Profile Frontend Flow
-
-Implemented routes:
+Community/Profile:
 
 - `/profile`
 - `/community`
@@ -80,145 +44,248 @@ Implemented routes:
 - `/community/vitamin-c-tips`
 - `/notifications`
 
-Implemented components:
+Shared customer navigation:
 
-- `features/profile/UserProfile.tsx`
-- `features/community/CommunityHub.tsx`
-- `features/community/CommunitySearchResults.tsx`
-- `features/community/CreatePost.tsx`
-- `features/community/ArticleDetail.tsx`
-- `features/notifications/NotificationCenter.tsx`
+- `Consult | Store | Community | Profile`
+- Implemented through `components/navigation/FooterNav.tsx`
+- Payment and checkout screens keep the active tab of their parent flow.
+- Live consultation hides footer navigation.
+- Notification Center is a sub-screen, not a root footer tab.
+
+Recent UI fix:
+
+- `features/consultations/ConsultDoctorList.tsx` booking CTA text is centered with flex alignment.
+
+### Auth And Session Foundation
+
+Implemented:
+
+- `/auth/line` LINE LIFF auth entry screen
+- `/api/auth/line/session` verifies LINE ID token and creates app session
+- `/api/auth/session` current session
+- `/api/auth/refresh` refresh session
+- `/api/auth/logout` logout/revoke
+- `/api/auth/dev-session` local-only dev bypass when enabled
+- JWT access/refresh cookies
+- Refresh token hashes persisted on auth sessions
+- Middleware protects customer routes and role route prefixes
+- Local dev bypass buttons on `/auth/line`:
+  - `Enter as customer`
+  - `Enter as admin`
+
+Important auth files:
+
+- `features/auth/LineLiffLogin.tsx`
+- `lib/auth/jwt.ts`
+- `lib/auth/edge-jwt.ts`
+- `lib/auth/session.ts`
+- `lib/auth/users.ts`
+- `lib/auth/guards.ts`
+- `middleware.ts`
+
+### Prisma Foundation
+
+Current Prisma models:
+
+- `User`
+- `AuthSession`
+- `Doctor`
+- `Pharmacist`
+
+Current Prisma enums:
+
+- `UserRole`
+- `AccountStatus`
+- `AuthSessionStatus`
+- `StaffProfileStatus`
 
 Notes:
 
-- Profile, Community Hub, Community Search Results, Create Post, Article Detail/Comments, and Notification Center are complete as static UI.
-- Community Hub feed card links to `/community/vitamin-c-tips`.
-- Community Hub search entry links to `/community/search`.
-- Profile header has notification entry to `/notifications`.
-- Notification Center is a sub-screen, not a root footer tab.
+- `User.lineUserId` is unique and is the primary customer identity source.
+- JWT `sub` uses `User.id`.
+- `Doctor` and `Pharmacist` are one-to-one staff profiles linked to `User`.
+- No full business-domain models yet for consultations, products, inventory, orders, payments, prescriptions, community, notifications, or rewards.
+
+### Permissions
+
+Implemented:
+
+- `lib/permissions/roles.ts`
+- `lib/permissions/permissions.ts`
+- `lib/permissions/index.ts`
+
+Prepared route boundaries:
+
+- `/admin/*` requires admin
+- `/doctor/*` requires doctor or admin
+- `/pharmacist/*` requires pharmacist or admin
+
+### Admin Foundation
+
+Implemented:
+
+- `/admin` dashboard shell and static operational overview
+- `/admin/users` user and role approval screen
+- Dedicated admin shell/navigation in `components/layout/AdminShell.tsx`
+- Admin guard in `app/admin/layout.tsx`
+- Admin users backend structure:
+  - `features/admin/users/queries.ts`
+  - `features/admin/users/actions.ts`
+  - `features/admin/users/schema.ts`
+  - `features/admin/users/types.ts`
+
+Admin user approvals:
+
+- Reads Prisma users with doctor/pharmacist profiles when DB is available.
+- Shows a DB-offline empty state when DB is unavailable.
+- Server Action boundaries exist for approving staff roles and suspending users.
+- Inline success/error UX is not done yet.
 
 ## Still Not Done
 
-### Backend/Auth/Data
+Database and seed:
 
-- LINE LIFF login
-- JWT issuing, validation, refresh, and session handling
-- Route protection and role-based access control
-- Prisma domain models and migrations
-- Seed data
-- Server Actions conventions and implementation
-- Zod validation schemas
-- Domain services and query files
-- Permission helpers
+- Real `DATABASE_URL` has not been configured in the repo.
+- No migration or `prisma db push` has been run against a real database.
+- No seed data yet.
+- Next recommended work is local DB setup plus seed data for admin/customer/doctor/pharmacist.
 
-### Consult Backend
+Auth:
 
-- Doctor availability model
-- Admin schedule editor
-- Slot locking
-- Booking Server Actions
-- Real appointment records
-- Zoom SDK integration
-- Live consultation real session state
+- LINE Developers/LIFF real credentials are not configured.
+- Real LINE Mini App flow has not been tested.
+- Local dev bypass is only for preview and must stay disabled in production.
 
-### Commerce Backend
+Admin:
 
-- Product catalog data model
-- Inventory
-- Orders and order items
-- Payment records
-- Thai QR generation
-- Slip upload
-- Slip Verification API integration
-- Admin payment review
-- Shipment tracking persistence
+- `/admin/users` has query/action boundaries, but no inline action feedback.
+- No full admin management screens yet for payments, orders, prescriptions, inventory, products, content moderation, or reports.
 
-### Community Backend
+Consult backend:
 
-- Articles/posts
-- Comments
-- Likes
-- Reports and moderation
-- Notifications persistence
-- Reward points
+- No doctor availability model yet.
+- No admin schedule editor.
+- No slot locking.
+- No real booking Server Actions.
+- No Zoom SDK integration.
 
-### Admin/Pharmacist/Doctor Back Office
+Commerce backend:
 
-- Admin dashboard
-- Doctor dashboard
-- Pharmacist prescription queue
-- Prescription writing
-- Prescription verification
-- Medicine preparation workflow
-- Order status update workflows
+- No product/catalog/inventory/order/payment models yet.
+- No Thai QR generation.
+- No slip upload or Slip Verification API.
+- No shipment tracking persistence.
 
-### Quality/Testing/Deployment
+Community backend:
 
-- Unit tests
-- Component tests
-- Playwright smoke tests
-- CI setup
-- Vercel preview/staging/production config
-- Monitoring/error tracking
-- Compliance and vendor decisions
+- No article/post/comment/like/report/notification/reward persistence yet.
+
+Quality/deployment:
+
+- No unit/component/Playwright tests yet.
+- No CI/staging/production setup.
+- Compliance/vendor decisions still pending.
 
 ## Important Constraints
 
 - Follow `AGENTS.md`.
 - Do not redesign finalized Stitch screens.
-- Keep routes thin; put screen logic/components in `features/*`.
-- Preserve shared `FooterNav` labels exactly: `Consult | Store | Community | Profile`.
-- Payment and checkout screens keep the parent flow active tab.
-- Live consultation should hide footer navigation.
-- Notification Center is a sub-screen, not a root footer tab.
-- Treat patient data, prescriptions, payments, orders, images, and attachments as sensitive.
+- Keep customer routes and UI mobile-first for LINE LIFF.
+- Keep routes thin and put domain logic in `features/*`.
+- Put cross-cutting services in `lib/*`.
+- Treat patient data, prescriptions, payment records, order records, images, and attachments as sensitive.
+- Enforce permissions on the server, not only the UI.
 - Ask before architecture changes.
-- If architecture changes are approved, document the reason in `PROJECT_STATE.md`.
+- Update `PROJECT_STATE.md` and `TASKS.md` after meaningful backend decisions.
 
 ## Known Caveats
 
-- All implemented screens are static mock UI.
-- Some older Thai strings in generated source files may show mojibake because earlier Stitch exports were copied from encoded HTML output.
-- Several custom screens use full-canvas headers from Stitch references instead of the global `TopAppBar`.
-- Running `next build` while `next dev` is active can corrupt `.next` dev chunks on this Windows setup.
-- After `npm run build`, stop dev server, delete `.next`, then restart:
-
-```powershell
-npm run dev -- -p 3001
-```
+- Some older Thai strings in generated source files may show mojibake from earlier Stitch exports.
+- Many customer screens still use static mock data.
+- Running `next build` while `next dev` is active can corrupt `.next` chunks on this Windows setup.
+- If a dev page shows `Cannot find module './331.js'`, stop the dev server, delete `.next`, and restart.
+- Prisma generate can hit Windows file locks if the dev server is running. Stop dev server before regenerating Prisma Client.
+- `.env.local` exists locally for dev bypass and is intentionally gitignored.
 
 ## Verification Commands
 
-Run before handoff/completion:
+Run before completion:
 
 ```powershell
 npm run lint
-npx tsc --noEmit
+npm run typecheck
+$env:DATABASE_URL='mysql://user:password@localhost:3306/clinical_ethereality'; npx prisma validate
 npm run build
 ```
 
-Latest known verification before this handoff:
+Latest known verification:
 
 - `npm run lint` passed
-- `npx tsc --noEmit` passed
+- `npm run typecheck` passed
+- `npx prisma validate` passed with a temporary MySQL URL
 - `npm run build` passed
-- Dev route checks returned `HTTP 200` for latest implemented pages
 
 ## Recommended Next Step
 
-Recommended backend path after reviewed static Stitch screens:
+Recommended next work:
 
-1. Start auth/session foundation: LINE LIFF + JWT + permission helpers.
-2. Then Prisma domain schema.
-3. Then make Consult doctor availability/admin scheduling data-driven.
+1. Set up database-backed local development.
+2. Decide local DB strategy and real `DATABASE_URL`.
+3. Run Prisma schema against DB with `prisma db push` or migration path.
+4. Add seed data for:
+   - admin
+   - customer
+   - doctor
+   - pharmacist
+5. Make `/admin/users` show seeded users and test approve/suspend actions.
+6. Then continue to doctor availability/admin scheduling.
 
 ## Prompt For New Chat
 
-Copy this into the new chat:
+Short prompt:
 
 ```txt
-Read AGENTS.md, PROJECT_STATE.md, TASKS.md, README.md, and CHAT_HANDOFF.md first.
-Continue from commit b0c6e49.
-Consult, Store, Profile, Community Hub, Community Search Results, Create Post, Article Detail, and Notification Center frontend screens are implemented as static Stitch UI.
-The reviewed static Stitch customer screens are complete unless I ask you to revise one before starting backend auth, doctor availability, or admin scheduling.
+Project: C:\Projects\clinical-ethereality
+
+Read CHAT_HANDOFF.md first, then AGENTS.md only for repo rules. Continue from latest main commit 466e4e0.
+
+Current state: customer Stitch screens done; LINE-only MVP auth foundation done; Prisma User/AuthSession/Doctor/Pharmacist done; /admin and /admin/users foundation done; local dev auth bypass exists.
+
+Next: set up DB-backed local development, Prisma db push/migration plan, seed admin/customer/doctor/pharmacist data, and make /admin/users show seeded users. Keep Stitch frontend unchanged. Update PROJECT_STATE.md/TASKS.md. Run lint, typecheck, prisma validate, build.
+```
+
+Full prompt:
+
+```txt
+Project: C:\Projects\clinical-ethereality
+
+Read only these first:
+1. CHAT_HANDOFF.md
+2. AGENTS.md for repo rules only
+3. PROJECT_STATE.md latest status
+4. TASKS.md latest checklist
+
+Continue from latest main commit. Do not re-read all source files unless needed.
+
+Current status summary:
+- Customer Stitch static screens are built: Consult, Store, Community, Profile.
+- LINE Mini App/LIFF is the only MVP login path. Email login is post-MVP only.
+- Auth foundation is implemented: LINE session route, JWT cookies, refresh/logout/session routes, middleware protection, local dev auth bypass.
+- Prisma foundation exists for User, AuthSession, Doctor, Pharmacist.
+- Admin foundation exists: /admin dashboard and /admin/users role approval screen with Prisma query/action boundaries.
+- Latest commit pushed: 466e4e0 Add auth foundation and admin approval shell.
+
+Next task:
+Set up database-backed local development next:
+1. Add/confirm DATABASE_URL strategy.
+2. Prepare Prisma db push/migration path.
+3. Add seed data for local admin, customer, doctor, pharmacist.
+4. Make /admin/users show seeded users and let dev admin approve/suspend.
+5. Keep existing Stitch frontend unchanged.
+
+Before editing:
+- Inspect current repo structure only as needed.
+- Preserve user edits.
+- Update PROJECT_STATE.md and TASKS.md after meaningful backend decisions.
+- Run lint, typecheck, prisma validate, and build before final.
 ```
