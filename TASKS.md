@@ -244,7 +244,7 @@
 - [x] Build doctor consultation list
 - [x] Build patient log access for doctors
 - [ ] Build Zoom SDK video consultation room integration
-- [ ] Build prescription writing workflow
+- [x] Build prescription writing workflow
 - [x] Build pharmacist prescription queue
 - [x] Build prescription verification workflow
 - [x] Build medicine preparation workflow

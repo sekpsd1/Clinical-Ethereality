@@ -8,7 +8,9 @@ export type DoctorConsultationItem = {
   scheduledAt: string | null;
   summary: string | null;
   prescriptionCount: number;
+  latestPrescriptionId: string | null;
   latestPrescriptionStatus: PrescriptionStatus | null;
+  latestPrescriptionNotes: string | null;
   createdAt: string;
 };
 

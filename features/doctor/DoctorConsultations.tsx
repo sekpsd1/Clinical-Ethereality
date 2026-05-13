@@ -1,5 +1,6 @@
 import { ClipboardList, FileText, Stethoscope } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 const consultationStatusLabels: Record<string, string> = {
@@ -34,6 +35,14 @@ function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "s
   }
 
   return "neutral";
+}
+
+function canWritePrescription(consultation: DoctorConsultationItem): boolean {
+  if (consultation.status === "cancelled" || consultation.status === "requested" || consultation.status === "pending_payment") {
+    return false;
+  }
+
+  return consultation.latestPrescriptionStatus !== "pending_verification";
 }
 
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
@@ -135,6 +144,8 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 Created {consultation.createdAt}
               </p>
+
+              {canWritePrescription(consultation) ? <DoctorPrescriptionForm consultation={consultation} /> : null}
             </article>
           );
         })}

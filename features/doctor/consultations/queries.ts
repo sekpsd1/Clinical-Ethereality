@@ -72,7 +72,9 @@ function mapConsultation(consultation: ConsultationWithDetails): DoctorConsultat
     scheduledAt: formatDate(consultation.scheduledAt),
     summary: consultation.summary,
     prescriptionCount: consultation.prescriptions.length,
+    latestPrescriptionId: latestPrescription?.id ?? null,
     latestPrescriptionStatus: latestPrescription?.status ?? null,
+    latestPrescriptionNotes: latestPrescription?.notes ?? null,
     createdAt: formatDate(consultation.createdAt) ?? ""
   };
 }
