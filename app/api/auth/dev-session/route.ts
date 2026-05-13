@@ -5,7 +5,7 @@ import type { AuthSession } from "@/lib/auth/types";
 import { getAppEnv } from "@/lib/env/schema";
 
 const devSessionRequestSchema = z.object({
-  role: z.enum(["customer", "admin"]).default("customer")
+  role: z.enum(["customer", "doctor", "pharmacist", "admin"]).default("customer")
 });
 
 function isDevBypassAllowed(): boolean {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     userId: `dev:${role}`,
     lineUserId: `dev-line-${role}`,
     role,
-    displayName: role === "admin" ? "Local Admin" : "Local Customer",
+    displayName: `Local ${role}`,
     pictureUrl: undefined
   };
   const response = NextResponse.json({

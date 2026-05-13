@@ -20,3 +20,7 @@ export async function requireRoleSession(allowedRoles: readonly Role[]) {
 export async function requireAdminSession() {
   return requireRoleSession(["admin"]);
 }
+
+export async function requirePharmacistSession() {
+  return requireRoleSession(["pharmacist", "admin"]);
+}

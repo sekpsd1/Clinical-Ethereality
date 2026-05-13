@@ -92,7 +92,7 @@
 - [x] Protect customer app routes
 - [x] Add initial patient-only route boundary through authenticated customer routes
 - [ ] Add doctor access boundaries for assigned patients
-- [ ] Add pharmacist access boundaries for prescriptions and orders
+- [x] Add initial pharmacist access boundaries for prescriptions
 - [x] Document initial auth and permission decisions in `PROJECT_STATE.md`
 
 ## Phase 3: Database Foundation
@@ -245,8 +245,8 @@
 - [ ] Build patient log access for doctors
 - [ ] Build Zoom SDK video consultation room integration
 - [ ] Build prescription writing workflow
-- [ ] Build pharmacist prescription queue
-- [ ] Build prescription verification workflow
+- [x] Build pharmacist prescription queue
+- [x] Build prescription verification workflow
 - [ ] Build medicine preparation workflow
 - [ ] Build pharmacist order status updates
 
