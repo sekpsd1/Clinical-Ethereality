@@ -91,6 +91,17 @@ test.describe("role route smoke", () => {
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.locator('nav a[href="/admin/users"]')).toBeVisible();
     await expect(page.locator('nav a[href="/admin/payments"]')).toBeVisible();
+    await expect(page.locator('nav a[href="/admin/compliance"]')).toBeVisible();
+  });
+
+  test("admin compliance readiness is reachable with an admin dev session", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/compliance");
+
+    await expectNoAppError(page);
+    await expect(page).toHaveURL(/\/admin\/compliance$/);
+    await expect(page.getByRole("heading", { name: "Compliance review" })).toBeVisible();
+    await expect(page.locator('nav a[href="/admin/compliance"]')).toHaveAttribute("aria-current", "page");
   });
 
   test("doctor queue is reachable with a doctor dev session", async ({ page }) => {

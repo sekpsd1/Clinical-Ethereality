@@ -281,7 +281,7 @@
 - [x] Configure production environment
 - [x] Enable backups
 - [x] Enable error monitoring
-- [ ] Review compliance requirements before production launch
+- [x] Review compliance requirements before production launch
 
 ## Later Candidates
 
