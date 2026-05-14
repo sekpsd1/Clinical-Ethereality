@@ -156,7 +156,7 @@
 - [x] Build `OrderTrackingTimeline`
 - [x] Build `CommunityPostCard`
 - [x] Build `ArticleCard`
-- [ ] Build `CommentComposer`
+- [x] Build `CommentComposer`
 - [x] Build `NotificationItem`
 - [x] Build `ProfileSettingsItem`
 - [ ] Build reusable domain cards and rows from Stitch patterns

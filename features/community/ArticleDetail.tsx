@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Flag, Heart, MessageSquare, Send, Share2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Flag, Heart, MessageSquare, Share2 } from "lucide-react";
+import { CommentComposer } from "@/components/ui/CommentComposer";
 import { createArticleCommentAction, reportArticleAction, reportCommentAction, toggleArticleLikeAction } from "@/features/community/article/actions";
 import type { CommunityArticleDetailData, CommunityCommentItem } from "@/features/community/article/types";
 
@@ -74,26 +75,13 @@ export function ArticleDetail({ article }: { article: CommunityArticleDetailData
       </main>
 
       <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[45] px-5">
-        <form
+        <CommentComposer
           action={createArticleCommentAction}
-          className="mx-auto flex h-16 w-full max-w-mobile items-center rounded-full border border-white/50 bg-white/70 p-2 shadow-2xl backdrop-blur-[24px]"
-        >
-          <input type="hidden" name="articleId" value={article.id} />
-          <input
-            type="text"
-            name="body"
-            placeholder="แสดงความคิดเห็นของคุณ..."
-            className="min-w-0 flex-1 border-0 bg-transparent px-4 text-sm outline-none placeholder:text-[#6e797a] focus:ring-0"
-          />
-          <button
-            type="submit"
-            disabled={article.unavailable}
-            aria-label="Send comment"
-            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg disabled:bg-[#6e797a]"
-          >
-            <Send aria-hidden="true" className="size-6 fill-white" />
-          </button>
-        </form>
+          disabled={article.unavailable}
+          hiddenFields={[{ name: "articleId", value: article.id }]}
+          label="Article comment"
+          placeholder="แสดงความคิดเห็นของคุณ..."
+        />
       </div>
     </div>
   );

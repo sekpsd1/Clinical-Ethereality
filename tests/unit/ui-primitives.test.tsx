@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { FooterNav } from "@/components/navigation/FooterNav";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { Button } from "@/components/ui/Button";
+import { CommentComposer } from "@/components/ui/CommentComposer";
 import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlassSurface } from "@/components/ui/GlassSurface";
@@ -145,6 +146,16 @@ const TestCommunityPostCard = CommunityPostCard as ComponentType<{
   liked?: boolean;
   portrait: "ananya" | "somchai";
   href?: string;
+}>;
+
+const TestCommentComposer = CommentComposer as ComponentType<{
+  action: string;
+  hiddenFields?: Array<{ name: string; value: string }>;
+  inputName?: string;
+  placeholder?: string;
+  label?: string;
+  disabled?: boolean;
+  className?: string;
 }>;
 
 function render(component: ReactElement) {
@@ -378,6 +389,29 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("342");
     expect(html).toContain("56");
     expect(html).toContain('fill="#006067"');
+  });
+
+  it("renders comment composer with hidden context, input, and send affordance", () => {
+    const html = render(
+      createElement(TestCommentComposer, {
+        action: "/community/comment",
+        hiddenFields: [{ name: "articleId", value: "article-1" }],
+        placeholder: "Share your thought...",
+        label: "Article comment",
+        disabled: true,
+        className: "mb-2"
+      })
+    );
+
+    expect(html).toContain('action="/community/comment"');
+    expect(html).toContain('name="articleId"');
+    expect(html).toContain('value="article-1"');
+    expect(html).toContain('aria-label="Article comment"');
+    expect(html).toContain("Share your thought...");
+    expect(html).toContain("shadow-2xl");
+    expect(html).toContain("lucide-send");
+    expect(html).toContain("disabled");
+    expect(html).toContain("mb-2");
   });
 
   it("keeps the final customer footer labels and marks nested routes active", () => {
