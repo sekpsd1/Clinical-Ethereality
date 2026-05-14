@@ -3,7 +3,9 @@ import { createElement, type ComponentType, type ReactElement, type ReactNode } 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout/AppShell";
 import { FooterNav } from "@/components/navigation/FooterNav";
+import { ArticleCard } from "@/components/ui/ArticleCard";
 import { Button } from "@/components/ui/Button";
+import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { IconButton } from "@/components/ui/IconButton";
@@ -117,6 +119,32 @@ const TestProfileSettingsItem = ProfileSettingsItem as ComponentType<{
   label: string;
   icon: ComponentType<{ className?: string; fill?: string }>;
   iconFill?: string;
+}>;
+
+const TestArticleCard = ArticleCard as ComponentType<{
+  title: string;
+  eyebrow: string;
+  author: string;
+  likes: string;
+  date: string;
+  imageSrc: string;
+  imageAlt: string;
+  badge?: string;
+  badgeTone?: "light" | "teal";
+  icon: "verified" | "review" | "medical";
+  authorIcon: "person" | "account" | "medical";
+  href?: string;
+}>;
+
+const TestCommunityPostCard = CommunityPostCard as ComponentType<{
+  author: string;
+  time: string;
+  body: string;
+  likes: string;
+  comments: string;
+  liked?: boolean;
+  portrait: "ananya" | "somchai";
+  href?: string;
 }>;
 
 function render(component: ReactElement) {
@@ -303,6 +331,53 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("bg-[#e8fbf7]");
     expect(html).toContain('fill="#006067"');
     expect(html).toContain("lucide-chevron-right");
+  });
+
+  it("renders article cards with Stitch media, metadata, and optional route links", () => {
+    const html = render(
+      createElement(TestArticleCard, {
+        title: "Vitamin guide",
+        eyebrow: "Medical Article",
+        author: "Dr. Arisara",
+        likes: "1.2k",
+        date: "Oct 24",
+        imageSrc: "/images/community/vitamin-bottles.png",
+        imageAlt: "Amber vitamin supplement bottles",
+        badge: "Recommended",
+        icon: "verified",
+        authorIcon: "person",
+        href: "/community/vitamin-c-tips"
+      })
+    );
+
+    expect(html).toContain('href="/community/vitamin-c-tips"');
+    expect(html).toContain("Vitamin guide");
+    expect(html).toContain("Medical Article");
+    expect(html).toContain("Recommended");
+    expect(html).toContain("lucide-badge-check");
+    expect(html).toContain("rounded-[24px]");
+  });
+
+  it("renders community post cards with member portrait, metrics, and liked state", () => {
+    const html = render(
+      createElement(TestCommunityPostCard, {
+        author: "K. Ananya",
+        time: "2 hours ago",
+        body: "Shared wellness routine",
+        likes: "342",
+        comments: "56",
+        liked: true,
+        portrait: "ananya",
+        href: "/community/vitamin-c-tips"
+      })
+    );
+
+    expect(html).toContain('href="/community/vitamin-c-tips"');
+    expect(html).toContain("K. Ananya");
+    expect(html).toContain("Shared wellness routine");
+    expect(html).toContain("342");
+    expect(html).toContain("56");
+    expect(html).toContain('fill="#006067"');
   });
 
   it("keeps the final customer footer labels and marks nested routes active", () => {

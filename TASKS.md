@@ -154,8 +154,8 @@
 - [x] Build `SlipUploadBox`
 - [x] Build `PaymentStatusBadge`
 - [x] Build `OrderTrackingTimeline`
-- [ ] Build `CommunityPostCard`
-- [ ] Build `ArticleCard`
+- [x] Build `CommunityPostCard`
+- [x] Build `ArticleCard`
 - [ ] Build `CommentComposer`
 - [x] Build `NotificationItem`
 - [x] Build `ProfileSettingsItem`
