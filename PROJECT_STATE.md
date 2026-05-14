@@ -329,6 +329,7 @@ Completed in the current frontend pass:
 - Customer footer navigation consistency: customer app screens now use the shared `FooterNav` with final labels `Consult | Store | Community | Profile`; consult payment, waiting room, prescription status, and advice log keep `Consult` active through the shared footer, notification center remains a sub-screen without a root active tab, and live consultation hides the footer to reduce distraction.
 - Mobile LINE LIFF viewport verification: browser checks against `http://localhost:3001` covered the customer consult, consultation payment, waiting room, live consultation, advice log, prescription status, store, product detail, cart, checkout, order tracking, community, article detail, create post, search, notifications, profile, and rewards routes. The pass confirmed no visible app errors, shared footer availability on customer routes, fixed action controls clearing the footer on representative product/article screens, and live consultation remaining footer-free.
 - Playwright smoke test foundation: `playwright.config.ts` and `tests/e2e/smoke.spec.ts` now run Pixel 5-sized smoke coverage for customer app routes, live consultation footer hiding, and admin/doctor/pharmacist role routes through the local dev auth bypass. `npm run test:e2e` passed with 21 smoke tests.
+- Protected workflow integration test foundation: `tests/e2e/protected-workflows.spec.ts` now verifies unauthenticated customer and staff redirects preserve return paths, customers cannot enter admin/doctor/pharmacist workflows, doctor and pharmacist route boundaries stay separate, admins can support doctor/pharmacist queues, and sensitive slip verification rejects unauthenticated API calls. The targeted Playwright pass covered 6 protected workflow tests.
 - Permission unit test foundation: `vitest.config.ts` and `tests/unit/permissions.test.ts` now cover supported role detection, role-permission matrix expectations, admin permission coverage, assertion failures, own-record reads, and assigned-record reads. `npm run test:unit` passed with 27 tests.
 - Stitch UI primitive test foundation: `tests/unit/ui-primitives.test.tsx` now covers shared glass surfaces, semantic status badge tone classes, final customer footer labels and active nested routes, live-consultation footer hiding, and placeholder composition with shared primitives. `vitest.config.ts` includes a narrow TSX transform for component imports while preserving the Next.js `jsx: preserve` compiler setting.
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
@@ -355,7 +356,7 @@ Not implemented yet:
 - Zoom SDK integration for live consultations.
 - File upload/storage integration for payment slips, prescriptions, PDFs, or attachments.
 - Broader Community/Profile data beyond the current article interaction and reporting flows, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
-- Automated tests beyond the current permission unit coverage, Playwright smoke coverage, lint, build, and typecheck.
+- Automated tests beyond the current permission unit coverage, Stitch UI primitive coverage, protected workflow integration coverage, Playwright smoke coverage, lint, build, and typecheck.
 
 ## Risk Notes
 
@@ -378,4 +379,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-Phase 12 quality work is active. Permission unit tests, reusable Stitch UI primitive tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, and Playwright smoke tests are in place. Next recommended quality step: add integration tests for protected workflows, focusing on role-scoped route/action boundaries for customer, doctor, pharmacist, and admin flows without redesigning finalized Stitch screens.
+Phase 12 quality work is active. Permission unit tests, reusable Stitch UI primitive tests, protected workflow integration tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, and Playwright smoke tests are in place. Next recommended quality step: prepare preview and staging deployment configuration while keeping production compliance, backup, monitoring, and vendor decisions explicit.
