@@ -72,6 +72,10 @@ Before production:
 - Disable all test credentials and local bypasses.
 - Review audit retention and sensitive-record access rules.
 
+Use `.env.production.example` as the production variable checklist and `PRODUCTION.md` as the production launch runbook.
+
+Production deployment must not be promoted from staging until backup, monitoring, compliance, rollback, and vendor credential checks are complete.
+
 ## Environment Variables
 
 Use `.env.example` as the source list for required keys. Store actual values in Vercel environment settings, not in git.
