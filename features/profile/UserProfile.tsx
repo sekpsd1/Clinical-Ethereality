@@ -1,8 +1,8 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  Bookmark,
   Bell,
+  Bookmark,
   ClipboardList,
   LogOut,
   Pill,
@@ -15,13 +15,14 @@ import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 type ProfileMenuItem = {
   label: string;
   icon: typeof ClipboardList;
+  href?: string;
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
   { label: "ประวัติคำแนะนำจากแพทย์", icon: ClipboardList },
   { label: "รายการยาของฉัน", icon: Pill },
-  { label: "บทความที่บันทึกไว้", icon: Bookmark },
-  { label: "ที่อยู่จัดส่ง", icon: Truck }
+  { label: "บทความที่บันทึกไว้", icon: Bookmark, href: "/profile/saved-articles" },
+  { label: "ที่อยู่จัดส่ง", icon: Truck, href: "/profile/shipping-addresses" }
 ];
 
 export function UserProfile() {
@@ -64,11 +65,17 @@ export function UserProfile() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="px-2 text-sm font-bold uppercase tracking-[0.16em] text-primary/60">General Settings</h2>
+            <h2 className="px-2 text-sm font-bold uppercase tracking-[0.16em] text-primary/60">การตั้งค่าทั่วไป</h2>
 
             <div className="space-y-4">
               {profileMenuItems.map((item) => (
-                <ProfileSettingsItem key={item.label} label={item.label} icon={item.icon} iconFill={item.icon === Bookmark ? "#006067" : "none"} />
+                <ProfileSettingsItem
+                  key={item.label}
+                  label={item.label}
+                  icon={item.icon}
+                  iconFill={item.icon === Bookmark ? "#006067" : "none"}
+                  href={item.href}
+                />
               ))}
             </div>
           </section>
@@ -93,17 +100,17 @@ function ProfileHeader() {
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_0_40px_rgba(0,123,131,0.06)] backdrop-blur-[24px]">
       <div className="mx-auto flex h-[95px] w-full max-w-mobile items-center justify-between px-7">
         <div className="flex items-center gap-4">
-          <Link href="/community" aria-label="Back to community" className="flex size-10 items-center justify-center rounded-full text-primary">
+          <Link href="/community" aria-label="กลับไปหน้าชุมชน" className="flex size-10 items-center justify-center rounded-full text-primary">
             <ArrowLeft aria-hidden="true" className="size-6" strokeWidth={2.4} />
           </Link>
-          <p className="text-[29px] font-bold tracking-wide text-primary">Profile</p>
+          <p className="text-[29px] font-bold tracking-wide text-primary">โปรไฟล์</p>
         </div>
         <div className="flex items-center gap-1">
-          <Link href="/notifications" aria-label="Notifications" className="relative flex size-10 items-center justify-center rounded-full text-primary">
+          <Link href="/notifications" aria-label="การแจ้งเตือน" className="relative flex size-10 items-center justify-center rounded-full text-primary">
             <Bell aria-hidden="true" className="size-6" strokeWidth={2.4} />
             <span className="absolute right-1 top-1 size-2.5 rounded-full bg-[#ba1a1a] ring-2 ring-white" />
           </Link>
-          <Link href="/profile/settings" aria-label="Profile settings" className="flex size-10 items-center justify-center rounded-full text-primary">
+          <Link href="/profile/settings" aria-label="ตั้งค่าโปรไฟล์" className="flex size-10 items-center justify-center rounded-full text-primary">
             <Settings aria-hidden="true" className="size-7 fill-primary/10" strokeWidth={2.4} />
           </Link>
         </div>
@@ -116,7 +123,7 @@ function ProfilePortrait() {
   return (
     <div
       role="img"
-      aria-label="K. Ananya profile portrait"
+      aria-label="รูปโปรไฟล์ของ K. Ananya"
       className="relative h-full w-full overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_25%,#5a3827_0%,#111827_52%,#0b1113_100%)]"
     >
       <div className="absolute left-[29%] top-[18%] h-[47%] w-[42%] rounded-full bg-[#d49b72]" />

@@ -133,6 +133,7 @@ const TestProfileSettingsItem = ProfileSettingsItem as ComponentType<{
   label: string;
   icon: ComponentType<{ className?: string; fill?: string }>;
   iconFill?: string;
+  href?: string;
 }>;
 
 const TestArticleCard = ArticleCard as ComponentType<{
@@ -383,8 +384,16 @@ describe("Stitch UI primitives", () => {
       return createElement("svg", { className, fill, "aria-hidden": true });
     }
 
-    const html = render(createElement(TestProfileSettingsItem, { label: "Shipping addresses", icon: TestIcon, iconFill: "#006067" }));
+    const html = render(
+      createElement(TestProfileSettingsItem, {
+        label: "Shipping addresses",
+        icon: TestIcon,
+        iconFill: "#006067",
+        href: "/profile/shipping-addresses"
+      })
+    );
 
+    expect(html).toContain('href="/profile/shipping-addresses"');
     expect(html).toContain("Shipping addresses");
     expect(html).toContain("min-h-[118px]");
     expect(html).toContain("bg-[#e8fbf7]");

@@ -182,7 +182,7 @@
 - [x] Build store checkout screen
 - [x] Build payment success and tracking screen
 - [x] Add order from prescription supporting screen if needed
-- [ ] Add order detail supporting screen if needed
+- [x] Add order detail supporting screen if needed
 - [x] Validate prescription-required purchase flow
 
 ## Phase 7: Community And Profile Stitch Screens
@@ -193,8 +193,8 @@
 - [x] Build article/post detail and comments screen
 - [x] Build notification center screen
 - [x] Build community search results screen
-- [ ] Add saved articles supporting screen if needed
-- [ ] Add shipping addresses supporting screen if needed
+- [x] Add saved articles supporting screen if needed
+- [x] Add shipping addresses supporting screen if needed
 - [x] Add settings supporting screen if needed
 
 ## Phase 8: Admin Dashboard

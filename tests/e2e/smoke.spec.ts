@@ -55,12 +55,15 @@ test.describe("customer mobile smoke", () => {
     { path: "/store/cart", activeLabel: "Store" },
     { path: "/store/checkout", activeLabel: "Store" },
     { path: "/store/orders", activeLabel: "Store" },
+    { path: "/store/orders/preview", activeLabel: "Store" },
     { path: "/community", activeLabel: "Community" },
     { path: "/community/vitamin-c-tips", activeLabel: "Community" },
     { path: "/community/create", activeLabel: "Community" },
     { path: "/community/search", activeLabel: "Community" },
     { path: "/notifications" },
     { path: "/profile", activeLabel: "Profile" },
+    { path: "/profile/saved-articles", activeLabel: "Profile" },
+    { path: "/profile/shipping-addresses", activeLabel: "Profile" },
     { path: "/profile/settings", activeLabel: "Profile" },
     { path: "/profile/rewards", activeLabel: "Profile" }
   ];

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Route } from "next";
 import type { ReactNode } from "react";
 import { ArrowLeft, PackageCheck, ReceiptText, Truck } from "lucide-react";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
@@ -99,6 +100,10 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
       {order.paymentVerificationRequired && order.paymentId ? (
         <CustomerSlipVerification paymentId={order.paymentId} orderCode={order.orderCode} />
       ) : null}
+
+      <Link href={`/store/orders/${order.id}` as Route} className="mt-5 inline-flex text-sm font-bold text-primary underline-offset-4 hover:underline">
+        ดูรายละเอียดคำสั่งซื้อ
+      </Link>
     </article>
   );
 }
