@@ -843,6 +843,7 @@ Deployment requirements:
 Deployment runbook:
 
 - See `DEPLOYMENT.md` for the Vercel preview, staging, and production readiness checklist.
+- See `STAGING.md` and `.env.staging.example` for the staging environment setup checklist.
 - Hosted preview deployments must keep `ENABLE_DEV_AUTH_BYPASS=false` and use non-production LINE, database, payment, storage, and video credentials.
 
 ## Non-Goals For Now

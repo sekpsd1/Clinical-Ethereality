@@ -52,6 +52,10 @@ Staging must have:
 - Error monitoring configured before staff testing.
 - A backup plan tested before patient-like records are entered.
 
+Use `.env.staging.example` as the staging variable checklist and `STAGING.md` as the staging setup runbook.
+
+Staging validation must pass the same local quality gates used for preview plus hosted checks against `/api/health`, `/auth/line`, and role-protected routes.
+
 Run Prisma migrations through a controlled workflow once migrations are finalized. Until production deployment is approved, do not point staging at production data.
 
 ## Production Environment

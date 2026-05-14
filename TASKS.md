@@ -277,7 +277,7 @@
 - [x] Add integration tests for protected workflows
 - [x] Add Playwright smoke tests
 - [x] Configure preview deployments
-- [ ] Configure staging environment
+- [x] Configure staging environment
 - [ ] Configure production environment
 - [ ] Enable backups
 - [ ] Enable error monitoring
