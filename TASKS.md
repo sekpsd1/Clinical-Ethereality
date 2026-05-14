@@ -140,13 +140,13 @@
 - [x] Build `FooterNav`
 - [x] Build `TopBar`
 - [x] Build `GlassSurface`
-- [ ] Build `Button`
-- [ ] Build `IconButton`
-- [ ] Build `TextField`
-- [ ] Build `SearchField`
+- [x] Build `Button`
+- [x] Build `IconButton`
+- [x] Build `TextField`
+- [x] Build `SearchField`
 - [x] Build `StatusBadge`
 - [ ] Build `BottomSheet`
-- [ ] Build `EmptyState`
+- [x] Build `EmptyState`
 - [x] Build `DoctorCard`
 - [x] Build `BookingCalendar`
 - [x] Build `TimeSlotButton`
