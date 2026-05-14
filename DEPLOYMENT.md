@@ -104,4 +104,4 @@ Integration keys become required only when the related workflow is enabled:
 - Payments: `THAI_QR_PROMPTPAY_ID`, `SLIP_VERIFICATION_PROVIDER`, `SLIP_VERIFICATION_API_KEY`, provider-specific values, and `PAYMENT_WEBHOOK_SECRET`
 - Video: Zoom SDK and webhook keys
 - Storage: Cloudinary or S3-compatible object storage keys
-- Monitoring: `SENTRY_DSN`
+- Monitoring: `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, optional trace sample-rate values, and source-map upload keys (`SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`)

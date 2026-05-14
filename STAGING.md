@@ -33,6 +33,7 @@ Do not use staging for live patient, prescription, payment, or pharmacy fulfillm
 - `NEXT_PUBLIC_APP_URL` must be the staging URL.
 - `LINE_LOGIN_CALLBACK_URL` must be `${NEXT_PUBLIC_APP_URL}/api/auth/line/callback`.
 - `DATABASE_URL` must point to staging only.
+- `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` must point to a staging Sentry project or staging-tagged environment.
 - Payment, Zoom, and storage credentials must not be shared with production.
 - Secrets must be stored in Vercel environment settings, not committed to git.
 
@@ -68,6 +69,7 @@ Before accepting a staging deployment:
 - Customer routes redirect unauthenticated users to `/auth/line`
 - Admin, doctor, and pharmacist routes enforce role boundaries
 - Audit-sensitive actions remain behind authenticated routes
+- Sentry receives a staging test error without exposing sensitive patient, prescription, payment, or order data
 
 ## Production Gate
 

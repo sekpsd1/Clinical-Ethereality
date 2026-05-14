@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const optionalUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
+
 export const envSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z.string().default("Clinical Ethereality"),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
@@ -19,6 +21,10 @@ export const envSchema = z.object({
   SLIP_VERIFICATION_API_KEY: z.string().optional(),
   SLIPOK_BRANCH_ID: z.string().optional(),
   SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: z.string().optional(),
+  SENTRY_DSN: optionalUrl,
+  NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
+  SENTRY_TRACES_SAMPLE_RATE: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: z.string().optional(),
   ZOOM_WEBHOOK_SECRET: z.string().optional(),
   ENABLE_DEV_AUTH_BYPASS: z
     .enum(["true", "false"])

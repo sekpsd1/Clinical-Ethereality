@@ -36,6 +36,8 @@ Production launch is blocked until:
 - `NEXT_PUBLIC_APP_URL` must be the canonical production URL.
 - `LINE_LOGIN_CALLBACK_URL` must be `${NEXT_PUBLIC_APP_URL}/api/auth/line/callback`.
 - `DATABASE_URL` must point only to the approved production database.
+- `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` must point only to the approved production Sentry project.
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` should be set when production source-map uploads are approved.
 - Preview or staging credentials must never be reused in production.
 - Secrets must be stored in Vercel production environment settings, not committed to git.
 - Feature flags for payments, prescriptions, community, video, and patient portal should stay disabled until their compliance and vendor gates are approved.
@@ -59,6 +61,7 @@ Before each production deploy:
 - Confirm `/api/health` after deploy.
 - Confirm `/auth/line` loads with production LIFF configuration.
 - Confirm role-protected routes still enforce access boundaries.
+- Confirm production error monitoring receives a non-sensitive test event.
 
 ## Data Protection Rules
 
