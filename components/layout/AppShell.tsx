@@ -2,6 +2,7 @@
 
 import { FooterNav } from "@/components/navigation/FooterNav";
 import { TopAppBar } from "@/components/layout/TopAppBar";
+import { SafeArea } from "@/components/ui/SafeArea";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/design-system/variants";
 
@@ -28,7 +29,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-app text-text">
       {usesFocusedHeader ? null : <TopAppBar />}
-      <main
+      <SafeArea
+        as="main"
+        horizontal={false}
+        bottom={false}
         className={cn(
           "mx-auto flex min-h-dvh w-full max-w-mobile flex-col px-4",
           hidesFooter ? "pb-0" : "pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
@@ -37,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         {children}
-      </main>
+      </SafeArea>
       {hidesFooter ? null : <FooterNav />}
     </div>
   );

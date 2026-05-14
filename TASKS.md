@@ -135,8 +135,8 @@
 ## Phase 4: Reusable UI Component System
 
 - [x] Build `AppShell`
-- [ ] Build `Screen`
-- [ ] Build `SafeArea`
+- [x] Build `Screen`
+- [x] Build `SafeArea`
 - [x] Build `FooterNav`
 - [x] Build `TopBar`
 - [x] Build `GlassSurface`

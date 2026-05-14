@@ -1,4 +1,5 @@
 import { GlassSurface } from "@/components/ui/GlassSurface";
+import { Screen } from "@/components/ui/Screen";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type StitchedScreenPlaceholderProps = {
@@ -15,7 +16,7 @@ export function StitchedScreenPlaceholder({
   statusItems
 }: StitchedScreenPlaceholderProps) {
   return (
-    <section className="flex flex-1 flex-col gap-5">
+    <Screen className="gap-5">
       <div className="space-y-2 pt-2">
         <p className="text-label font-semibold uppercase tracking-[0.08em] text-primary">
           {eyebrow}
@@ -40,6 +41,6 @@ export function StitchedScreenPlaceholder({
           ))}
         </div>
       </GlassSurface>
-    </section>
+    </Screen>
   );
 }

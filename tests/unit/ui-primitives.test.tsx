@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout/AppShell";
 import { FooterNav } from "@/components/navigation/FooterNav";
 import { GlassSurface } from "@/components/ui/GlassSurface";
+import { SafeArea } from "@/components/ui/SafeArea";
+import { Screen } from "@/components/ui/Screen";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { StitchedScreenPlaceholder } from "@/components/ui/StitchedScreenPlaceholder";
 
@@ -22,6 +24,20 @@ const TestGlassSurface = GlassSurface as ComponentType<{
 
 const TestStatusBadge = StatusBadge as ComponentType<{
   tone?: "neutral" | "success" | "warning" | "danger";
+  children?: ReactNode;
+}>;
+
+const TestSafeArea = SafeArea as ComponentType<{
+  as?: "div" | "main" | "section";
+  top?: boolean;
+  bottom?: boolean;
+  horizontal?: boolean;
+  className?: string;
+  children?: ReactNode;
+}>;
+
+const TestScreen = Screen as ComponentType<{
+  className?: string;
   children?: ReactNode;
 }>;
 
@@ -50,6 +66,22 @@ describe("Stitch UI primitives", () => {
     expect(render(createElement(TestStatusBadge, { tone: "success" }, "Verified"))).toContain("text-success");
     expect(render(createElement(TestStatusBadge, { tone: "warning" }, "Pending"))).toContain("text-warning");
     expect(render(createElement(TestStatusBadge, { tone: "danger" }, "Rejected"))).toContain("text-danger");
+  });
+
+  it("renders screen and safe-area primitives with mobile-safe layout classes", () => {
+    const screenHtml = render(createElement(TestScreen, { className: "gap-5" }, "Consult screen"));
+    const safeAreaHtml = render(
+      createElement(TestSafeArea, { as: "main", top: true, className: "max-w-mobile" }, "Safe content")
+    );
+
+    expect(screenHtml).toContain("Consult screen");
+    expect(screenHtml).toContain("flex");
+    expect(screenHtml).toContain("min-h-full");
+    expect(screenHtml).toContain("gap-5");
+    expect(safeAreaHtml).toContain("<main");
+    expect(safeAreaHtml).toContain("pt-[env(safe-area-inset-top)]");
+    expect(safeAreaHtml).toContain("pb-[env(safe-area-inset-bottom)]");
+    expect(safeAreaHtml).toContain("max-w-mobile");
   });
 
   it("keeps the final customer footer labels and marks nested routes active", () => {
