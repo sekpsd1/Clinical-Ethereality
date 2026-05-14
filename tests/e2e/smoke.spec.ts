@@ -65,6 +65,7 @@ test.describe("customer mobile smoke", () => {
     { path: "/profile/saved-articles", activeLabel: "Profile" },
     { path: "/profile/shipping-addresses", activeLabel: "Profile" },
     { path: "/profile/settings", activeLabel: "Profile" },
+    { path: "/profile/settings?section=account", activeLabel: "Profile" },
     { path: "/profile/rewards", activeLabel: "Profile" }
   ];
 
