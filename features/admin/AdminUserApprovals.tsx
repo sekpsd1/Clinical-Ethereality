@@ -1,4 +1,5 @@
 import { Clock3, ShieldAlert, Stethoscope, UserRound } from "lucide-react";
+import Link from "next/link";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/design-system/variants";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
@@ -23,6 +24,24 @@ const roleLabels: Record<string, string> = {
   doctor: "แพทย์",
   pharmacist: "เภสัชกร"
 };
+
+const inviteLinks = [
+  {
+    label: "เชิญแพทย์",
+    href: "/staff-invite/doctor",
+    detail: "ให้แพทย์เปิดลิงก์นี้ผ่าน LINE แล้วส่งเลขใบประกอบวิชาชีพ"
+  },
+  {
+    label: "เชิญเภสัชกร",
+    href: "/staff-invite/pharmacist",
+    detail: "ให้เภสัชกรเปิดลิงก์นี้ผ่าน LINE แล้วส่งข้อมูลใบอนุญาต"
+  },
+  {
+    label: "เชิญผู้ดูแลระบบ",
+    href: "/staff-invite/admin",
+    detail: "ใช้สำหรับทีมปฏิบัติการที่ต้องให้ผู้ดูแลระบบเดิมอนุมัติ"
+  }
+] as const;
 
 const statusLabels: Record<string, string> = {
   active: "ใช้งานอยู่",
@@ -98,6 +117,29 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-label font-bold uppercase text-primary">ลิงก์เชิญบุคลากร</p>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">ส่งให้บุคลากรเพื่อขอสิทธิ์</h2>
+          </div>
+          <StatusBadge>LINE</StatusBadge>
+        </div>
+        <div className="mt-4 flex flex-col gap-2">
+          {inviteLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-[8px] border border-border/80 bg-primary/5 px-3 py-3 text-sm font-bold text-primary"
+            >
+              <span className="block">{item.label}</span>
+              <span className="mt-1 block text-xs font-semibold leading-5 text-muted">{item.detail}</span>
+              <span className="mt-2 block truncate text-[11px] font-semibold text-primary/70">{item.href}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">

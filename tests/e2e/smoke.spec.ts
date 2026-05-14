@@ -94,6 +94,25 @@ test.describe("role route smoke", () => {
     await expect(page.locator('nav a[href="/admin/compliance"]')).toBeVisible();
   });
 
+  test("admin user page exposes staff invitation links", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/users");
+
+    await expectNoAppError(page);
+    await expect(page.locator('a[href="/staff-invite/doctor"]')).toBeVisible();
+    await expect(page.locator('a[href="/staff-invite/pharmacist"]')).toBeVisible();
+    await expect(page.locator('a[href="/staff-invite/admin"]')).toBeVisible();
+  });
+
+  test("staff invite request page is reachable with a customer dev session", async ({ page }) => {
+    await signInAs(page, "customer");
+    await page.goto("/staff-invite/doctor");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("heading", { name: "ขอสิทธิ์แพทย์" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ส่งคำขอให้แอดมินตรวจ" })).toBeVisible();
+  });
+
   test("admin compliance readiness is reachable with an admin dev session", async ({ page }) => {
     await signInAs(page, "admin");
     await page.goto("/admin/compliance");

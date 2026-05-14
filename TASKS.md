@@ -85,7 +85,7 @@
 - [x] Implement initial JWT refresh endpoint
 - [x] Implement logout
 - [x] Implement session handling
-- [ ] Implement doctor, pharmacist, and admin invitation flow
+- [x] Implement doctor, pharmacist, and admin invitation flow
 - [x] Define customer, doctor, pharmacist, and admin roles
 - [x] Add initial route-level role boundaries for doctors, pharmacists, and admins
 - [x] Add permission helpers

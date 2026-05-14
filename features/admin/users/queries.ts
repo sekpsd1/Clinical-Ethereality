@@ -31,6 +31,10 @@ function getRequestedRole(user: UserWithStaffProfiles): Role {
     return "pharmacist";
   }
 
+  if (user.status === "pending_review" && user.role === "customer") {
+    return "admin";
+  }
+
   return toRole(user.role);
 }
 
@@ -45,6 +49,10 @@ function getStaffProfileText(user: UserWithStaffProfiles): string {
     return user.pharmacistProfile.licenseNumber
       ? `ใบอนุญาตเภสัชกร ${user.pharmacistProfile.licenseNumber}`
       : "โปรไฟล์เภสัชกรรอข้อมูลใบอนุญาต";
+  }
+
+  if (user.status === "pending_review" && user.role === "customer") {
+    return "คำขอสิทธิ์ผู้ดูแลระบบจากลิงก์เชิญ รอผู้ดูแลระบบเดิมตรวจสอบ";
   }
 
   return "บัญชีลูกค้าที่เชื่อมต่อ LINE";

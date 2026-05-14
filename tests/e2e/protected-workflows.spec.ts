@@ -31,6 +31,12 @@ test.describe("protected workflow integration", () => {
     await expectAuthRedirect(page, "/admin/payments?status=pending");
   });
 
+  test("redirects unauthenticated staff invite links to LINE auth with return path", async ({ page }) => {
+    await page.goto("/staff-invite/doctor");
+
+    await expectAuthRedirect(page, "/staff-invite/doctor");
+  });
+
   test("keeps customer sessions out of admin, doctor, and pharmacist workflows", async ({ page }) => {
     await signInAs(page, "customer");
 
