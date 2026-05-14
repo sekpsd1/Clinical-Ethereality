@@ -100,7 +100,7 @@ test.describe("role route smoke", () => {
 
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/admin\/compliance$/);
-    await expect(page.getByRole("heading", { name: "Compliance review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ตรวจความพร้อมด้าน Compliance" })).toBeVisible();
     await expect(page.locator('nav a[href="/admin/compliance"]')).toHaveAttribute("aria-current", "page");
   });
 

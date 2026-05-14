@@ -18,128 +18,128 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const readinessSummary = [
   {
-    label: "App safeguards",
-    value: "Ready",
+    label: "ระบบป้องกันในแอป",
+    value: "พร้อม",
     tone: "success",
-    detail: "Role boundaries, audit trail, backups, and monitoring wiring are in place."
+    detail: "มีการแยกสิทธิ์ตามบทบาท บันทึก audit trail แผนสำรองข้อมูล และระบบติดตาม error แล้ว"
   },
   {
-    label: "Client documents",
-    value: "Blocked",
+    label: "เอกสารจากลูกค้า",
+    value: "รอลูกค้า",
     tone: "warning",
-    detail: "PDPA, terms, consent wording, SOPs, and company/payment details still need client approval."
+    detail: "ยังต้องได้รับ PDPA, Terms, ข้อความยินยอม, SOP และข้อมูลบริษัท/การชำระเงินที่อนุมัติแล้ว"
   },
   {
-    label: "Production launch",
-    value: "Hold",
+    label: "การเปิดใช้งานจริง",
+    value: "พักไว้ก่อน",
     tone: "danger",
-    detail: "Do not launch with patient-like records until legal, vendor, and operational approvals are complete."
+    detail: "ห้ามเปิดใช้งานกับข้อมูลผู้ป่วยจริงหรือข้อมูลคล้ายผู้ป่วยจนกฎหมาย vendor และขั้นตอนปฏิบัติได้รับอนุมัติครบ"
   }
 ] as const;
 
 const complianceSections = [
   {
-    title: "Legal and PDPA",
+    title: "กฎหมายและ PDPA",
     icon: FileCheck2,
-    status: "Need client",
+    status: "รอลูกค้า",
     tone: "warning",
     items: [
-      "Thai PDPA privacy policy approved for health-related records.",
-      "Thai terms of service approved for consultation, commerce, pharmacy, and community use.",
-      "Cookie or tracking notice approved if analytics, pixels, or monitoring beyond essential error capture are used.",
-      "Refund, cancellation, shipping, delivery, and community moderation policies approved."
+      "Privacy Policy ภาษาไทยตาม PDPA ที่ครอบคลุมข้อมูลสุขภาพ",
+      "Terms of Service ภาษาไทยสำหรับ consultation, commerce, pharmacy และ community",
+      "Cookie หรือ tracking notice หากมี analytics, marketing pixel หรือ monitoring เกินกว่าการจับ error ที่จำเป็น",
+      "นโยบายคืนเงิน ยกเลิก จัดส่ง ส่งมอบ และ moderation ของ community"
     ]
   },
   {
-    title: "Health data consent",
+    title: "ความยินยอมด้านข้อมูลสุขภาพ",
     icon: HeartPulse,
-    status: "Need client",
+    status: "รอลูกค้า",
     tone: "warning",
     items: [
-      "Explicit consent wording for collecting health-related consultation information.",
-      "Teleconsultation consent, including video/chat limitations and no-show handling.",
-      "Prescription and pharmacy fulfillment consent.",
-      "Medical disclaimer for community posts and article content."
+      "ข้อความยินยอมสำหรับการเก็บข้อมูลสุขภาพและข้อมูลประกอบการปรึกษา",
+      "ข้อความยินยอมสำหรับ teleconsultation รวมข้อจำกัดของวิดีโอ/แชทและ no-show",
+      "ข้อความยินยอมสำหรับใบสั่งยาและการจัดเตรียม/จัดส่งยาโดยร้านยา",
+      "Medical disclaimer สำหรับโพสต์ community และบทความสุขภาพ"
     ]
   },
   {
-    title: "Access and privacy controls",
+    title: "สิทธิ์เข้าถึงและความเป็นส่วนตัว",
     icon: KeyRound,
-    status: "App ready",
+    status: "ระบบพร้อม",
     tone: "success",
     items: [
-      "Customer, doctor, pharmacist, and admin routes are role protected.",
-      "Sensitive actions are guarded by server-side permission checks.",
-      "LINE LIFF plus JWT remains the MVP customer identity path.",
-      "Production must keep local dev auth bypass disabled."
+      "เส้นทางของลูกค้า หมอ เภสัชกร และแอดมินถูกแยกสิทธิ์ตามบทบาท",
+      "การกระทำที่เกี่ยวกับข้อมูลสำคัญตรวจสิทธิ์ฝั่ง server",
+      "MVP ใช้ LINE LIFF และ JWT เป็นเส้นทางยืนยันตัวตนหลักของลูกค้า",
+      "Production ต้องปิด local dev auth bypass เสมอ"
     ]
   },
   {
-    title: "Audit, backup, and monitoring",
+    title: "Audit, backup และ monitoring",
     icon: DatabaseBackup,
-    status: "Configured",
+    status: "ตั้งค่าแล้ว",
     tone: "success",
     items: [
-      "Sensitive state changes write audit records where workflows are implemented.",
-      "Backup and restore readiness is documented before patient-like records are entered.",
-      "Sentry error monitoring is wired with default PII capture disabled.",
-      "Production must verify a non-sensitive test event reaches monitoring."
+      "workflow ที่เปลี่ยนสถานะสำคัญมีการบันทึก audit record แล้วในส่วนที่ implement",
+      "มีเอกสาร backup และ restore readiness ก่อนนำข้อมูลคล้ายผู้ป่วยเข้าใช้งาน",
+      "เชื่อม Sentry error monitoring แล้ว โดยปิด default PII capture",
+      "Production ต้องทดสอบส่ง event ที่ไม่ใช่ข้อมูลอ่อนไหวเข้า monitoring ก่อนเปิดใช้จริง"
     ]
   },
   {
-    title: "Clinical and pharmacy operations",
+    title: "งานคลินิกและร้านยา",
     icon: Pill,
-    status: "Need SOP",
+    status: "รอ SOP",
     tone: "warning",
     items: [
-      "Doctor license details, profile content, pricing, and availability must be approved.",
-      "Pharmacy license and pharmacist license details must be approved.",
-      "Prescription verification, medicine preparation, packing, and shipment SOPs must be supplied.",
-      "Controlled item restrictions must be documented before product activation."
+      "ข้อมูลใบประกอบวิชาชีพหมอ โปรไฟล์ ราคา และตารางเวลาต้องได้รับอนุมัติ",
+      "ข้อมูลใบอนุญาตร้านยาและใบประกอบวิชาชีพเภสัชกรต้องได้รับอนุมัติ",
+      "ต้องมี SOP สำหรับตรวจใบสั่งยา เตรียมยา แพ็กยา และจัดส่ง",
+      "ข้อจำกัดของสินค้าควบคุมต้องถูกบันทึกก่อนเปิดขายสินค้า"
     ]
   },
   {
-    title: "Payments and fulfillment",
+    title: "การชำระเงินและจัดส่ง",
     icon: Landmark,
-    status: "Need credentials",
+    status: "รอข้อมูล",
     tone: "warning",
     items: [
-      "PromptPay owner, bank account name, bank, and secure storage location must be confirmed.",
-      "SlipOK or EasySlip provider choice and API credentials must be supplied securely.",
-      "Payment success, rejection, refund, and manual review rules must be approved.",
-      "Shipping provider, delivery fees, free-shipping rules, and tracking format must be confirmed."
+      "ต้องยืนยันเจ้าของ PromptPay ชื่อบัญชี ธนาคาร และที่เก็บข้อมูลบัญชีอย่างปลอดภัย",
+      "ต้องเลือก SlipOK หรือ EasySlip และส่ง API credentials ผ่านช่องทางปลอดภัย",
+      "ต้องอนุมัติกฎจ่ายสำเร็จ ปฏิเสธสลิป คืนเงิน และ manual review",
+      "ต้องยืนยันขนส่ง ค่าส่ง เงื่อนไขส่งฟรี และรูปแบบเลข tracking"
     ]
   }
 ] as const;
 
 const launchGateLinks = [
   {
-    label: "Audit log",
+    label: "บันทึก Audit",
     href: "/admin/audit",
     icon: ShieldCheck
   },
   {
-    label: "User approvals",
+    label: "อนุมัติผู้ใช้",
     href: "/admin/users",
     icon: BadgeCheck
   },
   {
-    label: "Payment review",
+    label: "ตรวจชำระเงิน",
     href: "/admin/payments",
     icon: Landmark
   },
   {
-    label: "Orders",
+    label: "คำสั่งซื้อ",
     href: "/admin/orders",
     icon: PackageCheck
   },
   {
-    label: "Inventory",
+    label: "สต็อก",
     href: "/admin/inventory",
     icon: Truck
   },
   {
-    label: "Notifications",
+    label: "แจ้งเตือน",
     href: "/admin/notifications",
     icon: BellRing
   }
@@ -151,13 +151,13 @@ export function AdminCompliance() {
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-label font-bold uppercase text-white/75">Production readiness</p>
-            <h2 className="mt-1 font-headline text-2xl font-bold">Compliance review</h2>
+            <p className="text-label font-bold uppercase text-white/75">ความพร้อมก่อนเปิดใช้งานจริง</p>
+            <h2 className="mt-1 font-headline text-2xl font-bold">ตรวจความพร้อมด้าน Compliance</h2>
             <p className="mt-2 text-sm leading-6 text-white/80">
-              Review these gates before enabling real consultation, prescription, payment, or pharmacy records.
+              ตรวจรายการนี้ก่อนเปิดใช้งานข้อมูลการปรึกษา ใบสั่งยา การชำระเงิน หรือการจัดส่งยาจริง
             </p>
           </div>
-          <StatusBadge tone="danger">Launch hold</StatusBadge>
+          <StatusBadge tone="danger">ยังไม่ควรเปิดจริง</StatusBadge>
         </div>
       </section>
 
@@ -178,8 +178,8 @@ export function AdminCompliance() {
 
       <section className="flex flex-col gap-3">
         <div>
-          <p className="text-label font-bold uppercase text-primary">Review checklist</p>
-          <h2 className="mt-1 font-headline text-lg font-bold text-text">Required before production launch</h2>
+          <p className="text-label font-bold uppercase text-primary">รายการตรวจสอบ</p>
+          <h2 className="mt-1 font-headline text-lg font-bold text-text">สิ่งที่ต้องครบก่อนเปิด Production</h2>
         </div>
 
         {complianceSections.map((section) => {
@@ -215,10 +215,10 @@ export function AdminCompliance() {
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-label font-bold uppercase text-primary">Admin checks</p>
-            <h2 className="mt-1 font-headline text-lg font-bold text-text">Operational surfaces to verify</h2>
+            <p className="text-label font-bold uppercase text-primary">งานที่แอดมินต้องตรวจ</p>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">หน้าปฏิบัติการที่ควรตรวจซ้ำ</h2>
           </div>
-          <StatusBadge>Before launch</StatusBadge>
+          <StatusBadge>ก่อนเปิดจริง</StatusBadge>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           {launchGateLinks.map((item) => {

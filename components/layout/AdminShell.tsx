@@ -58,7 +58,7 @@ const adminNavItems = [
     icon: ScrollText
   },
   {
-    label: "Compliance",
+    label: "ตรวจพร้อม",
     href: "/admin/compliance",
     icon: FileCheck2
   }
