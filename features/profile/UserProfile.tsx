@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Bookmark,
   Bell,
-  ChevronRight,
   ClipboardList,
   LogOut,
   Pill,
@@ -11,6 +10,7 @@ import {
   ShieldCheck,
   Truck
 } from "lucide-react";
+import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 
 type ProfileMenuItem = {
   label: string;
@@ -68,7 +68,7 @@ export function UserProfile() {
 
             <div className="space-y-4">
               {profileMenuItems.map((item) => (
-                <ProfileMenuButton key={item.label} item={item} />
+                <ProfileSettingsItem key={item.label} label={item.label} icon={item.icon} iconFill={item.icon === Bookmark ? "#006067" : "none"} />
               ))}
             </div>
           </section>
@@ -109,25 +109,6 @@ function ProfileHeader() {
         </div>
       </div>
     </header>
-  );
-}
-
-function ProfileMenuButton({ item }: { item: ProfileMenuItem }) {
-  const Icon = item.icon;
-
-  return (
-    <button
-      type="button"
-      className="flex min-h-[118px] w-full items-center justify-between rounded-[24px] border border-white/40 bg-white/70 p-7 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] transition-colors hover:bg-white/90 active:scale-[0.98]"
-    >
-      <span className="flex min-w-0 items-center gap-6">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#e8fbf7] text-primary">
-          <Icon aria-hidden="true" className="size-7" fill={item.icon === Bookmark ? "#006067" : "none"} />
-        </span>
-        <span className="truncate text-left text-[18px] font-medium leading-6 text-[#3e494a]">{item.label}</span>
-      </span>
-      <ChevronRight aria-hidden="true" className="size-6 shrink-0 text-[#bdc9ca]" />
-    </button>
   );
 }
 

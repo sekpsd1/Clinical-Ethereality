@@ -157,8 +157,8 @@
 - [ ] Build `CommunityPostCard`
 - [ ] Build `ArticleCard`
 - [ ] Build `CommentComposer`
-- [ ] Build `NotificationItem`
-- [ ] Build `ProfileSettingsItem`
+- [x] Build `NotificationItem`
+- [x] Build `ProfileSettingsItem`
 - [ ] Build reusable domain cards and rows from Stitch patterns
 
 ## Phase 5: Consult Stitch Screens

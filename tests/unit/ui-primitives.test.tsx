@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { IconButton } from "@/components/ui/IconButton";
+import { NotificationItem } from "@/components/ui/NotificationItem";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
+import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 import { SafeArea } from "@/components/ui/SafeArea";
 import { Screen } from "@/components/ui/Screen";
 import { SearchField } from "@/components/ui/SearchField";
@@ -100,6 +102,21 @@ const TestOrderTrackingTimeline = OrderTrackingTimeline as ComponentType<{
     status: "done" | "active" | "pending";
   }>;
   className?: string;
+}>;
+
+const TestNotificationItem = NotificationItem as ComponentType<{
+  title: string;
+  body: string;
+  time: string;
+  kind: "system" | "consultation" | "order" | "payment" | "prescription" | "community" | "reward" | "promo";
+  unread: boolean;
+  href: string;
+}>;
+
+const TestProfileSettingsItem = ProfileSettingsItem as ComponentType<{
+  label: string;
+  icon: ComponentType<{ className?: string; fill?: string }>;
+  iconFill?: string;
 }>;
 
 function render(component: ReactElement) {
@@ -241,6 +258,51 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("animate-pulse");
     expect(html).toContain("bg-[#e6e8ea]");
     expect(html).toContain("pt-6");
+  });
+
+  it("renders notification items with unread treatment and route links", () => {
+    const unreadHtml = render(
+      createElement(TestNotificationItem, {
+        title: "Payment received",
+        body: "Your slip is being reviewed.",
+        time: "Now",
+        kind: "payment",
+        unread: true,
+        href: "/store/orders"
+      })
+    );
+    const readHtml = render(
+      createElement(TestNotificationItem, {
+        title: "Community update",
+        body: "A post received a comment.",
+        time: "Yesterday",
+        kind: "community",
+        unread: false,
+        href: "/community"
+      })
+    );
+
+    expect(unreadHtml).toContain('href="/store/orders"');
+    expect(unreadHtml).toContain("Payment received");
+    expect(unreadHtml).toContain("from-primary/30");
+    expect(unreadHtml).toContain("lucide-stethoscope");
+    expect(readHtml).toContain('href="/community"');
+    expect(readHtml).toContain("Community update");
+    expect(readHtml).toContain("hover:bg-white/80");
+  });
+
+  it("renders profile settings rows with icon and chevron affordance", () => {
+    function TestIcon({ className, fill }: { className?: string; fill?: string }) {
+      return createElement("svg", { className, fill, "aria-hidden": true });
+    }
+
+    const html = render(createElement(TestProfileSettingsItem, { label: "Shipping addresses", icon: TestIcon, iconFill: "#006067" }));
+
+    expect(html).toContain("Shipping addresses");
+    expect(html).toContain("min-h-[118px]");
+    expect(html).toContain("bg-[#e8fbf7]");
+    expect(html).toContain('fill="#006067"');
+    expect(html).toContain("lucide-chevron-right");
   });
 
   it("keeps the final customer footer labels and marks nested routes active", () => {
