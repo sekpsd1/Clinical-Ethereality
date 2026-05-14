@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "regions": ["sin1"],
+  "env": {
+    "JWT_ISSUER": "clinical-ethereality",
+    "JWT_ACCESS_TOKEN_TTL": "15m",
+    "JWT_REFRESH_TOKEN_TTL": "30d",
+    "ENABLE_DEV_AUTH_BYPASS": "false"
+  }
+}

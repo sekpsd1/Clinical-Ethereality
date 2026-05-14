@@ -840,6 +840,11 @@ Deployment requirements:
 - Error monitoring enabled before patient onboarding
 - Access logs and audit logs reviewed as part of compliance planning
 
+Deployment runbook:
+
+- See `DEPLOYMENT.md` for the Vercel preview, staging, and production readiness checklist.
+- Hosted preview deployments must keep `ENABLE_DEV_AUTH_BYPASS=false` and use non-production LINE, database, payment, storage, and video credentials.
+
 ## Non-Goals For Now
 
 - Do not generate the full app yet

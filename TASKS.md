@@ -276,7 +276,7 @@
 - [x] Verify mobile-first LINE LIFF viewport behavior
 - [x] Add integration tests for protected workflows
 - [x] Add Playwright smoke tests
-- [ ] Configure preview deployments
+- [x] Configure preview deployments
 - [ ] Configure staging environment
 - [ ] Configure production environment
 - [ ] Enable backups
