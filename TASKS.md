@@ -270,7 +270,7 @@
 ## Phase 12: Quality And Deployment
 
 - [x] Add unit tests for permission helpers
-- [ ] Add component tests for reusable Stitch-based UI primitives
+- [x] Add component tests for reusable Stitch-based UI primitives
 - [x] Verify footer navigation consistency across screens
 - [x] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [x] Verify mobile-first LINE LIFF viewport behavior
