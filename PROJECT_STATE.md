@@ -356,6 +356,7 @@ Known frontend caveats:
 Not implemented yet:
 
 - Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, customer order tracking, and customer article interaction foundations.
+- Domain service coverage has started with shared order fulfillment transitions for admin and pharmacist workflows; additional services should be added as more sensitive workflows are implemented.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Broader booking integration still needs formal slot locking beyond the current duplicate scheduled-time guard; admin doctor availability editing and customer-facing availability reads are implemented.
 - Full slip upload storage and formal slot locking.
@@ -387,4 +388,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-Phase 12 quality work is complete, and the staff invitation foundation is now in place. Permission unit tests, reusable Stitch UI primitive tests, protected workflow integration tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, Playwright smoke tests, Vercel preview deployment configuration, staging environment configuration, production environment launch gates, backup/restore readiness plans, Sentry error monitoring wiring, and admin compliance readiness review are in place. Next recommended step: collect the remaining client intake items and decide whether to continue with deferred MVP workflow gaps such as Zoom SDK integration or file storage.
+Phase 12 quality work is complete, and the staff invitation foundation is now in place. Permission unit tests, reusable Stitch UI primitive tests, order fulfillment service tests, protected workflow integration tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, Playwright smoke tests, Vercel preview deployment configuration, staging environment configuration, production environment launch gates, backup/restore readiness plans, Sentry error monitoring wiring, and admin compliance readiness review are in place. Next recommended step: collect the remaining client intake items and decide whether to continue with deferred MVP workflow gaps such as Zoom SDK integration or file storage.
