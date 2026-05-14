@@ -4,28 +4,28 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const settingsItems = [
   {
-    label: "Account profile",
-    description: "Name, LINE account, and verified member status",
+    label: "ข้อมูลบัญชี",
+    description: "ชื่อ บัญชี LINE และสถานะสมาชิกที่ผ่านการยืนยัน",
     icon: UserRound
   },
   {
-    label: "Privacy and consent",
-    description: "Health-data consent placeholders until legal wording arrives",
+    label: "ความเป็นส่วนตัวและความยินยอม",
+    description: "รอข้อความยินยอมด้านข้อมูลสุขภาพฉบับจริงจากฝ่ายกฎหมาย",
     icon: ShieldCheck
   },
   {
-    label: "Notifications",
-    description: "Consultation, order, community, and reward alerts",
+    label: "การแจ้งเตือน",
+    description: "การปรึกษา คำสั่งซื้อ ชุมชน และคะแนนสะสม",
     icon: Bell
   },
   {
-    label: "Security",
-    description: "Session controls and future device review",
+    label: "ความปลอดภัย",
+    description: "การจัดการเซสชันและการตรวจสอบอุปกรณ์ในอนาคต",
     icon: LockKeyhole
   },
   {
-    label: "Language",
-    description: "Thai-first LINE LIFF experience",
+    label: "ภาษา",
+    description: "ประสบการณ์ LINE LIFF ที่ออกแบบโดยใช้ภาษาไทยเป็นหลัก",
     icon: Languages
   }
 ];
@@ -35,12 +35,12 @@ export function ProfileSettings() {
     <div className="min-h-dvh w-full overflow-hidden bg-[linear-gradient(180deg,#e0f2f1_0%,#f7f9fb_58%,#eef3f4_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <header className="sticky top-0 z-header bg-white/70 shadow-[0_0_40px_rgba(0,123,131,0.06)] backdrop-blur-[24px]">
         <div className="mx-auto flex h-[82px] w-full max-w-mobile items-center gap-4 px-7">
-          <Link href="/profile" aria-label="Back to profile" className="flex size-10 items-center justify-center rounded-full text-primary">
+          <Link href="/profile" aria-label="กลับไปหน้าโปรไฟล์" className="flex size-10 items-center justify-center rounded-full text-primary">
             <ArrowLeft aria-hidden="true" className="size-6" strokeWidth={2.4} />
           </Link>
           <div className="min-w-0">
-            <p className="text-[22px] font-bold tracking-wide text-primary">Settings</p>
-            <p className="truncate text-xs font-medium uppercase tracking-[0.14em] text-[#3e494a]/60">Profile controls</p>
+            <p className="text-[22px] font-bold tracking-wide text-primary">ตั้งค่า</p>
+            <p className="truncate text-xs font-medium uppercase tracking-[0.14em] text-[#3e494a]/60">การจัดการโปรไฟล์</p>
           </div>
         </div>
       </header>
@@ -53,21 +53,21 @@ export function ProfileSettings() {
             </span>
             <div>
               <h1 className="text-[24px] font-extrabold leading-7 text-[#191c1e]">K. Ananya</h1>
-              <p className="mt-1 text-sm font-medium text-[#3e494a]">Verified member settings</p>
+              <p className="mt-1 text-sm font-medium text-[#3e494a]">การตั้งค่าสมาชิกที่ผ่านการยืนยัน</p>
             </div>
           </div>
           <p className="text-sm leading-6 text-[#3e494a]">
-            Sensitive profile, consent, notification, and session controls stay behind authenticated customer routes.
+            ข้อมูลโปรไฟล์ ความยินยอม การแจ้งเตือน และการจัดการเซสชันถูกเก็บไว้หลังเส้นทางที่ต้องเข้าสู่ระบบแล้วเท่านั้น
           </p>
         </section>
       </main>
 
       <BottomSheet
-        title="Profile settings"
-        description="Review customer-facing settings without exposing sensitive records outside the authenticated profile area."
+        title="ตั้งค่าโปรไฟล์"
+        description="ตรวจสอบการตั้งค่าของลูกค้า โดยไม่แสดงข้อมูลสำคัญนอกพื้นที่โปรไฟล์ที่ผ่านการยืนยันตัวตนแล้ว"
         dismissHref="/profile"
         bottomClassName="bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
-        footer={<p className="text-xs leading-5 text-[#6e797a]">Production consent wording remains pending client legal approval.</p>}
+        footer={<p className="text-xs leading-5 text-[#6e797a]">ข้อความยินยอมสำหรับใช้งานจริงยังรอการอนุมัติจากฝ่ายกฎหมายของลูกค้า</p>}
       >
         {settingsItems.map((item) => (
           <button
