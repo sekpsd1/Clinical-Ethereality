@@ -78,3 +78,5 @@ Do not promote staging to production until:
 - Backup and restore workflow is documented and tested.
 - Error monitoring is enabled.
 - Production vendor credentials and access controls are approved.
+
+Backup and restore drill details live in `BACKUPS.md`.

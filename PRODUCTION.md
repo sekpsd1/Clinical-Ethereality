@@ -54,6 +54,7 @@ Before each production deploy:
 - `npx prisma validate`
 - `npm run build`
 - Confirm backup status before schema changes.
+- Confirm the latest backup or snapshot is available before risky changes.
 - Confirm rollback plan for the deploy.
 - Confirm `/api/health` after deploy.
 - Confirm `/auth/line` loads with production LIFF configuration.

@@ -56,6 +56,8 @@ Use `.env.staging.example` as the staging variable checklist and `STAGING.md` as
 
 Staging validation must pass the same local quality gates used for preview plus hosted checks against `/api/health`, `/auth/line`, and role-protected routes.
 
+Backups and restore drills are documented in `BACKUPS.md`; staging restore drills must use synthetic data only.
+
 Run Prisma migrations through a controlled workflow once migrations are finalized. Until production deployment is approved, do not point staging at production data.
 
 ## Production Environment
@@ -75,6 +77,8 @@ Before production:
 Use `.env.production.example` as the production variable checklist and `PRODUCTION.md` as the production launch runbook.
 
 Production deployment must not be promoted from staging until backup, monitoring, compliance, rollback, and vendor credential checks are complete.
+
+Production backups must follow `BACKUPS.md` and remain enabled before patient-like records are entered.
 
 ## Environment Variables
 

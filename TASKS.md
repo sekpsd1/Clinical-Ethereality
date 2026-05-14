@@ -279,7 +279,7 @@
 - [x] Configure preview deployments
 - [x] Configure staging environment
 - [x] Configure production environment
-- [ ] Enable backups
+- [x] Enable backups
 - [ ] Enable error monitoring
 - [ ] Review compliance requirements before production launch
 
