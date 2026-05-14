@@ -152,8 +152,8 @@
 - [x] Build `TimeSlotButton`
 - [x] Build `PromptPayQrPanel`
 - [x] Build `SlipUploadBox`
-- [ ] Build `PaymentStatusBadge`
-- [ ] Build `OrderTrackingTimeline`
+- [x] Build `PaymentStatusBadge`
+- [x] Build `OrderTrackingTimeline`
 - [ ] Build `CommunityPostCard`
 - [ ] Build `ArticleCard`
 - [ ] Build `CommentComposer`

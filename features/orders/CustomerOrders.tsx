@@ -1,9 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Check, PackageCheck, ReceiptText, Truck } from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowLeft, PackageCheck, ReceiptText, Truck } from "lucide-react";
+import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
+import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CustomerSlipVerification } from "@/features/orders/CustomerSlipVerification";
-import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
+import type { CustomerOrderItem, CustomerOrdersData } from "@/features/orders/types";
 
 export function CustomerOrders({ data }: { data: CustomerOrdersData }) {
   return (
@@ -76,7 +79,10 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
             {order.itemCount} รายการ / อัปเดต {order.updatedAt}
           </p>
         </div>
-        <StatusBadge tone={order.statusTone}>{order.statusLabel}</StatusBadge>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <StatusBadge tone={order.statusTone}>{order.statusLabel}</StatusBadge>
+          <PaymentStatusBadge status={order.paymentStatus} label={order.paymentLabel} />
+        </div>
       </div>
 
       <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -86,11 +92,7 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
         <InfoTile icon="tracking" label="เลขพัสดุ" value={order.trackingNumber ?? "-"} />
       </dl>
 
-      <div className="mt-6 space-y-6 border-t border-[#bdc9ca]/20 pt-6">
-        {order.steps.map((step, index) => (
-          <TrackingStepRow key={step.title} step={step} isLast={index === order.steps.length - 1} />
-        ))}
-      </div>
+      <OrderTrackingTimeline steps={order.steps} className="mt-6 border-t border-[#bdc9ca]/20 pt-6" />
 
       {order.paymentVerificationRequired ? <PaymentInstructionPanel order={order} /> : null}
 
@@ -138,7 +140,7 @@ function PaymentInstructionPanel({ order }: { order: CustomerOrderItem }) {
   );
 }
 
-function InfoTile({ icon, label, value }: { icon: "receipt" | "payment" | "shipment" | "tracking"; label: string; value: string }) {
+function InfoTile({ icon, label, value }: { icon: "receipt" | "payment" | "shipment" | "tracking"; label: string; value: ReactNode }) {
   const Icon = icon === "receipt" || icon === "payment" ? ReceiptText : icon === "shipment" ? PackageCheck : Truck;
 
   return (
@@ -148,51 +150,6 @@ function InfoTile({ icon, label, value }: { icon: "receipt" | "payment" | "shipm
         {label}
       </dt>
       <dd className="mt-2 break-words text-sm font-bold leading-5 text-[#191c1e]">{value}</dd>
-    </div>
-  );
-}
-
-function TrackingStepRow({ step, isLast }: { step: CustomerOrderTrackingStep; isLast: boolean }) {
-  const isDone = step.status === "done";
-  const isActive = step.status === "active";
-
-  return (
-    <div className="relative flex gap-4">
-      {!isLast ? (
-        <span
-          aria-hidden="true"
-          className={`absolute left-[11px] top-8 h-[calc(100%+0.75rem)] w-0.5 ${isDone ? "bg-primary" : "bg-[#e0e3e5]"}`}
-        />
-      ) : null}
-
-      <span
-        className={
-          isDone
-            ? "z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm"
-            : isActive
-              ? "z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-4 border-primary bg-white"
-              : "z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#e6e8ea]"
-        }
-      >
-        {isDone ? <Check aria-hidden="true" className="size-3.5" strokeWidth={3} /> : null}
-        {isActive ? <span className="size-1.5 animate-pulse rounded-full bg-primary" /> : null}
-        {step.status === "pending" ? <span className="size-1.5 rounded-full bg-[#bdc9ca]" /> : null}
-      </span>
-
-      <div>
-        <h3
-          className={
-            isActive
-              ? "text-sm font-bold leading-5 text-primary"
-              : isDone
-                ? "text-sm font-bold leading-5 text-[#191c1e]"
-                : "text-sm font-medium leading-5 text-[#6e797a]"
-          }
-        >
-          {step.title}
-        </h3>
-        {step.description ? <p className="mt-1 text-xs leading-5 text-[#3e494a]">{step.description}</p> : null}
-      </div>
     </div>
   );
 }

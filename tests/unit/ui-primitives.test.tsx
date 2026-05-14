@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { IconButton } from "@/components/ui/IconButton";
+import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
+import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { SafeArea } from "@/components/ui/SafeArea";
 import { Screen } from "@/components/ui/Screen";
 import { SearchField } from "@/components/ui/SearchField";
@@ -84,6 +86,20 @@ const TestEmptyState = EmptyState as ComponentType<{
   body: string;
   icon?: ReactNode;
   action?: ReactNode;
+}>;
+
+const TestPaymentStatusBadge = PaymentStatusBadge as ComponentType<{
+  status: "pending_slip" | "pending_review" | "verified" | "rejected" | "refunded" | "no_payment_record" | null;
+  label?: string;
+}>;
+
+const TestOrderTrackingTimeline = OrderTrackingTimeline as ComponentType<{
+  steps: Array<{
+    title: string;
+    description: string | null;
+    status: "done" | "active" | "pending";
+  }>;
+  className?: string;
 }>;
 
 function render(component: ReactElement) {
@@ -197,6 +213,34 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("Browse store");
     expect(html).toContain("border-dashed");
     expect(html).toContain("bg-primary/10");
+  });
+
+  it("maps payment statuses to semantic badges", () => {
+    expect(render(createElement(TestPaymentStatusBadge, { status: "verified" }))).toContain("text-success");
+    expect(render(createElement(TestPaymentStatusBadge, { status: "pending_review" }))).toContain("text-warning");
+    expect(render(createElement(TestPaymentStatusBadge, { status: "rejected" }))).toContain("text-danger");
+    expect(render(createElement(TestPaymentStatusBadge, { status: null, label: "No payment" }))).toContain("No payment");
+  });
+
+  it("renders order tracking timeline states from shared rows", () => {
+    const html = render(
+      createElement(TestOrderTrackingTimeline, {
+        className: "pt-6",
+        steps: [
+          { title: "Order received", description: "Today", status: "done" },
+          { title: "Payment review", description: "Waiting", status: "active" },
+          { title: "Shipment", description: null, status: "pending" }
+        ]
+      })
+    );
+
+    expect(html).toContain("Order received");
+    expect(html).toContain("Payment review");
+    expect(html).toContain("Shipment");
+    expect(html).toContain("bg-primary");
+    expect(html).toContain("animate-pulse");
+    expect(html).toContain("bg-[#e6e8ea]");
+    expect(html).toContain("pt-6");
   });
 
   it("keeps the final customer footer labels and marks nested routes active", () => {
