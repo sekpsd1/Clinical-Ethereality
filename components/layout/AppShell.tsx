@@ -14,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/community" ||
     pathname.startsWith("/community/") ||
     pathname === "/profile" ||
+    pathname.startsWith("/profile/") ||
     pathname === "/store" ||
     pathname.startsWith("/store/");
   const usesFocusedHeader =

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout/AppShell";
 import { FooterNav } from "@/components/navigation/FooterNav";
 import { ArticleCard } from "@/components/ui/ArticleCard";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { CommentComposer } from "@/components/ui/CommentComposer";
 import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
@@ -60,6 +61,18 @@ const TestButton = Button as ComponentType<{
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
+}>;
+
+const TestBottomSheet = BottomSheet as ComponentType<{
+  title: string;
+  description?: string;
+  children?: ReactNode;
+  footer?: ReactNode;
+  open?: boolean;
+  dismissHref?: string;
+  className?: string;
+  contentClassName?: string;
+  bottomClassName?: string;
 }>;
 
 const TestIconButton = IconButton as ComponentType<{
@@ -222,6 +235,41 @@ describe("Stitch UI primitives", () => {
     expect(iconButtonHtml).toContain('title="Open settings"');
     expect(iconButtonHtml).toContain("rounded-full");
     expect(iconButtonHtml).toContain("size-10");
+  });
+
+  it("renders bottom sheets with handle, dismiss link, content, and footer slots", () => {
+    const html = render(
+      createElement(
+        TestBottomSheet,
+        {
+          title: "Profile settings",
+          description: "Review settings",
+          dismissHref: "/profile",
+          footer: createElement("p", null, "Consent pending"),
+          bottomClassName: "bottom-20"
+        },
+        createElement("button", { type: "button" }, "Privacy")
+      )
+    );
+    const closedHtml = render(
+      createElement(
+        TestBottomSheet,
+        {
+          title: "Closed",
+          open: false
+        },
+        "Hidden"
+      )
+    );
+
+    expect(html).toContain('aria-label="Profile settings"');
+    expect(html).toContain('href="/profile"');
+    expect(html).toContain("Review settings");
+    expect(html).toContain("Privacy");
+    expect(html).toContain("Consent pending");
+    expect(html).toContain("rounded-t-[32px]");
+    expect(html).toContain("bottom-20");
+    expect(closedHtml).not.toContain("Hidden");
   });
 
   it("renders text and search fields with accessible labels and validation messaging", () => {

@@ -145,7 +145,7 @@
 - [x] Build `TextField`
 - [x] Build `SearchField`
 - [x] Build `StatusBadge`
-- [ ] Build `BottomSheet`
+- [x] Build `BottomSheet`
 - [x] Build `EmptyState`
 - [x] Build `DoctorCard`
 - [x] Build `BookingCalendar`
@@ -195,7 +195,7 @@
 - [x] Build community search results screen
 - [ ] Add saved articles supporting screen if needed
 - [ ] Add shipping addresses supporting screen if needed
-- [ ] Add settings supporting screen if needed
+- [x] Add settings supporting screen if needed
 
 ## Phase 8: Admin Dashboard
 

@@ -103,9 +103,9 @@ function ProfileHeader() {
             <Bell aria-hidden="true" className="size-6" strokeWidth={2.4} />
             <span className="absolute right-1 top-1 size-2.5 rounded-full bg-[#ba1a1a] ring-2 ring-white" />
           </Link>
-          <button type="button" aria-label="Profile settings" className="flex size-10 items-center justify-center rounded-full text-primary">
+          <Link href="/profile/settings" aria-label="Profile settings" className="flex size-10 items-center justify-center rounded-full text-primary">
             <Settings aria-hidden="true" className="size-7 fill-primary/10" strokeWidth={2.4} />
-          </button>
+          </Link>
         </div>
       </div>
     </header>
