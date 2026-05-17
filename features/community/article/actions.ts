@@ -2,24 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { awardRewardPoints, getRewardExpiryDate, rewardRules } from "@/features/rewards/rules";
-
-const articleIdSchema = z.string().min(1);
-
-const commentSchema = z.object({
-  articleId: z.string().min(1),
-  body: z.string().trim().min(1).max(800)
-});
-
-const reportContentSchema = z.object({
-  itemId: z.string().min(1),
-  reason: z.string().trim().max(240).optional()
-});
+import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());

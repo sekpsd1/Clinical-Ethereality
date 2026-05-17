@@ -3,13 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { CART_COOKIE_NAME, parseCartCookie, serializeCartCookie } from "@/features/cart/cookies";
-
-const cartMutationSchema = z.object({
-  slug: z.string().min(1),
-  quantity: z.coerce.number().int().min(0).max(10).default(1)
-});
+import { cartMutationSchema } from "@/features/cart/schema";
 
 function formDataToObject(formData: FormData) {
   return {

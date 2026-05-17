@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { Prisma } from "@prisma/client";
-import { z } from "zod";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
@@ -13,13 +12,7 @@ import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 import { CART_COOKIE_NAME } from "@/features/cart/cookies";
-
-const checkoutSchema = z.object({
-  productSlugs: z
-    .union([z.string(), z.array(z.string())])
-    .transform((value) => (Array.isArray(value) ? value : [value]))
-    .pipe(z.array(z.string().min(1)).min(1).max(10))
-});
+import { checkoutSchema } from "@/features/products/checkout/schema";
 
 function formDataToObject(formData: FormData) {
   return {

@@ -128,7 +128,7 @@
 - [ ] Create feature action files
 - [ ] Create feature query files
 - [x] Create domain service files
-- [ ] Create Zod validation schemas
+- [x] Create Zod validation schemas
 - [x] Create permission helpers
 - [x] Add route handlers for LINE callback, payment webhook, Zoom webhook, and health check
 
