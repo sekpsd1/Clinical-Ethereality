@@ -1,6 +1,19 @@
 import Link from "next/link";
-import { ArrowLeft, Bell, ChevronRight, Languages, LockKeyhole, Settings, ShieldCheck, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Languages,
+  LockKeyhole,
+  Settings,
+  ShieldCheck,
+  UserRound
+} from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { acceptCustomerConsentAction } from "@/features/legal/actions";
+import type { CustomerConsentData } from "@/features/legal/types";
 
 type SettingSectionKey = "account" | "privacy" | "notifications" | "security" | "language";
 
@@ -15,31 +28,31 @@ const settingsItems: SettingItem[] = [
   {
     key: "account",
     label: "ข้อมูลบัญชี",
-    description: "ชื่อ บัญชี LINE และสถานะสมาชิกที่ผ่านการยืนยัน",
+    description: "ชื่อ บัญชี LINE และสถานะสมาชิก",
     icon: UserRound
   },
   {
     key: "privacy",
     label: "ความเป็นส่วนตัวและความยินยอม",
-    description: "รอข้อความยินยอมด้านข้อมูลสุขภาพฉบับจริงจากฝ่ายกฎหมาย",
+    description: "PDPA, Terms และ consent ด้านสุขภาพที่ต้องบันทึก version",
     icon: ShieldCheck
   },
   {
     key: "notifications",
     label: "การแจ้งเตือน",
-    description: "การปรึกษา คำสั่งซื้อ ชุมชน และคะแนนสะสม",
+    description: "การปรึกษา คำสั่งซื้อ การชำระเงิน และคะแนนสะสม",
     icon: Bell
   },
   {
     key: "security",
     label: "ความปลอดภัย",
-    description: "การจัดการเซสชันและการตรวจสอบอุปกรณ์ในอนาคต",
+    description: "เซสชันและการเข้าถึงข้อมูลสำคัญ",
     icon: LockKeyhole
   },
   {
     key: "language",
     label: "ภาษา",
-    description: "ประสบการณ์ LINE LIFF ที่ออกแบบโดยใช้ภาษาไทยเป็นหลัก",
+    description: "ประสบการณ์ LINE LIFF ภาษาไทยเป็นหลัก",
     icon: Languages
   }
 ];
@@ -47,7 +60,7 @@ const settingsItems: SettingItem[] = [
 const sectionDetails: Record<SettingSectionKey, { title: string; body: string; rows: Array<{ label: string; value: string }> }> = {
   account: {
     title: "ข้อมูลบัญชี",
-    body: "ข้อมูลบัญชีแสดงเฉพาะข้อมูลจำลองที่ปลอดภัย จนกว่าจะเชื่อมต่อข้อมูลลูกค้าจริงจาก LINE LIFF และฐานข้อมูล production",
+    body: "ข้อมูลบัญชีแสดงเฉพาะข้อมูลจำลองที่ปลอดภัย จนกว่าจะเชื่อมต่อ LINE LIFF production",
     rows: [
       { label: "ชื่อที่แสดง", value: "K. Ananya" },
       { label: "สถานะสมาชิก", value: "ผ่านการยืนยัน" },
@@ -56,25 +69,21 @@ const sectionDetails: Record<SettingSectionKey, { title: string; body: string; r
   },
   privacy: {
     title: "ความเป็นส่วนตัวและความยินยอม",
-    body: "ส่วนนี้เตรียมไว้สำหรับข้อความ PDPA เงื่อนไขบริการ และความยินยอมด้านข้อมูลสุขภาพเมื่อได้รับเนื้อหาจริงจากลูกค้า",
-    rows: [
-      { label: "PDPA Privacy Policy", value: "รอเอกสารจากลูกค้า" },
-      { label: "Terms of Service", value: "รอเอกสารจากลูกค้า" },
-      { label: "Health-data consent", value: "รอข้อความฉบับอนุมัติ" }
-    ]
+    body: "บันทึกการยอมรับ PDPA, Terms และ consent สำคัญ พร้อม version และ timestamp เพื่อรองรับ audit",
+    rows: []
   },
   notifications: {
     title: "การแจ้งเตือน",
-    body: "เตรียมกลุ่มการแจ้งเตือนหลักของลูกค้าไว้ก่อน โดยยังไม่เปิดการตั้งค่า production channel จนกว่าจะได้รับข้อมูลจริง",
+    body: "เตรียมกลุ่มการแจ้งเตือนหลักของลูกค้าไว้ก่อน โดยยังไม่เปิด production channel จนกว่าจะได้รับข้อมูลจริง",
     rows: [
       { label: "การปรึกษา", value: "เปิด" },
       { label: "คำสั่งซื้อและการชำระเงิน", value: "เปิด" },
-      { label: "ชุมชนและคะแนนสะสม", value: "เปิด" }
+      { label: "คะแนนสะสม", value: "เปิด" }
     ]
   },
   security: {
     title: "ความปลอดภัย",
-    body: "เซสชันและการเข้าถึงข้อมูลสำคัญยังอยู่หลังระบบยืนยันตัวตน และจะเพิ่มการตรวจสอบอุปกรณ์เมื่อเข้าสู่ production",
+    body: "เซสชันและการเข้าถึงข้อมูลสำคัญอยู่หลังระบบยืนยันตัวตน และจะเพิ่มการตรวจสอบอุปกรณ์เมื่อเข้าสู่ production",
     rows: [
       { label: "สถานะเซสชัน", value: "ใช้งานอยู่" },
       { label: "การตรวจสอบอุปกรณ์", value: "เตรียมไว้สำหรับอนาคต" },
@@ -92,7 +101,7 @@ const sectionDetails: Record<SettingSectionKey, { title: string; body: string; r
   }
 };
 
-export function ProfileSettings({ section }: { section?: string }) {
+export function ProfileSettings({ consentData, section }: { consentData: CustomerConsentData; section?: string }) {
   const activeSection = getActiveSection(section);
   const activeDetail = activeSection ? sectionDetails[activeSection] : null;
 
@@ -135,10 +144,83 @@ export function ProfileSettings({ section }: { section?: string }) {
         }
         dismissHref={activeDetail ? "/profile/settings" : "/profile"}
         bottomClassName="bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
-        footer={<p className="text-xs leading-5 text-[#6e797a]">ข้อความยินยอมสำหรับใช้งานจริงยังรอการอนุมัติจากฝ่ายกฎหมายของลูกค้า</p>}
+        footer={
+          <p className="text-xs leading-5 text-[#6e797a]">
+            {activeSection === "privacy"
+              ? `ยอมรับแล้ว ${consentData.acceptedCount}/${consentData.requiredCount} รายการ`
+              : "ข้อมูลที่มีความอ่อนไหวถูกจำกัดอยู่หลังบัญชีที่ยืนยันแล้ว"}
+          </p>
+        }
       >
-        {activeDetail ? <SettingDetailRows rows={activeDetail.rows} /> : <SettingMenu />}
+        {activeSection === "privacy" ? (
+          <PrivacyConsentPanel data={consentData} />
+        ) : activeDetail ? (
+          <SettingDetailRows rows={activeDetail.rows} />
+        ) : (
+          <SettingMenu />
+        )}
       </BottomSheet>
+    </div>
+  );
+}
+
+function PrivacyConsentPanel({ data }: { data: CustomerConsentData }) {
+  return (
+    <div className="space-y-4">
+      {data.unavailable ? (
+        <div className="rounded-[18px] border border-danger/20 bg-danger/5 p-4 text-sm font-semibold leading-6 text-danger">
+          ยังโหลดสถานะความยินยอมไม่ได้ กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล
+        </div>
+      ) : null}
+
+      {data.items.map((item) => (
+        <article key={item.type} className="rounded-[20px] border border-white/50 bg-white/75 p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{item.version}</p>
+              <h3 className="mt-1 text-sm font-extrabold leading-5 text-[#191c1e]">{item.title}</h3>
+            </div>
+            <span
+              className={
+                item.accepted
+                  ? "inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-success"
+                  : "inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-warning"
+              }
+            >
+              {item.accepted ? <CheckCircle2 aria-hidden="true" className="size-3" /> : <Clock3 aria-hidden="true" className="size-3" />}
+              {item.accepted ? "Accepted" : "Pending"}
+            </span>
+          </div>
+
+          <p className="mt-3 text-xs leading-5 text-[#3e494a]">{item.summary}</p>
+
+          <ul className="mt-3 space-y-2">
+            {item.bullets.map((bullet) => (
+              <li key={bullet} className="flex gap-2 text-xs leading-5 text-[#3e494a]/85">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary/70" />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+
+          {item.accepted ? (
+            <p className="mt-4 rounded-[14px] bg-success/5 px-3 py-2 text-xs font-semibold leading-5 text-success">
+              ยอมรับแล้ว: {item.acceptedAt}
+            </p>
+          ) : (
+            <form action={acceptCustomerConsentAction} className="mt-4">
+              <input type="hidden" name="type" value={item.type} />
+              <input type="hidden" name="version" value={item.version} />
+              <button
+                type="submit"
+                className="flex h-11 w-full items-center justify-center rounded-full bg-primary-gradient px-4 text-sm font-bold text-white shadow-chip active:scale-[0.99]"
+              >
+                ยอมรับเอกสารนี้
+              </button>
+            </form>
+          )}
+        </article>
+      ))}
     </div>
   );
 }

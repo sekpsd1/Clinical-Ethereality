@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
+import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
+import { acceptConsentSchema } from "@/features/legal/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
 
 describe("feature validation schemas", () => {
@@ -28,5 +30,30 @@ describe("feature validation schemas", () => {
     expect(commentSchema.safeParse({ articleId: "article-1", body: "" }).success).toBe(false);
     expect(reportContentSchema.parse({ itemId: "comment-1", reason: "  Needs review  " }).reason).toBe("Needs review");
     expect(reportContentSchema.safeParse({ itemId: "comment-1", reason: "x".repeat(241) }).success).toBe(false);
+  });
+
+  it("validates versioned legal consent acceptance payloads", () => {
+    const requiredDocuments = getRequiredLegalDocuments();
+
+    expect(requiredDocuments).toHaveLength(5);
+    expect(getLegalDocument("health_data")?.version).toBe("2026-05-20-draft");
+    expect(
+      acceptConsentSchema.safeParse({
+        type: "health_data",
+        version: "2026-05-20-draft"
+      }).success
+    ).toBe(true);
+    expect(
+      acceptConsentSchema.safeParse({
+        type: "unknown",
+        version: "2026-05-20-draft"
+      }).success
+    ).toBe(false);
+    expect(
+      acceptConsentSchema.safeParse({
+        type: "health_data",
+        version: ""
+      }).success
+    ).toBe(false);
   });
 });

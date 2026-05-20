@@ -78,7 +78,7 @@ Initial product scope:
 - Inventory management for products and medicine
 - Community posts, comments, reporting, and admin moderation
 - Secure document, prescription, and attachment support
-- Notification-ready architecture for email and SMS, even if messaging is added later
+- Notification-ready architecture for email, even if messaging is added later
 
 Future scope:
 
@@ -107,7 +107,6 @@ Selected stack:
 - Video call: Zoom SDK
 - Payment: Thai QR plus Slip Verification API
 - Email: Resend, Postmark, or SendGrid
-- SMS: Twilio, added only when needed
 - Validation: Zod
 - Forms: React Hook Form
 - Testing: Vitest for unit tests, Playwright for end-to-end tests
@@ -130,11 +129,11 @@ Clinical Ethereality should use a modular monolith architecture inside a single 
 Primary layers:
 
 - Presentation layer: mobile-first React screens, route groups, shared UI components, persistent footer navigation, and Tailwind tokens generated from the finalized Stitch design system.
-- Server action layer: Next.js Server Actions for mutations such as checkout, prescription verification, payment review, inventory updates, comments, likes, and admin moderation.
-- Query layer: server-side data loaders for product browsing, orders, consultations, prescriptions, inventory, articles, and notifications.
+- Server action layer: Next.js Server Actions for mutations such as checkout, consent acceptance, prescription verification, payment review, inventory updates, comments, likes, and admin moderation.
+- Query layer: server-side data loaders for product browsing, orders, consultations, prescriptions, inventory, articles, notifications, and customer consent status.
 - Domain layer: role-aware business logic grouped by domain, with permissions checked before sensitive reads or writes.
 - Data layer: Prisma models and repositories over MySQL.
-- Integration layer: LINE LIFF, JWT, Zoom SDK, Cloudinary or S3, Thai QR generation, Slip Verification API, email, SMS, monitoring, and analytics.
+- Integration layer: LINE LIFF, JWT, Zoom SDK, Cloudinary or S3, Thai QR generation, Slip Verification API, email, monitoring, and analytics.
 
 Core domains:
 
@@ -526,6 +525,7 @@ Main database entities:
 - comments
 - likes
 - notifications
+- consent_records
 - reward_points
 
 Entity responsibilities:
@@ -545,7 +545,8 @@ Entity responsibilities:
 - articles: community or educational content posts
 - comments: threaded or flat comments on articles
 - likes: user reactions for articles or comments
-- notifications: in-app, email, LINE, or SMS notification records
+- notifications: in-app, email, or LINE notification records
+- consent_records: versioned PDPA, Terms, health-data, teleconsultation, and prescription/pharmacy fulfillment acceptance records
 - reward_points: earned, spent, adjusted, and expired customer points
 
 ## Database Schema Proposal
@@ -568,13 +569,14 @@ Suggested Prisma model direction:
 - `comments`: `id`, `articleId`, `userId`, `parentId`, `body`, `status`, `createdAt`, `updatedAt`
 - `likes`: `id`, `userId`, `articleId`, `commentId`, `createdAt`
 - `notifications`: `id`, `userId`, `type`, `channel`, `title`, `body`, `readAt`, `metadataJson`, `createdAt`
+- `consent_records`: `id`, `userId`, `type`, `version`, `acceptedAt`, `revokedAt`, `ipAddress`, `userAgent`, `metadataJson`
 - `reward_points`: `id`, `userId`, `sourceType`, `sourceId`, `points`, `direction`, `expiresAt`, `createdAt`
 
 Key relationships:
 
 - One `user` can have one `doctor` profile or one `pharmacist` profile when applicable.
 - One `user` can have many `auth_sessions` for active LINE Mini App sessions.
-- One `user` can create many `orders`, `consultations`, `comments`, `likes`, `notifications`, and `reward_points`.
+- One `user` can create many `orders`, `consultations`, `comments`, `likes`, `notifications`, `consent_records`, and `reward_points`.
 - One `consultation` can produce prescriptions.
 - One `prescription` can be verified by a pharmacist and referenced by prescription-required order items.
 - One `order` has many `order_items`, one or more `payments`, and shipment tracking records.
@@ -622,7 +624,7 @@ Server Action conventions:
 - Use `lib/actions/server-actions.ts` for shared form-action state, recoverable validation errors, and `FormData` conversion in new action work.
 - Resolve the authenticated session and enforce permissions before sensitive reads or writes.
 - Wrap multi-record state changes in Prisma transactions.
-- Write audit logs for sensitive payment, prescription, order, inventory, moderation, reward, and staff-account changes.
+- Write audit logs for sensitive consent, payment, prescription, order, inventory, moderation, reward, and staff-account changes.
 - Revalidate every affected route after successful state changes; redirect only after durable writes are complete.
 
 Route handlers:

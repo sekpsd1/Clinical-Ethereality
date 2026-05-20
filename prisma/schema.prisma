@@ -108,7 +108,6 @@ enum NotificationChannel {
   in_app
   line
   email
-  sms
 }
 
 enum NotificationType {
@@ -133,6 +132,14 @@ enum RewardPointSource {
   order
   community
   admin_adjustment
+}
+
+enum ConsentType {
+  privacy_policy
+  terms_of_service
+  health_data
+  teleconsultation
+  prescription_fulfillment
 }
 
 model User {
@@ -160,6 +167,7 @@ model User {
   likes             Like[]
   notifications     Notification[]
   rewardPoints      RewardPoint[]
+  consentRecords    ConsentRecord[]
   auditLogs         AuditLog[]         @relation("ActorAuditLogs")
   reviewedPayments  Payment[]          @relation("PaymentReviewer")
   updatedInventory  Inventory[]        @relation("InventoryUpdater")
@@ -167,6 +175,28 @@ model User {
 
   @@index([role])
   @@index([status])
+}
+
+model ConsentRecord {
+  id           String      @id @default(cuid())
+  userId       String
+  type         ConsentType
+  version      String      @db.VarChar(80)
+  acceptedAt   DateTime    @default(now())
+  revokedAt    DateTime?
+  ipAddress    String?     @db.VarChar(45)
+  userAgent    String?     @db.Text
+  metadataJson Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, version])
+  @@index([userId])
+  @@index([type])
+  @@index([acceptedAt])
+  @@index([revokedAt])
 }
 
 model AuthSession {
@@ -200,7 +230,7 @@ model Doctor {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   consultations Consultation[]
   prescriptions Prescription[]
   availability  DoctorAvailability[]

@@ -33,18 +33,18 @@
 
 ## Phase 0.5: Client Intake
 
-- [ ] Receive Thai PDPA Privacy Policy
-- [ ] Receive Thai Terms of Service
-- [ ] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
-- [ ] Receive company name, tax ID, billing address, parcel sender address, and support contact
+- [x] Receive Thai PDPA Privacy Policy draft
+- [x] Receive Thai Terms of Service draft
+- [x] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
+- [x] Receive company name, tax ID, billing address, parcel sender address, and support contact
 - [ ] Receive doctor bio, education, specialty, license number, consultation fee, schedule, and official profile photo
 - [ ] Receive product catalog with FDA numbers, prices, images, stock, and prescription-required flags
 - [ ] Receive pharmacy and pharmacist license data
-- [ ] Receive prescription verification, medicine preparation, and shipment SOPs
-- [ ] Confirm PromptPay phone/tax ID, bank account name, bank, and secure storage location
-- [ ] Choose SlipOK or EasySlip and receive API details securely
-- [ ] Receive article content, article categories, community rules, and moderation policy
-- [ ] Receive or export Stitch source/tokens/assets
+- [ ] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
+- [ ] Confirm PromptPay phone/tax ID and secure production payment configuration
+- [ ] Configure EasySlip API details securely as owner-managed setup
+- [ ] Defer article content, article categories, community rules, and moderation policy until after MVP unless Community returns to MVP scope
+- [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
 
@@ -85,6 +85,7 @@
 - [x] Implement initial JWT refresh endpoint
 - [x] Implement logout
 - [x] Implement session handling
+- [x] Add versioned legal and consent acceptance records
 - [x] Implement doctor, pharmacist, and admin invitation flow
 - [x] Define customer, doctor, pharmacist, and admin roles
 - [x] Add initial route-level role boundaries for doctors, pharmacists, and admins
@@ -292,7 +293,6 @@
 - [ ] Delivery carrier integrations
 - [ ] Before-and-after image comparison
 - [ ] Email notifications
-- [ ] SMS notifications
 - [ ] Multi-location support
 - [ ] AI-assisted note drafting
 - [ ] AI-assisted treatment summaries

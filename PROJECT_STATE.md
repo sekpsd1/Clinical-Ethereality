@@ -94,7 +94,7 @@ Core layers:
 - Server actions: validated mutations and permission enforcement
 - Domain services: role-aware business logic
 - Data access: Prisma over MySQL
-- Integrations: LINE LIFF, JWT, Zoom SDK, Thai QR, Slip Verification API, Cloudinary or S3, email, SMS, monitoring
+- Integrations: LINE LIFF, JWT, Zoom SDK, Thai QR, Slip Verification API, Cloudinary or S3, email, monitoring
 
 Core route areas:
 
@@ -337,6 +337,7 @@ Completed in the current frontend pass:
 - Backup and restore readiness foundation: `BACKUPS.md` now defines environment-specific backup policy, database backup checklist, restore drill, object-storage backup checklist, incident restore procedure, recommended RPO/RTO targets, and production launch gates for backups before patient-like records are entered.
 - Error monitoring foundation: Sentry Next.js monitoring is wired through `instrumentation.ts`, `instrumentation-client.ts`, server and edge Sentry config files, and `withSentryConfig` in `next.config.ts`; monitoring stays disabled until environment DSNs are configured, source-map uploads are gated by `SENTRY_AUTH_TOKEN`, and default PII capture remains disabled for privacy-sensitive workflows.
 - Compliance review foundation: `/admin/compliance` now gives admins a production-readiness checklist covering PDPA/legal inputs, health-data consent, access controls, audit/backup/monitoring, clinical/pharmacy SOPs, payment credentials, and fulfillment requirements before real patient-like records are enabled.
+- Consent acceptance foundation: `ConsentRecord` now stores versioned PDPA, Terms, health-data, teleconsultation, and prescription/pharmacy fulfillment acceptance records with timestamp, request metadata, and audit logging; `/profile/settings?section=privacy` exposes the current required consent set for authenticated customers.
 - Staff invite flow: `/staff-invite/doctor`, `/staff-invite/pharmacist`, and `/staff-invite/admin` create pending review requests from authenticated LINE users, preserve admin approval as the final gate, and write audit metadata for invite requests.
 - Community card primitives: `ArticleCard` and `CommunityPostCard` now extract the existing Stitch community/search card treatments into reusable components without changing finalized layouts.
 - Comment composer primitive: `CommentComposer` now extracts the existing Stitch article comment input treatment into a reusable form composer while preserving the article detail layout.
@@ -360,7 +361,7 @@ Known frontend caveats:
 
 Not implemented yet:
 
-- Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, customer order tracking, and customer article interaction foundations.
+- Business-domain queries beyond the current admin, doctor, pharmacist, customer notification, customer consent, customer order tracking, and customer article interaction foundations.
 - Domain service coverage has started with shared order fulfillment transitions for admin and pharmacist workflows; additional services should be added as more sensitive workflows are implemented.
 - Reusable mobile layout primitives now include `Screen`, `SafeArea`, `Button`, `IconButton`, `TextField`, `SearchField`, `EmptyState`, `PaymentStatusBadge`, `OrderTrackingTimeline`, `NotificationItem`, `ProfileSettingsItem`, `ArticleCard`, `CommunityPostCard`, `CommentComposer`, and `BottomSheet`; continue extracting unchecked Stitch primitives without redesigning finalized screens.
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
@@ -394,4 +395,4 @@ Not implemented yet:
 
 ## Next Recommended Step
 
-Phase 12 quality work is complete, and the staff invitation foundation is now in place. Permission unit tests, feature validation schema tests, reusable Stitch UI primitive tests including `Screen`/`SafeArea`, form/button/empty-state primitives, order payment/tracking primitives, notification/profile row primitives, community card primitives, the comment composer primitive, and the bottom sheet primitive, order fulfillment service tests, protected workflow integration tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, Playwright smoke tests, Vercel preview deployment configuration, staging environment configuration, production environment launch gates, backup/restore readiness plans, Sentry error monitoring wiring, and admin compliance readiness review are in place. Next recommended step: collect the remaining client intake items, continue extracting reusable Stitch domain cards/rows without redesigning finalized screens, or tackle credential-dependent MVP gaps such as Zoom SDK integration, file storage, real LINE LIFF channel configuration, and production payment verification.
+Phase 12 quality work is complete, and the staff invitation plus consent acceptance foundations are now in place. Permission unit tests, feature validation schema tests, reusable Stitch UI primitive tests including `Screen`/`SafeArea`, form/button/empty-state primitives, order payment/tracking primitives, notification/profile row primitives, community card primitives, the comment composer primitive, and the bottom sheet primitive, order fulfillment service tests, protected workflow integration tests, footer/navigation checks, mobile LINE LIFF viewport smoke coverage, Playwright smoke tests, Vercel preview deployment configuration, staging environment configuration, production environment launch gates, backup/restore readiness plans, Sentry error monitoring wiring, admin compliance readiness review, and versioned PDPA/Terms/health consent acceptance are in place. Next recommended step: draft the pharmacy and prescription fulfillment SOP flow for client review, collect the remaining doctor/product/pharmacist/PromptPay intake items, or tackle owner-managed credential MVP gaps such as Zoom SDK integration, file storage, real LINE LIFF channel configuration, EasySlip, and production payment verification.
