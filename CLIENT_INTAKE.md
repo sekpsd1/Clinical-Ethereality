@@ -48,6 +48,7 @@ This checklist tracks information needed from the client before implementation a
 
 ### Consultation Operations
 
+- [ ] Remaining pre-doctor consult assessment Stitch HTML export zip files; intro page and symptom page received and implemented at `/consult/assessment` and `/consult/assessment/symptoms`, flow rules received for 4 Stitch-designed pages, recommendation after completion, optional doctor selection, 7-day reuse, doctor visibility, and no attachment field
 - [ ] Zoom SDK account details
 - [ ] Consultation reminder timing
 - [ ] Waiting room timing rules
@@ -78,14 +79,14 @@ This checklist tracks information needed from the client before implementation a
 - [ ] Pharmacy license number: still needed for the clinic-as-pharmacy workflow
 - [ ] Pharmacist full legal name
 - [ ] Pharmacist license number
-- [ ] Prescription verification SOP
-- [ ] Medicine preparation SOP
-- [ ] Packing and shipment SOP
+- [x] Prescription verification SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
+- [x] Medicine preparation SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
+- [x] Packing and shipment SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
 - [ ] Controlled item restrictions, if any
 
 ### Payment And Integration
 
-- [ ] PromptPay phone number or tax ID linked to payment account: needed for generated PromptPay QR payloads
+- [x] PromptPay phone number or tax ID linked to payment account: received; keep exact value outside git and configure through `THAI_QR_PROMPTPAY_ID`
 - [x] Bank account name: received
 - [x] Bank name: received
 - [x] Bank account number, stored securely outside git: received; do not commit the exact value
@@ -143,6 +144,14 @@ This checklist tracks information needed from the client before implementation a
 - EasySlip API key and webhook setup will be handled by the project owner for the client.
 - Stitch source, tokens, and assets are owner-managed design inputs, not client intake. If additional screens are needed, the project owner will provide Stitch HTML exports.
 
+## Intake Templates Prepared
+
+- `DOCTOR_INTAKE_TEMPLATE.md`: doctor profile, license, consultation schedule, consultation mode, and policy fields.
+- `CONSULT_ASSESSMENT_INTAKE_TEMPLATE.md`: pre-doctor assessment flow, question schema, routing logic, privacy, and Stitch export requirements.
+- `PRODUCT_CATALOG_TEMPLATE.csv`: product catalog fields for FDA number, price, VAT note, image file names, prescription requirement, stock, warnings, and storage.
+- `PHARMACIST_INTAKE_TEMPLATE.md`: pharmacy license, pharmacist license, controlled item, substitution, shipment exception, and document-template policy fields.
+- `CLIENT_SOP_REVIEW_MESSAGE.md`: owner-facing LINE/email copy for asking the client to review the pharmacy SOP.
+
 ## Latest Client Intake Gap Summary
 
 Received from the client:
@@ -152,20 +161,26 @@ Received from the client:
 - Company identity, registered/billing/sender address, support email, phone, and LINE OA.
 - Two company/clinic logo image files received; use `logo clinic.png` for clinic/pharmacy references, with no separate web app logo required in the current UI scope.
 - Bank account holder and bank details, with sensitive exact account values to remain outside git.
+- Production PromptPay identifier received; exact value must remain outside git and be configured only through environment secrets.
 - EasySlip selected as the slip verification provider.
 - Payment review outcomes and rejection handling rules.
 - Thailand Post EMS shipping rules, delivery coverage, delivery windows, and tracking-number workflow.
 - Client confirmed the clinic will be used as the pharmacy/storefront concept.
+- Draft pharmacy/prescription fulfillment SOP and client review message are prepared for owner review before sending to the client.
+- Doctor, product catalog, and pharmacist/pharmacy intake templates are prepared for the owner to send to the client.
+- Pre-doctor assessment flow rules received: 4 Stitch-designed pages, follow Stitch answer types, recommend by assessment topic while allowing doctor selection, reuse assessment for 7 days, show answers to doctors, and no file/image attachment in the first version.
+- Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`; remaining assessment pages are still needed before the full assessment flow can replace the temporary doctor-list continuation.
+- Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`; remaining assessment pages are still needed before recommendation routing and 7-day reuse can be completed.
 
 Still needed from the client:
 
 - Later legal review or revised legal drafts, if the client updates the current wording.
 - Community guidelines, article content, and moderation policy are deferred until after MVP unless the client asks to launch Community earlier.
 - Doctor profiles, licenses, fees, schedules, and official photos.
+- Remaining Stitch HTML export zip files for the pre-doctor assessment screens and final recommendation mapping labels from the Stitch design.
 - Pharmacy license number, pharmacist name, and pharmacist license number for the clinic-as-pharmacy workflow.
 - Product catalog with FDA numbers, prices, images, stock, prescription-required flags, warnings, and storage instructions.
-- Clinic-specific pharmacy SOP constraints, if any; otherwise the project team will draft the prescription verification, medicine preparation, packing, and shipment flow for client review.
-- PromptPay phone or tax ID for generated QR payment payloads.
+- Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; confirm clinic-specific constraints, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.
 
 Still owner-managed:
 
@@ -184,7 +199,7 @@ Before development starts:
 2. Company name, tax ID, billing/shipping address, and support contact
 3. Doctor profile, license, price, schedule, and official photo
 4. Product catalog with FDA numbers, prices, images, and prescription requirements
-5. PromptPay account for QR payment payloads
-6. Clinic-specific SOP constraints, if any, before the project team drafts pharmacy and fulfillment workflows
+5. Secure environment configuration for the received PromptPay account
+6. Client review of the drafted pharmacy and fulfillment SOP, including any clinic-specific constraints
 7. Community categories and moderation rules only if Community is brought back into MVP scope
 8. Additional owner-provided Stitch HTML exports if new screens are needed

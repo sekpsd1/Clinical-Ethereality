@@ -8,8 +8,9 @@ import { cn } from "@/lib/design-system/variants";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hidesFooter = pathname.startsWith("/consult/live");
+  const hidesFooter = pathname.startsWith("/consult/live") || pathname.startsWith("/consult/assessment");
   const usesCustomCanvas =
+    pathname.startsWith("/consult/assessment") ||
     pathname === "/notifications" ||
     pathname === "/community" ||
     pathname.startsWith("/community/") ||
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/store/");
   const usesFocusedHeader =
     usesCustomCanvas ||
+    pathname.startsWith("/consult/assessment") ||
     pathname.startsWith("/consult/booking") ||
     pathname.startsWith("/consult/appointments") ||
     pathname.startsWith("/consult/payment") ||

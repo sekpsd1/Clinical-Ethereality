@@ -38,10 +38,11 @@
 - [x] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
 - [x] Receive company name, tax ID, billing address, parcel sender address, and support contact
 - [ ] Receive doctor bio, education, specialty, license number, consultation fee, schedule, and official profile photo
+- [ ] Receive remaining pre-doctor assessment Stitch HTML export zip files; intro and symptom pages implemented, flow rules received for 4 pages, recommendation, doctor choice, 7-day reuse, doctor visibility, and no attachments
 - [ ] Receive product catalog with FDA numbers, prices, images, stock, and prescription-required flags
 - [ ] Receive pharmacy and pharmacist license data
-- [ ] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
-- [ ] Confirm PromptPay phone/tax ID and secure production payment configuration
+- [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
+- [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup
 - [ ] Defer article content, article categories, community rules, and moderation policy until after MVP unless Community returns to MVP scope
 - [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens

@@ -78,6 +78,27 @@ test.describe("customer mobile smoke", () => {
     });
   }
 
+  test("/consult/assessment loads as a focused assessment intro", async ({ page }) => {
+    await page.goto("/consult/assessment");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "แบบประเมิน Aura Health" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /เริ่มทำแบบประเมิน/ })).toHaveAttribute("href", "/consult/assessment/symptoms");
+  });
+
+  test("/consult/assessment/symptoms enables the next action after selecting a symptom", async ({ page }) => {
+    await page.goto("/consult/assessment/symptoms");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "อาการเบื้องต้นที่คุณรู้สึกตอนนี้คืออะไร?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Next$/ })).toBeDisabled();
+    await page.getByRole("radio", { name: /ปวดหัว/ }).click();
+    await expect(page.getByRole("radio", { name: /ปวดหัว/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("button", { name: /Next Step/ })).toBeEnabled();
+  });
+
   test("/consult/live hides the customer footer during video consultation", async ({ page }) => {
     await page.goto("/consult/live");
 

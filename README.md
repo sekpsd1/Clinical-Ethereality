@@ -80,6 +80,13 @@ Initial product scope:
 - Secure document, prescription, and attachment support
 - Notification-ready architecture for email, even if messaging is added later
 
+Current planning references:
+
+- `CLIENT_INTAKE.md` tracks received and missing client inputs without committing sensitive exact values.
+- `PHARMACY_SOP_DRAFT.md` drafts the clinic-as-pharmacy prescription verification, medicine preparation, packing, shipment, exception, and audit flow for client review.
+- `CLIENT_SOP_REVIEW_MESSAGE.md` provides owner-facing LINE/email copy for requesting client review of the pharmacy SOP and remaining fulfillment decisions.
+- `DOCTOR_INTAKE_TEMPLATE.md`, `CONSULT_ASSESSMENT_INTAKE_TEMPLATE.md`, `PRODUCT_CATALOG_TEMPLATE.csv`, and `PHARMACIST_INTAKE_TEMPLATE.md` provide owner-sendable templates for collecting the remaining MVP data from the client.
+
 Future scope:
 
 - Online appointment scheduling

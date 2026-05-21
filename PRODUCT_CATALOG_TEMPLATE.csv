@@ -1,0 +1,2 @@
+product_name,category,description,usage_instructions,fda_number,unit_price_vat_included,vat_note,image_file_names,prescription_required,stock_quantity,low_stock_threshold,warnings_or_contraindications,storage_instructions,controlled_or_restricted,special_fulfillment_notes
+"ตัวอย่าง Paracetamol 500mg","ยา","รายละเอียดสินค้า","รับประทานครั้งละ...","เลข อย. ตัวอย่าง","true","ราคารวม VAT หรือไม่","product-1.jpg","false","100","10","คำเตือน/ข้อห้ามใช้","เก็บที่อุณหภูมิห้อง","false",""
