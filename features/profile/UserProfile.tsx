@@ -4,13 +4,13 @@ import {
   Bell,
   Bookmark,
   ClipboardList,
-  LogOut,
   Pill,
   Settings,
   ShieldCheck,
   Truck
 } from "lucide-react";
 import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
+import { LogoutButton } from "@/features/profile/LogoutButton";
 
 type ProfileMenuItem = {
   label: string;
@@ -81,10 +81,7 @@ export function UserProfile() {
           </section>
 
           <section className="pb-12 pt-8 text-center">
-            <button type="button" className="inline-flex items-center gap-2 font-semibold text-[#ba1a1a] underline-offset-8 hover:underline">
-              <LogOut aria-hidden="true" className="size-4" />
-              ออกจากระบบ
-            </button>
+            <LogoutButton />
             <p className="mt-5 text-[10px] uppercase tracking-[0.22em] text-[#6e797a]">
               App Version 2.4.0 Clinical Edition
             </p>

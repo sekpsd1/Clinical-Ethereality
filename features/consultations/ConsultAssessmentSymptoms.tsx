@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Brain, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Thermometer, Waves } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
@@ -34,7 +33,6 @@ const symptomOptions = [
 ] as const;
 
 export function ConsultAssessmentSymptoms() {
-  const router = useRouter();
   const [selectedSymptom, setSelectedSymptom] = useState<string | null>(null);
 
   return (
@@ -122,26 +120,26 @@ export function ConsultAssessmentSymptoms() {
           className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80 transition-colors hover:text-[#006067]"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />
-          <span className="font-label text-xs">Previous</span>
+          <span className="font-label text-xs">ก่อนหน้า</span>
         </Link>
-        <button
-          type="button"
-          disabled={!selectedSymptom}
-          onClick={() => {
-            if (selectedSymptom) {
-              router.push("/consult/assessment/duration");
-            }
-          }}
-          className={cn(
-            "flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 transition-all",
-            selectedSymptom
-              ? "scale-105 rounded-full bg-[#006067] px-8 text-white shadow-lg shadow-[#006067]/20"
-              : "cursor-not-allowed text-[#3e494a]/40"
-          )}
-        >
-          <ChevronRight aria-hidden="true" className="size-5" />
-          <span className="font-label text-xs">{selectedSymptom ? "Next Step" : "Next"}</span>
-        </button>
+        {selectedSymptom ? (
+          <a
+            href={`/consult/assessment/duration?symptom=${selectedSymptom}`}
+            className="flex min-w-14 scale-105 flex-col items-center justify-center gap-1 rounded-full bg-[#006067] px-8 py-2 text-white shadow-lg shadow-[#006067]/20 transition-all"
+          >
+            <ChevronRight aria-hidden="true" className="size-5" />
+            <span className="font-label text-xs">ถัดไป</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="flex min-w-14 cursor-not-allowed flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/40 transition-all"
+          >
+            <ChevronRight aria-hidden="true" className="size-5" />
+            <span className="font-label text-xs">ถัดไป</span>
+          </button>
+        )}
       </nav>
     </section>
   );

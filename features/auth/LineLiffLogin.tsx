@@ -16,6 +16,7 @@ declare global {
 }
 
 type LoginState = "checking" | "redirecting" | "error";
+type DevBypassRole = "customer" | "doctor" | "admin";
 
 function loadLiffSdk(): Promise<LiffClient> {
   if (window.liff) {
@@ -55,11 +56,11 @@ function loadLiffSdk(): Promise<LiffClient> {
 export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: boolean; nextPath: string }) {
   const [state, setState] = useState<LoginState>("checking");
   const [message, setMessage] = useState("Checking your LINE session...");
-  const [devLoadingRole, setDevLoadingRole] = useState<"customer" | "admin" | null>(null);
+  const [devLoadingRole, setDevLoadingRole] = useState<DevBypassRole | null>(null);
   const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
   const safeNextPath = useMemo(() => (nextPath.startsWith("/") ? nextPath : "/consult/assessment"), [nextPath]);
 
-  async function createDevSession(role: "customer" | "admin") {
+  async function createDevSession(role: DevBypassRole) {
     setDevLoadingRole(role);
 
     try {
@@ -75,7 +76,9 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
         throw new Error("Local dev bypass is not available.");
       }
 
-      window.location.replace(role === "admin" ? "/admin" : safeNextPath);
+      const roleHomePath = role === "admin" ? "/admin" : role === "doctor" ? "/doctor/consultations" : safeNextPath;
+
+      window.location.replace(roleHomePath);
     } catch (error) {
       setDevLoadingRole(null);
       setMessage(error instanceof Error ? error.message : "Unable to create a local dev session.");
@@ -180,6 +183,14 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-white px-5 text-sm font-bold text-primary disabled:opacity-60"
             >
               {devLoadingRole === "admin" ? "Opening..." : "Enter as admin"}
+            </button>
+            <button
+              type="button"
+              onClick={() => createDevSession("doctor")}
+              disabled={devLoadingRole !== null}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-white px-5 text-sm font-bold text-primary disabled:opacity-60"
+            >
+              {devLoadingRole === "doctor" ? "Opening..." : "Enter as doctor"}
             </button>
             <p className="text-xs leading-5 text-muted">Local development bypass is enabled. Production still requires LINE.</p>
           </div>

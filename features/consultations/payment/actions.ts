@@ -82,8 +82,8 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
             userId: session.userId,
             type: "consultation",
             channel: "in_app",
-            title: "Consultation payment confirmed",
-            body: "Your appointment is confirmed. Please open the waiting room before the scheduled time.",
+            title: "ยืนยันการชำระค่าปรึกษาแล้ว",
+            body: "นัดหมายของคุณได้รับการยืนยันแล้ว กรุณาเปิดห้องรอก่อนเวลานัด",
             metadataJson: {
               consultationId: consultation.id,
               href: `/consult/appointments/${consultation.id}`,

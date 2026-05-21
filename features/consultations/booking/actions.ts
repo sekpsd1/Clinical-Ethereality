@@ -75,13 +75,37 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         throw new Error("This slot is already reserved.");
       }
 
+      const activeAssessment = session.userId.startsWith("dev:")
+        ? null
+        : await tx.consultAssessment.findFirst({
+            where: {
+              userId: session.userId,
+              expiresAt: {
+                gt: new Date()
+              }
+            },
+            orderBy: {
+              completedAt: "desc"
+            },
+            select: {
+              id: true,
+              symptomLabel: true,
+              durationLabel: true,
+              recommendationTopic: true,
+              recommendationSpecialty: true
+            }
+          });
+
       const consultation = await tx.consultation.create({
         data: {
           patientId: session.userId,
           doctorId: availability.doctorId,
+          assessmentId: activeAssessment?.id,
           status: "pending_payment",
           scheduledAt,
-          summary: `Booking requested from availability ${availability.id}`
+          summary: activeAssessment
+            ? `แบบประเมิน: ${activeAssessment.symptomLabel}, ${activeAssessment.durationLabel}. คำแนะนำ: ${activeAssessment.recommendationSpecialty}.`
+            : `Booking requested from availability ${availability.id}`
         },
         select: {
           id: true
@@ -110,6 +134,8 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         metadata: {
           doctorId: availability.doctorId,
           availabilityId: availability.id,
+          assessmentId: activeAssessment?.id ?? null,
+          recommendationTopic: activeAssessment?.recommendationTopic ?? null,
           scheduledAt: scheduledAt.toISOString(),
           status: "pending_payment"
         }

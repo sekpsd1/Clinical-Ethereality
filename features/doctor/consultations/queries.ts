@@ -40,6 +40,7 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
     take: 50,
     include: {
       patient: true,
+      assessment: true,
       prescriptions: {
         orderBy: {
           updatedAt: "desc"
@@ -75,6 +76,17 @@ function mapConsultation(consultation: ConsultationWithDetails): DoctorConsultat
     latestPrescriptionId: latestPrescription?.id ?? null,
     latestPrescriptionStatus: latestPrescription?.status ?? null,
     latestPrescriptionNotes: latestPrescription?.notes ?? null,
+    assessment: consultation.assessment
+      ? {
+          symptomLabel: consultation.assessment.symptomLabel,
+          durationLabel: consultation.assessment.durationLabel,
+          recommendationTopic: consultation.assessment.recommendationTopic,
+          recommendationSpecialty: consultation.assessment.recommendationSpecialty,
+          recommendationReason: consultation.assessment.recommendationReason,
+          completedAt: formatDate(consultation.assessment.completedAt) ?? "",
+          expiresAt: formatDate(consultation.assessment.expiresAt) ?? ""
+        }
+      : null,
     createdAt: formatDate(consultation.createdAt) ?? ""
   };
 }

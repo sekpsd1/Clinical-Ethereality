@@ -18,46 +18,46 @@ const statusContent: Record<
   }
 > = {
   requested: {
-    label: "Requested",
+    label: "รอยืนยัน",
     tone: "neutral",
-    nextStepLabel: "Awaiting confirmation",
-    nextStepDescription: "Your appointment request is being prepared before payment opens.",
-    ctaLabel: "Review booking"
+    nextStepLabel: "รอการยืนยัน",
+    nextStepDescription: "ระบบกำลังเตรียมคำขอนัดหมายก่อนเปิดขั้นตอนชำระเงิน",
+    ctaLabel: "ตรวจสอบการจอง"
   },
   pending_payment: {
-    label: "Payment pending",
+    label: "รอชำระเงิน",
     tone: "warning",
-    nextStepLabel: "Complete payment",
-    nextStepDescription: "Pay the consultation fee to hold this doctor slot.",
-    ctaLabel: "Continue to payment"
+    nextStepLabel: "ชำระค่าปรึกษา",
+    nextStepDescription: "ชำระค่าปรึกษาเพื่อยืนยันและสำรองเวลานัดหมายนี้",
+    ctaLabel: "ไปหน้าชำระเงิน"
   },
   scheduled: {
-    label: "Scheduled",
+    label: "นัดหมายแล้ว",
     tone: "success",
-    nextStepLabel: "Prepare for consultation",
-    nextStepDescription: "Payment is confirmed. Open the waiting room before your appointment time.",
-    ctaLabel: "Open waiting room"
+    nextStepLabel: "เตรียมเข้าพบแพทย์",
+    nextStepDescription: "ยืนยันการชำระเงินแล้ว กรุณาเข้าห้องรอก่อนเวลานัด",
+    ctaLabel: "เปิดห้องรอ"
   },
   live: {
-    label: "Live now",
+    label: "กำลังปรึกษา",
     tone: "success",
-    nextStepLabel: "Join consultation",
-    nextStepDescription: "Your consultation is active. Enter the waiting room to continue.",
-    ctaLabel: "Join consultation"
+    nextStepLabel: "เข้าปรึกษาแพทย์",
+    nextStepDescription: "การปรึกษาของคุณเริ่มแล้ว เข้าห้องรอเพื่อดำเนินการต่อ",
+    ctaLabel: "เข้าปรึกษา"
   },
   completed: {
-    label: "Completed",
+    label: "เสร็จสิ้น",
     tone: "neutral",
-    nextStepLabel: "Review advice log",
-    nextStepDescription: "The consultation is complete. Review doctor notes and next actions.",
-    ctaLabel: "View advice log"
+    nextStepLabel: "ดูคำแนะนำแพทย์",
+    nextStepDescription: "การปรึกษาเสร็จสิ้นแล้ว ตรวจสอบบันทึกคำแนะนำและขั้นตอนถัดไป",
+    ctaLabel: "ดูคำแนะนำ"
   },
   cancelled: {
-    label: "Cancelled",
+    label: "ยกเลิกแล้ว",
     tone: "danger",
-    nextStepLabel: "Book another time",
-    nextStepDescription: "This appointment is no longer active.",
-    ctaLabel: "Choose a new slot"
+    nextStepLabel: "เลือกเวลานัดใหม่",
+    nextStepDescription: "นัดหมายนี้ไม่ได้ใช้งานแล้ว",
+    ctaLabel: "เลือกเวลาใหม่"
   }
 };
 
@@ -84,7 +84,7 @@ function getConsultationRecord(consultationId: string, patientId: string) {
 
 function formatDate(date: Date | null): string {
   if (!date) {
-    return "Time to be confirmed";
+    return "รอยืนยันเวลา";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -94,7 +94,7 @@ function formatDate(date: Date | null): string {
 
 function formatTime(date: Date | null): string {
   if (!date) {
-    return "Pending";
+    return "รอยืนยัน";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -135,8 +135,8 @@ function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentD
 
   return {
     id: consultation.id,
-    doctorName: consultation.doctor.user.displayName ?? "Dr. Somchai Rattanawongsan",
-    doctorSpecialty: consultation.doctor.specialty ?? "Aesthetic medicine",
+    doctorName: consultation.doctor.user.displayName ?? "นพ. สมชาย อนุมัติ",
+    doctorSpecialty: consultation.doctor.specialty ?? "เวชศาสตร์ชะลอวัย",
     doctorAvatarUrl: avatarUrl,
     scheduledDate: formatDate(consultation.scheduledAt),
     scheduledTime: formatTime(consultation.scheduledAt),

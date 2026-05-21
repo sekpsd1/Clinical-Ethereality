@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, History, Info, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
+import { submitConsultAssessmentAction } from "@/features/consultations/assessment/actions";
+import type { AssessmentSymptom } from "@/features/consultations/assessment/types";
 
 const durationOptions = [
   {
@@ -27,8 +28,7 @@ const durationOptions = [
   }
 ] as const;
 
-export function ConsultAssessmentDuration() {
-  const router = useRouter();
+export function ConsultAssessmentDuration({ selectedSymptom }: { selectedSymptom: AssessmentSymptom | null }) {
   const [selectedDuration, setSelectedDuration] = useState<string | null>(null);
 
   return (
@@ -134,29 +134,25 @@ export function ConsultAssessmentDuration() {
           className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80 transition-colors hover:text-[#006067]"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />
-          <span className="font-label text-xs">Previous</span>
+          <span className="font-label text-xs">ก่อนหน้า</span>
         </Link>
-        <button
-          type="button"
-          disabled={!selectedDuration}
-          onClick={() => {
-            if (selectedDuration) {
-              router.push("/consult/assessment/complete");
-            }
-          }}
-          className={cn(
-            "flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 transition-all",
-            selectedDuration
-              ? "scale-105 rounded-full bg-[#006067] px-8 text-white shadow-lg shadow-[#006067]/20"
-              : "cursor-not-allowed text-[#3e494a]/40"
-          )}
-        >
-          <span className="flex items-center gap-1">
-            {selectedDuration ? <span className="font-label text-xs font-extrabold">Next</span> : null}
+        <form action={submitConsultAssessmentAction}>
+          <input type="hidden" name="symptom" value={selectedSymptom ?? ""} />
+          <input type="hidden" name="duration" value={selectedDuration ?? ""} />
+          <button
+            type="submit"
+            disabled={!selectedDuration || !selectedSymptom}
+            className={cn(
+              "flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 transition-all",
+              selectedDuration && selectedSymptom
+                ? "scale-105 rounded-full bg-[#006067] px-8 text-white shadow-lg shadow-[#006067]/20"
+                : "cursor-not-allowed text-[#3e494a]/40"
+            )}
+          >
             <ChevronRight aria-hidden="true" className="size-5" />
-          </span>
-          {selectedDuration ? null : <span className="font-label text-xs">Next</span>}
-        </button>
+            <span className="font-label text-xs">ถัดไป</span>
+          </button>
+        </form>
       </nav>
     </section>
   );

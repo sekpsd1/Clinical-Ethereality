@@ -79,7 +79,7 @@ test.describe("customer mobile smoke", () => {
   }
 
   test("/consult/assessment loads as a focused assessment intro", async ({ page }) => {
-    await page.goto("/consult/assessment");
+    await page.goto("/consult/assessment?retake=1");
 
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
@@ -93,37 +93,45 @@ test.describe("customer mobile smoke", () => {
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "อาการเบื้องต้นที่คุณรู้สึกตอนนี้คืออะไร?" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Next$/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /ถัดไป$/ })).toBeDisabled();
     await page.getByRole("radio", { name: /ปวดหัว/ }).click();
     await expect(page.getByRole("radio", { name: /ปวดหัว/ })).toHaveAttribute("aria-checked", "true");
-    await expect(page.getByRole("button", { name: /Next Step/ })).toBeEnabled();
-    await page.getByRole("button", { name: /Next Step/ }).click();
-    await expect(page).toHaveURL(/\/consult\/assessment\/duration$/);
+    await expect(page.getByRole("link", { name: /ถัดไป/ })).toHaveAttribute("href", "/consult/assessment/duration?symptom=headache");
+    await page.getByRole("link", { name: /ถัดไป/ }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/duration\?symptom=headache$/);
   });
 
   test("/consult/assessment/duration enables the next action after selecting a duration", async ({ page }) => {
-    await page.goto("/consult/assessment/duration");
+    await page.goto("/consult/assessment/duration?symptom=headache");
 
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "คุณมีอาการเหล่านี้มานานแค่ไหนแล้ว?" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Next$/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /^ถัดไป$/ })).toBeDisabled();
     await page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ }).click();
     await expect(page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ })).toHaveAttribute("aria-checked", "true");
-    await expect(page.getByRole("button", { name: /^Next$/ })).toBeEnabled();
-    await page.getByRole("button", { name: /^Next$/ }).click();
-    await expect(page).toHaveURL(/\/consult\/assessment\/complete$/);
+    await expect(page.getByRole("button", { name: /^ถัดไป$/ })).toBeEnabled();
+    await page.getByRole("button", { name: /^ถัดไป$/ }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/complete/);
   });
 
-  test("/consult/assessment/complete shows recommended doctors and links to consult", async ({ page }) => {
+  test("/consult/assessment/complete shows recommendation and links to consult", async ({ page }) => {
     await page.goto("/consult/assessment/complete");
 
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "ขอบคุณสำหรับข้อมูล" })).toBeVisible();
-    await expect(page.getByText("นพ. วิทวัส สมใจ")).toBeVisible();
-    await expect(page.getByText("พญ. ณิชา อัครวัฒน์")).toBeVisible();
+    await expect(page.getByText("นพ. วิทวัส สมใจ")).toHaveCount(0);
+    await expect(page.getByText("พญ. ณิชา อัครวัฒน์")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /ดูรายชื่อแพทย์ที่แนะนำ/ })).toHaveAttribute("href", "/consult");
+  });
+
+  test("/profile can sign out and return to assessment retake login", async ({ page }) => {
+    await page.goto("/profile");
+
+    await expectNoAppError(page);
+    await page.getByRole("button", { name: "ออกจากระบบ" }).click();
+    await expect(page).toHaveURL(/\/auth\/line\?next=%2Fconsult%2Fassessment%3Fretake%3D1$/);
   });
 
   test("/consult/live hides the customer footer during video consultation", async ({ page }) => {

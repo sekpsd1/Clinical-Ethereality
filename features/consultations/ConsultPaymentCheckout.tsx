@@ -24,10 +24,10 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
         {data.unavailable ? (
           <PaymentStateCard
             tone="danger"
-            title="Payment is temporarily unavailable"
-            body="We could not load the consultation payment details. Please try again from your appointment detail."
+            title="ยังโหลดข้อมูลชำระเงินไม่ได้"
+            body="กรุณาลองใหม่จากหน้ารายละเอียดนัดหมาย"
             href="/consult"
-            cta="Back to consult"
+            cta="กลับไปหน้าปรึกษา"
           />
         ) : consultation ? (
           <>
@@ -37,18 +37,18 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
             {consultation.status === "scheduled" || consultation.status === "live" ? (
               <PaymentStateCard
                 tone="success"
-                title="Payment already confirmed"
-                body="Your consultation is ready. Open the waiting room before the scheduled time."
+                title="ยืนยันการชำระเงินแล้ว"
+                body="การปรึกษาพร้อมแล้ว กรุณาเปิดห้องรอก่อนเวลานัด"
                 href={consultation.waitingRoomHref}
-                cta="Open waiting room"
+                cta="เปิดห้องรอ"
               />
             ) : consultation.status === "cancelled" || consultation.status === "completed" ? (
               <PaymentStateCard
                 tone="neutral"
-                title="Payment is closed"
-                body="This consultation no longer accepts payment changes."
+                title="ปิดขั้นตอนชำระเงินแล้ว"
+                body="การปรึกษานี้ไม่รับการเปลี่ยนแปลงการชำระเงินแล้ว"
                 href={consultation.appointmentHref}
-                cta="View appointment"
+                cta="ดูนัดหมาย"
               />
             ) : (
               <>
@@ -60,10 +60,10 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
         ) : (
           <PaymentStateCard
             tone="danger"
-            title="Consultation not found"
-            body="This payment link may be expired, moved, or scoped to another signed-in customer."
+            title="ไม่พบรายการปรึกษา"
+            body="ลิงก์ชำระเงินนี้อาจหมดอายุ ถูกย้าย หรือเป็นของบัญชีอื่น"
             href="/consult"
-            cta="Back to consult"
+            cta="กลับไปหน้าปรึกษา"
           />
         )}
       </div>
@@ -74,10 +74,10 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
 function PaymentTopBar({ backHref }: { backHref: string }) {
   return (
     <header className="fixed inset-x-0 top-0 z-header mx-auto flex h-16 max-w-[480px] items-center bg-white/70 px-6 shadow-payment-top backdrop-blur-payment">
-      <Link href={backHref as Route} aria-label="Back to appointment" className="flex size-10 items-center justify-start text-primary">
+      <Link href={backHref as Route} aria-label="กลับไปหน้ารายละเอียดนัดหมาย" className="flex size-10 items-center justify-start text-primary">
         <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.25} />
       </Link>
-      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-[#115e59]">Consultation payment</h1>
+      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-[#115e59]">ชำระค่าปรึกษา</h1>
     </header>
   );
 }
@@ -89,23 +89,23 @@ function PaymentStatusNotice({ data }: { data: ConsultationPaymentData }) {
 
   const messages = {
     invalid: {
-      title: "Slip details needed",
-      body: "Paste the QR payload from the slip or provide a hosted slip image URL before submitting.",
+      title: "ต้องกรอกข้อมูลสลิป",
+      body: "กรุณาวาง QR payload จากสลิป หรือใส่ URL รูปสลิปก่อนส่งตรวจสอบ",
       tone: "warning" as const
     },
     rejected: {
-      title: "Slip could not be verified",
-      body: "The provider rejected this slip, amount, or receiver details. Please check the transfer and submit again.",
+      title: "ตรวจสอบสลิปไม่ผ่าน",
+      body: "ผู้ให้บริการปฏิเสธสลิป ยอดเงิน หรือข้อมูลผู้รับ กรุณาตรวจสอบรายการโอนและส่งใหม่",
       tone: "danger" as const
     },
     provider_error: {
-      title: "Verification provider unavailable",
-      body: "SlipOK or EasySlip could not complete the check right now. Confirm the API key and try again.",
+      title: "ระบบตรวจสอบสลิปไม่พร้อมใช้งาน",
+      body: "SlipOK หรือ EasySlip ยังตรวจสอบไม่ได้ในขณะนี้ กรุณาตรวจ API key และลองใหม่",
       tone: "warning" as const
     },
     not_found: {
-      title: "Consultation not found",
-      body: "Open the payment page from your appointment detail.",
+      title: "ไม่พบรายการปรึกษา",
+      body: "กรุณาเปิดหน้าชำระเงินจากหน้ารายละเอียดนัดหมาย",
       tone: "danger" as const
     }
   };
@@ -149,13 +149,13 @@ function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymen
           </div>
           <div className="mt-2 flex items-center gap-1 text-sm leading-5 text-[#3e494a]">
             <CalendarDays aria-hidden="true" className="size-3.5 text-[#3e494a]" />
-            {consultation.scheduledDate} at {consultation.scheduledTime}
+            {consultation.scheduledDate} เวลา {consultation.scheduledTime}
           </div>
         </div>
       </div>
 
       <div className="mt-4 flex items-end justify-between border-t border-[#bdc9ca]/20 pt-[13px]">
-        <p className="text-base leading-6 text-[#3e494a]">Amount due</p>
+        <p className="text-base leading-6 text-[#3e494a]">ยอดที่ต้องชำระ</p>
         <p className="text-primary">
           <span className="font-display text-2xl font-extrabold leading-8">{consultation.feeLabel}</span>
         </p>
@@ -182,23 +182,23 @@ function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDeta
           />
         ) : (
           <div className="flex size-[208px] items-center justify-center rounded-xl bg-[#f2f4f6] p-6 text-center text-sm font-bold leading-6 text-[#3e494a]">
-            PromptPay QR is not configured
+            ยังไม่ได้ตั้งค่า PromptPay QR
           </div>
         )}
       </div>
 
-      <p className="pt-4 text-center text-sm leading-5 text-[#3e494a]">Scan to pay</p>
-      <p className="pb-4 pt-1 text-center text-xl font-bold leading-7 text-primary">Amount: {consultation.feeLabel}</p>
+      <p className="pt-4 text-center text-sm leading-5 text-[#3e494a]">สแกนเพื่อชำระเงิน</p>
+      <p className="pb-4 pt-1 text-center text-xl font-bold leading-7 text-primary">ยอดชำระ: {consultation.feeLabel}</p>
 
       <div className="mb-4 flex w-full flex-col items-center gap-1 rounded-lg bg-[#f2f4f6] px-4 py-3 text-center">
-        <p className="text-xs font-bold uppercase leading-4 tracking-normal text-[#3e494a]">PromptPay account</p>
+        <p className="text-xs font-bold uppercase leading-4 tracking-normal text-[#3e494a]">บัญชีพร้อมเพย์</p>
         <p className="text-sm font-bold leading-5 tracking-[1.4px] text-primary">{consultation.promptPay.promptPayIdLabel}</p>
       </div>
 
       <div className="flex gap-2 rounded-lg bg-primary/5 p-3">
         <Info aria-hidden="true" className="mt-0.5 size-[15px] shrink-0 text-primary" />
         <p className="text-[11px] italic leading-[17.88px] text-[#3e494a]">
-          This QR is generated for the consultation amount when `THAI_QR_PROMPTPAY_ID` is configured.
+          QR นี้สร้างตามยอดค่าปรึกษาเมื่อมีการตั้งค่า `THAI_QR_PROMPTPAY_ID`
         </p>
       </div>
     </article>
@@ -211,7 +211,7 @@ function SlipVerificationSection({ consultation }: { consultation: ConsultationP
       <input type="hidden" name="consultationId" value={consultation.id} />
 
       <label className="px-1 text-sm font-bold leading-5 text-[#191c1e]" htmlFor="qrPayload">
-        Transfer slip verification
+        ตรวจสอบสลิปโอนเงิน
       </label>
 
       <div className="rounded-[24px] border-2 border-dashed border-primary/30 bg-white/70 p-5 backdrop-blur-topbar">
@@ -220,9 +220,9 @@ function SlipVerificationSection({ consultation }: { consultation: ConsultationP
             <CloudUpload aria-hidden="true" className="size-6" strokeWidth={2.25} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold leading-5 text-primary">Automatic SlipOK / EasySlip check</p>
+            <p className="text-sm font-bold leading-5 text-primary">ตรวจสอบอัตโนมัติผ่าน SlipOK / EasySlip</p>
             <p className="mt-1 text-xs leading-5 text-[#3e494a]">
-              Paste the QR payload from the slip. If QR extraction is unavailable, use a hosted slip image URL.
+              วาง QR payload จากสลิป หากดึง QR ไม่ได้ให้ใช้ URL รูปสลิปที่อัปโหลดไว้
             </p>
           </div>
         </div>
@@ -231,14 +231,14 @@ function SlipVerificationSection({ consultation }: { consultation: ConsultationP
           id="qrPayload"
           name="qrPayload"
           rows={3}
-          placeholder="Paste slip QR payload"
+          placeholder="วาง QR payload จากสลิป"
           className="mt-4 w-full resize-none rounded-[16px] border border-[#bdc9ca]/40 bg-white/85 px-4 py-3 text-sm leading-6 text-[#191c1e] outline-none ring-primary/20 placeholder:text-[#3e494a]/45 focus:ring-2"
         />
 
         <input
           name="imageUrl"
           type="url"
-          placeholder="Optional hosted slip image URL"
+          placeholder="URL รูปสลิป (ถ้ามี)"
           className="mt-3 h-12 w-full rounded-[16px] border border-[#bdc9ca]/40 bg-white/85 px-4 text-sm text-[#191c1e] outline-none ring-primary/20 placeholder:text-[#3e494a]/45 focus:ring-2"
         />
       </div>
@@ -248,7 +248,7 @@ function SlipVerificationSection({ consultation }: { consultation: ConsultationP
         className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary-gradient py-4 text-base font-bold leading-6 text-white shadow-selected-date"
       >
         <CheckCircle2 aria-hidden="true" className="size-5" strokeWidth={2.25} />
-        Verify slip and confirm
+        ตรวจสอบสลิปและยืนยัน
       </button>
     </form>
   );

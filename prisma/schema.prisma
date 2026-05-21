@@ -156,22 +156,23 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  authSessions      AuthSession[]
-  doctorProfile     Doctor?
-  pharmacistProfile Pharmacist?
-  consultations     Consultation[]     @relation("PatientConsultations")
-  prescriptions     Prescription[]     @relation("PatientPrescriptions")
-  orders            Order[]
-  articles          Article[]          @relation("ArticleAuthor")
-  comments          Comment[]
-  likes             Like[]
-  notifications     Notification[]
-  rewardPoints      RewardPoint[]
-  consentRecords    ConsentRecord[]
-  auditLogs         AuditLog[]         @relation("ActorAuditLogs")
-  reviewedPayments  Payment[]          @relation("PaymentReviewer")
-  updatedInventory  Inventory[]        @relation("InventoryUpdater")
-  updatedShipments  ShipmentTracking[] @relation("ShipmentUpdater")
+  authSessions       AuthSession[]
+  doctorProfile      Doctor?
+  pharmacistProfile  Pharmacist?
+  consultations      Consultation[]      @relation("PatientConsultations")
+  consultAssessments ConsultAssessment[]
+  prescriptions      Prescription[]      @relation("PatientPrescriptions")
+  orders             Order[]
+  articles           Article[]           @relation("ArticleAuthor")
+  comments           Comment[]
+  likes              Like[]
+  notifications      Notification[]
+  rewardPoints       RewardPoint[]
+  consentRecords     ConsentRecord[]
+  auditLogs          AuditLog[]          @relation("ActorAuditLogs")
+  reviewedPayments   Payment[]           @relation("PaymentReviewer")
+  updatedInventory   Inventory[]         @relation("InventoryUpdater")
+  updatedShipments   ShipmentTracking[]  @relation("ShipmentUpdater")
 
   @@index([role])
   @@index([status])
@@ -277,6 +278,7 @@ model Consultation {
   id            String             @id @default(cuid())
   patientId     String
   doctorId      String
+  assessmentId  String?
   status        ConsultationStatus @default(requested)
   scheduledAt   DateTime?
   zoomMeetingId String?
@@ -285,14 +287,41 @@ model Consultation {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
-  patient       User           @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
-  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient       User               @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        Doctor             @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  assessment    ConsultAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   prescriptions Prescription[]
 
   @@index([patientId])
   @@index([doctorId])
+  @@index([assessmentId])
   @@index([status])
   @@index([scheduledAt])
+}
+
+model ConsultAssessment {
+  id                      String   @id @default(cuid())
+  userId                  String
+  symptom                 String   @db.VarChar(80)
+  symptomLabel            String   @db.VarChar(120)
+  duration                String   @db.VarChar(80)
+  durationLabel           String   @db.VarChar(120)
+  recommendationTopic     String   @db.VarChar(120)
+  recommendationSpecialty String   @db.VarChar(120)
+  recommendationReason    String   @db.Text
+  answersJson             Json
+  completedAt             DateTime @default(now())
+  expiresAt               DateTime
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([recommendationTopic])
+  @@index([completedAt])
 }
 
 model Prescription {

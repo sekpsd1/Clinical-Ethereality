@@ -13,12 +13,12 @@ import type {
 type ConsultationRecord = NonNullable<Awaited<ReturnType<typeof getConsultationRecord>>>;
 
 const statusLabels: Record<ConsultationStatus, string> = {
-  requested: "Requested",
-  pending_payment: "Payment pending",
-  scheduled: "Payment confirmed",
-  live: "Live now",
-  completed: "Completed",
-  cancelled: "Cancelled"
+  requested: "รอยืนยัน",
+  pending_payment: "รอชำระเงิน",
+  scheduled: "ชำระเงินแล้ว",
+  live: "กำลังปรึกษา",
+  completed: "เสร็จสิ้น",
+  cancelled: "ยกเลิกแล้ว"
 };
 
 function getConsultationRecord(consultationId: string, patientId: string) {
@@ -44,7 +44,7 @@ function getConsultationRecord(consultationId: string, patientId: string) {
 
 function formatDate(date: Date | null): string {
   if (!date) {
-    return "Time to be confirmed";
+    return "รอยืนยันเวลา";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -54,7 +54,7 @@ function formatDate(date: Date | null): string {
 
 function formatTime(date: Date | null): string {
   if (!date) {
-    return "Pending";
+    return "รอยืนยัน";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -88,8 +88,8 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
 
   return {
     id: consultation.id,
-    doctorName: consultation.doctor.user.displayName ?? "Dr. Somchai Rattanawongsan",
-    doctorSpecialty: consultation.doctor.specialty ?? "Aesthetic medicine",
+    doctorName: consultation.doctor.user.displayName ?? "นพ. สมชาย อนุมัติ",
+    doctorSpecialty: consultation.doctor.specialty ?? "เวชศาสตร์ชะลอวัย",
     doctorAvatarUrl,
     scheduledDate: formatDate(consultation.scheduledAt),
     scheduledTime: formatTime(consultation.scheduledAt),

@@ -48,7 +48,7 @@ This checklist tracks information needed from the client before implementation a
 
 ### Consultation Operations
 
-- [ ] Pre-doctor consult assessment data flow; all 4 Stitch export pages are received and implemented at `/consult/assessment`, `/consult/assessment/symptoms`, `/consult/assessment/duration`, and `/consult/assessment/complete`, but recommendation mapping, persistence, 7-day reuse, doctor visibility, and real doctor data are still pending
+- [ ] Final pre-doctor consult assessment recommendation mapping with real doctor data; all 4 Stitch export pages, persistence, 7-day reuse, booking attachment, and doctor-visible summary are implemented
 - [ ] Zoom SDK account details
 - [ ] Consultation reminder timing
 - [ ] Waiting room timing rules
@@ -172,7 +172,7 @@ Received from the client:
 - Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`.
 - Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
 - Pre-doctor assessment duration Stitch export received and implemented as `/consult/assessment/duration`.
-- Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; recommendation routing, answer persistence, 7-day reuse, and doctor-visible answers still need implementation after final mapping labels and real doctor data are available.
+- Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, and doctor-visible answers are implemented. Final recommendation mapping labels and real doctor data are still needed.
 
 Still needed from the client:
 

@@ -4,21 +4,21 @@ import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 const consultationStatusLabels: Record<string, string> = {
-  cancelled: "Cancelled",
-  completed: "Completed",
-  live: "Live",
-  pending_payment: "Payment pending",
-  requested: "Requested",
-  scheduled: "Scheduled"
+  cancelled: "ยกเลิกแล้ว",
+  completed: "เสร็จสิ้น",
+  live: "กำลังปรึกษา",
+  pending_payment: "รอชำระเงิน",
+  requested: "รอยืนยัน",
+  scheduled: "นัดหมายแล้ว"
 };
 
 const prescriptionStatusLabels: Record<string, string> = {
-  archived: "Archived",
-  dispensed: "Dispensed",
-  draft: "Draft",
-  pending_verification: "Pending verification",
-  rejected: "Rejected",
-  verified: "Verified"
+  archived: "เก็บถาวร",
+  dispensed: "จ่ายยาแล้ว",
+  draft: "ฉบับร่าง",
+  pending_verification: "รอตรวจสอบ",
+  rejected: "ไม่อนุมัติ",
+  verified: "ตรวจสอบแล้ว"
 };
 
 function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -48,17 +48,17 @@ function canWritePrescription(consultation: DoctorConsultationItem): boolean {
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
   const summaryItems = [
     {
-      label: "Scheduled",
+      label: "นัดหมาย",
       value: String(data.summary.scheduled),
       tone: "warning"
     },
     {
-      label: "Live",
+      label: "กำลังปรึกษา",
       value: String(data.summary.live),
       tone: "neutral"
     },
     {
-      label: "Completed",
+      label: "เสร็จสิ้น",
       value: String(data.summary.completed),
       tone: "success"
     }
@@ -67,10 +67,10 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Doctor Operations</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Consultation queue</h2>
+        <p className="text-label font-bold uppercase text-white/75">งานแพทย์</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">คิวปรึกษา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          Review scheduled and completed consultations with patient context and prescription status.
+          ตรวจสอบคิวปรึกษา ข้อมูลผู้ป่วยเบื้องต้น และสถานะใบสั่งยา
         </p>
       </section>
 
@@ -88,21 +88,21 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Consultations</h2>
+          <h2 className="font-headline text-lg font-bold text-text">รายการปรึกษา</h2>
           <StatusBadge tone={data.unavailable || data.missingDoctorProfile ? "danger" : "success"}>
-            {data.unavailable ? "Database offline" : data.missingDoctorProfile ? "Profile needed" : "Ready"}
+            {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : data.missingDoctorProfile ? "ต้องมีโปรไฟล์แพทย์" : "พร้อมใช้งาน"}
           </StatusBadge>
         </div>
 
         {data.unavailable ? (
           <EmptyDoctorQueue
             title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before reviewing consultations."
+            body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนตรวจสอบคิวปรึกษา"
           />
         ) : data.missingDoctorProfile ? (
-          <EmptyDoctorQueue title="Doctor profile is missing" body="Approve or create a doctor profile before showing assigned consultations." />
+          <EmptyDoctorQueue title="ยังไม่มีโปรไฟล์แพทย์" body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงคิวที่ได้รับมอบหมาย" />
         ) : data.consultations.length === 0 ? (
-          <EmptyDoctorQueue title="No consultations yet" body="Assigned patient consultations will appear here." />
+          <EmptyDoctorQueue title="ยังไม่มีคิวปรึกษา" body="คิวผู้ป่วยที่ได้รับมอบหมายจะแสดงที่นี่" />
         ) : null}
 
         {data.consultations.map((consultation) => {
@@ -123,26 +123,39 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                     <StatusBadge tone={tone}>{consultationStatusLabels[consultation.status]}</StatusBadge>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-muted">
-                    {consultation.summary ?? "No consultation note has been recorded yet."}
+                    {consultation.summary ?? "ยังไม่มีบันทึกการปรึกษา"}
                   </p>
+
+                  {consultation.assessment ? (
+                    <div className="mt-3 rounded-[8px] bg-primary/5 p-3 text-xs leading-5 text-muted">
+                      <p className="font-bold text-primary">แบบประเมินก่อนปรึกษา</p>
+                      <p className="mt-1">
+                        อาการ: {consultation.assessment.symptomLabel} - ระยะเวลา: {consultation.assessment.durationLabel}
+                      </p>
+                      <p className="mt-1">
+                        คำแนะนำ: {consultation.assessment.recommendationSpecialty} ({consultation.assessment.recommendationTopic})
+                      </p>
+                      <p className="mt-1 italic">{consultation.assessment.recommendationReason}</p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="Scheduled" value={consultation.scheduledAt ?? "Not scheduled"} icon="consult" />
+                <InfoTile label="เวลานัด" value={consultation.scheduledAt ?? "ยังไม่กำหนด"} icon="consult" />
                 <InfoTile
-                  label="Prescription"
+                  label="ใบสั่งยา"
                   value={
                     consultation.latestPrescriptionStatus
                       ? `${prescriptionStatusLabels[consultation.latestPrescriptionStatus]} (${consultation.prescriptionCount})`
-                      : "None"
+                      : "ยังไม่มี"
                   }
                   icon="note"
                 />
               </div>
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
-                Created {consultation.createdAt}
+                สร้างเมื่อ {consultation.createdAt}
               </p>
 
               {canWritePrescription(consultation) ? <DoctorPrescriptionForm consultation={consultation} /> : null}

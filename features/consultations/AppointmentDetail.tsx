@@ -16,10 +16,10 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
       <div className="flex flex-col gap-5 px-6 pt-24">
         {data.unavailable ? (
           <StateCard
-            title="Appointment temporarily unavailable"
-            body="We could not load your appointment details right now. Please try again from the consultation tab."
+            title="ยังโหลดรายละเอียดนัดหมายไม่ได้"
+            body="กรุณาลองใหม่จากแท็บปรึกษาแพทย์"
             href="/consult"
-            cta="Back to consult"
+            cta="กลับไปหน้าปรึกษา"
           />
         ) : appointment ? (
           <>
@@ -37,7 +37,7 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">
-                      Consultation appointment
+                      นัดหมายปรึกษาแพทย์
                     </p>
                     <h1 className="truncate text-xl font-extrabold leading-7 text-primary">{appointment.doctorName}</h1>
                     <p className="truncate text-sm font-medium leading-5 text-[#3e494a]">{appointment.doctorSpecialty}</p>
@@ -48,9 +48,9 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
             </article>
 
             <section className="grid gap-3">
-              <AppointmentInfoRow icon={CalendarDays} label="Scheduled date" value={appointment.scheduledDate} />
-              <AppointmentInfoRow icon={Clock3} label="Consultation time" value={appointment.scheduledTime} />
-              <AppointmentInfoRow icon={CreditCard} label="Consultation fee" value={appointment.feeLabel} />
+              <AppointmentInfoRow icon={CalendarDays} label="วันที่นัดหมาย" value={appointment.scheduledDate} />
+              <AppointmentInfoRow icon={Clock3} label="เวลาปรึกษา" value={appointment.scheduledTime} />
+              <AppointmentInfoRow icon={CreditCard} label="ค่าปรึกษา" value={appointment.feeLabel} />
             </section>
 
             <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/75 p-5 shadow-payment-card backdrop-blur-topbar">
@@ -75,10 +75,10 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
           </>
         ) : (
           <StateCard
-            title="Appointment not found"
-            body="This appointment may have been moved, cancelled, or belongs to another signed-in customer."
+            title="ไม่พบนัดหมาย"
+            body="นัดหมายนี้อาจถูกย้าย ยกเลิก หรือเป็นของบัญชีอื่น"
             href="/consult"
-            cta="Back to consult"
+            cta="กลับไปหน้าปรึกษา"
           />
         )}
       </div>
@@ -89,10 +89,10 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
 function AppointmentTopBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-header mx-auto flex h-16 max-w-[480px] items-center bg-white/70 px-6 shadow-booking-top backdrop-blur-topbar">
-      <Link href="/consult" aria-label="Back to consult" className="flex size-10 items-center justify-start text-primary">
+      <Link href="/consult" aria-label="กลับไปหน้าปรึกษา" className="flex size-10 items-center justify-start text-primary">
         <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.25} />
       </Link>
-      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-primary">Appointment detail</h1>
+      <h1 className="pl-2 text-lg font-bold leading-7 tracking-normal text-primary">รายละเอียดนัดหมาย</h1>
     </header>
   );
 }

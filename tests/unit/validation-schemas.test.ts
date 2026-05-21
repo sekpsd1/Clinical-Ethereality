@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
+import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
+import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
@@ -55,5 +57,24 @@ describe("feature validation schemas", () => {
         version: ""
       }).success
     ).toBe(false);
+  });
+
+  it("validates consult assessment answers and maps recommendation topics", () => {
+    expect(
+      submitConsultAssessmentSchema.safeParse({
+        symptom: "headache",
+        duration: "1-3days"
+      }).success
+    ).toBe(true);
+    expect(
+      submitConsultAssessmentSchema.safeParse({
+        symptom: "unknown",
+        duration: "1-3days"
+      }).success
+    ).toBe(false);
+    expect(getAssessmentRecommendation("cough", "more3days")).toMatchObject({
+      topic: "ไอหรือเจ็บคอ",
+      specialty: "อายุรกรรม"
+    });
   });
 });

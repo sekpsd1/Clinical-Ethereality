@@ -3,21 +3,21 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { DoctorPatientLogItem, DoctorPatientsData } from "@/features/doctor/patients/types";
 
 const consultationStatusLabels: Record<string, string> = {
-  cancelled: "Cancelled",
-  completed: "Completed",
-  live: "Live",
-  pending_payment: "Payment pending",
-  requested: "Requested",
-  scheduled: "Scheduled"
+  cancelled: "ยกเลิกแล้ว",
+  completed: "เสร็จสิ้น",
+  live: "กำลังปรึกษา",
+  pending_payment: "รอชำระเงิน",
+  requested: "รอยืนยัน",
+  scheduled: "นัดหมายแล้ว"
 };
 
 const prescriptionStatusLabels: Record<string, string> = {
-  archived: "Archived",
-  dispensed: "Dispensed",
-  draft: "Draft",
-  pending_verification: "Pending verification",
-  rejected: "Rejected",
-  verified: "Verified"
+  archived: "เก็บถาวร",
+  dispensed: "จ่ายยาแล้ว",
+  draft: "ฉบับร่าง",
+  pending_verification: "รอตรวจสอบ",
+  rejected: "ไม่อนุมัติ",
+  verified: "ตรวจสอบแล้ว"
 };
 
 function getStatusTone(status: DoctorPatientLogItem["latestConsultationStatus"]): "neutral" | "success" | "warning" | "danger" {

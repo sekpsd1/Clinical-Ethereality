@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   const refreshToken = request.cookies.get(authCookieNames.refresh)?.value;
 
   if (refreshToken) {
-    await revokeSessionFromToken(refreshToken).catch(() => undefined);
+    void revokeSessionFromToken(refreshToken).catch(() => undefined);
   }
 
   return clearSessionCookies(NextResponse.json({ ok: true }));

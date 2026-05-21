@@ -11,6 +11,17 @@ export type DoctorConsultationItem = {
   latestPrescriptionId: string | null;
   latestPrescriptionStatus: PrescriptionStatus | null;
   latestPrescriptionNotes: string | null;
+  assessment:
+    | {
+        symptomLabel: string;
+        durationLabel: string;
+        recommendationTopic: string;
+        recommendationSpecialty: string;
+        recommendationReason: string;
+        completedAt: string;
+        expiresAt: string;
+      }
+    | null;
   createdAt: string;
 };
 
