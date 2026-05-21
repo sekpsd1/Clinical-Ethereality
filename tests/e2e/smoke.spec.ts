@@ -97,6 +97,33 @@ test.describe("customer mobile smoke", () => {
     await page.getByRole("radio", { name: /ปวดหัว/ }).click();
     await expect(page.getByRole("radio", { name: /ปวดหัว/ })).toHaveAttribute("aria-checked", "true");
     await expect(page.getByRole("button", { name: /Next Step/ })).toBeEnabled();
+    await page.getByRole("button", { name: /Next Step/ }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/duration$/);
+  });
+
+  test("/consult/assessment/duration enables the next action after selecting a duration", async ({ page }) => {
+    await page.goto("/consult/assessment/duration");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "คุณมีอาการเหล่านี้มานานแค่ไหนแล้ว?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Next$/ })).toBeDisabled();
+    await page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ }).click();
+    await expect(page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("button", { name: /^Next$/ })).toBeEnabled();
+    await page.getByRole("button", { name: /^Next$/ }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/complete$/);
+  });
+
+  test("/consult/assessment/complete shows recommended doctors and links to consult", async ({ page }) => {
+    await page.goto("/consult/assessment/complete");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "ขอบคุณสำหรับข้อมูล" })).toBeVisible();
+    await expect(page.getByText("นพ. วิทวัส สมใจ")).toBeVisible();
+    await expect(page.getByText("พญ. ณิชา อัครวัฒน์")).toBeVisible();
+    await expect(page.getByRole("link", { name: /ดูรายชื่อแพทย์ที่แนะนำ/ })).toHaveAttribute("href", "/consult");
   });
 
   test("/consult/live hides the customer footer during video consultation", async ({ page }) => {

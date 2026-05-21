@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Brain, ChevronLeft, ChevronRight, Edit3, MoreHorizontal, MoreVertical, Save, Thermometer, Waves } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Brain, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Thermometer, Waves } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
 const symptomOptions = [
@@ -33,6 +34,7 @@ const symptomOptions = [
 ] as const;
 
 export function ConsultAssessmentSymptoms() {
+  const router = useRouter();
   const [selectedSymptom, setSelectedSymptom] = useState<string | null>(null);
 
   return (
@@ -114,7 +116,7 @@ export function ConsultAssessmentSymptoms() {
 
       <div className="pointer-events-none fixed bottom-0 right-0 -z-10 size-[420px] translate-x-1/3 translate-y-1/3 rounded-full bg-[#006067]/5 blur-[100px]" />
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-mobile items-center justify-around rounded-t-[24px] bg-[#f2f4f6]/80 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-10px_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
+      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-mobile items-center justify-between rounded-t-[24px] bg-[#f2f4f6]/80 px-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-10px_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
         <Link
           href="/consult/assessment"
           className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80 transition-colors hover:text-[#006067]"
@@ -122,17 +124,14 @@ export function ConsultAssessmentSymptoms() {
           <ChevronLeft aria-hidden="true" className="size-5" />
           <span className="font-label text-xs">Previous</span>
         </Link>
-        <button type="button" className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80">
-          <Save aria-hidden="true" className="size-5" />
-          <span className="font-label text-xs">Save</span>
-        </button>
-        <button type="button" className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80">
-          <Edit3 aria-hidden="true" className="size-5" />
-          <span className="font-label text-xs">Notes</span>
-        </button>
         <button
           type="button"
           disabled={!selectedSymptom}
+          onClick={() => {
+            if (selectedSymptom) {
+              router.push("/consult/assessment/duration");
+            }
+          }}
           className={cn(
             "flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 transition-all",
             selectedSymptom

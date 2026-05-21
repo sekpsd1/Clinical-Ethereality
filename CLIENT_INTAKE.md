@@ -48,7 +48,7 @@ This checklist tracks information needed from the client before implementation a
 
 ### Consultation Operations
 
-- [ ] Remaining pre-doctor consult assessment Stitch HTML export zip files; intro page and symptom page received and implemented at `/consult/assessment` and `/consult/assessment/symptoms`, flow rules received for 4 Stitch-designed pages, recommendation after completion, optional doctor selection, 7-day reuse, doctor visibility, and no attachment field
+- [ ] Pre-doctor consult assessment data flow; all 4 Stitch export pages are received and implemented at `/consult/assessment`, `/consult/assessment/symptoms`, `/consult/assessment/duration`, and `/consult/assessment/complete`, but recommendation mapping, persistence, 7-day reuse, doctor visibility, and real doctor data are still pending
 - [ ] Zoom SDK account details
 - [ ] Consultation reminder timing
 - [ ] Waiting room timing rules
@@ -169,15 +169,17 @@ Received from the client:
 - Draft pharmacy/prescription fulfillment SOP and client review message are prepared for owner review before sending to the client.
 - Doctor, product catalog, and pharmacist/pharmacy intake templates are prepared for the owner to send to the client.
 - Pre-doctor assessment flow rules received: 4 Stitch-designed pages, follow Stitch answer types, recommend by assessment topic while allowing doctor selection, reuse assessment for 7 days, show answers to doctors, and no file/image attachment in the first version.
-- Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`; remaining assessment pages are still needed before the full assessment flow can replace the temporary doctor-list continuation.
-- Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`; remaining assessment pages are still needed before recommendation routing and 7-day reuse can be completed.
+- Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`.
+- Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
+- Pre-doctor assessment duration Stitch export received and implemented as `/consult/assessment/duration`.
+- Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; recommendation routing, answer persistence, 7-day reuse, and doctor-visible answers still need implementation after final mapping labels and real doctor data are available.
 
 Still needed from the client:
 
 - Later legal review or revised legal drafts, if the client updates the current wording.
 - Community guidelines, article content, and moderation policy are deferred until after MVP unless the client asks to launch Community earlier.
 - Doctor profiles, licenses, fees, schedules, and official photos.
-- Remaining Stitch HTML export zip files for the pre-doctor assessment screens and final recommendation mapping labels from the Stitch design.
+- Final recommendation mapping labels from the Stitch design, plus real doctor data for the pre-doctor assessment recommendation result.
 - Pharmacy license number, pharmacist name, and pharmacist license number for the clinic-as-pharmacy workflow.
 - Product catalog with FDA numbers, prices, images, stock, prescription-required flags, warnings, and storage instructions.
 - Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; confirm clinic-specific constraints, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.

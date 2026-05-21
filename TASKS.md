@@ -38,7 +38,7 @@
 - [x] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
 - [x] Receive company name, tax ID, billing address, parcel sender address, and support contact
 - [ ] Receive doctor bio, education, specialty, license number, consultation fee, schedule, and official profile photo
-- [ ] Receive remaining pre-doctor assessment Stitch HTML export zip files; intro and symptom pages implemented, flow rules received for 4 pages, recommendation, doctor choice, 7-day reuse, doctor visibility, and no attachments
+- [ ] Complete pre-doctor assessment data flow; all 4 Stitch export pages are implemented, but recommendation mapping, persistence, 7-day reuse, doctor-visible summary, and real doctor data are still pending
 - [ ] Receive product catalog with FDA numbers, prices, images, stock, and prescription-required flags
 - [ ] Receive pharmacy and pharmacist license data
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
