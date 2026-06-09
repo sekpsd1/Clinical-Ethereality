@@ -138,6 +138,16 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                       <p className="mt-1 italic">{consultation.assessment.recommendationReason}</p>
                     </div>
                   ) : null}
+
+                  {consultation.latestChatMessage ? (
+                    <div className="mt-3 rounded-[8px] border border-primary/10 bg-white/70 p-3 text-xs leading-5 text-muted">
+                      <p className="font-bold text-primary">ข้อความล่าสุดในแชท</p>
+                      <p className="mt-1 line-clamp-2">{consultation.latestChatMessage.body}</p>
+                      <p className="mt-1 truncate text-[10px] font-semibold text-muted">
+                        {consultation.latestChatMessage.senderName} - {consultation.latestChatMessage.createdAt}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

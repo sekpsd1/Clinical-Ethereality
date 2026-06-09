@@ -155,6 +155,12 @@ enum FileAttachmentStatus {
   archived
 }
 
+enum ConsultationMessageStatus {
+  visible
+  hidden
+  archived
+}
+
 model User {
   id            String        @id @default(cuid())
   lineUserId    String        @unique
@@ -169,24 +175,25 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  authSessions       AuthSession[]
-  doctorProfile      Doctor?
-  pharmacistProfile  Pharmacist?
-  consultations      Consultation[]      @relation("PatientConsultations")
-  consultAssessments ConsultAssessment[]
-  prescriptions      Prescription[]      @relation("PatientPrescriptions")
-  orders             Order[]
-  articles           Article[]           @relation("ArticleAuthor")
-  comments           Comment[]
-  likes              Like[]
-  notifications      Notification[]
-  rewardPoints       RewardPoint[]
-  consentRecords     ConsentRecord[]
-  auditLogs          AuditLog[]          @relation("ActorAuditLogs")
-  reviewedPayments   Payment[]           @relation("PaymentReviewer")
-  updatedInventory   Inventory[]         @relation("InventoryUpdater")
-  updatedShipments   ShipmentTracking[]  @relation("ShipmentUpdater")
-  fileAttachments    FileAttachment[]
+  authSessions        AuthSession[]
+  doctorProfile       Doctor?
+  pharmacistProfile   Pharmacist?
+  consultations       Consultation[]        @relation("PatientConsultations")
+  consultAssessments  ConsultAssessment[]
+  prescriptions       Prescription[]        @relation("PatientPrescriptions")
+  orders              Order[]
+  articles            Article[]             @relation("ArticleAuthor")
+  comments            Comment[]
+  likes               Like[]
+  notifications       Notification[]
+  rewardPoints        RewardPoint[]
+  consentRecords      ConsentRecord[]
+  auditLogs           AuditLog[]            @relation("ActorAuditLogs")
+  reviewedPayments    Payment[]             @relation("PaymentReviewer")
+  updatedInventory    Inventory[]           @relation("InventoryUpdater")
+  updatedShipments    ShipmentTracking[]    @relation("ShipmentUpdater")
+  fileAttachments     FileAttachment[]
+  sentConsultMessages ConsultationMessage[] @relation("ConsultationMessageSender")
 
   @@index([role])
   @@index([status])
@@ -301,16 +308,34 @@ model Consultation {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
-  patient       User               @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
-  doctor        Doctor             @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  assessment    ConsultAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  patient       User                  @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        Doctor                @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  assessment    ConsultAssessment?    @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   prescriptions Prescription[]
+  messages      ConsultationMessage[]
 
   @@index([patientId])
   @@index([doctorId])
   @@index([assessmentId])
   @@index([status])
   @@index([scheduledAt])
+}
+
+model ConsultationMessage {
+  id             String                    @id @default(cuid())
+  consultationId String
+  senderId       String
+  body           String                    @db.Text
+  status         ConsultationMessageStatus @default(visible)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("ConsultationMessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([consultationId, createdAt])
+  @@index([senderId])
+  @@index([status])
 }
 
 model ConsultAssessment {

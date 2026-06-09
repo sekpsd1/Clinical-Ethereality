@@ -46,6 +46,18 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
           updatedAt: "desc"
         },
         take: 3
+      },
+      messages: {
+        where: {
+          status: "visible"
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 1,
+        include: {
+          sender: true
+        }
       }
     }
   });
@@ -64,6 +76,7 @@ function formatDate(date: Date | null): string | null {
 
 function mapConsultation(consultation: ConsultationWithDetails): DoctorConsultationItem {
   const latestPrescription = consultation.prescriptions[0] ?? null;
+  const latestMessage = consultation.messages[0] ?? null;
 
   return {
     id: consultation.id,
@@ -76,6 +89,13 @@ function mapConsultation(consultation: ConsultationWithDetails): DoctorConsultat
     latestPrescriptionId: latestPrescription?.id ?? null,
     latestPrescriptionStatus: latestPrescription?.status ?? null,
     latestPrescriptionNotes: latestPrescription?.notes ?? null,
+    latestChatMessage: latestMessage
+      ? {
+          body: latestMessage.body,
+          senderName: latestMessage.sender.displayName ?? latestMessage.sender.lineUserId,
+          createdAt: formatDate(latestMessage.createdAt) ?? ""
+        }
+      : null,
     assessment: consultation.assessment
       ? {
           symptomLabel: consultation.assessment.symptomLabel,

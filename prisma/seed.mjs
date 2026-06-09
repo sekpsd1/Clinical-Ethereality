@@ -358,6 +358,42 @@ async function upsertConsultation({ customerId, doctorId }) {
   });
 }
 
+async function upsertConsultationMessages({ consultationId, customerId, doctorUserId }) {
+  const messages = [
+    {
+      consultationId,
+      senderId: doctorUserId,
+      body: "สวัสดีค่ะ วันนี้มีอาการหรือคำถามอะไรที่อยากให้หมอช่วยดูเป็นพิเศษไหมคะ",
+      createdAt: new Date("2026-05-20T03:31:00.000Z")
+    },
+    {
+      consultationId,
+      senderId: customerId,
+      body: "อยากปรึกษาเรื่องผลตรวจและขั้นตอนดูแลต่อหลังซื้อชุดตรวจค่ะ",
+      createdAt: new Date("2026-05-20T03:32:00.000Z")
+    },
+    {
+      consultationId,
+      senderId: doctorUserId,
+      body: "ได้ค่ะ หมอจะดูประวัติและแบบประเมินก่อน แล้วสรุปแนวทางให้ในห้องปรึกษานี้",
+      createdAt: new Date("2026-05-20T03:33:00.000Z")
+    }
+  ];
+
+  await prisma.consultationMessage.deleteMany({
+    where: {
+      consultationId,
+      body: {
+        in: messages.map((message) => message.body)
+      }
+    }
+  });
+
+  await prisma.consultationMessage.createMany({
+    data: messages
+  });
+}
+
 async function upsertDoctorAvailability(doctorId) {
   await prisma.doctorAvailability.updateMany({
     where: {
@@ -802,6 +838,11 @@ async function main() {
   const consultation = await upsertConsultation({
     customerId: customer.id,
     doctorId: doctor.id
+  });
+  await upsertConsultationMessages({
+    consultationId: consultation.id,
+    customerId: customer.id,
+    doctorUserId: doctorUser.id
   });
   const prescription = await upsertPrescription({
     consultationId: consultation.id,

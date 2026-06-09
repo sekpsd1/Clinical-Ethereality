@@ -1,5 +1,8 @@
 import { LiveConsultation } from "@/features/consultations/LiveConsultation";
+import { getLiveConsultationChat } from "@/features/consultations/chat/queries";
 
-export default function LiveConsultationPage() {
-  return <LiveConsultation />;
+export default async function LiveConsultationPage() {
+  const chat = await getLiveConsultationChat();
+
+  return <LiveConsultation chat={chat} />;
 }

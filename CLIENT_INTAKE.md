@@ -177,6 +177,7 @@ Received from the client:
 - Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
 - Pre-doctor assessment duration Stitch export received and implemented as `/consult/assessment/duration`.
 - Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, and doctor-visible answers are implemented. Final recommendation mapping labels and real doctor data are still needed.
+- Client/owner direction clarified that consultation chat must be an in-app chat separate from LINE. The first foundation is implemented with Prisma/MySQL consultation messages, access checks, audit logs, in-app notifications, live consult UI binding, and latest-message visibility for doctors; Firebase or another realtime provider is not selected yet.
 
 Still needed from the client:
 
@@ -186,6 +187,7 @@ Still needed from the client:
 - FDA numbers for the product catalog remain pending.
 - Pharmacist name/license remain not provided because client says doctors prescribe directly from the clinic and no additional document-review step is needed after prescription attachment; confirm whether pharmacist role remains needed for MVP fulfillment operations before removing or reducing the prepared role workflow.
 - File bytes for external prescription uploads still need Cloudinary or S3-compatible storage setup; the application metadata/order linkage foundation is implemented.
+- Realtime chat provider decision remains open if the owner wants live push updates beyond the current persisted in-app chat foundation.
 - Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; update the SOP for clinic-direct doctor prescribing, no-review prescription attachment purchases, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.
 
 Still owner-managed:

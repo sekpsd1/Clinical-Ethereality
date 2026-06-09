@@ -3,6 +3,7 @@ import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
 import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
+import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
@@ -78,6 +79,27 @@ describe("feature validation schemas", () => {
       topic: "ไอหรือเจ็บคอ",
       specialty: "อายุรกรรม"
     });
+  });
+
+  it("validates in-app consultation chat messages", () => {
+    expect(
+      sendConsultationMessageSchema.safeParse({
+        consultationId: "consultation-1",
+        body: "  สวัสดีค่ะคุณหมอ  "
+      }).success
+    ).toBe(true);
+    expect(
+      sendConsultationMessageSchema.safeParse({
+        consultationId: "consultation-1",
+        body: ""
+      }).success
+    ).toBe(false);
+    expect(
+      sendConsultationMessageSchema.safeParse({
+        consultationId: "",
+        body: "ข้อความ"
+      }).success
+    ).toBe(false);
   });
 
   it("treats doctor-issued prescriptions as ready for direct ordering", () => {

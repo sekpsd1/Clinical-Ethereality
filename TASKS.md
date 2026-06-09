@@ -43,6 +43,7 @@
 - [ ] Receive clinic-as-pharmacy license direction and facility license document; client says prescription-required products can be purchased by attaching a prescription without an additional document-review step, but pharmacist-specific data is not provided, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
 - [x] Update in-app doctor-issued prescription ordering so customers can buy prescription-required products without an additional pharmacist/document verification gate while preserving prescription, order, payment, shipment, reward, inventory, and audit linkage
 - [x] Add external prescription attachment metadata foundation for prescription-required purchases using owner-managed storage URLs, order linkage, attachment visibility, and audit logs without storing file bytes in the database
+- [x] Add in-app consultation chat foundation that is not LINE chat, with persisted Prisma/MySQL messages, consultation access checks, audit logs, notifications, live consult UI binding, and latest-message visibility in the doctor queue
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup
@@ -252,6 +253,7 @@
 - [x] Build patient log access for doctors
 - [x] Build admin schedule editor for doctor availability
 - [ ] Build Zoom SDK video consultation room integration
+- [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Build prescription writing workflow
 - [x] Build pharmacist prescription queue
 - [x] Build prescription verification workflow

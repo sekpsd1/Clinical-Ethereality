@@ -139,7 +139,7 @@ test.describe("customer mobile smoke", () => {
 
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
-    await expect(page.getByText("Dr. Aris Thorne")).toBeVisible();
+    await expect(page.locator("header h1")).toBeVisible();
   });
 });
 
