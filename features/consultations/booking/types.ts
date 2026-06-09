@@ -3,6 +3,7 @@ export type BookingDoctor = {
   name: string;
   specialty: string;
   fee: string;
+  avatarUrl: string;
 };
 
 export type BookingSlot = {

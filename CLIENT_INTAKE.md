@@ -203,7 +203,7 @@ Before development starts:
 
 1. Privacy Policy, Terms of Service, and health data consent direction
 2. Company name, tax ID, billing/shipping address, and support contact
-3. Map the received doctor profile into local seed/catalog-safe data without committing exact sensitive license values
+3. Run/review the updated local seed that maps the received doctor and product data without committing exact sensitive license values
 4. Product catalog FDA numbers and final owner review of package pricing/catalog structure
 5. Secure environment configuration for the received PromptPay account
 6. Plan the scoped implementation change for prescription-required purchases so customers can attach a prescription and buy without an additional document-review step, while preserving audit and secure file storage

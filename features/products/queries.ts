@@ -87,6 +87,7 @@ function mapProduct(product: ProductWithInventory, index: number): StoreProductL
     price: formatMoney(product.price),
     description: product.description,
     imageAlt: product.name,
+    imageUrl: product.imageUrl,
     media: getProductMedia(product),
     href: `/store/${product.slug}`,
     cta: getProductCta(product),

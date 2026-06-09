@@ -18,6 +18,7 @@ function getPrimaryBookingDoctor() {
     include: {
       user: {
         select: {
+          avatarUrl: true,
           displayName: true
         }
       },
@@ -97,7 +98,8 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
         id: doctor.id,
         name: doctor.user.displayName ?? "นพ. สมชาย",
         specialty: doctor.specialty ?? "เวชศาสตร์ชะลอวัย",
-        fee: formatMoney(doctor.consultationFee)
+        fee: formatMoney(doctor.consultationFee),
+        avatarUrl: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg"
       },
       slots: doctor.availability.map(mapSlot)
     };

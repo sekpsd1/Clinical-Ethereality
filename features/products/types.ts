@@ -13,6 +13,7 @@ export type StoreProductListItem = {
   price: string;
   description: string | null;
   imageAlt: string;
+  imageUrl: string | null;
   media: StoreProductMedia;
   href: `/store/${string}`;
   cta: string;

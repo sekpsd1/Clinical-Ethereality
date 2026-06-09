@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -20,6 +21,7 @@ const fallbackProduct: StoreProductDetailItem = {
   price: "฿1,200",
   description: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
   imageAlt: "Premium medical bottle of Paracetamol 500mg",
+  imageUrl: null,
   media: "kit",
   href: "/store/paracetamol-500mg",
   cta: "สั่งซื้อทันที",
@@ -178,6 +180,16 @@ function ProductDetailHeader() {
 }
 
 function ProductHero({ product }: { product: StoreProductDetailItem }) {
+  if (product.imageUrl) {
+    return (
+      <section className="mt-16 aspect-square w-full overflow-hidden bg-[#eceef0]">
+        <div className="relative h-full w-full">
+          <Image src={product.imageUrl} alt={product.imageAlt} fill sizes="480px" className="object-contain p-6" priority />
+        </div>
+      </section>
+    );
+  }
+
   const heroClass =
     product.media === "vitamin"
       ? "relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_58%,#ffb15d_0%,#e95f12_62%,#c9480d_100%)]"

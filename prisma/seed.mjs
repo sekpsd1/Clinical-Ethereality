@@ -34,17 +34,19 @@ const seedUsers = [
   },
   {
     lineUserId: "seed-line-doctor-approved",
-    displayName: "นพ. สมชาย อนุมัติแล้ว",
+    displayName: "พญ. กมลภัทร วิจักขณ์พันธ์",
     email: "doctor.approved@clinical-ethereality.test",
     role: "doctor",
     status: "active",
+    avatarUrl: "/images/doctors/kamonpat.jpg",
     doctorProfile: {
-      licenseNumber: "MD-SEED-002",
-      specialty: "เวชศาสตร์ชะลอวัย",
-      bio: "แพทย์ทดสอบที่อนุมัติแล้วสำหรับตรวจสอบสถานะในระบบผู้ดูแล",
-      consultationFee: 900,
+      licenseNumber: "MD-CLIENT-REDACTED-001",
+      specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์",
+      bio:
+        "หมอกล้วย สูตินรีแพทย์ผู้เชี่ยวชาญด้านเวชศาสตร์มารดาและทารกในครรภ์ มีประสบการณ์การทำงานมากกว่า 10 ปี ให้คำปรึกษาออนไลน์ได้ทั้งวิดีโอและแชท",
+      consultationFee: 800,
       status: "approved",
-      approvedAt: new Date("2026-05-01T03:00:00.000Z")
+      approvedAt: new Date("2026-06-08T03:00:00.000Z")
     }
   },
   {
@@ -83,48 +85,158 @@ const seedUsers = [
 
 const seedProducts = [
   {
-    name: "Paracetamol 500mg",
-    slug: "paracetamol-500mg",
-    description: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
-    price: "120.00",
-    imageUrl: "/images/payments/promptpay-qr.png",
+    name: "HPV Home Test Kit 14 สายพันธุ์",
+    slug: "hpv-home-test-14",
+    description:
+      "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 14 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1200.00",
+    imageUrl: "/images/products/colli-pee.jpg",
     requiresPrescription: false,
     status: "active",
     inventory: {
-      quantity: 8,
-      reservedQuantity: 2,
-      lowStockThreshold: 10
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
     }
   },
   {
-    name: "Vitamin C Complex",
-    slug: "vitamin-c-complex",
-    description: "ผลิตภัณฑ์เสริมอาหารสำหรับทดสอบ catalog",
-    price: "690.00",
-    imageUrl: "/images/payments/promptpay-qr.png",
+    name: "HPV Home Test Kit 18 สายพันธุ์",
+    slug: "hpv-home-test-18",
+    description:
+      "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 18 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1500.00",
+    imageUrl: "/images/products/colli-pee.jpg",
     requiresPrescription: false,
     status: "active",
     inventory: {
-      quantity: 45,
-      reservedQuantity: 4,
-      lowStockThreshold: 12
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
     }
   },
   {
-    name: "Clinical Retinoid Cream",
-    slug: "clinical-retinoid-cream",
-    description: "ผลิตภัณฑ์ที่ต้องอ้างอิงใบสั่งยา",
-    price: "1290.00",
-    imageUrl: "/images/payments/promptpay-qr.png",
-    requiresPrescription: true,
+    name: "HPV Home Test Kit 29 สายพันธุ์",
+    slug: "hpv-home-test-29",
+    description:
+      "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 29 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "2000.00",
+    imageUrl: "/images/products/colli-pee.jpg",
+    requiresPrescription: false,
     status: "active",
     inventory: {
-      quantity: 5,
-      reservedQuantity: 1,
-      lowStockThreshold: 8
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "STIs Home Test Kit 14 รายการ",
+    slug: "stis-home-test-14",
+    description:
+      "ชุดตรวจโรคติดต่อทางเพศสัมพันธ์จากปัสสาวะ 14 รายการ พร้อมอุปกรณ์เก็บตัวอย่าง Colli-Pee เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1500.00",
+    imageUrl: "/images/products/colli-pee.jpg",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "HPV Self Swab Kit 14 สายพันธุ์",
+    slug: "hpv-self-swab-14",
+    description:
+      "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 14 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1200.00",
+    imageUrl: "/images/products/self-swab.png",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "HPV Self Swab Kit 18 สายพันธุ์",
+    slug: "hpv-self-swab-18",
+    description:
+      "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 18 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1500.00",
+    imageUrl: "/images/products/self-swab.png",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "HPV Self Swab Kit 29 สายพันธุ์",
+    slug: "hpv-self-swab-29",
+    description:
+      "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 29 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "2000.00",
+    imageUrl: "/images/products/self-swab.png",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "STIs Self Swab Kit 14 รายการ",
+    slug: "stis-self-swab-14",
+    description:
+      "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจโรคติดต่อทางเพศสัมพันธ์ 14 รายการ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "1500.00",
+    imageUrl: "/images/products/self-swab.png",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "STIs 14 + HPV 29 Home Test Bundle",
+    slug: "stis-hpv-29-home-test-bundle",
+    description:
+      "แพ็กเกจรวม STIs 14 รายการ และ HPV 29 สายพันธุ์ สำหรับการตรวจจากปัสสาวะด้วยอุปกรณ์ Colli-Pee เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "3500.00",
+    imageUrl: "/images/products/colli-pee.jpg",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
+    }
+  },
+  {
+    name: "STIs 14 + HPV 29 Self Swab Bundle",
+    slug: "stis-hpv-29-self-swab-bundle",
+    description:
+      "แพ็กเกจรวม STIs 14 รายการ และ HPV 29 สายพันธุ์ สำหรับชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
+    price: "3500.00",
+    imageUrl: "/images/products/self-swab.png",
+    requiresPrescription: false,
+    status: "active",
+    inventory: {
+      quantity: 500,
+      reservedQuantity: 0,
+      lowStockThreshold: 50
     }
   }
 ];
+
+const legacyProductSlugs = ["paracetamol-500mg", "vitamin-c-complex", "clinical-retinoid-cream"];
 
 async function upsertUser(seedUser) {
   const { doctorProfile, pharmacistProfile, ...userData } = seedUser;
@@ -167,6 +279,17 @@ async function upsertUser(seedUser) {
 
 async function upsertProducts(adminUserId) {
   const products = [];
+
+  await prisma.product.updateMany({
+    where: {
+      slug: {
+        in: legacyProductSlugs
+      }
+    },
+    data: {
+      status: "archived"
+    }
+  });
 
   for (const seedProduct of seedProducts) {
     const { inventory, ...productData } = seedProduct;
@@ -236,24 +359,23 @@ async function upsertConsultation({ customerId, doctorId }) {
 }
 
 async function upsertDoctorAvailability(doctorId) {
-  const slots = [
-    {
-      weekday: 1,
-      startTime: "09:00",
-      endTime: "12:00",
-      slotMinutes: 30,
-      isActive: true,
-      notes: "รับปรึกษา follow-up และเคสผิวพรรณ"
+  await prisma.doctorAvailability.updateMany({
+    where: {
+      doctorId
     },
-    {
-      weekday: 3,
-      startTime: "13:00",
-      endTime: "16:00",
-      slotMinutes: 30,
-      isActive: true,
-      notes: "เปิดสำหรับ teleconsult"
+    data: {
+      isActive: false
     }
-  ];
+  });
+
+  const slots = [1, 2, 3, 4].map((weekday) => ({
+    weekday,
+    startTime: "17:00",
+    endTime: "21:00",
+    slotMinutes: 15,
+    isActive: true,
+    notes: "รับปรึกษาออนไลน์ได้ทั้งวิดีโอและแชท"
+  }));
 
   for (const slot of slots) {
     const existing = await prisma.doctorAvailability.findFirst({
@@ -287,8 +409,7 @@ async function upsertPrescription({ consultationId, customerId, doctorId, pharma
   const existing = await prisma.prescription.findFirst({
     where: {
       consultationId,
-      patientId: customerId,
-      status: "pending_verification"
+      patientId: customerId
     }
   });
 
@@ -297,8 +418,9 @@ async function upsertPrescription({ consultationId, customerId, doctorId, pharma
     patientId: customerId,
     doctorId,
     pharmacistId,
-    status: "pending_verification",
-    notes: "ใบสั่งยาทดสอบรอเภสัชกรตรวจสอบ"
+    status: "verified",
+    verifiedAt: new Date("2026-06-08T10:30:00.000Z"),
+    notes: "ใบสั่งยาทดสอบจากแพทย์ในระบบ ใช้สำหรับสั่งซื้อชุดตรวจตาม workflow คลินิกโดยตรง"
   };
 
   if (existing) {
@@ -315,14 +437,18 @@ async function upsertPrescription({ consultationId, customerId, doctorId, pharma
   });
 }
 
-async function upsertOrder({ customerId, productId, prescriptionId }) {
+async function upsertOrder({ customerId, product, prescriptionId }) {
+  const unitPrice = Number(product.price);
+  const shippingTotal = 30;
+  const grandTotal = unitPrice + shippingTotal;
+
   const existing = await prisma.order.findFirst({
     where: {
       userId: customerId,
       status: "paid",
       items: {
         some: {
-          productId
+          productId: product.id
         }
       }
     },
@@ -336,10 +462,10 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
   const orderData = {
     userId: customerId,
     status: "paid",
-    subtotal: "1290.00",
+    subtotal: unitPrice.toFixed(2),
     discountTotal: "0.00",
-    shippingTotal: "60.00",
-    grandTotal: "1350.00"
+    shippingTotal: shippingTotal.toFixed(2),
+    grandTotal: grandTotal.toFixed(2)
   };
 
   const order =
@@ -360,7 +486,7 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
   const orderItem = await prisma.orderItem.findFirst({
     where: {
       orderId: order.id,
-      productId
+      productId: product.id
     }
   });
 
@@ -372,19 +498,19 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
       data: {
         prescriptionId,
         quantity: 1,
-        unitPrice: "1290.00",
-        lineTotal: "1290.00"
+        unitPrice: unitPrice.toFixed(2),
+        lineTotal: unitPrice.toFixed(2)
       }
     });
   } else {
     await prisma.orderItem.create({
       data: {
         orderId: order.id,
-        productId,
+        productId: product.id,
         prescriptionId,
         quantity: 1,
-        unitPrice: "1290.00",
-        lineTotal: "1290.00"
+        unitPrice: unitPrice.toFixed(2),
+        lineTotal: unitPrice.toFixed(2)
       }
     });
   }
@@ -402,7 +528,7 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
         id: payment.id
       },
       data: {
-        amount: "1350.00",
+        amount: grandTotal.toFixed(2),
         qrPayload: "seed-promptpay-payload",
         slipImageUrl: "/images/payments/promptpay-qr.png"
       }
@@ -412,7 +538,7 @@ async function upsertOrder({ customerId, productId, prescriptionId }) {
       data: {
         orderId: order.id,
         method: "promptpay",
-        amount: "1350.00",
+        amount: grandTotal.toFixed(2),
         status: "pending_review",
         qrPayload: "seed-promptpay-payload",
         slipImageUrl: "/images/payments/promptpay-qr.png"
@@ -672,7 +798,7 @@ async function main() {
   });
   const products = await upsertProducts(admin.id);
   await upsertDoctorAvailability(doctor.id);
-  const prescriptionProduct = products.find((product) => product.slug === "clinical-retinoid-cream") ?? products[0];
+  const prescriptionProduct = products.find((product) => product.slug === "hpv-home-test-14") ?? products[0];
   const consultation = await upsertConsultation({
     customerId: customer.id,
     doctorId: doctor.id
@@ -685,7 +811,7 @@ async function main() {
   });
   const order = await upsertOrder({
     customerId: customer.id,
-    productId: prescriptionProduct.id,
+    product: prescriptionProduct,
     prescriptionId: prescription.id
   });
 

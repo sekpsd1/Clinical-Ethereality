@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ClipboardPlus, Leaf, Lock, Pill, Search, ShoppingCart, Sparkles, Syringe } from "lucide-react";
 import type { StoreMarketplaceData, StoreProductListItem } from "@/features/products/types";
 
@@ -24,6 +25,7 @@ const products: Product[] = [
     slug: "clinical-retinoid-cream",
     price: "฿1,200",
     imageAlt: "Antiviral gel tube in clinical packaging",
+    imageUrl: null,
     media: "gel",
     href: "/store/clinical-retinoid-cream",
     cta: "ดูรายละเอียด",
@@ -38,6 +40,7 @@ const products: Product[] = [
     slug: "vitamin-c-complex",
     price: "฿450",
     imageAlt: "Multi-vitamin bottle on a studio background",
+    imageUrl: null,
     media: "vitamin",
     href: "/store/vitamin-c-complex",
     cta: "ดูสินค้า",
@@ -52,6 +55,7 @@ const products: Product[] = [
     slug: "paracetamol-500mg",
     price: "฿2,500",
     imageAlt: "HPV home testing kit with clinical packaging",
+    imageUrl: null,
     media: "kit",
     href: "/store/paracetamol-500mg",
     cta: "สั่งซื้อชุดตรวจ",
@@ -210,6 +214,10 @@ function FeaturedProductCard({ product }: { product: Product }) {
 }
 
 function ProductMedia({ product }: { product: Product }) {
+  if (product.imageUrl) {
+    return <Image src={product.imageUrl} alt={product.imageAlt} fill sizes="(max-width: 480px) 45vw, 180px" className="object-contain p-2" />;
+  }
+
   if (product.media === "gel") {
     return (
       <div

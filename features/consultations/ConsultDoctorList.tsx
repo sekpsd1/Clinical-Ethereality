@@ -15,12 +15,12 @@ const filterChips = ["ตรวจ HPV", "โรคผิวหนัง", "อ�
 
 const doctors: Doctor[] = [
   {
-    name: "นพ. สมชาย รัตนวงศาล",
-    specialty: "ผู้เชี่ยวชาญด้านโรคทั่วไป",
-    tags: ["#สุขภาพดี", "#ที่ปรึกษาออนไลน์"],
-    price: "฿850",
+    name: "พญ. กมลภัทร วิจักขณ์พันธ์",
+    specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์",
+    tags: ["#Telemedicine", "#VideoChat"],
+    price: "฿800 / 15 นาที",
     rating: "4.9",
-    imageSrc: "/images/doctors/somchai.png"
+    imageSrc: "/images/doctors/kamonpat.jpg"
   },
   {
     name: "พญ. วริศรา นครินทร์",

@@ -52,8 +52,8 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
         <div className="relative size-24 rounded-full border-4 border-white p-1 shadow-avatar">
           <div className="relative size-full overflow-hidden rounded-full">
             <Image
-              src="/images/doctors/somchai-portrait.png"
-              alt={doctor?.name ?? "นพ. สมชาย รัตนวงศาล"}
+              src={doctor?.avatarUrl ?? "/images/doctors/kamonpat.jpg"}
+              alt={doctor?.name ?? "พญ. กมลภัทร วิจักขณ์พันธ์"}
               fill
               sizes="96px"
               className="object-cover"
@@ -66,7 +66,7 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
       </div>
 
       <div className="absolute inset-x-0 top-[136px] flex flex-col items-center gap-1 px-5 text-center">
-        <h2 className="text-xl font-bold leading-7 tracking-normal text-primary">{doctor?.name ?? "นพ. สมชาย รัตนวงศาล"}</h2>
+        <h2 className="text-xl font-bold leading-7 tracking-normal text-primary">{doctor?.name ?? "พญ. กมลภัทร วิจักขณ์พันธ์"}</h2>
         <div className="flex items-center justify-center gap-1 text-sm font-medium leading-5 text-[#3e494a]">
           <Star aria-hidden="true" className="size-[15px] fill-[#f2b705] text-[#f2b705]" />
           <span>4.9 (120+ รีวิว)</span>
@@ -75,7 +75,7 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
 
       <div className="absolute inset-x-0 bottom-8 flex justify-center gap-2 px-5">
         <span className="rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-primary">
-          {doctor?.specialty ?? "เวชศาสตร์ชะลอวัย"}
+          {doctor?.specialty ?? "สูตินรีเวช"}
         </span>
         <span className="rounded-full bg-[#dfe0e0]/50 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-[#616363]">
           ปรึกษาออนไลน์
@@ -147,7 +147,7 @@ function TimeSlotSection({ data, bookingError }: { data: DoctorBookingData; book
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#3e494a]">อัตราค่าบริการ</p>
           <p className="whitespace-nowrap text-sm leading-5 text-[#3e494a]">
-            <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "฿1,000"}</span> / slot
+            <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "฿800"}</span> / slot
           </p>
         </div>
       </div>
