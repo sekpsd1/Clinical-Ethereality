@@ -21,6 +21,8 @@ export type CustomerOrderItem = {
   paymentQrPayload: string | null;
   paymentQrDataUrl: string | null;
   paymentVerificationRequired: boolean;
+  externalPrescriptionFileName: string | null;
+  externalPrescriptionAttachmentCount: number;
   shipmentStatus: ShipmentStatus | null;
   shipmentLabel: string;
   trackingNumber: string | null;

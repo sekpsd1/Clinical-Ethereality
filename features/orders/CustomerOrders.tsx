@@ -93,6 +93,12 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
         <InfoTile icon="tracking" label="เลขพัสดุ" value={order.trackingNumber ?? "-"} />
       </dl>
 
+      {order.externalPrescriptionAttachmentCount > 0 ? (
+        <div className="mt-4 rounded-[18px] border border-primary/15 bg-primary/5 px-4 py-3 text-xs font-bold leading-5 text-primary">
+          แนบใบสั่งยาแล้ว: {order.externalPrescriptionFileName ?? `${order.externalPrescriptionAttachmentCount} ไฟล์`}
+        </div>
+      ) : null}
+
       <OrderTrackingTimeline steps={order.steps} className="mt-6 border-t border-[#bdc9ca]/20 pt-6" />
 
       {order.paymentVerificationRequired ? <PaymentInstructionPanel order={order} /> : null}

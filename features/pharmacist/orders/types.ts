@@ -8,6 +8,8 @@ export type PharmacistOrderQueueItem = {
   status: OrderStatus;
   total: string;
   itemSummary: string;
+  externalPrescriptionFileName: string | null;
+  externalPrescriptionAttachmentCount: number;
   paymentStatus: PaymentStatus | "no_payment_record";
   shipmentStatus: ShipmentStatus | null;
   trackingNumber: string | null;

@@ -142,6 +142,19 @@ enum ConsentType {
   prescription_fulfillment
 }
 
+enum FileAttachmentPurpose {
+  external_prescription
+  payment_slip
+  prescription_pdf
+  clinical_image
+  other
+}
+
+enum FileAttachmentStatus {
+  attached
+  archived
+}
+
 model User {
   id            String        @id @default(cuid())
   lineUserId    String        @unique
@@ -173,6 +186,7 @@ model User {
   reviewedPayments   Payment[]           @relation("PaymentReviewer")
   updatedInventory   Inventory[]         @relation("InventoryUpdater")
   updatedShipments   ShipmentTracking[]  @relation("ShipmentUpdater")
+  fileAttachments    FileAttachment[]
 
   @@index([role])
   @@index([status])
@@ -466,6 +480,31 @@ model ShipmentTracking {
   @@index([status])
   @@index([trackingNumber])
   @@index([updatedById])
+}
+
+model FileAttachment {
+  id           String                @id @default(cuid())
+  ownerId      String
+  purpose      FileAttachmentPurpose
+  status       FileAttachmentStatus  @default(attached)
+  entityType   String                @db.VarChar(80)
+  entityId     String
+  storageUrl   String                @db.Text
+  storageKey   String?               @db.Text
+  fileName     String                @db.VarChar(255)
+  mimeType     String?               @db.VarChar(120)
+  byteSize     Int?
+  metadataJson Json?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId])
+  @@index([purpose])
+  @@index([status])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
 
 model Article {

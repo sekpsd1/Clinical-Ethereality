@@ -6,6 +6,7 @@ import { submitConsultAssessmentSchema } from "@/features/consultations/assessme
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
+import { createExternalPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 describe("feature validation schemas", () => {
@@ -84,5 +85,30 @@ describe("feature validation schemas", () => {
     expect(isPrescriptionOrderReady("verified")).toBe(true);
     expect(isPrescriptionOrderReady("draft")).toBe(false);
     expect(getPrescriptionOrderStatusLabel("pending_verification")).toBe("แพทย์ออกใบสั่งยาแล้ว");
+  });
+
+  it("validates external prescription attachment metadata before ordering", () => {
+    expect(
+      createExternalPrescriptionOrderSchema.safeParse({
+        productSlug: "rx-product",
+        attachmentUrl: "https://storage.example/prescriptions/rx-1.pdf",
+        fileName: "rx-1.pdf",
+        mimeType: "application/pdf"
+      }).success
+    ).toBe(true);
+    expect(
+      createExternalPrescriptionOrderSchema.safeParse({
+        productSlug: "rx-product",
+        attachmentUrl: "not-a-url",
+        fileName: "rx-1.pdf"
+      }).success
+    ).toBe(false);
+    expect(
+      createExternalPrescriptionOrderSchema.safeParse({
+        productSlug: "rx-product",
+        attachmentUrl: "https://storage.example/prescriptions/rx-1.pdf",
+        fileName: ""
+      }).success
+    ).toBe(false);
   });
 });

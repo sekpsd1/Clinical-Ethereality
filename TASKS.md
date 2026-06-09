@@ -42,6 +42,7 @@
 - [ ] Receive product catalog with prices, images, stock, prescription-required flags, warnings, and storage rules; FDA numbers are still pending
 - [ ] Receive clinic-as-pharmacy license direction and facility license document; client says prescription-required products can be purchased by attaching a prescription without an additional document-review step, but pharmacist-specific data is not provided, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
 - [x] Update in-app doctor-issued prescription ordering so customers can buy prescription-required products without an additional pharmacist/document verification gate while preserving prescription, order, payment, shipment, reward, inventory, and audit linkage
+- [x] Add external prescription attachment metadata foundation for prescription-required purchases using owner-managed storage URLs, order linkage, attachment visibility, and audit logs without storing file bytes in the database
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup

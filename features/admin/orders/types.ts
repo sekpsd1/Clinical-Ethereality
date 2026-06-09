@@ -8,6 +8,8 @@ export type AdminOrderQueueItem = {
   status: OrderStatus;
   total: string;
   itemSummary: string;
+  externalPrescriptionFileName: string | null;
+  externalPrescriptionAttachmentCount: number;
   paymentStatus: string;
   shipmentId: string | null;
   shipmentStatus: ShipmentStatus | null;

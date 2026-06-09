@@ -112,6 +112,11 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                     <StatusBadge tone={tone}>{orderStatusLabels[order.status]}</StatusBadge>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-muted">{order.itemSummary}</p>
+                  {order.externalPrescriptionAttachmentCount > 0 ? (
+                    <p className="mt-2 rounded-[8px] bg-primary/5 px-3 py-2 text-[11px] font-bold leading-4 text-primary">
+                      แนบใบสั่งยา: {order.externalPrescriptionFileName ?? `${order.externalPrescriptionAttachmentCount} ไฟล์`}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

@@ -12,6 +12,7 @@ import {
   UserRound
 } from "lucide-react";
 import { addToCartAction } from "@/features/cart/actions";
+import { createExternalPrescriptionOrderAction } from "@/features/products/prescriptions/actions";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 
 const fallbackProduct: StoreProductDetailItem = {
@@ -31,7 +32,13 @@ const fallbackProduct: StoreProductDetailItem = {
   longDescription: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า"
 };
 
-export function ProductDetail({ data }: { data: StoreProductDetailData }) {
+export function ProductDetail({
+  data,
+  externalPrescriptionStatus
+}: {
+  data: StoreProductDetailData;
+  externalPrescriptionStatus?: string;
+}) {
   const product = data.product ?? fallbackProduct;
 
   return (
@@ -65,6 +72,10 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
             </div>
           ) : null}
         </section>
+
+        {product.requiresPrescription ? (
+          <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} />
+        ) : null}
 
         <section className="flex flex-col gap-4">
           <h2 className="pl-1 text-lg font-extrabold leading-7 text-primary">
@@ -158,6 +169,71 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ExternalPrescriptionOrderCard({
+  product,
+  status
+}: {
+  product: StoreProductDetailItem;
+  status?: string;
+}) {
+  return (
+    <section className="rounded-[24px] border border-primary/20 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
+      <div className="mb-4">
+        <h2 className="text-base font-extrabold leading-6 text-primary">แนบใบสั่งยาจากภายนอก</h2>
+        <p className="mt-1 text-xs leading-5 text-[#3e494a]">
+          ใช้ URL ไฟล์จาก storage ที่ได้รับอนุญาต ระบบจะบันทึกเฉพาะ metadata เพื่อผูกกับคำสั่งซื้อ
+        </p>
+      </div>
+
+      {status === "failed" || status === "invalid" ? (
+        <p className="mb-4 rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">
+          ไม่สามารถสร้างคำสั่งซื้อจากใบสั่งยาภายนอกได้ กรุณาตรวจสอบ URL และชื่อไฟล์อีกครั้ง
+        </p>
+      ) : null}
+
+      <form action={createExternalPrescriptionOrderAction} className="space-y-3">
+        <input type="hidden" name="productSlug" value={product.slug} />
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">Prescription file URL</span>
+          <input
+            required
+            type="url"
+            name="attachmentUrl"
+            placeholder="https://..."
+            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">File name</span>
+          <input
+            required
+            type="text"
+            name="fileName"
+            placeholder="prescription.pdf"
+            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">File type</span>
+          <input
+            type="text"
+            name="mimeType"
+            placeholder="application/pdf"
+            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
+          />
+        </label>
+        <button
+          type="submit"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking active:scale-[0.98]"
+        >
+          <ShoppingCart aria-hidden="true" className="size-5" />
+          สั่งซื้อพร้อมใบสั่งยา
+        </button>
+      </form>
+    </section>
   );
 }
 

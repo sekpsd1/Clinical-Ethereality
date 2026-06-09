@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db/prisma";
 import type { PharmacistOrderQueueItem, PharmacistOrdersData } from "@/features/pharmacist/orders/types";
 
 type OrderWithDetails = Awaited<ReturnType<typeof getOrdersForPharmacist>>[number];
+type ExternalPrescriptionAttachmentSummary = {
+  count: number;
+  fileName: string | null;
+};
 
 function getOrdersForPharmacist() {
   return prisma.order.findMany({
@@ -65,9 +69,28 @@ function getItemSummary(order: OrderWithDetails): string {
   return order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
 }
 
-function mapOrder(order: OrderWithDetails): PharmacistOrderQueueItem {
+function mapExternalPrescriptionAttachments(
+  attachments: Array<{ entityId: string; fileName: string }>
+): Map<string, ExternalPrescriptionAttachmentSummary> {
+  return attachments.reduce((summary, attachment) => {
+    const current = summary.get(attachment.entityId) ?? { count: 0, fileName: null };
+
+    summary.set(attachment.entityId, {
+      count: current.count + 1,
+      fileName: current.fileName ?? attachment.fileName
+    });
+
+    return summary;
+  }, new Map<string, ExternalPrescriptionAttachmentSummary>());
+}
+
+function mapOrder(
+  order: OrderWithDetails,
+  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>
+): PharmacistOrderQueueItem {
   const shipment = order.shipments[0] ?? null;
   const payment = order.payments[0] ?? null;
+  const externalPrescription = attachmentSummary.get(order.id) ?? { count: 0, fileName: null };
 
   return {
     id: order.id,
@@ -77,6 +100,8 @@ function mapOrder(order: OrderWithDetails): PharmacistOrderQueueItem {
     status: order.status,
     total: formatMoney(order.grandTotal),
     itemSummary: getItemSummary(order),
+    externalPrescriptionFileName: externalPrescription.fileName,
+    externalPrescriptionAttachmentCount: externalPrescription.count,
     paymentStatus: payment?.status ?? "no_payment_record",
     shipmentStatus: shipment?.status ?? null,
     trackingNumber: shipment?.trackingNumber ?? null,
@@ -89,7 +114,25 @@ export async function getPharmacistOrders(): Promise<PharmacistOrdersData> {
 
   try {
     const orders = await getOrdersForPharmacist();
-    const orderItems = orders.map(mapOrder);
+    const orderIds = orders.map((order) => order.id);
+    const attachments = orderIds.length > 0
+      ? await prisma.fileAttachment.findMany({
+          where: {
+            entityType: "order",
+            entityId: {
+              in: orderIds
+            },
+            purpose: "external_prescription",
+            status: "attached"
+          },
+          select: {
+            entityId: true,
+            fileName: true
+          }
+        })
+      : [];
+    const attachmentSummary = mapExternalPrescriptionAttachments(attachments);
+    const orderItems = orders.map((order) => mapOrder(order, attachmentSummary));
 
     return {
       orders: orderItems,

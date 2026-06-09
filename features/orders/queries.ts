@@ -6,6 +6,10 @@ import { getQrDataUrlFromPayload } from "@/lib/payments/promptpay";
 import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
 
 type CustomerOrderRecord = Awaited<ReturnType<typeof getOrdersForCustomer>>[number];
+type ExternalPrescriptionAttachmentSummary = {
+  count: number;
+  fileName: string | null;
+};
 
 const orderStatusLabels: Record<OrderStatus, string> = {
   pending_payment: "รอชำระเงิน",
@@ -157,10 +161,29 @@ function getItemSummary(order: CustomerOrderRecord): string {
   return order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
 }
 
-async function mapOrder(order: CustomerOrderRecord): Promise<CustomerOrderItem> {
+function mapExternalPrescriptionAttachments(
+  attachments: Array<{ entityId: string; fileName: string }>
+): Map<string, ExternalPrescriptionAttachmentSummary> {
+  return attachments.reduce((summary, attachment) => {
+    const current = summary.get(attachment.entityId) ?? { count: 0, fileName: null };
+
+    summary.set(attachment.entityId, {
+      count: current.count + 1,
+      fileName: current.fileName ?? attachment.fileName
+    });
+
+    return summary;
+  }, new Map<string, ExternalPrescriptionAttachmentSummary>());
+}
+
+async function mapOrder(
+  order: CustomerOrderRecord,
+  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>
+): Promise<CustomerOrderItem> {
   const payment = order.payments[0] ?? null;
   const shipment = order.shipments[0] ?? null;
   const paymentQrDataUrl = await getQrDataUrlFromPayload(payment?.qrPayload ?? null);
+  const externalPrescription = attachmentSummary.get(order.id) ?? { count: 0, fileName: null };
 
   return {
     id: order.id,
@@ -177,6 +200,8 @@ async function mapOrder(order: CustomerOrderRecord): Promise<CustomerOrderItem> 
     paymentQrPayload: payment?.qrPayload ?? null,
     paymentQrDataUrl,
     paymentVerificationRequired: payment ? ["pending_slip", "pending_review"].includes(payment.status) : false,
+    externalPrescriptionFileName: externalPrescription.fileName,
+    externalPrescriptionAttachmentCount: externalPrescription.count,
     shipmentStatus: shipment?.status ?? null,
     shipmentLabel: shipment ? shipmentStatusLabels[shipment.status] : "ยังไม่มีข้อมูลจัดส่ง",
     trackingNumber: shipment?.trackingNumber ?? null,
@@ -191,7 +216,26 @@ export async function getCustomerOrders(session: PublicSession): Promise<Custome
 
   try {
     const orders = await getOrdersForCustomer(session.userId);
-    const orderItems = await Promise.all(orders.map(mapOrder));
+    const orderIds = orders.map((order) => order.id);
+    const attachments = orderIds.length > 0
+      ? await prisma.fileAttachment.findMany({
+          where: {
+            ownerId: session.userId,
+            entityType: "order",
+            entityId: {
+              in: orderIds
+            },
+            purpose: "external_prescription",
+            status: "attached"
+          },
+          select: {
+            entityId: true,
+            fileName: true
+          }
+        })
+      : [];
+    const attachmentSummary = mapExternalPrescriptionAttachments(attachments);
+    const orderItems = await Promise.all(orders.map((order) => mapOrder(order, attachmentSummary)));
 
     return {
       orders: orderItems,
