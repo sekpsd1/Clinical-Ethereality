@@ -31,20 +31,20 @@ This checklist tracks information needed from the client before implementation a
 
 ### Physician Onboarding
 
-- [ ] Doctor full legal name
-- [ ] Display name and title
-- [ ] Professional bio
-- [ ] Education history
-- [ ] Specialty and expertise
-- [ ] Medical license number
-- [ ] License verification document or image
-- [ ] Official profile photo in realistic/medical style
-- [ ] Consultation fee
-- [ ] Consultation duration
-- [ ] Available consultation schedule
-- [ ] Supported consultation modes, such as video, chat, or both
+- [x] Doctor full legal name: received; keep exact identity/license documents out of git
+- [x] Display name and title: received
+- [x] Professional bio: received
+- [x] Education history: received
+- [x] Specialty and expertise: received
+- [x] Medical license number: received; keep exact value out of git
+- [x] License verification document or image: received as local `461135.jpg`; keep the document and exact values outside git
+- [x] Official profile photo in realistic/medical style: received
+- [x] Consultation fee: received
+- [x] Consultation duration: received
+- [x] Available consultation schedule: received
+- [x] Supported consultation modes, such as video, chat, or both: received
 - [ ] Cancellation and rescheduling rules
-- [ ] Prescription workflow rules after consultation
+- [x] Prescription workflow rules after consultation: client says doctors prescribe directly from the clinic; if a product requires a prescription, the customer can attach the prescription and purchase in the system without an additional document-review step after attachment.
 
 ### Consultation Operations
 
@@ -61,24 +61,24 @@ This checklist tracks information needed from the client before implementation a
 
 ### Product Catalog
 
-- [ ] Product name
-- [ ] Product category
-- [ ] Product description and usage instructions
-- [ ] FDA number
-- [ ] Unit price, including VAT handling if applicable
-- [ ] Product images using real medical-standard photography
-- [ ] Prescription-required flag
-- [ ] Stock quantity
-- [ ] Low stock threshold
-- [ ] Contraindications or warnings, if applicable
-- [ ] Storage instructions, if applicable
+- [x] Product name: received for HPV urine kit, HPV self swab kit, STIs urine kit, and STIs self swab kit/package combinations
+- [x] Product category: received
+- [x] Product description and usage instructions: received
+- [ ] FDA number: pending; client marked FDA as in progress
+- [x] Unit price, including VAT handling if applicable: received; exact package pricing should be entered into seed/catalog data only after review
+- [x] Product images using real medical-standard photography: received
+- [x] Prescription-required flag: received; current kits can be purchased without prescription
+- [x] Stock quantity: received
+- [x] Low stock threshold: received
+- [x] Contraindications or warnings, if applicable: received
+- [x] Storage instructions, if applicable: received
 
 ### Pharmacy Data
 
 - [x] Pharmacy legal name: use `บางกอก ไซโตเจเนติกซ์` for clinic/pharmacy display in pharmacy workflows
-- [ ] Pharmacy license number: still needed for the clinic-as-pharmacy workflow
-- [ ] Pharmacist full legal name
-- [ ] Pharmacist license number
+- [x] Pharmacy/clinic license direction: client says the clinic is used as the pharmacy/dispensing storefront, with doctors prescribing directly; products that require prescriptions can be purchased after attaching the prescription. Received facility-license document image, exact value stays outside git.
+- [ ] Pharmacist full legal name: not provided; client says no additional document-review step is needed after prescription attachment, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
+- [ ] Pharmacist license number: not provided; client says no additional document-review step is needed after prescription attachment, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
 - [x] Prescription verification SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
 - [x] Medicine preparation SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
 - [x] Packing and shipment SOP: drafted for client review in `PHARMACY_SOP_DRAFT.md`
@@ -168,6 +168,10 @@ Received from the client:
 - Client confirmed the clinic will be used as the pharmacy/storefront concept.
 - Draft pharmacy/prescription fulfillment SOP and client review message are prepared for owner review before sending to the client.
 - Doctor, product catalog, and pharmacist/pharmacy intake templates are prepared for the owner to send to the client.
+- Client intake bundle received from Google Drive download on 2026-06-08 and reviewed from local path outside the repo. It includes one doctor telemedicine profile, official doctor photo, home-test product catalog details, product images, clinic/facility license document image, payment/bank reference document, and corporate/certification images. Sensitive exact values and personal/license documents must remain outside git.
+- Doctor telemedicine data received for one physician, including display/legal name, bio, education, specialty, license number, consultation fee, 15-minute duration, weekday evening schedule, and video/chat support. The physician license number and documents are not committed.
+- Product catalog data received for HPV urine kit, HPV self swab kit, STIs urine kit, and STIs self swab kit/package combinations, including category, usage instructions, package pricing/VAT note, non-prescription purchase flag, stock, low-stock threshold, warnings, storage instructions, and product images. FDA numbers are still pending because the client marked them as in progress.
+- Clinic-as-pharmacy direction updated: client says medicines are dispensed directly through the clinic by the doctor, and prescription-required medicines can be purchased by attaching a prescription in the system without an additional document-review step after attachment. Existing code still contains pharmacist verification flow and will need a scoped implementation change if the MVP should skip that step.
 - Pre-doctor assessment flow rules received: 4 Stitch-designed pages, follow Stitch answer types, recommend by assessment topic while allowing doctor selection, reuse assessment for 7 days, show answers to doctors, and no file/image attachment in the first version.
 - Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`.
 - Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
@@ -178,11 +182,11 @@ Still needed from the client:
 
 - Later legal review or revised legal drafts, if the client updates the current wording.
 - Community guidelines, article content, and moderation policy are deferred until after MVP unless the client asks to launch Community earlier.
-- Doctor profiles, licenses, fees, schedules, and official photos.
-- Final recommendation mapping labels from the Stitch design, plus real doctor data for the pre-doctor assessment recommendation result.
-- Pharmacy license number, pharmacist name, and pharmacist license number for the clinic-as-pharmacy workflow.
-- Product catalog with FDA numbers, prices, images, stock, prescription-required flags, warnings, and storage instructions.
-- Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; confirm clinic-specific constraints, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.
+- Final recommendation mapping labels from the Stitch design, and mapping the received doctor profile into the pre-doctor assessment recommendation result.
+- FDA numbers for the product catalog remain pending.
+- Pharmacist name/license remain not provided because client says doctors prescribe directly from the clinic and no additional document-review step is needed after prescription attachment; confirm whether pharmacist role remains needed for MVP fulfillment operations before changing architecture.
+- If external prescription uploads are allowed, file upload/storage and secure prescription attachment metadata still need implementation through the owner-managed storage setup.
+- Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; update the SOP for clinic-direct doctor prescribing, no-review prescription attachment purchases, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.
 
 Still owner-managed:
 
@@ -199,9 +203,9 @@ Before development starts:
 
 1. Privacy Policy, Terms of Service, and health data consent direction
 2. Company name, tax ID, billing/shipping address, and support contact
-3. Doctor profile, license, price, schedule, and official photo
-4. Product catalog with FDA numbers, prices, images, and prescription requirements
+3. Map the received doctor profile into local seed/catalog-safe data without committing exact sensitive license values
+4. Product catalog FDA numbers and final owner review of package pricing/catalog structure
 5. Secure environment configuration for the received PromptPay account
-6. Client review of the drafted pharmacy and fulfillment SOP, including any clinic-specific constraints
+6. Plan the scoped implementation change for prescription-required purchases so customers can attach a prescription and buy without an additional document-review step, while preserving audit and secure file storage
 7. Community categories and moderation rules only if Community is brought back into MVP scope
 8. Additional owner-provided Stitch HTML exports if new screens are needed
