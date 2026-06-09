@@ -11,6 +11,7 @@ import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 import { createPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
+import { isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -44,12 +45,12 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
       const prescription = await tx.prescription.findFirst({
         where: {
           id: parsed.data.prescriptionId,
-          patientId: session.userId,
-          status: "verified"
+          patientId: session.userId
         },
         select: {
           id: true,
           patientId: true,
+          status: true,
           orderItems: {
             select: {
               orderId: true
@@ -59,7 +60,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         }
       });
 
-      if (!prescription) {
+      if (!prescription || !isPrescriptionOrderReady(prescription.status)) {
         throw new Error("Prescription is not ready for order creation.");
       }
 
@@ -117,6 +118,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
               verificationPayload: {
                 source: "prescription_order",
                 prescriptionId: prescription.id,
+                prescriptionStatus: prescription.status,
                 note: qrPayload
                   ? "Dynamic Thai QR PromptPay payload generated for this prescription order."
                   : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
@@ -129,7 +131,8 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
               eventsJson: {
                 source: "prescription_order",
                 prescriptionId: prescription.id,
-                message: "Prescription order created and waiting for payment review."
+                prescriptionStatus: prescription.status,
+                message: "Prescription order created from doctor-issued prescription without extra document review."
               }
             }
           }
@@ -174,6 +177,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         entityId: order.id,
         metadata: {
           prescriptionId: prescription.id,
+          prescriptionStatus: prescription.status,
           productId: product.id,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",

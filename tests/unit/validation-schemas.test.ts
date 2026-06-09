@@ -6,6 +6,7 @@ import { submitConsultAssessmentSchema } from "@/features/consultations/assessme
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
+import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 describe("feature validation schemas", () => {
   it("validates cart mutations with bounded integer quantities", () => {
@@ -76,5 +77,12 @@ describe("feature validation schemas", () => {
       topic: "ไอหรือเจ็บคอ",
       specialty: "อายุรกรรม"
     });
+  });
+
+  it("treats doctor-issued prescriptions as ready for direct ordering", () => {
+    expect(isPrescriptionOrderReady("pending_verification")).toBe(true);
+    expect(isPrescriptionOrderReady("verified")).toBe(true);
+    expect(isPrescriptionOrderReady("draft")).toBe(false);
+    expect(getPrescriptionOrderStatusLabel("pending_verification")).toBe("แพทย์ออกใบสั่งยาแล้ว");
   });
 });

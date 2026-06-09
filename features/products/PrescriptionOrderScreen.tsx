@@ -33,7 +33,7 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
 
               <div className="mt-5 grid gap-3">
                 <InfoRow icon={ClipboardCheck} label="แพทย์" value={prescription.doctorName} />
-                <InfoRow icon={ShieldCheck} label="เภสัชกร" value={prescription.pharmacistName ?? "ตรวจผ่านแล้ว"} />
+                <InfoRow icon={ShieldCheck} label="คลินิก" value={prescription.pharmacistName ?? "ใช้ใบสั่งยาจากแพทย์ได้"} />
                 <InfoRow icon={PackageCheck} label="คำสั่งซื้อ" value={prescription.linkedOrderCode ?? "ยังไม่ได้สร้างคำสั่งซื้อ"} />
               </div>
 
@@ -63,7 +63,7 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
                 ))}
               </section>
             ) : (
-              <StateCard title="ยังไม่มีสินค้าที่ต้องใช้ใบสั่งยา" body="เมื่อแอดมินเพิ่มสินค้าในหมวดที่ต้องใช้ใบสั่งยา รายการจะปรากฏที่นี่" />
+              <StateCard title="ยังไม่มีสินค้าที่ต้องใช้ใบสั่งยา" body="เมื่อแอดมินเพิ่มสินค้าที่ต้องใช้ใบสั่งยา รายการจะปรากฏที่นี่" />
             )}
           </>
         ) : (

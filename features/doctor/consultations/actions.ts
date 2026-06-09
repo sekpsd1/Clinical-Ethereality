@@ -31,6 +31,7 @@ export async function submitPrescriptionAction(
 
   try {
     await prisma.$transaction(async (tx) => {
+      const issuedAt = new Date();
       const consultation = await tx.consultation.findUnique({
         where: {
           id: parsed.data.consultationId
@@ -80,20 +81,21 @@ export async function submitPrescriptionAction(
           },
           data: {
             notes: parsed.data.notes,
-            status: "pending_verification",
-            verifiedAt: null
+            status: "verified",
+            verifiedAt: issuedAt
           }
         });
         await writeAuditLog(tx, {
           actorId: session.userId,
-          action: "prescription.submit_for_verification",
+          action: "prescription.doctor_issued",
           entityType: "prescription",
           entityId: latestPrescription.id,
           metadata: {
             consultationId: consultation.id,
             patientId: consultation.patientId,
             previousStatus: latestPrescription.status,
-            nextStatus: "pending_verification"
+            nextStatus: "verified",
+            noAdditionalDocumentReview: true
           }
         });
         await tx.notification.create({
@@ -101,8 +103,8 @@ export async function submitPrescriptionAction(
             userId: consultation.patientId,
             type: "prescription",
             channel: "in_app",
-            title: "Prescription sent for verification",
-            body: "Your doctor sent the prescription to the pharmacist for review.",
+            title: "แพทย์ออกใบสั่งยาแล้ว",
+            body: "คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้ โดยไม่ต้องรอขั้นตอนตรวจเอกสารซ้ำ",
             metadataJson: {
               prescriptionId: latestPrescription.id,
               consultationId: consultation.id,
@@ -113,25 +115,31 @@ export async function submitPrescriptionAction(
         return;
       }
 
+      if (latestPrescription) {
+        throw new Error("Consultation already has an active prescription.");
+      }
+
       const prescription = await tx.prescription.create({
         data: {
           consultationId: consultation.id,
           patientId: consultation.patientId,
           doctorId: consultation.doctorId,
           notes: parsed.data.notes,
-          status: "pending_verification"
+          status: "verified",
+          verifiedAt: issuedAt
         }
       });
 
       await writeAuditLog(tx, {
         actorId: session.userId,
-        action: "prescription.submit_for_verification",
+        action: "prescription.doctor_issued",
         entityType: "prescription",
         entityId: prescription.id,
         metadata: {
           consultationId: consultation.id,
           patientId: consultation.patientId,
-          nextStatus: "pending_verification"
+          nextStatus: "verified",
+          noAdditionalDocumentReview: true
         }
       });
       await tx.notification.create({
@@ -139,8 +147,8 @@ export async function submitPrescriptionAction(
           userId: consultation.patientId,
           type: "prescription",
           channel: "in_app",
-          title: "Prescription sent for verification",
-          body: "Your doctor sent the prescription to the pharmacist for review.",
+          title: "แพทย์ออกใบสั่งยาแล้ว",
+          body: "คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้ โดยไม่ต้องรอขั้นตอนตรวจเอกสารซ้ำ",
           metadataJson: {
             prescriptionId: prescription.id,
             consultationId: consultation.id,
@@ -165,6 +173,6 @@ export async function submitPrescriptionAction(
 
   return {
     status: "success",
-    message: "Prescription sent to pharmacist verification."
+    message: "ออกใบสั่งยาแล้ว ลูกค้าสามารถนำไปสั่งซื้อได้ทันที"
   };
 }

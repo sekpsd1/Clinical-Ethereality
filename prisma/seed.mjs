@@ -420,7 +420,7 @@ async function upsertPrescription({ consultationId, customerId, doctorId, pharma
     pharmacistId,
     status: "verified",
     verifiedAt: new Date("2026-06-08T10:30:00.000Z"),
-    notes: "ใบสั่งยาทดสอบจากแพทย์ในระบบ ใช้สำหรับสั่งซื้อชุดตรวจตาม workflow คลินิกโดยตรง"
+    notes: "ใบสั่งยาทดสอบจากแพทย์ในระบบ ใช้สำหรับสั่งซื้อชุดตรวจตาม workflow คลินิกโดยตรงโดยไม่ต้องตรวจเอกสารซ้ำ"
   };
 
   if (existing) {

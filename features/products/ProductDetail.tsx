@@ -59,7 +59,7 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
               <div>
                 <p className="text-sm font-bold leading-tight">Prescription Required (ต้องมีใบสั่งแพทย์)</p>
                 <p className="mt-1 text-xs leading-5">
-                  ยาตัวนี้ต้องได้รับการตรวจสอบจากแพทย์ก่อนทำการสั่งซื้อ
+                  ต้องมีใบสั่งยาจากแพทย์ก่อนสั่งซื้อ และเมื่อมีใบสั่งยาแล้วไม่ต้องรอตรวจเอกสารซ้ำ
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@ export function ProductDetail({ data }: { data: StoreProductDetailData }) {
               className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
             >
               <ShoppingCart aria-hidden="true" className="size-5" />
-              เลือกจากใบสั่งยา
+              ใช้ใบสั่งยาในระบบ
             </Link>
           ) : null}
           <form action={addToCartAction} className={product.requiresPrescription ? "hidden" : undefined}>

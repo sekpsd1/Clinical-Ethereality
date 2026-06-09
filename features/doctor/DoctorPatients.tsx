@@ -15,9 +15,9 @@ const prescriptionStatusLabels: Record<string, string> = {
   archived: "เก็บถาวร",
   dispensed: "จ่ายยาแล้ว",
   draft: "ฉบับร่าง",
-  pending_verification: "รอตรวจสอบ",
+  pending_verification: "แพทย์ออกแล้ว",
   rejected: "ไม่อนุมัติ",
-  verified: "ตรวจสอบแล้ว"
+  verified: "พร้อมสั่งซื้อ"
 };
 
 function getStatusTone(status: DoctorPatientLogItem["latestConsultationStatus"]): "neutral" | "success" | "warning" | "danger" {

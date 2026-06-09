@@ -16,9 +16,9 @@ const prescriptionStatusLabels: Record<string, string> = {
   archived: "เก็บถาวร",
   dispensed: "จ่ายยาแล้ว",
   draft: "ฉบับร่าง",
-  pending_verification: "รอตรวจสอบ",
+  pending_verification: "แพทย์ออกแล้ว",
   rejected: "ไม่อนุมัติ",
-  verified: "ตรวจสอบแล้ว"
+  verified: "พร้อมสั่งซื้อ"
 };
 
 function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -42,7 +42,7 @@ function canWritePrescription(consultation: DoctorConsultationItem): boolean {
     return false;
   }
 
-  return consultation.latestPrescriptionStatus !== "pending_verification";
+  return !consultation.latestPrescriptionStatus || consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected";
 }
 
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {

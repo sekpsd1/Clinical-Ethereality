@@ -18,8 +18,8 @@ export function PrescriptionStatusScreen({ data }: { data: CustomerPrescriptions
           <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">สถานะใบสั่งยา</p>
           <h1 className="mt-2 text-2xl font-extrabold leading-8 text-primary">ความพร้อมของยา</h1>
           <div className="mt-5 grid grid-cols-3 gap-2">
-            <SummaryTile label="รอตรวจ" value={data.summary.pending} />
-            <SummaryTile label="พร้อมจ่าย" value={data.summary.verified} />
+            <SummaryTile label="ร่าง" value={data.summary.pending} />
+            <SummaryTile label="พร้อมซื้อ" value={data.summary.verified} />
             <SummaryTile label="ต้องแก้ไข" value={data.summary.rejected} />
           </div>
         </section>
@@ -80,7 +80,7 @@ function PrescriptionCard({ prescription }: { prescription: CustomerPrescription
 
       <div className="mt-4 grid gap-3">
         <InfoRow icon={FileClock} label="การปรึกษา" value={prescription.consultationDate} />
-        <InfoRow icon={ShieldCheck} label="เภสัชกร" value={prescription.pharmacistName ?? "ยังไม่ได้มอบหมาย"} />
+        <InfoRow icon={ShieldCheck} label="คลินิก" value={prescription.pharmacistName ?? "ใช้ใบสั่งยาจากแพทย์ได้"} />
         <InfoRow icon={PackageCheck} label="คำสั่งซื้อที่เกี่ยวข้อง" value={prescription.linkedOrderCode ?? "ยังไม่มีคำสั่งซื้อ"} />
       </div>
 

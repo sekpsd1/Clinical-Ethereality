@@ -34,7 +34,7 @@ export function DoctorPrescriptionForm({ consultation }: DoctorPrescriptionFormP
         name="notes"
         defaultValue={defaultNotes}
         className="mt-2 min-h-24 w-full resize-none rounded-[8px] border border-border bg-white/85 px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
-        placeholder="Medication, dose, usage instructions, and warnings for pharmacist verification"
+        placeholder="Medication, dose, usage instructions, warnings, and follow-up notes"
       />
       <div className="mt-3 flex items-center justify-between gap-3">
         <p
@@ -44,7 +44,7 @@ export function DoctorPrescriptionForm({ consultation }: DoctorPrescriptionFormP
           )}
           role="status"
         >
-          {state.message || "Submits to pharmacist verification."}
+          {state.message || "ออกใบสั่งยาให้ลูกค้านำไปสั่งซื้อได้ทันที"}
         </p>
         <SubmitButton />
       </div>

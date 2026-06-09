@@ -171,7 +171,7 @@ Received from the client:
 - Client intake bundle received from Google Drive download on 2026-06-08 and reviewed from local path outside the repo. It includes one doctor telemedicine profile, official doctor photo, home-test product catalog details, product images, clinic/facility license document image, payment/bank reference document, and corporate/certification images. Sensitive exact values and personal/license documents must remain outside git.
 - Doctor telemedicine data received for one physician, including display/legal name, bio, education, specialty, license number, consultation fee, 15-minute duration, weekday evening schedule, and video/chat support. The physician license number and documents are not committed.
 - Product catalog data received for HPV urine kit, HPV self swab kit, STIs urine kit, and STIs self swab kit/package combinations, including category, usage instructions, package pricing/VAT note, non-prescription purchase flag, stock, low-stock threshold, warnings, storage instructions, and product images. FDA numbers are still pending because the client marked them as in progress.
-- Clinic-as-pharmacy direction updated: client says medicines are dispensed directly through the clinic by the doctor, and prescription-required medicines can be purchased by attaching a prescription in the system without an additional document-review step after attachment. Existing code still contains pharmacist verification flow and will need a scoped implementation change if the MVP should skip that step.
+- Clinic-as-pharmacy direction updated: client says medicines are dispensed directly through the clinic by the doctor, and prescription-required medicines can be purchased by attaching a prescription in the system without an additional document-review step after attachment. The in-app doctor-issued prescription path now supports direct prescription-required ordering without a pharmacist verification gate; external prescription upload still needs secure file-storage setup.
 - Pre-doctor assessment flow rules received: 4 Stitch-designed pages, follow Stitch answer types, recommend by assessment topic while allowing doctor selection, reuse assessment for 7 days, show answers to doctors, and no file/image attachment in the first version.
 - Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`.
 - Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
@@ -184,7 +184,7 @@ Still needed from the client:
 - Community guidelines, article content, and moderation policy are deferred until after MVP unless the client asks to launch Community earlier.
 - Final recommendation mapping labels from the Stitch design, and mapping the received doctor profile into the pre-doctor assessment recommendation result.
 - FDA numbers for the product catalog remain pending.
-- Pharmacist name/license remain not provided because client says doctors prescribe directly from the clinic and no additional document-review step is needed after prescription attachment; confirm whether pharmacist role remains needed for MVP fulfillment operations before changing architecture.
+- Pharmacist name/license remain not provided because client says doctors prescribe directly from the clinic and no additional document-review step is needed after prescription attachment; confirm whether pharmacist role remains needed for MVP fulfillment operations before removing or reducing the prepared role workflow.
 - If external prescription uploads are allowed, file upload/storage and secure prescription attachment metadata still need implementation through the owner-managed storage setup.
 - Client review of the drafted pharmacy SOP in `PHARMACY_SOP_DRAFT.md`, using `CLIENT_SOP_REVIEW_MESSAGE.md` as the owner-facing send template; update the SOP for clinic-direct doctor prescribing, no-review prescription attachment purchases, controlled item restrictions, substitution rules, shipment exceptions, and prescription/label templates.
 
@@ -206,6 +206,6 @@ Before development starts:
 3. Run/review the updated local seed that maps the received doctor and product data without committing exact sensitive license values
 4. Product catalog FDA numbers and final owner review of package pricing/catalog structure
 5. Secure environment configuration for the received PromptPay account
-6. Plan the scoped implementation change for prescription-required purchases so customers can attach a prescription and buy without an additional document-review step, while preserving audit and secure file storage
+6. Implement secure external prescription attachment/file-storage metadata if external prescription uploads are included; the in-app doctor-issued prescription purchase path now skips additional document review while preserving audit and order linkage
 7. Community categories and moderation rules only if Community is brought back into MVP scope
 8. Additional owner-provided Stitch HTML exports if new screens are needed

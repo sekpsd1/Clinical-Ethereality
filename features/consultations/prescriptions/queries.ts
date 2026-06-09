@@ -4,17 +4,9 @@ import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import type { CustomerPrescriptionItem, CustomerPrescriptionsData } from "@/features/consultations/prescriptions/types";
+import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 type PrescriptionRecord = Awaited<ReturnType<typeof getPrescriptionsForCustomer>>[number];
-
-const statusLabels: Record<PrescriptionStatus, string> = {
-  draft: "ฉบับร่าง",
-  pending_verification: "รอเภสัชกรตรวจ",
-  verified: "ตรวจผ่านแล้ว",
-  rejected: "ต้องแก้ไข",
-  dispensed: "จ่ายยาแล้ว",
-  archived: "เก็บถาวร"
-};
 
 function getPrescriptionsForCustomer(userId: string) {
   return prisma.prescription.findMany({
@@ -63,11 +55,11 @@ function getOrderCode(orderId: string): string {
 }
 
 function getStatusTone(status: PrescriptionStatus): CustomerPrescriptionItem["statusTone"] {
-  if (status === "verified" || status === "dispensed") {
+  if (isPrescriptionOrderReady(status) || status === "dispensed") {
     return "success";
   }
 
-  if (status === "pending_verification" || status === "draft") {
+  if (status === "draft") {
     return "warning";
   }
 
@@ -93,25 +85,16 @@ function getLinkedOrderCode(prescription: PrescriptionRecord): string | null {
 }
 
 function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescriptionId: string) {
-  if (status === "pending_verification") {
+  if (isPrescriptionOrderReady(status) && !hasOrder) {
     return {
-      title: "Waiting for pharmacist verification",
-      body: "ทีมเภสัชกรกำลังตรวจบันทึกจากแพทย์ ก่อนเริ่มจัดเตรียมยา",
-      ctaLabel: "ดูสรุปคำแนะนำ",
-      ctaHref: "/consult/advice-log"
-    };
-  }
-
-  if (status === "verified" && !hasOrder) {
-    return {
-      title: "ใบสั่งยาตรวจผ่านแล้ว",
-      body: "ใบสั่งยาพร้อมใช้งานแล้ว สามารถเลือกซื้อยาตามรายการที่มีในร้านค้าได้",
+      title: "ใบสั่งยาพร้อมใช้",
+      body: "แพทย์ออกใบสั่งยาแล้ว คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้โดยไม่ต้องรอตรวจเอกสารซ้ำ",
       ctaLabel: "สั่งยาตามใบสั่งแพทย์",
       ctaHref: `/store/prescriptions/${prescriptionId}`
     };
   }
 
-  if (status === "verified" || status === "dispensed") {
+  if (isPrescriptionOrderReady(status) || status === "dispensed") {
     return {
       title: "ติดตามคำสั่งซื้อยา",
       body: "ใบสั่งยานี้เชื่อมกับคำสั่งซื้อแล้ว สามารถติดตามการชำระเงิน การจัดเตรียมยา และการจัดส่งได้",
@@ -123,7 +106,7 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescription
   if (status === "rejected") {
     return {
       title: "ใบสั่งยาต้องให้แพทย์แก้ไข",
-      body: "เภสัชกรไม่อนุมัติใบสั่งยานี้ แพทย์สามารถปรับแก้และส่งตรวจใหม่ได้จากคิวการปรึกษา",
+      body: "ใบสั่งยานี้ยังใช้สั่งซื้อไม่ได้ แพทย์สามารถปรับแก้และออกใบสั่งยาใหม่ได้จากคิวการปรึกษา",
       ctaLabel: "ดูสรุปคำแนะนำ",
       ctaHref: "/consult/advice-log"
     };
@@ -144,7 +127,7 @@ function mapPrescription(prescription: PrescriptionRecord): CustomerPrescription
   return {
     id: prescription.id,
     status: prescription.status,
-    statusLabel: statusLabels[prescription.status],
+    statusLabel: getPrescriptionOrderStatusLabel(prescription.status),
     statusTone: getStatusTone(prescription.status),
     doctorName: prescription.doctor.user.displayName ?? "แพทย์",
     pharmacistName: prescription.pharmacist?.user.displayName ?? null,
@@ -171,8 +154,8 @@ export async function getCustomerPrescriptions(session: PublicSession): Promise<
     return {
       prescriptions: items,
       summary: {
-        pending: items.filter((item) => item.status === "pending_verification" || item.status === "draft").length,
-        verified: items.filter((item) => item.status === "verified" || item.status === "dispensed").length,
+        pending: items.filter((item) => item.status === "draft").length,
+        verified: items.filter((item) => isPrescriptionOrderReady(item.status) || item.status === "dispensed").length,
         rejected: items.filter((item) => item.status === "rejected" || item.status === "archived").length
       }
     };

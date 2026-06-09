@@ -7,6 +7,7 @@ import type {
   PrescriptionOrderDetail,
   PrescriptionOrderProduct
 } from "@/features/products/prescriptions/types";
+import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 type PrescriptionRecord = NonNullable<Awaited<ReturnType<typeof getPrescriptionForOrder>>>;
 type ProductRecord = Awaited<ReturnType<typeof getPrescriptionProducts>>[number];
@@ -100,7 +101,7 @@ function mapPrescription(prescription: PrescriptionRecord, products: ProductReco
 
   return {
     id: prescription.id,
-    statusLabel: prescription.status === "verified" ? "ตรวจผ่านแล้ว" : "ยังไม่พร้อมสั่งซื้อ",
+    statusLabel: getPrescriptionOrderStatusLabel(prescription.status),
     doctorName: prescription.doctor.user.displayName ?? "แพทย์",
     pharmacistName: prescription.pharmacist?.user.displayName ?? null,
     verifiedAt: formatDate(prescription.verifiedAt),
@@ -126,7 +127,7 @@ export async function getPrescriptionOrderData(
       };
     }
 
-    const products = prescription.status === "verified" ? await getPrescriptionProducts() : [];
+    const products = isPrescriptionOrderReady(prescription.status) ? await getPrescriptionProducts() : [];
 
     return {
       prescription: mapPrescription(prescription, products)
