@@ -132,12 +132,16 @@ test.describe("customer mobile smoke", () => {
     await expectNoAppError(page);
     const selectedAvailability = page.locator('input[name="availabilityId"]');
     const initialValue = await selectedAvailability.getAttribute("value");
-    const selectableButtons = page.locator('button[aria-pressed]');
+    const selectableButtons = page.locator('[data-testid="booking-slot-button"]:not([disabled])');
 
     await expect(selectableButtons.first()).toHaveAttribute("aria-pressed", "true");
-    await selectableButtons.nth(1).click();
-    await expect(selectableButtons.nth(1)).toHaveAttribute("aria-pressed", "true");
-    await expect(selectedAvailability).not.toHaveAttribute("value", initialValue ?? "");
+    await expect(selectedAvailability).not.toHaveAttribute("value", "");
+
+    if ((await selectableButtons.count()) > 1) {
+      await selectableButtons.nth(1).click();
+      await expect(selectableButtons.nth(1)).toHaveAttribute("aria-pressed", "true");
+      await expect(selectedAvailability).not.toHaveAttribute("value", initialValue ?? "");
+    }
   });
 
   test("/profile can sign out and return to assessment retake login", async ({ page }) => {

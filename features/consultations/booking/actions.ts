@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
@@ -7,21 +8,10 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
+import { getUpcomingDateForWeekday, LOCKING_CONSULTATION_STATUSES } from "@/features/consultations/booking/slots";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
-}
-
-function getUpcomingDateForWeekday(weekday: number, startTime: string): Date {
-  const now = new Date();
-  const [hour, minute] = startTime.split(":").map(Number);
-  const scheduledAt = new Date(now);
-  const daysAhead = (weekday - now.getDay() + 7) % 7 || 7;
-
-  scheduledAt.setDate(now.getDate() + daysAhead);
-  scheduledAt.setHours(hour ?? 9, minute ?? 0, 0, 0);
-
-  return scheduledAt;
 }
 
 export async function createConsultationBookingAction(formData: FormData): Promise<void> {
@@ -63,7 +53,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           doctorId: availability.doctorId,
           scheduledAt,
           status: {
-            in: ["pending_payment", "scheduled", "live"]
+            in: LOCKING_CONSULTATION_STATUSES
           }
         },
         select: {
@@ -74,6 +64,19 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       if (existing) {
         throw new Error("This slot is already reserved.");
       }
+
+      const slotLock = await tx.consultationSlotLock.create({
+        data: {
+          doctorId: availability.doctorId,
+          scheduledAt,
+          availabilityId: availability.id,
+          patientId: session.userId,
+          expiresAt: new Date(scheduledAt.getTime() + availability.slotMinutes * 60 * 1000)
+        },
+        select: {
+          id: true
+        }
+      });
 
       const activeAssessment = session.userId.startsWith("dev:")
         ? null
@@ -101,6 +104,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           patientId: session.userId,
           doctorId: availability.doctorId,
           assessmentId: activeAssessment?.id,
+          slotLockId: slotLock.id,
           status: "pending_payment",
           scheduledAt,
           summary: activeAssessment
@@ -134,6 +138,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         metadata: {
           doctorId: availability.doctorId,
           availabilityId: availability.id,
+          slotLockId: slotLock.id,
           assessmentId: activeAssessment?.id ?? null,
           recommendationTopic: activeAssessment?.recommendationTopic ?? null,
           scheduledAt: scheduledAt.toISOString(),
@@ -145,7 +150,11 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     });
 
     consultationId = result.id;
-  } catch {
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect("/consult/booking/somchai?booking=locked");
+    }
+
     redirect("/consult/booking/somchai?booking=failed");
   }
 

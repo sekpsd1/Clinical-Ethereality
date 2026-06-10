@@ -173,6 +173,7 @@
 - [x] Build doctor list screen
 - [x] Build doctor profile and booking screen
 - [x] Integrate customer booking screen with doctor availability slots
+- [x] Add formal booking slot locking with a database-level slot lock and booked-slot UI state
 - [x] Build consultation PromptPay checkout screen
 - [x] Build consultation waiting room screen
 - [x] Build live consultation screen shell

@@ -19,21 +19,25 @@ function getStaticSlot(slot: string): BookingSlot {
     timeLabel: slot,
     slotMinutes: 15,
     scheduledAt: "",
-    notes: "static"
+    notes: "static",
+    status: "available",
+    statusLabel: "ว่าง"
   };
 }
 
 export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookingData; bookingError: string | null }) {
   const slots = useMemo(() => (data.slots.length > 0 ? data.slots : staticTimeSlots.map(getStaticSlot)), [data.slots]);
   const hasRealSlots = data.slots.length > 0 && !data.unavailable;
-  const [selectedDate, setSelectedDate] = useState(slots[0]?.dateLabel ?? "");
-  const [selectedSlotId, setSelectedSlotId] = useState(slots[0]?.id ?? "");
+  const firstAvailableSlot = slots.find((slot) => slot.status === "available");
+  const hasBookableSlots = hasRealSlots && Boolean(firstAvailableSlot);
+  const [selectedDate, setSelectedDate] = useState(firstAvailableSlot?.dateLabel ?? slots[0]?.dateLabel ?? "");
+  const [selectedSlotId, setSelectedSlotId] = useState(firstAvailableSlot?.id ?? "");
 
   const availableDates = useMemo(() => Array.from(new Set(slots.map((slot) => slot.dateLabel))), [slots]);
   const filteredSlots = slots.filter((slot) => slot.dateLabel === selectedDate);
 
   function selectDate(dateLabel: string) {
-    const firstSlot = slots.find((slot) => slot.dateLabel === dateLabel);
+    const firstSlot = slots.find((slot) => slot.dateLabel === dateLabel && slot.status === "available");
     setSelectedDate(dateLabel);
     setSelectedSlotId(firstSlot?.id ?? "");
   }
@@ -76,24 +80,29 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
         <div className="grid grid-cols-2 gap-3">
           {filteredSlots.map((slot) => {
             const isSelected = selectedSlotId === slot.id && hasRealSlots;
+            const isBooked = slot.status === "booked";
 
             return (
               <button
                 key={slot.id}
+                data-testid="booking-slot-button"
                 type="button"
-                disabled={!hasRealSlots}
+                disabled={!hasRealSlots || isBooked}
                 onClick={() => setSelectedSlotId(slot.id)}
                 aria-pressed={isSelected}
                 className={
                   isSelected
                     ? "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#007b83] px-3 py-2 text-left text-white shadow-selected-slot ring-2 ring-white"
-                    : "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#f2f4f6] px-3 py-2 text-left text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
+                    : isBooked
+                      ? "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#eceff1] px-3 py-2 text-left text-[#7b8586] opacity-75"
+                      : "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#f2f4f6] px-3 py-2 text-left text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
                 }
               >
                 <span className="text-xs font-bold">
                   {slot.weekdayLabel} {slot.dateLabel}
                 </span>
                 <span className="mt-1 text-sm font-extrabold">{slot.timeLabel}</span>
+                {isBooked ? <span className="mt-1 text-[10px] font-semibold opacity-80">{slot.statusLabel}</span> : null}
                 <span className="mt-1 text-[10px] font-semibold opacity-80">{slot.slotMinutes} นาที</span>
               </button>
             );
@@ -103,7 +112,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
         <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-7">
           <button
             type="submit"
-            disabled={!hasRealSlots || !selectedSlotId}
+            disabled={!hasBookableSlots || !selectedSlotId}
             className="flex h-16 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-lg font-bold leading-7 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />

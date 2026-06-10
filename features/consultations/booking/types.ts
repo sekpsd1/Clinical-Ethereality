@@ -14,6 +14,8 @@ export type BookingSlot = {
   slotMinutes: number;
   scheduledAt: string;
   notes: string;
+  status: "available" | "booked";
+  statusLabel: string;
 };
 
 export type DoctorBookingData = {

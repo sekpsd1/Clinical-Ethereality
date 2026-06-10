@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { getSlotTimestamp, getUpcomingDateForWeekday, LOCKING_CONSULTATION_STATUSES } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getPrimaryBookingDoctor>>>;
@@ -47,18 +48,6 @@ function formatMoney(value: number | null): string {
   }).format(value ?? 1000);
 }
 
-function getUpcomingDateForWeekday(weekday: number, startTime: string): Date {
-  const now = new Date();
-  const [hour, minute] = startTime.split(":").map(Number);
-  const scheduledAt = new Date(now);
-  const daysAhead = (weekday - now.getDay() + 7) % 7 || 7;
-
-  scheduledAt.setDate(now.getDate() + daysAhead);
-  scheduledAt.setHours(hour ?? 9, minute ?? 0, 0, 0);
-
-  return scheduledAt;
-}
-
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("th-TH", {
     day: "numeric",
@@ -66,8 +55,9 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-function mapSlot(slot: AvailabilityRecord): BookingSlot {
+function mapSlot(slot: AvailabilityRecord, lockedSlotTimes: Set<number>): BookingSlot {
   const scheduledAt = getUpcomingDateForWeekday(slot.weekday, slot.startTime);
+  const isBooked = lockedSlotTimes.has(getSlotTimestamp(scheduledAt));
 
   return {
     id: slot.id,
@@ -76,6 +66,8 @@ function mapSlot(slot: AvailabilityRecord): BookingSlot {
     timeLabel: `${slot.startTime}-${slot.endTime}`,
     slotMinutes: slot.slotMinutes,
     scheduledAt: scheduledAt.toISOString(),
+    status: isBooked ? "booked" : "available",
+    statusLabel: isBooked ? "จองแล้ว" : "ว่าง",
     notes: slot.notes ?? "รับปรึกษาออนไลน์"
   };
 }
@@ -93,6 +85,44 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
       };
     }
 
+    const candidateDates = doctor.availability.map((slot) => getUpcomingDateForWeekday(slot.weekday, slot.startTime));
+    const [slotLocks, activeConsultations] =
+      candidateDates.length > 0
+        ? await Promise.all([
+            prisma.consultationSlotLock.findMany({
+              where: {
+                doctorId: doctor.id,
+                scheduledAt: {
+                  in: candidateDates
+                }
+              },
+              select: {
+                scheduledAt: true
+              }
+            }),
+            prisma.consultation.findMany({
+              where: {
+                doctorId: doctor.id,
+                scheduledAt: {
+                  in: candidateDates
+                },
+                status: {
+                  in: LOCKING_CONSULTATION_STATUSES
+                }
+              },
+              select: {
+                scheduledAt: true
+              }
+            })
+          ])
+        : [[], []];
+    const lockedSlotTimes = new Set(
+      [...slotLocks, ...activeConsultations]
+        .map((slot) => slot.scheduledAt)
+        .filter((scheduledAt): scheduledAt is Date => Boolean(scheduledAt))
+        .map(getSlotTimestamp)
+    );
+
     return {
       doctor: {
         id: doctor.id,
@@ -101,7 +131,7 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
         fee: formatMoney(doctor.consultationFee),
         avatarUrl: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg"
       },
-      slots: doctor.availability.map(mapSlot)
+      slots: doctor.availability.map((slot) => mapSlot(slot, lockedSlotTimes))
     };
   } catch {
     return {

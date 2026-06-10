@@ -8,7 +8,9 @@ export function DoctorBooking({ data, bookingStatus }: { data: DoctorBookingData
   const bookingError =
     bookingStatus === "failed"
       ? "ไม่สามารถจองเวลานี้ได้ อาจมีผู้จองแล้วหรือ slot ถูกปิด กรุณาเลือกเวลาอื่น"
-      : bookingStatus === "invalid"
+      : bookingStatus === "locked"
+        ? "เวลานี้ถูกจองแล้ว กรุณาเลือกเวลาปรึกษาอื่น"
+        : bookingStatus === "invalid"
         ? "กรุณาเลือกเวลานัดหมายก่อนยืนยัน"
         : null;
 
