@@ -38,7 +38,7 @@
 - [x] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
 - [x] Receive company name, tax ID, billing address, parcel sender address, and support contact
 - [x] Receive doctor bio, education, specialty, license number, consultation fee, schedule, supported consult modes, and official profile photo; exact license values and documents stay outside git
-- [ ] Finalize pre-doctor assessment recommendation mapping with the received real doctor profile; 4 Stitch export pages, persistence, 7-day reuse, booking attachment, and doctor-visible summary are implemented
+- [x] Finalize pre-doctor assessment recommendation mapping with the received real doctor profile; 4 Stitch export pages, persistence, 7-day reuse, booking attachment, doctor-visible summary, and recommended doctor handoff are implemented
 - [ ] Receive product catalog with prices, images, stock, prescription-required flags, warnings, and storage rules; FDA numbers are still pending
 - [ ] Receive clinic-as-pharmacy license direction and facility license document; client says prescription-required products can be purchased by attaching a prescription without an additional document-review step, but pharmacist-specific data is not provided, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
 - [x] Update in-app doctor-issued prescription ordering so customers can buy prescription-required products without an additional pharmacist/document verification gate while preserving prescription, order, payment, shipment, reward, inventory, and audit linkage

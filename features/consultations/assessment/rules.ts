@@ -1,5 +1,7 @@
 import type { AssessmentDuration, AssessmentRecommendation, AssessmentSymptom } from "@/features/consultations/assessment/types";
 
+const clientDoctorSpecialty = "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์";
+
 export const symptomLabels: Record<AssessmentSymptom, string> = {
   headache: "ปวดหัว",
   fever: "ไข้/หนาวสั่น",
@@ -16,23 +18,27 @@ export const durationLabels: Record<AssessmentDuration, string> = {
 const recommendationBySymptom: Record<AssessmentSymptom, AssessmentRecommendation> = {
   headache: {
     topic: "อาการปวดหัว",
-    specialty: "อายุรกรรม",
-    reason: "เหมาะกับแพทย์ที่ประเมินอาการทั่วไปและแยกสาเหตุเบื้องต้นได้"
+    specialty: clientDoctorSpecialty,
+    reason:
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการเบื้องต้น ซักประวัติ และแนะนำว่าควรดูแลต่อหรือพบแพทย์เฉพาะทางเพิ่มเติมหรือไม่"
   },
   fever: {
     topic: "ไข้หรือหนาวสั่น",
-    specialty: "อายุรกรรม",
-    reason: "เหมาะกับแพทย์ที่ประเมินอาการติดเชื้อและความรุนแรงเบื้องต้น"
+    specialty: clientDoctorSpecialty,
+    reason:
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินความรุนแรงของอาการ ตรวจประวัติร่วม และแนะนำแนวทางดูแลที่เหมาะสมก่อนเลือกขั้นตอนถัดไป"
   },
   cough: {
     topic: "ไอหรือเจ็บคอ",
-    specialty: "อายุรกรรม",
-    reason: "เหมาะกับแพทย์ที่ประเมินอาการระบบทางเดินหายใจเบื้องต้น"
+    specialty: clientDoctorSpecialty,
+    reason:
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการระบบทางเดินหายใจเบื้องต้น และแนะนำว่าควรติดตามอาการหรือรับการตรวจเพิ่มเติมหรือไม่"
   },
   other: {
     topic: "อาการอื่นๆ",
-    specialty: "ปรึกษาทั่วไป",
-    reason: "เหมาะกับแพทย์ที่ช่วยคัดกรองและแนะนำแนวทางต่อเนื่อง"
+    specialty: clientDoctorSpecialty,
+    reason:
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อคัดกรองอาการและวางแนวทางดูแลต่อ โดยยังสามารถเลือกแพทย์เองได้เสมอ"
   }
 };
 

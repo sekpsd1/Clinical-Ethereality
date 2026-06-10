@@ -77,7 +77,7 @@ describe("feature validation schemas", () => {
     ).toBe(false);
     expect(getAssessmentRecommendation("cough", "more3days")).toMatchObject({
       topic: "ไอหรือเจ็บคอ",
-      specialty: "อายุรกรรม"
+      specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์"
     });
   });
 

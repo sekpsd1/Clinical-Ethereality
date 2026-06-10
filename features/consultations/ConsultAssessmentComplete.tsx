@@ -6,7 +6,7 @@ export function ConsultAssessmentComplete({ assessment }: { assessment?: ActiveC
   const recommendationSpecialty = assessment?.recommendationSpecialty ?? "แพทย์ที่เหมาะสม";
   const recommendationReason =
     assessment?.recommendationReason ??
-    "เราได้เตรียมรายชื่อแพทย์ที่เหมาะสมที่สุดสำหรับคุณแล้ว โดยวิเคราะห์จากความต้องการเฉพาะทางและประวัติข้อมูลเบื้องต้นของคุณ";
+    "เราได้เตรียมรายชื่อแพทย์ที่เหมาะสมสำหรับคุณแล้ว โดยวิเคราะห์จากหัวข้อที่ประเมินและระยะเวลาของอาการ";
 
   return (
     <section className="relative flex min-h-dvh flex-col overflow-hidden bg-[#f7f9fb] px-7 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-24 text-[#191c1e]">
@@ -51,7 +51,7 @@ export function ConsultAssessmentComplete({ assessment }: { assessment?: ActiveC
 
           <section className="pt-2">
             <Link
-              href="/consult"
+              href="/consult?recommended=assessment"
               className="flex min-h-[68px] w-full items-center justify-center gap-4 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-6 font-headline text-lg font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
             >
               <span>ดูรายชื่อแพทย์ที่แนะนำ</span>

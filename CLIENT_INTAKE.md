@@ -176,14 +176,13 @@ Received from the client:
 - Pre-doctor assessment intro Stitch export received and implemented as `/consult/assessment`.
 - Pre-doctor assessment symptom Stitch export received and implemented as `/consult/assessment/symptoms`.
 - Pre-doctor assessment duration Stitch export received and implemented as `/consult/assessment/duration`.
-- Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, and doctor-visible answers are implemented. Final recommendation mapping labels and real doctor data are still needed.
+- Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, doctor-visible answers, real-doctor recommendation mapping, `/consult?recommended=assessment` handoff, and recommended doctor highlighting are implemented.
 - Client/owner direction clarified that consultation chat must be an in-app chat separate from LINE. The first foundation is implemented with Prisma/MySQL consultation messages, access checks, audit logs, in-app notifications, live consult UI binding, and latest-message visibility for doctors; Firebase or another realtime provider is not selected yet.
 
 Still needed from the client:
 
 - Later legal review or revised legal drafts, if the client updates the current wording.
 - Community guidelines, article content, and moderation policy are deferred until after MVP unless the client asks to launch Community earlier.
-- Final recommendation mapping labels from the Stitch design, and mapping the received doctor profile into the pre-doctor assessment recommendation result.
 - FDA numbers for the product catalog remain pending.
 - Pharmacist name/license remain not provided because client says doctors prescribe directly from the clinic and no additional document-review step is needed after prescription attachment; confirm whether pharmacist role remains needed for MVP fulfillment operations before removing or reducing the prepared role workflow.
 - File bytes for external prescription uploads still need Cloudinary or S3-compatible storage setup; the application metadata/order linkage foundation is implemented.

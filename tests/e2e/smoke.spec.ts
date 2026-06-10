@@ -123,7 +123,21 @@ test.describe("customer mobile smoke", () => {
     await expect(page.getByRole("heading", { name: "ขอบคุณสำหรับข้อมูล" })).toBeVisible();
     await expect(page.getByText("นพ. วิทวัส สมใจ")).toHaveCount(0);
     await expect(page.getByText("พญ. ณิชา อัครวัฒน์")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /ดูรายชื่อแพทย์ที่แนะนำ/ })).toHaveAttribute("href", "/consult");
+    await expect(page.getByRole("link", { name: /ดูรายชื่อแพทย์ที่แนะนำ/ })).toHaveAttribute("href", "/consult?recommended=assessment");
+  });
+
+  test("/consult/booking/somchai lets customers change the selected appointment slot", async ({ page }) => {
+    await page.goto("/consult/booking/somchai");
+
+    await expectNoAppError(page);
+    const selectedAvailability = page.locator('input[name="availabilityId"]');
+    const initialValue = await selectedAvailability.getAttribute("value");
+    const selectableButtons = page.locator('button[aria-pressed]');
+
+    await expect(selectableButtons.first()).toHaveAttribute("aria-pressed", "true");
+    await selectableButtons.nth(1).click();
+    await expect(selectableButtons.nth(1)).toHaveAttribute("aria-pressed", "true");
+    await expect(selectedAvailability).not.toHaveAttribute("value", initialValue ?? "");
   });
 
   test("/profile can sign out and return to assessment retake login", async ({ page }) => {

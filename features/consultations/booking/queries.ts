@@ -96,8 +96,8 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
     return {
       doctor: {
         id: doctor.id,
-        name: doctor.user.displayName ?? "นพ. สมชาย",
-        specialty: doctor.specialty ?? "เวชศาสตร์ชะลอวัย",
+        name: doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
+        specialty: doctor.specialty ?? "ปรึกษาออนไลน์",
         fee: formatMoney(doctor.consultationFee),
         avatarUrl: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg"
       },
