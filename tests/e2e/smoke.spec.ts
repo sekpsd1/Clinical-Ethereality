@@ -202,6 +202,17 @@ test.describe("role route smoke", () => {
     await expect(page.locator('nav a[href="/admin/compliance"]')).toHaveAttribute("aria-current", "page");
   });
 
+  test("admin payment review page shows payment evidence clarity", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/payments");
+
+    await expectNoAppError(page);
+    await expect(page).toHaveURL(/\/admin\/payments$/);
+    await expect(page.getByRole("heading", { name: "คิวตรวจสอบการชำระเงิน" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "รายการชำระเงิน" })).toBeVisible();
+    await expect(page.getByText("QR payload", { exact: true }).first()).toBeVisible();
+  });
+
   test("doctor queue is reachable with a doctor dev session", async ({ page }) => {
     await signInAs(page, "doctor");
     await page.goto("/doctor/consultations");
