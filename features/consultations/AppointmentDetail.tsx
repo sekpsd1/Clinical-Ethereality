@@ -53,6 +53,19 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
               <AppointmentInfoRow icon={CreditCard} label="ค่าปรึกษา" value={appointment.feeLabel} />
             </section>
 
+            <article className="rounded-[20px] border border-[#bdc9ca]/15 bg-white/75 p-4 shadow-payment-card backdrop-blur-topbar">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <CreditCard aria-hidden="true" className="size-5" strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">สถานะการชำระเงิน</p>
+                  <h2 className="mt-0.5 text-base font-extrabold leading-6 text-primary">{appointment.paymentStatusLabel}</h2>
+                  <p className="mt-1 text-sm leading-6 text-[#3e494a]">{appointment.paymentStatusDescription}</p>
+                </div>
+              </div>
+            </article>
+
             <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/75 p-5 shadow-payment-card backdrop-blur-topbar">
               <div className="flex items-start gap-3">
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

@@ -54,6 +54,10 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
     redirect(`/consult/waiting-room?consultation=${consultation.id}`);
   }
 
+  if (consultation.status === "cancelled") {
+    redirectToPayment(consultation.id, "expired");
+  }
+
   if (consultation.status !== "pending_payment") {
     redirectToPayment(consultation.id, "invalid");
   }

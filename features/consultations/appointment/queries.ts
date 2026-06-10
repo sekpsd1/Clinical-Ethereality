@@ -128,8 +128,37 @@ function getCtaHref(status: ConsultationStatus, consultationId: string): string 
   return `/consult/payment?consultation=${consultationId}`;
 }
 
+function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointmentDetail, "paymentStatusLabel" | "paymentStatusDescription"> {
+  if (status === "pending_payment") {
+    return {
+      paymentStatusLabel: "รอชำระเงิน",
+      paymentStatusDescription: "ชำระค่าปรึกษาเพื่อยืนยันเวลานัด ระบบจะปล่อยเวลาคืนหากปล่อยค้างเกินเวลาที่กำหนด"
+    };
+  }
+
+  if (status === "scheduled" || status === "live" || status === "completed") {
+    return {
+      paymentStatusLabel: "ชำระเงินแล้ว",
+      paymentStatusDescription: "ยืนยันการชำระเงินแล้ว สามารถเข้าไปยังห้องรอหรือดูบันทึกหลังปรึกษาได้ตามสถานะนัดหมาย"
+    };
+  }
+
+  if (status === "cancelled") {
+    return {
+      paymentStatusLabel: "เวลาจองหมดอายุ",
+      paymentStatusDescription: "ระบบปล่อยเวลานัดหมายนี้คืนแล้ว กรุณาเลือกเวลาปรึกษาใหม่ก่อนชำระเงิน"
+    };
+  }
+
+  return {
+    paymentStatusLabel: "รอยืนยัน",
+    paymentStatusDescription: "ระบบกำลังเตรียมขั้นตอนการชำระเงินสำหรับนัดหมายนี้"
+  };
+}
+
 function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentDetail {
   const status = statusContent[consultation.status];
+  const paymentStatus = getPaymentStatusCopy(consultation.status);
   const avatarUrl = consultation.doctor.user.avatarUrl?.startsWith("/")
     ? consultation.doctor.user.avatarUrl
     : "/images/doctors/somchai-payment.png";
@@ -146,6 +175,8 @@ function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentD
     statusLabel: status.label,
     statusTone: status.tone,
     feeLabel: formatMoney(consultation.doctor.consultationFee),
+    paymentStatusLabel: paymentStatus.paymentStatusLabel,
+    paymentStatusDescription: paymentStatus.paymentStatusDescription,
     nextStepLabel: status.nextStepLabel,
     nextStepDescription: status.nextStepDescription,
     ctaLabel: status.ctaLabel,

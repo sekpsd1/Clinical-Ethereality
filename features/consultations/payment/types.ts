@@ -1,7 +1,7 @@
 import type { ConsultationStatus } from "@prisma/client";
 import type { PromptPayInstruction } from "@/lib/payments/promptpay";
 
-export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "invalid" | "not_found";
+export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "invalid" | "expired" | "not_found";
 
 export type ConsultationPaymentDetail = {
   id: string;

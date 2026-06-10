@@ -12,6 +12,8 @@ export type CustomerAppointmentDetail = {
   statusLabel: string;
   statusTone: "neutral" | "success" | "warning" | "danger";
   feeLabel: string;
+  paymentStatusLabel: string;
+  paymentStatusDescription: string;
   nextStepLabel: string;
   nextStepDescription: string;
   ctaLabel: string;

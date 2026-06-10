@@ -73,7 +73,7 @@ function formatMoney(value: number): string {
 }
 
 function normalizePaymentStatus(value?: string): ConsultationPaymentStatus {
-  if (value === "rejected" || value === "provider_error" || value === "invalid" || value === "not_found") {
+  if (value === "rejected" || value === "provider_error" || value === "invalid" || value === "expired" || value === "not_found") {
     return value;
   }
 

@@ -176,6 +176,7 @@
 - [x] Add formal booking slot locking with a database-level slot lock and booked-slot UI state
 - [x] Add booking slot lock release rules for expired pending-payment holds and orphan locks
 - [x] Build consultation PromptPay checkout screen
+- [x] Add consultation payment status polish for pending, verified, rejected, expired, and closed payment states
 - [x] Build consultation waiting room screen
 - [x] Build live consultation screen shell
 - [x] Build advice log screen

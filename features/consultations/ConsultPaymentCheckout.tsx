@@ -5,13 +5,19 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  Clock3,
   CloudUpload,
   Info,
+  RotateCcw,
   ShieldAlert
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
-import type { ConsultationPaymentData, ConsultationPaymentDetail } from "@/features/consultations/payment/types";
+import type {
+  ConsultationPaymentData,
+  ConsultationPaymentDetail,
+  ConsultationPaymentStatus
+} from "@/features/consultations/payment/types";
 
 export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData }) {
   const consultation = data.consultation;
@@ -33,6 +39,7 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
           <>
             <PaymentStatusNotice data={data} />
             <BookingSummaryCard consultation={consultation} />
+            <ConsultationPaymentStatusCard consultation={consultation} paymentStatus={data.paymentStatus} />
 
             {consultation.status === "scheduled" || consultation.status === "live" ? (
               <PaymentStateCard
@@ -42,7 +49,15 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
                 href={consultation.waitingRoomHref}
                 cta="เปิดห้องรอ"
               />
-            ) : consultation.status === "cancelled" || consultation.status === "completed" ? (
+            ) : consultation.status === "cancelled" ? (
+              <PaymentStateCard
+                tone="danger"
+                title="เวลาจองหมดอายุ"
+                body="ระบบปล่อยเวลานัดหมายนี้คืนแล้ว กรุณาเลือกเวลาปรึกษาใหม่ก่อนชำระเงิน"
+                href="/consult/booking/somchai"
+                cta="เลือกเวลาปรึกษาใหม่"
+              />
+            ) : consultation.status === "completed" ? (
               <PaymentStateCard
                 tone="neutral"
                 title="ปิดขั้นตอนชำระเงินแล้ว"
@@ -98,6 +113,11 @@ function PaymentStatusNotice({ data }: { data: ConsultationPaymentData }) {
       body: "ผู้ให้บริการปฏิเสธสลิป ยอดเงิน หรือข้อมูลผู้รับ กรุณาตรวจสอบรายการโอนและส่งใหม่",
       tone: "danger" as const
     },
+    expired: {
+      title: "เวลาจองหมดอายุ",
+      body: "ระบบปล่อยเวลานัดหมายนี้คืนแล้ว กรุณาเลือกเวลาปรึกษาใหม่ก่อนส่งข้อมูลชำระเงิน",
+      tone: "danger" as const
+    },
     provider_error: {
       title: "ระบบตรวจสอบสลิปไม่พร้อมใช้งาน",
       body: "SlipOK หรือ EasySlip ยังตรวจสอบไม่ได้ในขณะนี้ กรุณาตรวจ API key และลองใหม่",
@@ -132,6 +152,88 @@ function PaymentStatusNotice({ data }: { data: ConsultationPaymentData }) {
   );
 }
 
+function getPaymentStatusTone(status: ConsultationPaymentDetail["status"]): "neutral" | "success" | "warning" | "danger" {
+  if (status === "pending_payment" || status === "requested") {
+    return "warning";
+  }
+
+  if (status === "scheduled" || status === "live") {
+    return "success";
+  }
+
+  if (status === "cancelled") {
+    return "danger";
+  }
+
+  return "neutral";
+}
+
+function ConsultationPaymentStatusCard({
+  consultation,
+  paymentStatus
+}: {
+  consultation: ConsultationPaymentDetail;
+  paymentStatus: ConsultationPaymentStatus;
+}) {
+  const needsSlipRetry = paymentStatus === "invalid" || paymentStatus === "rejected" || paymentStatus === "provider_error";
+  const content =
+    consultation.status === "cancelled"
+      ? {
+          icon: RotateCcw,
+          label: "เวลาจองหมดอายุ",
+          title: "ต้องเลือกเวลาปรึกษาใหม่",
+          body: "เวลานี้ถูกปล่อยคืนแล้ว ระบบจะไม่รับสลิปสำหรับนัดหมายนี้ เพื่อป้องกันการชำระเงินผิดรายการ",
+          tone: "danger" as const
+        }
+      : consultation.status === "scheduled" || consultation.status === "live"
+        ? {
+            icon: CheckCircle2,
+            label: "ชำระเงินแล้ว",
+            title: "ยืนยันนัดหมายเรียบร้อย",
+            body: "ระบบยืนยันค่าปรึกษาแล้ว สามารถเข้าไปยังห้องรอก่อนเวลานัดได้",
+            tone: "success" as const
+          }
+        : consultation.status === "completed"
+          ? {
+              icon: CheckCircle2,
+              label: "ปิดขั้นตอนแล้ว",
+              title: "การปรึกษาเสร็จสิ้นแล้ว",
+              body: "ขั้นตอนชำระเงินสำหรับนัดหมายนี้เสร็จสิ้นแล้ว",
+              tone: "neutral" as const
+            }
+          : needsSlipRetry
+            ? {
+                icon: ShieldAlert,
+                label: "ต้องตรวจสลิปใหม่",
+                title: "ยังไม่ได้ยืนยันการชำระเงิน",
+                body: "ตรวจสอบข้อมูลสลิปหรือ QR payload แล้วส่งตรวจอีกครั้งก่อนเวลาจองหมดอายุ",
+                tone: "warning" as const
+              }
+            : {
+                icon: Clock3,
+                label: "รอชำระเงิน",
+                title: "สำรองเวลานัดไว้ชั่วคราว",
+                body: "ชำระค่าปรึกษาและส่งข้อมูลสลิปเพื่อยืนยันนัดหมาย หากปล่อยค้างเกินเวลาที่กำหนด ระบบจะคืน slot ให้ผู้อื่นเลือกได้",
+                tone: "warning" as const
+              };
+  const Icon = content.icon;
+
+  return (
+    <article className="rounded-[20px] border border-[#bdc9ca]/15 bg-white/75 p-4 shadow-payment-card backdrop-blur-topbar">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon aria-hidden="true" className="size-5" strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0">
+          <StatusBadge tone={content.tone}>{content.label}</StatusBadge>
+          <h2 className="mt-2 text-base font-extrabold leading-6 text-[#191c1e]">{content.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-[#3e494a]">{content.body}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymentDetail }) {
   return (
     <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-[21px] shadow-payment-card backdrop-blur-topbar">
@@ -145,7 +247,7 @@ function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymen
               <h2 className="truncate text-lg font-bold leading-[22.5px] text-primary">{consultation.doctorName}</h2>
               <p className="truncate text-xs font-semibold leading-5 text-[#3e494a]">{consultation.doctorSpecialty}</p>
             </div>
-            <StatusBadge tone={consultation.status === "pending_payment" ? "warning" : "success"}>{consultation.statusLabel}</StatusBadge>
+            <StatusBadge tone={getPaymentStatusTone(consultation.status)}>{consultation.statusLabel}</StatusBadge>
           </div>
           <div className="mt-2 flex items-center gap-1 text-sm leading-5 text-[#3e494a]">
             <CalendarDays aria-hidden="true" className="size-3.5 text-[#3e494a]" />
