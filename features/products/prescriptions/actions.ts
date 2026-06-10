@@ -9,6 +9,7 @@ import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
+import { buildAttachmentMetadata, normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 import {
   createExternalPrescriptionOrderSchema,
@@ -245,6 +246,19 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
     redirect("/store?prescription=invalid");
   }
 
+  let normalizedAttachment: ReturnType<typeof normalizeHostedAttachmentInput>;
+
+  try {
+    normalizedAttachment = normalizeHostedAttachmentInput({
+      storageUrl: parsed.data.attachmentUrl,
+      fileName: parsed.data.fileName,
+      mimeType: parsed.data.mimeType,
+      byteSize: parsed.data.byteSize
+    });
+  } catch {
+    redirect(`/store/${parsed.data.productSlug}?prescription=invalid`);
+  }
+
   let orderId: string | null = null;
 
   try {
@@ -324,15 +338,16 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
           purpose: "external_prescription",
           entityType: "order",
           entityId: order.id,
-          storageUrl: parsed.data.attachmentUrl,
-          fileName: parsed.data.fileName,
-          mimeType: parsed.data.mimeType || null,
-          byteSize: parsed.data.byteSize ?? null,
-          metadataJson: {
+          storageUrl: normalizedAttachment.storageUrl,
+          storageKey: normalizedAttachment.storageKey,
+          fileName: normalizedAttachment.fileName,
+          mimeType: normalizedAttachment.mimeType,
+          byteSize: normalizedAttachment.byteSize,
+          metadataJson: buildAttachmentMetadata(normalizedAttachment, {
             productId: product.id,
             productSlug: product.slug,
             source: "external_prescription_order"
-          }
+          })
         },
         select: {
           id: true

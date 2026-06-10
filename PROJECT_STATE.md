@@ -362,6 +362,7 @@ Completed in the current frontend pass:
 - Static assets copied into `public/images/doctors`, `public/images/profiles`, and `public/images/payments`.
 - In-app consultation chat foundation is implemented separately from LINE chat: consultation messages are stored in Prisma/MySQL, sending is permission-checked against the consultation patient/doctor/admin scope, message creation writes audit logs and in-app notifications, `/consult/live` binds the existing Stitch-style chat UI to the latest consultation thread, and `/doctor/consultations` shows the latest chat message before consult.
 - Admin compliance now includes an owner-managed integration readiness panel at `/admin/compliance` that checks PromptPay/payment webhook, SlipOK/EasySlip, file storage, LINE LIFF, and Zoom environment-variable presence without exposing secret values.
+- File storage foundation is implemented for owner-managed Cloudinary/S3 setup: storage readiness is centralized in `lib/storage`, hosted URLs are validated against the configured public/base URL when present, storage keys are extracted for metadata, external prescription attachments store provider/configuration metadata, and hosted payment slip URLs create `FileAttachment` metadata linked to the payment without storing file bytes in the database.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
 - Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
@@ -382,12 +383,12 @@ Not implemented yet:
 - Broader data-backed management screens, doctor screens, and pharmacist screens still need implementation behind the prepared role boundaries.
 - Final pre-doctor consult assessment recommendation mapping now uses the received real doctor profile/specialty, sends completion users to `/consult?recommended=assessment`, and highlights the approved doctor from the active assessment while still allowing manual doctor choice.
 - Broader booking integration still needs formal slot locking beyond the current duplicate scheduled-time guard; admin doctor availability editing and customer-facing availability reads are implemented.
-- Full slip upload storage and formal slot locking.
+- Full browser-to-storage slip upload flow and formal slot locking.
 - Production PromptPay/bank reference data has been received and must be configured securely through environment secrets such as `THAI_QR_PROMPTPAY_ID`; exact values must not be committed. Dynamic Thai QR payload generation is implemented for store checkout orders.
 - Production consultation payment verification requires `SLIP_VERIFICATION_PROVIDER`, `SLIP_VERIFICATION_API_KEY`, and provider-specific values such as `SLIPOK_BRANCH_ID` to be configured securely.
 - Zoom SDK integration for live consultations.
 - Realtime chat transport/provider such as Firebase, Pusher, Ably, or WebSocket/SSE has not been selected or integrated yet; current MVP foundation persists messages through the existing Next.js/Prisma/MySQL architecture.
-- File upload/storage integration for payment slips, externally attached prescriptions, PDFs, or attachments.
+- Actual Cloudinary/S3 upload provider integration for payment slips, externally attached prescriptions, PDFs, or attachments; current foundation accepts and validates owner-managed hosted URLs and stores metadata only.
 - Broader Community/Profile data beyond the current article interaction and reporting flows, broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation.
 - Automated tests beyond the current permission unit coverage, feature validation schema coverage, Stitch UI primitive coverage, protected workflow integration coverage, Playwright smoke coverage, lint, build, and typecheck.
 

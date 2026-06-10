@@ -141,6 +141,7 @@ This checklist tracks information needed from the client before implementation a
 - LINE LIFF channel setup will be handled by the project owner for the client.
 - Zoom SDK credential setup will be handled by the project owner for the client.
 - File storage credential setup, such as Cloudinary or S3-compatible storage, will be handled by the project owner for the client.
+- File storage foundation is implemented in the app for owner-managed hosted URLs, provider readiness checks, base URL validation, storage key extraction, and attachment metadata; real upload credentials and bucket/provider setup remain outside git.
 - EasySlip API key and webhook setup will be handled by the project owner for the client.
 - Stitch source, tokens, and assets are owner-managed design inputs, not client intake. If additional screens are needed, the project owner will provide Stitch HTML exports.
 
@@ -179,6 +180,7 @@ Received from the client:
 - Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, doctor-visible answers, real-doctor recommendation mapping, `/consult?recommended=assessment` handoff, and recommended doctor highlighting are implemented.
 - Client/owner direction clarified that consultation chat must be an in-app chat separate from LINE. The first foundation is implemented with Prisma/MySQL consultation messages, access checks, audit logs, in-app notifications, live consult UI binding, and latest-message visibility for doctors; Firebase or another realtime provider is not selected yet.
 - Admin compliance now includes an owner-managed integration readiness panel for PromptPay/payment webhook, SlipOK/EasySlip, storage, LINE LIFF, and Zoom environment variables; it reports only configured/missing keys and does not expose secret values.
+- File storage foundation now centralizes Cloudinary/S3 readiness, validates hosted URLs against a configured storage base URL when present, extracts storage keys, and records external prescription/payment slip attachment metadata without committing files or secrets.
 
 Still needed from the client:
 

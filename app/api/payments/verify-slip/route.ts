@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { canReadOwnRecord, hasPermission } from "@/lib/permissions";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
+import { buildAttachmentMetadata, normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,13 @@ export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
 
   if (!session) {
-    return NextResponse.json({ ok: false, error: "Authentication is required." }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "กรุณาเข้าสู่ระบบก่อนตรวจสอบสลิป" }, { status: 401 });
   }
 
   const parsed = verifySlipRequestSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "Slip verification request is invalid." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "ข้อมูลตรวจสอบสลิปไม่ถูกต้อง" }, { status: 400 });
   }
 
   const payment = await prisma.payment.findUnique({
@@ -51,15 +52,28 @@ export async function POST(request: NextRequest) {
   });
 
   if (!payment) {
-    return NextResponse.json({ ok: false, error: "Payment was not found." }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "ไม่พบรายการชำระเงินนี้" }, { status: 404 });
   }
 
   if (!canReadOwnRecord(session, payment.order.userId) && !hasPermission(session, "payment:review")) {
-    return NextResponse.json({ ok: false, error: "This payment is not available to the current user." }, { status: 403 });
+    return NextResponse.json({ ok: false, error: "ผู้ใช้ปัจจุบันไม่มีสิทธิ์ตรวจสอบรายการชำระเงินนี้" }, { status: 403 });
   }
 
   if (payment.status !== "pending_review" && payment.status !== "pending_slip") {
-    return NextResponse.json({ ok: false, error: "Payment is not ready for slip verification." }, { status: 409 });
+    return NextResponse.json({ ok: false, error: "รายการชำระเงินนี้ยังไม่พร้อมสำหรับตรวจสอบสลิป" }, { status: 409 });
+  }
+
+  let hostedSlipAttachment: ReturnType<typeof normalizeHostedAttachmentInput> | null = null;
+
+  if (parsed.data.imageUrl) {
+    try {
+      hostedSlipAttachment = normalizeHostedAttachmentInput({
+        storageUrl: parsed.data.imageUrl,
+        fileName: `payment-${payment.id}-slip`
+      });
+    } catch {
+      return NextResponse.json({ ok: false, error: "URL รูปสลิปอยู่นอก storage base URL ที่ตั้งไว้" }, { status: 400 });
+    }
   }
 
   try {
@@ -77,6 +91,7 @@ export async function POST(request: NextRequest) {
         },
         data: {
           status: result.ok ? "verified" : "rejected",
+          slipImageUrl: hostedSlipAttachment?.storageUrl ?? payment.slipImageUrl,
           reviewedAt,
           verificationPayload: {
             reviewedAt: reviewedAt.toISOString(),
@@ -110,6 +125,40 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      if (hostedSlipAttachment) {
+        const existingAttachment = await tx.fileAttachment.findFirst({
+          where: {
+            purpose: "payment_slip",
+            entityType: "payment",
+            entityId: payment.id,
+            storageUrl: hostedSlipAttachment.storageUrl
+          },
+          select: {
+            id: true
+          }
+        });
+
+        if (!existingAttachment) {
+          await tx.fileAttachment.create({
+            data: {
+              ownerId: payment.order.userId,
+              purpose: "payment_slip",
+              entityType: "payment",
+              entityId: payment.id,
+              storageUrl: hostedSlipAttachment.storageUrl,
+              storageKey: hostedSlipAttachment.storageKey,
+              fileName: hostedSlipAttachment.fileName,
+              mimeType: hostedSlipAttachment.mimeType,
+              byteSize: hostedSlipAttachment.byteSize,
+              metadataJson: buildAttachmentMetadata(hostedSlipAttachment, {
+                orderId: payment.order.id,
+                source: "payment_slip_verification"
+              })
+            }
+          });
+        }
+      }
+
       await writeAuditLog(tx, {
         actorId: session.userId,
         action: "payment.provider_verify_slip",
@@ -129,6 +178,6 @@ export async function POST(request: NextRequest) {
       result
     });
   } catch {
-    return NextResponse.json({ ok: false, error: "Slip verification provider is not configured or unavailable." }, { status: 503 });
+    return NextResponse.json({ ok: false, error: "Slip verification provider ยังไม่พร้อมใช้งานหรือยังไม่ได้ตั้งค่า" }, { status: 503 });
   }
 }

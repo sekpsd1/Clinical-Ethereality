@@ -52,13 +52,13 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
     setFileName(file.name);
     setPreviewUrl(URL.createObjectURL(file));
     setStatus("reading");
-    setMessage("Reading the slip QR from this image.");
+    setMessage("กำลังอ่าน QR จากรูปสลิปนี้");
 
     const BarcodeDetector = getBarcodeDetector();
 
     if (!BarcodeDetector) {
       setStatus("idle");
-      setMessage("This browser cannot read slip QR codes automatically. Paste the QR payload or hosted slip URL below.");
+      setMessage("เบราว์เซอร์นี้อ่าน QR อัตโนมัติไม่ได้ กรุณาวาง QR payload หรือ hosted slip URL ด้านล่าง");
       return;
     }
 
@@ -71,16 +71,16 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
 
       if (!nextPayload) {
         setStatus("idle");
-        setMessage("No QR code was found in this slip. Try a clearer image or paste the payload manually.");
+        setMessage("ไม่พบ QR ในสลิปนี้ กรุณาใช้รูปที่ชัดขึ้นหรือวาง payload เอง");
         return;
       }
 
       setQrPayload(nextPayload);
       setStatus("idle");
-      setMessage("Slip QR detected. Submit to verify this payment.");
+      setMessage("พบ QR ของสลิปแล้ว กดส่งเพื่อตรวจสอบการชำระเงิน");
     } catch {
       setStatus("idle");
-      setMessage("The slip image could not be read. Try a clearer image or paste the payload manually.");
+      setMessage("อ่านรูปสลิปไม่ได้ กรุณาใช้รูปที่ชัดขึ้นหรือวาง payload เอง");
     }
   }
 
@@ -92,12 +92,12 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
 
     if (!trimmedPayload && !trimmedImageUrl) {
       setStatus("error");
-      setMessage("Upload a readable slip, paste the slip QR payload, or provide a hosted slip image URL.");
+      setMessage("กรุณาอัปโหลดสลิปที่อ่านได้ วาง QR payload หรือใส่ hosted slip image URL");
       return;
     }
 
     setStatus("submitting");
-    setMessage("Verifying this slip with the configured provider.");
+    setMessage("กำลังตรวจสอบสลิปกับ provider ที่ตั้งค่าไว้");
 
     try {
       const response = await fetch("/api/payments/verify-slip", {
@@ -114,22 +114,22 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (!response.ok) {
-        throw new Error(payload?.error ?? "Slip verification failed.");
+        throw new Error(payload?.error ?? "ตรวจสอบสลิปไม่สำเร็จ");
       }
 
       if (!payload?.ok) {
         setStatus("error");
-        setMessage("The provider rejected this slip. Check the transfer amount, receiver, and slip image.");
+        setMessage("provider ปฏิเสธสลิปนี้ กรุณาตรวจสอบยอดเงิน ผู้รับเงิน และรูปสลิป");
         router.refresh();
         return;
       }
 
       setStatus("success");
-      setMessage("Payment verified. Pharmacy preparation can begin.");
+      setMessage("ยืนยันการชำระเงินแล้ว คลินิกสามารถเริ่มเตรียมสินค้าได้");
       router.refresh();
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Slip verification provider is unavailable.");
+      setMessage(error instanceof Error ? error.message : "Slip verification provider ยังไม่พร้อมใช้งาน");
     }
   }
 
@@ -142,8 +142,8 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
           <ScanLine aria-hidden="true" className="size-5" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-extrabold text-primary">Verify PromptPay slip</p>
-          <p className="mt-1 text-xs leading-5 text-[#3e494a]">{orderCode} is waiting for slip verification.</p>
+          <p className="text-sm font-extrabold text-primary">ตรวจสอบสลิป PromptPay</p>
+          <p className="mt-1 text-xs leading-5 text-[#3e494a]">{orderCode} รอตรวจสอบสลิปการชำระเงิน</p>
         </div>
       </div>
 
@@ -154,9 +154,9 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
         ) : (
           <CloudUpload aria-hidden="true" className="mb-3 size-8" />
         )}
-        <span className="text-sm font-bold">{fileName ?? "Upload transfer slip"}</span>
+        <span className="text-sm font-bold">{fileName ?? "อัปโหลดสลิปโอนเงิน"}</span>
         <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3e494a]">
-          QR is read locally before provider verification
+          อ่าน QR ในเครื่องก่อนส่งไปตรวจสอบกับ provider
         </span>
         <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isBusy} />
       </label>
@@ -169,7 +169,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
             onChange={(event) => setQrPayload(event.target.value)}
             rows={3}
             className="mt-2 w-full resize-none rounded-[16px] border border-[#bdc9ca]/30 bg-white px-4 py-3 text-xs leading-5 text-[#191c1e] outline-none focus:border-primary"
-            placeholder="Detected automatically when the slip image contains a readable QR code"
+            placeholder="ระบบจะเติมให้อัตโนมัติเมื่อรูปสลิปมี QR ที่อ่านได้"
             disabled={isBusy}
           />
         </label>
@@ -183,6 +183,9 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
             placeholder="https://..."
             disabled={isBusy}
           />
+          <span className="mt-2 block text-[11px] leading-5 text-[#6e797a]">
+            ถ้าใส่ URL ระบบจะบันทึกเป็น metadata ของไฟล์สลิปและตรวจว่าอยู่ใน storage base URL ที่ตั้งไว้
+          </span>
         </label>
       </div>
 
@@ -198,7 +201,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
         className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient text-sm font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isBusy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
-        {status === "submitting" ? "Verifying" : "Submit slip"}
+        {status === "submitting" ? "กำลังตรวจสอบ" : "ส่งสลิป"}
       </button>
     </form>
   );

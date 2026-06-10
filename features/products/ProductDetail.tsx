@@ -14,6 +14,7 @@ import {
 import { addToCartAction } from "@/features/cart/actions";
 import { createExternalPrescriptionOrderAction } from "@/features/products/prescriptions/actions";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
+import type { StorageReadiness } from "@/lib/storage/provider";
 
 const fallbackProduct: StoreProductDetailItem = {
   id: "fallback-paracetamol",
@@ -34,10 +35,12 @@ const fallbackProduct: StoreProductDetailItem = {
 
 export function ProductDetail({
   data,
-  externalPrescriptionStatus
+  externalPrescriptionStatus,
+  storageReadiness
 }: {
   data: StoreProductDetailData;
   externalPrescriptionStatus?: string;
+  storageReadiness: StorageReadiness;
 }) {
   const product = data.product ?? fallbackProduct;
 
@@ -74,7 +77,7 @@ export function ProductDetail({
         </section>
 
         {product.requiresPrescription ? (
-          <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} />
+          <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} storageReadiness={storageReadiness} />
         ) : null}
 
         <section className="flex flex-col gap-4">
@@ -174,10 +177,12 @@ export function ProductDetail({
 
 function ExternalPrescriptionOrderCard({
   product,
-  status
+  status,
+  storageReadiness
 }: {
   product: StoreProductDetailItem;
   status?: string;
+  storageReadiness: StorageReadiness;
 }) {
   return (
     <section className="rounded-[24px] border border-primary/20 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
@@ -187,6 +192,12 @@ function ExternalPrescriptionOrderCard({
           ใช้ URL ไฟล์จาก storage ที่ได้รับอนุญาต ระบบจะบันทึกเฉพาะ metadata เพื่อผูกกับคำสั่งซื้อ
         </p>
       </div>
+
+      <p className="mb-4 rounded-[14px] bg-teal-50/70 px-3 py-2 text-[11px] font-semibold leading-5 text-primary">
+        {storageReadiness.isConfigured
+          ? `Storage พร้อมใช้งานผ่าน ${storageReadiness.provider}${storageReadiness.publicBaseUrl ? " และตรวจ URL ตาม base URL ที่ตั้งไว้" : ""}`
+          : "ยังไม่ได้ตั้งค่า Cloudinary/S3 สำหรับอัปโหลดจริง ตอนนี้รับ hosted URL จาก storage ที่ owner จัดเตรียมและบันทึก metadata ก่อน"}
+      </p>
 
       {status === "failed" || status === "invalid" ? (
         <p className="mb-4 rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">

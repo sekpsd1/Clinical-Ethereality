@@ -45,6 +45,7 @@
 - [x] Add external prescription attachment metadata foundation for prescription-required purchases using owner-managed storage URLs, order linkage, attachment visibility, and audit logs without storing file bytes in the database
 - [x] Add in-app consultation chat foundation that is not LINE chat, with persisted Prisma/MySQL messages, consultation access checks, audit logs, notifications, live consult UI binding, and latest-message visibility in the doctor queue
 - [x] Add owner-managed integration readiness panel for PromptPay, EasySlip/SlipOK, storage, LINE LIFF, and Zoom without exposing secret values
+- [x] Add file storage foundation for Cloudinary/S3 readiness, hosted URL base validation, storage key extraction, external prescription metadata, and payment slip metadata without storing file bytes in the database
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup

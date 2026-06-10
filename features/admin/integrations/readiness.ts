@@ -1,4 +1,5 @@
 import { getAppEnv } from "@/lib/env/schema";
+import { getStorageReadiness } from "@/lib/storage/provider";
 
 export type IntegrationReadinessItem = {
   label: string;
@@ -41,15 +42,10 @@ function buildItem(label: string, detail: string, checks: Array<[string, boolean
 export function getIntegrationReadiness(): IntegrationReadinessData {
   const env = getAppEnv();
   const isSlipOk = env.SLIP_VERIFICATION_PROVIDER === "slipok";
-  const hasCloudinary = hasValue(env.CLOUDINARY_CLOUD_NAME) && hasValue(env.CLOUDINARY_API_KEY) && hasValue(env.CLOUDINARY_API_SECRET);
-  const hasS3 =
-    hasValue(env.S3_BUCKET) &&
-    hasValue(env.S3_ACCESS_KEY_ID) &&
-    hasValue(env.S3_SECRET_ACCESS_KEY) &&
-    (hasValue(env.S3_REGION) || hasValue(env.S3_ENDPOINT));
+  const storageReadiness = getStorageReadiness(env);
 
   const items = [
-    buildItem("PromptPay และ payment webhook", "ใช้สำหรับสร้าง QR และรับ webhook/ตรวจสอบสถานะการชำระเงิน", [
+    buildItem("PromptPay และ payment webhook", "ใช้สร้าง QR และรับ webhook/ตรวจสอบสถานะการชำระเงิน", [
       ["THAI_QR_PROMPTPAY_ID", hasValue(env.THAI_QR_PROMPTPAY_ID)],
       ["PAYMENT_WEBHOOK_SECRET", hasValue(env.PAYMENT_WEBHOOK_SECRET)]
     ]),
@@ -60,8 +56,8 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
       ["SLIPOK_BRANCH_ID", !isSlipOk || hasValue(env.SLIPOK_BRANCH_ID)]
     ]),
     buildItem("File storage", "ใช้เก็บ slip, prescription attachment, PDFs, images และไฟล์ clinical อื่น ๆ", [
-      ["Cloudinary หรือ S3 credentials", hasCloudinary || hasS3],
-      ["public/base URL", hasValue(env.S3_PUBLIC_BASE_URL) || hasCloudinary]
+      ["Cloudinary หรือ S3 credentials", storageReadiness.configuredKeys.length > 0],
+      ["public/base URL", Boolean(storageReadiness.publicBaseUrl)]
     ]),
     buildItem("LINE LIFF", "ใช้เป็น customer entry path สำหรับ production LINE Mini App", [
       ["NEXT_PUBLIC_LINE_LIFF_ID", hasValue(env.NEXT_PUBLIC_LINE_LIFF_ID)],
