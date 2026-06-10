@@ -44,7 +44,7 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
   const doctorName = doctor?.name ?? "พญ. กมลภัทร วิจักขณ์พันธ์";
 
   return (
-    <article className="relative h-[260px] rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 shadow-bio-card backdrop-blur-topbar">
+    <article className="relative h-[284px] rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 shadow-bio-card backdrop-blur-topbar">
       <div className="absolute left-1/2 top-6 -translate-x-1/2">
         <div className="relative size-24 rounded-full border-4 border-white p-1 shadow-avatar">
           <div className="relative size-full overflow-hidden rounded-full">
@@ -56,9 +56,9 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 top-[136px] flex flex-col items-center gap-1 px-5 text-center">
+      <div className="absolute inset-x-0 top-[132px] flex flex-col items-center gap-1 px-5 text-center">
         <h2 className="text-xl font-bold leading-7 tracking-normal text-primary">{doctorName}</h2>
-        <div className="flex items-center justify-center gap-1 text-sm font-medium leading-5 text-[#3e494a]">
+        <div className="flex min-h-6 items-center justify-center gap-1 rounded-full bg-white/70 px-3 text-sm font-medium leading-5 text-[#3e494a] shadow-sm">
           <Star aria-hidden="true" className="size-[15px] fill-[#f2b705] text-[#f2b705]" />
           <span>4.9 (120+ รีวิว)</span>
         </div>

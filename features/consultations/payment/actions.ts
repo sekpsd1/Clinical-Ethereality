@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
+import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { verifyConsultationSlipSchema } from "@/features/consultations/payment/schema";
 
 function formDataToObject(formData: FormData) {
@@ -29,6 +30,8 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
   }
 
   const consultationId = parsed.data.consultationId;
+  await releaseExpiredConsultationSlotLocks();
+
   const consultation = await prisma.consultation.findFirst({
     where: {
       id: consultationId,

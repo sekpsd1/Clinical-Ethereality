@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { getSlotTimestamp, getUpcomingDateForWeekday, LOCKING_CONSULTATION_STATUSES } from "@/features/consultations/booking/slots";
+import {
+  CONSULTATION_SLOT_LOCK_TTL_MINUTES,
+  getActiveConsultationSlotWhere,
+  getSlotLockExpiresAt,
+  getSlotTimestamp,
+  getUpcomingDateForWeekday,
+  isSlotLockActive,
+  LOCKING_CONSULTATION_STATUSES
+} from "@/features/consultations/booking/slots";
 
 describe("booking slot helpers", () => {
   it("calculates the next upcoming weekday slot without using the current day", () => {
@@ -17,5 +25,36 @@ describe("booking slot helpers", () => {
     expect(getSlotTimestamp(new Date("2026-06-15T10:00:00.000Z"))).toBe(
       new Date("2026-06-15T10:00:00.000Z").getTime()
     );
+  });
+
+  it("creates short-lived payment holds instead of holding until the appointment slot ends", () => {
+    const now = new Date("2026-06-10T10:00:00.000Z");
+    const expiresAt = getSlotLockExpiresAt(now);
+
+    expect(CONSULTATION_SLOT_LOCK_TTL_MINUTES).toBe(15);
+    expect(expiresAt.toISOString()).toBe("2026-06-10T10:15:00.000Z");
+  });
+
+  it("treats expired payment holds as released", () => {
+    const now = new Date("2026-06-10T10:16:00.000Z");
+
+    expect(isSlotLockActive(new Date("2026-06-10T10:15:00.000Z"), now)).toBe(false);
+    expect(isSlotLockActive(new Date("2026-06-10T10:17:00.000Z"), now)).toBe(true);
+    expect(isSlotLockActive(null, now)).toBe(true);
+  });
+
+  it("only reserves pending payment consultations while their slot lock is active", () => {
+    expect(getActiveConsultationSlotWhere(new Date("2026-06-10T10:00:00.000Z"))).toMatchObject({
+      OR: [
+        {
+          status: {
+            in: ["scheduled", "live"]
+          }
+        },
+        {
+          status: "pending_payment"
+        }
+      ]
+    });
   });
 });

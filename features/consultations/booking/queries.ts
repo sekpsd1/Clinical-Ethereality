@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { getSlotTimestamp, getUpcomingDateForWeekday, LOCKING_CONSULTATION_STATUSES } from "@/features/consultations/booking/slots";
+import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
+import { getActiveConsultationSlotWhere, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getPrimaryBookingDoctor>>>;
@@ -76,6 +77,9 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
   noStore();
 
   try {
+    const now = new Date();
+    await releaseExpiredConsultationSlotLocks(now);
+
     const doctor = await getPrimaryBookingDoctor();
 
     if (!doctor) {
@@ -94,7 +98,17 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
                 doctorId: doctor.id,
                 scheduledAt: {
                   in: candidateDates
-                }
+                },
+                OR: [
+                  {
+                    expiresAt: null
+                  },
+                  {
+                    expiresAt: {
+                      gt: now
+                    }
+                  }
+                ]
               },
               select: {
                 scheduledAt: true
@@ -106,9 +120,7 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
                 scheduledAt: {
                   in: candidateDates
                 },
-                status: {
-                  in: LOCKING_CONSULTATION_STATUSES
-                }
+                ...getActiveConsultationSlotWhere(now)
               },
               select: {
                 scheduledAt: true

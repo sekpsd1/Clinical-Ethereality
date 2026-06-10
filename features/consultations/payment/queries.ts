@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import { getPromptPayInstruction } from "@/lib/payments/promptpay";
+import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import type {
   ConsultationPaymentData,
   ConsultationPaymentDetail,
@@ -119,6 +120,7 @@ export async function getConsultationPaymentData(
   }
 
   try {
+    await releaseExpiredConsultationSlotLocks();
     const consultation = await getConsultationRecord(consultationId, session.userId);
 
     return {

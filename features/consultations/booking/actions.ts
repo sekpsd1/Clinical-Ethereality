@@ -8,7 +8,8 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
-import { getUpcomingDateForWeekday, LOCKING_CONSULTATION_STATUSES } from "@/features/consultations/booking/slots";
+import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
+import { getActiveConsultationSlotWhere, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -27,7 +28,10 @@ export async function createConsultationBookingAction(formData: FormData): Promi
   let consultationId: string | null = null;
 
   try {
+    await releaseExpiredConsultationSlotLocks();
+
     const result = await prisma.$transaction(async (tx) => {
+      const now = new Date();
       const availability = await tx.doctorAvailability.findUnique({
         where: {
           id: parsed.data.availabilityId
@@ -52,9 +56,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         where: {
           doctorId: availability.doctorId,
           scheduledAt,
-          status: {
-            in: LOCKING_CONSULTATION_STATUSES
-          }
+          ...getActiveConsultationSlotWhere(now)
         },
         select: {
           id: true
@@ -71,7 +73,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           scheduledAt,
           availabilityId: availability.id,
           patientId: session.userId,
-          expiresAt: new Date(scheduledAt.getTime() + availability.slotMinutes * 60 * 1000)
+          expiresAt: getSlotLockExpiresAt(now)
         },
         select: {
           id: true
@@ -152,6 +154,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     consultationId = result.id;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      await releaseExpiredConsultationSlotLocks();
       redirect("/consult/booking/somchai?booking=locked");
     }
 
