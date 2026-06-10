@@ -178,6 +178,7 @@ Received from the client:
 - Pre-doctor assessment duration Stitch export received and implemented as `/consult/assessment/duration`.
 - Pre-doctor assessment completion Stitch export received and implemented as `/consult/assessment/complete`; answer persistence, 7-day reuse, booking attachment, doctor-visible answers, real-doctor recommendation mapping, `/consult?recommended=assessment` handoff, and recommended doctor highlighting are implemented.
 - Client/owner direction clarified that consultation chat must be an in-app chat separate from LINE. The first foundation is implemented with Prisma/MySQL consultation messages, access checks, audit logs, in-app notifications, live consult UI binding, and latest-message visibility for doctors; Firebase or another realtime provider is not selected yet.
+- Admin compliance now includes an owner-managed integration readiness panel for PromptPay/payment webhook, SlipOK/EasySlip, storage, LINE LIFF, and Zoom environment variables; it reports only configured/missing keys and does not expose secret values.
 
 Still needed from the client:
 
