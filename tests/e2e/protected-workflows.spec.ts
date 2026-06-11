@@ -85,7 +85,7 @@ test.describe("protected workflow integration", () => {
 
     expect(body).toEqual({
       ok: false,
-      error: "Authentication is required."
+      error: "กรุณาเข้าสู่ระบบก่อนตรวจสอบสลิป"
     });
   });
 });

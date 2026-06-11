@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { writeAuditLog } from "@/lib/audit/audit-log";
 import { canReadOwnRecord, hasPermission } from "@/lib/permissions";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
-import { buildAttachmentMetadata, normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
+import { normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
+import { applyProviderPaymentVerification } from "@/features/payments/service";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +18,6 @@ const verifySlipRequestSchema = z
   .refine((value) => value.qrPayload || value.imageUrl, {
     message: "qrPayload or imageUrl is required."
   });
-
-function toJsonValue(value: unknown): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue;
-}
 
 export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
@@ -82,94 +77,20 @@ export async function POST(request: NextRequest) {
       imageUrl: parsed.data.imageUrl,
       amount: Number(payment.amount)
     });
-    const reviewedAt = new Date();
 
     await prisma.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: {
-          id: payment.id
-        },
-        data: {
-          status: result.ok ? "verified" : "rejected",
-          slipImageUrl: hostedSlipAttachment?.storageUrl ?? payment.slipImageUrl,
-          reviewedAt,
-          verificationPayload: {
-            reviewedAt: reviewedAt.toISOString(),
-            source: result.provider,
-            result: toJsonValue(result)
-          }
-        }
-      });
-
-      await tx.order.update({
-        where: {
-          id: payment.order.id
-        },
-        data: {
-          status: result.ok ? "paid" : "pending_payment"
-        }
-      });
-
-      await tx.notification.create({
-        data: {
-          userId: payment.order.userId,
-          type: "payment",
-          channel: "in_app",
-          title: result.ok ? "ตรวจสอบสลิปสำเร็จ" : "ตรวจสอบสลิปไม่ผ่าน",
-          body: result.ok ? "ระบบยืนยันการชำระเงินของคุณแล้ว" : "กรุณาตรวจสอบสลิปและส่งใหม่อีกครั้ง",
-          metadataJson: {
-            paymentId: payment.id,
-            orderId: payment.order.id,
-            href: "/store/orders"
-          }
-        }
-      });
-
-      if (hostedSlipAttachment) {
-        const existingAttachment = await tx.fileAttachment.findFirst({
-          where: {
-            purpose: "payment_slip",
-            entityType: "payment",
-            entityId: payment.id,
-            storageUrl: hostedSlipAttachment.storageUrl
-          },
-          select: {
-            id: true
-          }
-        });
-
-        if (!existingAttachment) {
-          await tx.fileAttachment.create({
-            data: {
-              ownerId: payment.order.userId,
-              purpose: "payment_slip",
-              entityType: "payment",
-              entityId: payment.id,
-              storageUrl: hostedSlipAttachment.storageUrl,
-              storageKey: hostedSlipAttachment.storageKey,
-              fileName: hostedSlipAttachment.fileName,
-              mimeType: hostedSlipAttachment.mimeType,
-              byteSize: hostedSlipAttachment.byteSize,
-              metadataJson: buildAttachmentMetadata(hostedSlipAttachment, {
-                orderId: payment.order.id,
-                source: "payment_slip_verification"
-              })
-            }
-          });
-        }
-      }
-
-      await writeAuditLog(tx, {
+      await applyProviderPaymentVerification(tx, {
         actorId: session.userId,
-        action: "payment.provider_verify_slip",
-        entityType: "payment",
-        entityId: payment.id,
-        metadata: {
+        hostedSlipAttachment,
+        payment: {
+          id: payment.id,
           orderId: payment.order.id,
-          provider: result.provider,
-          ok: result.ok,
-          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
-        }
+          orderUserId: payment.order.userId,
+          status: payment.status,
+          slipImageUrl: payment.slipImageUrl
+        },
+        result,
+        source: parsed.data.qrPayload ? "qr_payload" : "image_url"
       });
     });
 

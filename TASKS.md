@@ -255,6 +255,7 @@
 - [x] Build slip upload and payment review workflow
 - [x] Build admin manual payment review foundation
 - [x] Add SlipOK/EasySlip verification API boundary
+- [x] Extract provider slip verification persistence into the payment domain service
 - [x] Integrate selected Slip Verification API with final slip upload UI
 - [x] Build inventory management
 
