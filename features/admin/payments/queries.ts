@@ -95,13 +95,13 @@ function getProviderLabel(source: string | null): string {
     return "ตรวจโดยแอดมิน";
   }
 
-  return "ยังไม่ได้ตรวจผ่าน provider";
+  return "ยังไม่ได้ตรวจผ่านผู้ให้บริการ";
 }
 
 function getReviewSourceLabel(source: string | null): string {
   const labels: Record<string, string> = {
     admin_manual_review: "แอดมินตรวจเอง",
-    customer_checkout_foundation: "รอสลิปจาก checkout",
+    customer_checkout_foundation: "รอสลิปจากหน้าชำระเงิน",
     prescription_order: "คำสั่งซื้อจากใบสั่งยาในระบบ",
     external_prescription_order: "คำสั่งซื้อแนบใบสั่งยาภายนอก",
     slipok: "ตรวจผ่าน SlipOK",
@@ -113,7 +113,7 @@ function getReviewSourceLabel(source: string | null): string {
 
 function getResultLabel(status: AdminPaymentQueueItem["status"], resultStatus: string | null): string {
   if (resultStatus === "provider_error") {
-    return "provider ตรวจไม่สำเร็จ";
+    return "ผู้ให้บริการตรวจไม่สำเร็จ";
   }
 
   if (status === "verified") {
@@ -146,7 +146,7 @@ function getPaymentEvidence(payment: PaymentWithOrder) {
   const providerLabel = getProviderLabel(source);
   const reviewSourceLabel = getReviewSourceLabel(source);
   const resultLabel = getResultLabel(payment.status, resultStatus);
-  const qrPayloadStatus = payment.qrPayload ? "มี QR payload" : "ยังไม่มี QR payload";
+  const qrPayloadStatus = payment.qrPayload ? "มีข้อมูล QR" : "ยังไม่มีข้อมูล QR";
   const slipStatus = payment.slipImageUrl ? "มี URL/ไฟล์สลิป" : "ยังไม่มี URL/ไฟล์สลิป";
 
   return {

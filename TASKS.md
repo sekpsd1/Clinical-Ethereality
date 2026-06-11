@@ -229,6 +229,7 @@
 - [x] Add admin role approval and user suspension Server Action boundaries
 - [x] Add inline success/error feedback for admin role approval actions
 - [x] Add seed data for admin user approval queue
+- [x] Add Thai admin/staff compliance, integration readiness, DB-offline, notification, and payment evidence copy polish
 - [x] Add data-backed admin payment review queue foundation
 - [x] Add payment review clarity for admin evidence, provider result, QR payload, slip URL, reviewer, and Thai status labels
 - [x] Add manual admin payment verify/reject Server Action boundaries

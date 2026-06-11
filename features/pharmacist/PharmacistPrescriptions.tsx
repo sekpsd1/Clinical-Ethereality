@@ -84,7 +84,7 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
         {data.unavailable ? (
           <EmptyPrescriptionQueue
             title="ยังไม่ได้เชื่อมต่อฐานข้อมูล"
-            body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนตรวจใบสั่งยา"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนตรวจใบสั่งยา"
           />
         ) : data.prescriptions.length === 0 ? (
           <EmptyPrescriptionQueue title="ยังไม่มีใบสั่งยา" body="ใบสั่งยาที่แพทย์สร้างจะปรากฏที่นี่เมื่อมีข้อมูลในระบบ" />

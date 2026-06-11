@@ -24,6 +24,15 @@ const shipmentStatusLabels: Record<string, string> = {
   shipped: "จัดส่งแล้ว"
 };
 
+const paymentStatusLabels: Record<string, string> = {
+  no_payment_record: "ไม่มีข้อมูลชำระเงิน",
+  pending_review: "รอตรวจสลิป",
+  pending_slip: "รอสลิป",
+  refunded: "คืนเงินแล้ว",
+  rejected: "สลิปไม่ผ่าน",
+  verified: "ชำระแล้ว"
+};
+
 function getStatusTone(status: AdminOrderQueueItem["status"]): "neutral" | "success" | "warning" | "danger" {
   if (status === "delivered") {
     return "success";
@@ -90,7 +99,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
         </div>
 
         {data.unavailable ? (
-          <EmptyOrderQueue title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนจัดการคำสั่งซื้อ" />
+          <EmptyOrderQueue title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนจัดการคำสั่งซื้อ" />
         ) : data.orders.length === 0 ? (
           <EmptyOrderQueue title="ยังไม่มีคำสั่งซื้อ" body="คำสั่งซื้อจากลูกค้าจะแสดงที่นี่เมื่อมีข้อมูลในระบบ" />
         ) : null}
@@ -138,7 +147,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
                 <p className="min-w-0 truncate text-[11px] font-semibold text-muted">
-                  สร้างเมื่อ {order.createdAt} · ชำระเงิน {order.paymentStatus}
+                  สร้างเมื่อ {order.createdAt} · ชำระเงิน {paymentStatusLabels[order.paymentStatus] ?? order.paymentStatus}
                 </p>
                 <AdminOrderActionButtons order={order} />
               </div>

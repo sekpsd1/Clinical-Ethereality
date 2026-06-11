@@ -152,7 +152,7 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
         {data.unavailable ? (
           <EmptyQueue
             title="ยังไม่ได้เชื่อมต่อฐานข้อมูล"
-            body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนใช้คิวอนุมัติจริงของผู้ดูแล"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนใช้คิวอนุมัติจริงของผู้ดูแล"
           />
         ) : data.users.length === 0 ? (
           <EmptyQueue title="ไม่มีผู้ใช้ที่ต้องตรวจสอบ" body="ผู้ใช้ที่เชื่อมต่อ LINE และคำขอสิทธิ์บุคลากรจะแสดงที่นี่" />

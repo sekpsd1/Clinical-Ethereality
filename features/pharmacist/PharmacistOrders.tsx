@@ -71,7 +71,7 @@ export function PharmacistOrders({ data }: { data: PharmacistOrdersData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Medicine Preparation</p>
+        <p className="text-label font-bold uppercase text-white/75">จัดเตรียมยา</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวจัดเตรียมยา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
           ติดตามออเดอร์ที่ชำระแล้วจากขั้นตอนจัดเตรียมยา ส่งออก และส่งสำเร็จ โดยไม่เพิ่มขั้นตอนตรวจเอกสารหลังแนบใบสั่งยา
@@ -101,7 +101,7 @@ export function PharmacistOrders({ data }: { data: PharmacistOrdersData }) {
         {data.unavailable ? (
           <EmptyOrderQueue
             title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนจัดการคิวจัดเตรียมยา"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนจัดการคิวจัดเตรียมยา"
           />
         ) : data.orders.length === 0 ? (
           <EmptyOrderQueue title="ยังไม่มีออเดอร์ยา" body="ออเดอร์ที่ชำระแล้วและต้องจัดเตรียมยาจะแสดงในหน้านี้" />

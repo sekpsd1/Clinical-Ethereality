@@ -9,10 +9,10 @@ export function AdminIntegrationReadiness({ data }: { data: IntegrationReadiness
       <GlassSurface className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-label font-bold uppercase text-primary">Owner-managed setup</p>
-            <h2 className="mt-1 font-headline text-lg font-bold text-text">Integration readiness</h2>
+            <p className="text-label font-bold uppercase text-primary">ตั้งค่าโดยเจ้าของระบบ</p>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">ความพร้อมของระบบเชื่อมต่อ</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              ตรวจจาก environment variables โดยแสดงเฉพาะสถานะ ไม่แสดงค่า secret จริง
+              ตรวจจากค่าตั้งค่าระบบ โดยแสดงเฉพาะสถานะ ไม่แสดงค่า secret จริง
             </p>
           </div>
           <span className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">

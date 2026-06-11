@@ -84,7 +84,7 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
         {data.unavailable ? (
           <EmptyModerationQueue
             title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนจัดการคิวดูแลชุมชน"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนจัดการคิวดูแลชุมชน"
           />
         ) : data.items.length === 0 ? (
           <EmptyModerationQueue title="ยังไม่มีเนื้อหาที่ต้องตรวจ" body="บทความหรือความคิดเห็นที่ถูกซ่อน/เก็บถาวรจะแสดงที่นี่" />

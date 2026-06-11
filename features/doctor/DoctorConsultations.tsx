@@ -104,7 +104,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
         {data.unavailable ? (
           <EmptyDoctorQueue
             title="ยังโหลดข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนตรวจสอบคิวปรึกษา"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนตรวจสอบคิวปรึกษา"
           />
         ) : data.missingDoctorProfile ? (
           <EmptyDoctorQueue

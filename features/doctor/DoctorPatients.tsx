@@ -89,7 +89,7 @@ export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
         {data.unavailable ? (
           <EmptyPatientLogs
             title="ยังโหลดข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนตรวจประวัติผู้ป่วย"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนตรวจประวัติผู้ป่วย"
           />
         ) : data.missingDoctorProfile ? (
           <EmptyPatientLogs title="ยังไม่มีโปรไฟล์แพทย์" body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงประวัติผู้ป่วยที่ได้รับมอบหมาย" />

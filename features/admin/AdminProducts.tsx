@@ -86,7 +86,7 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
         {data.unavailable ? (
           <EmptyProductCatalog
             title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนจัดการแคตตาล็อกสินค้า"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนจัดการแคตตาล็อกสินค้า"
           />
         ) : data.products.length === 0 ? (
           <EmptyProductCatalog title="ยังไม่มีสินค้า" body="สร้างสินค้ารายการแรกด้านบน แล้วจัดการสต็อกจากหน้าสต็อก" />

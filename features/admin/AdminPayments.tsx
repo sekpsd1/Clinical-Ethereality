@@ -93,7 +93,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
         </div>
 
         {data.unavailable ? (
-          <EmptyPaymentQueue title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนตรวจสอบสลิป" />
+          <EmptyPaymentQueue title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนตรวจสอบสลิป" />
         ) : data.payments.length === 0 ? (
           <EmptyPaymentQueue title="ยังไม่มีรายการชำระเงิน" body="สลิปจากคำสั่งซื้อจะแสดงที่นี่เมื่อเข้าสู่คิวตรวจสอบ" />
         ) : null}

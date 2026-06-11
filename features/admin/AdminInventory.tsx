@@ -23,7 +23,7 @@ function getStockTone(item: AdminInventoryItem): "neutral" | "success" | "warnin
 
 function getStockLabel(item: AdminInventoryItem): string {
   if (item.productStatus !== "active") {
-    return "ไม่ active";
+    return "ยังไม่เผยแพร่";
   }
 
   if (item.availableQuantity <= 0) {
@@ -45,7 +45,7 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
       tone: "warning"
     },
     {
-      label: "สินค้า active",
+      label: "สินค้าเผยแพร่",
       value: String(data.summary.activeProducts),
       tone: "success"
     },
@@ -92,7 +92,7 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
         </div>
 
         {data.unavailable ? (
-          <EmptyInventory title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนจัดการสต็อก" />
+          <EmptyInventory title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนจัดการสต็อก" />
         ) : data.items.length === 0 ? (
           <EmptyInventory title="ยังไม่มีรายการสต็อก" body="สินค้าเปิดขายที่มีข้อมูลสต็อกจะแสดงที่นี่" />
         ) : null}

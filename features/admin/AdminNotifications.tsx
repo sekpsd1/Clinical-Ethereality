@@ -4,6 +4,22 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminNotificationForm } from "@/features/admin/AdminNotificationForm";
 import type { AdminNotificationItem, AdminNotificationsData } from "@/features/admin/notifications/types";
 
+const notificationTypeLabels: Record<AdminNotificationItem["type"], string> = {
+  community: "ชุมชน",
+  consultation: "ปรึกษา",
+  order: "คำสั่งซื้อ",
+  payment: "ชำระเงิน",
+  prescription: "ใบสั่งยา",
+  reward: "แต้มสะสม",
+  system: "ระบบ"
+};
+
+const notificationChannelLabels: Record<AdminNotificationItem["channel"], string> = {
+  email: "อีเมล",
+  in_app: "ในแอป",
+  line: "LINE"
+};
+
 function getTypeTone(type: AdminNotificationItem["type"]): "neutral" | "success" | "warning" | "danger" {
   if (type === "payment" || type === "prescription") {
     return "warning";
@@ -71,7 +87,7 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
         {data.unavailable ? (
           <EmptyNotifications
             title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
-            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนส่งการแจ้งเตือน"
+            body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนส่งการแจ้งเตือน"
           />
         ) : (
           <AdminNotificationForm recipients={data.recipients} />
@@ -100,7 +116,7 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
                       <h3 className="truncate text-sm font-bold text-text">{notification.title}</h3>
                       <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">{notification.userName}</p>
                     </div>
-                    <StatusBadge tone={tone}>{notification.type}</StatusBadge>
+                    <StatusBadge tone={tone}>{notificationTypeLabels[notification.type]}</StatusBadge>
                   </div>
                   <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted">
                     {notification.body ?? "ไม่มีเนื้อหาข้อความ"}
@@ -113,7 +129,7 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
                 <InfoTile label="อ่านเมื่อ" value={notification.readAt ?? "ยังไม่อ่าน"} icon={<CheckCircle2 aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
-                สร้างเมื่อ {notification.createdAt} / {notification.channel}
+                สร้างเมื่อ {notification.createdAt} / {notificationChannelLabels[notification.channel]}
               </p>
             </article>
           );
