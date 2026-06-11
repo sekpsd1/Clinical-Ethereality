@@ -26,7 +26,13 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
       <div className="grid gap-3">
         <TextField label="ชื่อสินค้า" name="name" defaultValue={product?.name ?? ""} placeholder="ชื่อสินค้า" />
         <TextField label="Slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="clinical-product-name" />
-        <TextField label="URL รูปภาพ" name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="/images/..." />
+        <TextField
+          label="ลิงก์รูปภาพที่อัปโหลดไว้แล้ว"
+          name="imageUrl"
+          defaultValue={product?.imageUrl ?? ""}
+          placeholder="/images/products/example.png หรือ https://cdn.example.com/product.png"
+          hint="ยังไม่ใช่ช่องอัปโหลดไฟล์จริง ใช้เฉพาะรูปสินค้าที่อัปโหลดไว้แล้ว ห้ามใส่ลิงก์เอกสารส่วนตัว ใบอนุญาต สลิป หรือข้อมูล sensitive"
+        />
         <label>
           <span className="block text-[10px] font-bold uppercase text-muted">รายละเอียด</span>
           <textarea
@@ -81,12 +87,14 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
 
 function TextField({
   defaultValue,
+  hint,
   label,
   name,
   placeholder,
   type = "text"
 }: {
   defaultValue: string;
+  hint?: string;
   label: string;
   name: string;
   placeholder: string;
@@ -97,6 +105,7 @@ function TextField({
       <span className="block text-[10px] font-bold uppercase text-muted">{label}</span>
       <input
         className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
+        aria-describedby={hint ? `${name}-hint` : undefined}
         defaultValue={defaultValue}
         min={type === "number" ? 0 : undefined}
         name={name}
@@ -104,6 +113,11 @@ function TextField({
         step={type === "number" ? "0.01" : undefined}
         type={type}
       />
+      {hint ? (
+        <span id={`${name}-hint`} className="mt-1 block text-[11px] font-semibold leading-5 text-muted">
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }

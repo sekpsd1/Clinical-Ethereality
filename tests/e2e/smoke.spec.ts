@@ -225,6 +225,16 @@ test.describe("role route smoke", () => {
     await expect(page.getByText("ข้อมูล QR", { exact: true }).first()).toBeVisible();
   });
 
+  test("admin product form clarifies already-uploaded image links", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/products");
+
+    await expectNoAppError(page);
+    await expect(page).toHaveURL(/\/admin\/products$/);
+    await expect(page.getByText("ลิงก์รูปภาพที่อัปโหลดไว้แล้ว").first()).toBeVisible();
+    await expect(page.getByText("ยังไม่ใช่ช่องอัปโหลดไฟล์จริง", { exact: false }).first()).toBeVisible();
+  });
+
   test("doctor queue is reachable with a doctor dev session", async ({ page }) => {
     await signInAs(page, "doctor");
     await page.goto("/doctor/consultations");
