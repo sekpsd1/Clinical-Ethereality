@@ -267,6 +267,7 @@
 - [ ] Build Zoom SDK video consultation room integration
 - [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Build prescription writing workflow
+- [x] Extract doctor-issued prescription writing rules into a tested domain service
 - [x] Build pharmacist prescription queue
 - [x] Build prescription verification workflow
 - [x] Build medicine preparation workflow
