@@ -4,6 +4,12 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminProductForm } from "@/features/admin/AdminProductForm";
 import type { AdminProductItem, AdminProductsData } from "@/features/admin/products/types";
 
+const productStatusLabels: Record<AdminProductItem["status"], string> = {
+  active: "เผยแพร่",
+  archived: "เก็บถาวร",
+  draft: "ฉบับร่าง"
+};
+
 function getStatusTone(status: AdminProductItem["status"]): "neutral" | "success" | "warning" | "danger" {
   if (status === "active") {
     return "success";
@@ -19,17 +25,17 @@ function getStatusTone(status: AdminProductItem["status"]): "neutral" | "success
 export function AdminProducts({ data }: { data: AdminProductsData }) {
   const summaryItems = [
     {
-      label: "Active",
+      label: "เผยแพร่",
       value: String(data.summary.active),
       tone: "success"
     },
     {
-      label: "Draft",
+      label: "ฉบับร่าง",
       value: String(data.summary.draft),
       tone: "warning"
     },
     {
-      label: "Rx",
+      label: "ต้องใช้ใบสั่งยา",
       value: String(data.summary.prescriptionRequired),
       tone: "neutral"
     }
@@ -38,10 +44,10 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Product Catalog</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Products and medicine</h2>
+        <p className="text-label font-bold uppercase text-white/75">แคตตาล็อกสินค้า</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">สินค้าและยา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          Manage product names, pricing, prescription requirements, and catalog status before inventory is prepared.
+          จัดการชื่อสินค้า ราคา เงื่อนไขใบสั่งยา และสถานะแคตตาล็อกก่อนเชื่อมกับสต็อก
         </p>
       </section>
 
@@ -59,9 +65,9 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Create product</h2>
+          <h2 className="font-headline text-lg font-bold text-text">สร้างสินค้า</h2>
           <Link href="/admin/inventory" className="inline-flex items-center gap-1 text-xs font-bold text-primary">
-            Stock
+            สต็อก
             <ArrowUpRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
           </Link>
         </div>
@@ -70,19 +76,19 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Catalog</h2>
+          <h2 className="font-headline text-lg font-bold text-text">แคตตาล็อก</h2>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>
-            {data.unavailable ? "Database offline" : "Ready"}
+            {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : "พร้อมใช้งาน"}
           </StatusBadge>
         </div>
 
         {data.unavailable ? (
           <EmptyProductCatalog
-            title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before managing product catalog."
+            title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
+            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนจัดการแคตตาล็อกสินค้า"
           />
         ) : data.products.length === 0 ? (
-          <EmptyProductCatalog title="No products yet" body="Create the first product above, then manage stock from inventory." />
+          <EmptyProductCatalog title="ยังไม่มีสินค้า" body="สร้างสินค้ารายการแรกด้านบน แล้วจัดการสต็อกจากหน้าสต็อก" />
         ) : null}
 
         {data.products.map((product) => {
@@ -100,22 +106,22 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
                       <h3 className="truncate text-sm font-bold text-text">{product.name}</h3>
                       <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">{product.slug}</p>
                     </div>
-                    <StatusBadge tone={tone}>{product.status}</StatusBadge>
+                    <StatusBadge tone={tone}>{productStatusLabels[product.status]}</StatusBadge>
                   </div>
                   <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted">
-                    {product.description || "No description yet."}
+                    {product.description || "ยังไม่มีรายละเอียดสินค้า"}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <InfoTile label="Price" value={`฿${product.price}`} icon="product" />
-                <InfoTile label="Stock" value={product.inventoryQuantity === null ? "None" : String(product.inventoryQuantity)} icon="product" />
-                <InfoTile label="Rx" value={product.requiresPrescription ? "Required" : "No"} icon="rx" />
+                <InfoTile label="ราคา" value={`฿${product.price}`} icon="product" />
+                <InfoTile label="สต็อก" value={product.inventoryQuantity === null ? "ยังไม่มี" : String(product.inventoryQuantity)} icon="product" />
+                <InfoTile label="ใบสั่งยา" value={product.requiresPrescription ? "ต้องใช้" : "ไม่ต้องใช้"} icon="rx" />
               </div>
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
-                Updated {product.updatedAt}
+                อัปเดตเมื่อ {product.updatedAt}
               </p>
               <div className="mt-4">
                 <AdminProductForm product={product} />

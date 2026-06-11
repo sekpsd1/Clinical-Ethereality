@@ -214,6 +214,7 @@
 - [x] Add admin navigation foundation
 - [x] Use dedicated admin persistent navigation
 - [x] Add role-aware admin route visibility
+- [x] Add Thai staff/admin copy cleanup for notifications, moderation, products, and admin navigation
 - [x] Add static new users and role approvals module
 - [x] Add static pending consultations module
 - [x] Add static prescriptions awaiting verification module

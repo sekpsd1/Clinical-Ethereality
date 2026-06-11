@@ -25,7 +25,7 @@ export async function updateModerationItemAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Moderation request is invalid."
+      message: "คำขอดูแลเนื้อหาไม่ถูกต้อง"
     };
   }
 
@@ -83,7 +83,7 @@ export async function updateModerationItemAction(
   } catch {
     return {
       status: "error",
-      message: "Could not update moderation item. Check the item and try again."
+      message: "ยังอัปเดตเนื้อหาไม่ได้ กรุณาตรวจรายการแล้วลองอีกครั้ง"
     };
   }
 
@@ -92,6 +92,6 @@ export async function updateModerationItemAction(
 
   return {
     status: "success",
-    message: action === "restore" ? "Content restored." : action === "hide" ? "Content hidden." : "Content archived."
+    message: action === "restore" ? "คืนค่าเนื้อหาแล้ว" : action === "hide" ? "ซ่อนเนื้อหาแล้ว" : "เก็บถาวรเนื้อหาแล้ว"
   };
 }

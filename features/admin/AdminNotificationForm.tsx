@@ -20,7 +20,7 @@ export function AdminNotificationForm({ recipients }: { recipients: AdminNotific
     <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
       <div className="grid gap-3">
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">Recipient</span>
+          <span className="block text-[10px] font-bold uppercase text-muted">ผู้รับ</span>
           <select
             className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
             disabled={recipients.length === 0}
@@ -34,28 +34,28 @@ export function AdminNotificationForm({ recipients }: { recipients: AdminNotific
           </select>
         </label>
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">Type</span>
+          <span className="block text-[10px] font-bold uppercase text-muted">ประเภท</span>
           <select
             className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
             defaultValue="system"
             name="type"
           >
-            <option value="system">System</option>
-            <option value="consultation">Consultation</option>
-            <option value="order">Order</option>
-            <option value="payment">Payment</option>
-            <option value="prescription">Prescription</option>
-            <option value="community">Community</option>
-            <option value="reward">Reward</option>
+            <option value="system">ระบบ</option>
+            <option value="consultation">การปรึกษา</option>
+            <option value="order">คำสั่งซื้อ</option>
+            <option value="payment">การชำระเงิน</option>
+            <option value="prescription">ใบสั่งยา</option>
+            <option value="community">ชุมชน</option>
+            <option value="reward">แต้มสะสม</option>
           </select>
         </label>
-        <TextField label="Title" name="title" placeholder="Notification title" />
+        <TextField label="หัวข้อ" name="title" placeholder="หัวข้อการแจ้งเตือน" />
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">Body</span>
+          <span className="block text-[10px] font-bold uppercase text-muted">เนื้อหา</span>
           <textarea
             className="mt-1 min-h-20 w-full resize-none rounded-[8px] border border-border bg-white px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
             name="body"
-            placeholder="Message shown in notification center"
+            placeholder="ข้อความที่จะแสดงในศูนย์การแจ้งเตือน"
           />
         </label>
       </div>
@@ -67,7 +67,7 @@ export function AdminNotificationForm({ recipients }: { recipients: AdminNotific
           )}
           role="status"
         >
-          {state.message || "Creates an in-app notification for the selected user."}
+          {state.message || "สร้างการแจ้งเตือนในแอปให้ผู้ใช้ที่เลือก"}
         </p>
         <SubmitButton disabled={recipients.length === 0} />
       </div>
@@ -96,7 +96,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-60"
-      aria-label="Send notification"
+      aria-label="ส่งการแจ้งเตือน"
       disabled={disabled || pending}
     >
       <SendHorizontal aria-hidden="true" className="size-4" strokeWidth={2.1} />

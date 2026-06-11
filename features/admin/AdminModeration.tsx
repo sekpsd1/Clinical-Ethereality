@@ -4,16 +4,16 @@ import { AdminModerationActionButtons } from "@/features/admin/AdminModerationAc
 import type { AdminModerationData, AdminModerationQueueItem } from "@/features/admin/moderation/types";
 
 const itemTypeLabels = {
-  article: "Article",
-  comment: "Comment"
+  article: "บทความ",
+  comment: "ความคิดเห็น"
 };
 
 const statusLabels: Record<string, string> = {
-  archived: "Archived",
-  draft: "Draft",
-  hidden: "Hidden",
-  published: "Published",
-  visible: "Visible"
+  archived: "เก็บถาวร",
+  draft: "ฉบับร่าง",
+  hidden: "ซ่อนอยู่",
+  published: "เผยแพร่",
+  visible: "แสดงอยู่"
 };
 
 function getStatusTone(status: AdminModerationQueueItem["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -35,17 +35,17 @@ function getStatusTone(status: AdminModerationQueueItem["status"]): "neutral" | 
 export function AdminModeration({ data }: { data: AdminModerationData }) {
   const summaryItems = [
     {
-      label: "Articles",
+      label: "บทความ",
       value: String(data.summary.hiddenArticles),
       tone: "warning"
     },
     {
-      label: "Comments",
+      label: "ความคิดเห็น",
       value: String(data.summary.hiddenComments),
       tone: "warning"
     },
     {
-      label: "Archived",
+      label: "เก็บถาวร",
       value: String(data.summary.archived),
       tone: "danger"
     }
@@ -54,10 +54,10 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Community Safety</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Moderation queue</h2>
+        <p className="text-label font-bold uppercase text-white/75">ความปลอดภัยชุมชน</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">คิวดูแลชุมชน</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          Review hidden community articles and comments, then restore or archive content with one action.
+          ตรวจบทความและความคิดเห็นที่ถูกซ่อน แล้วเลือกคืนค่า ซ่อน หรือเก็บถาวรได้ในขั้นตอนเดียว
         </p>
       </section>
 
@@ -75,19 +75,19 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Content</h2>
+          <h2 className="font-headline text-lg font-bold text-text">รายการเนื้อหา</h2>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>
-            {data.unavailable ? "Database offline" : "Ready"}
+            {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : "พร้อมใช้งาน"}
           </StatusBadge>
         </div>
 
         {data.unavailable ? (
           <EmptyModerationQueue
-            title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before managing community moderation."
+            title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
+            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนจัดการคิวดูแลชุมชน"
           />
         ) : data.items.length === 0 ? (
-          <EmptyModerationQueue title="No content in review" body="Hidden or archived articles and comments will appear here." />
+          <EmptyModerationQueue title="ยังไม่มีเนื้อหาที่ต้องตรวจ" body="บทความหรือความคิดเห็นที่ถูกซ่อน/เก็บถาวรจะแสดงที่นี่" />
         ) : null}
 
         {data.items.map((item) => {
@@ -120,7 +120,7 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
                     <ShieldAlert aria-hidden="true" className="size-4 text-primary" strokeWidth={2.1} />
                     <span className="truncate">{item.authorLineId}</span>
                   </div>
-                  <p className="mt-1 truncate text-[11px] font-semibold text-muted">Created {item.createdAt}</p>
+                  <p className="mt-1 truncate text-[11px] font-semibold text-muted">สร้างเมื่อ {item.createdAt}</p>
                 </div>
                 <AdminModerationActionButtons item={item} />
               </div>

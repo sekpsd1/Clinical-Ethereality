@@ -24,7 +24,7 @@ export async function createNotificationAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Notification details are invalid."
+      message: "รายละเอียดการแจ้งเตือนไม่ถูกต้อง"
     };
   }
 
@@ -42,7 +42,7 @@ export async function createNotificationAction(
     if (!user || user.status === "archived" || user.status === "suspended") {
       return {
         status: "error",
-        message: "Recipient is unavailable."
+        message: "ผู้รับไม่พร้อมใช้งาน"
       };
     }
 
@@ -61,7 +61,7 @@ export async function createNotificationAction(
   } catch {
     return {
       status: "error",
-      message: "Notification could not be sent. Try again."
+      message: "ยังส่งการแจ้งเตือนไม่ได้ กรุณาลองอีกครั้ง"
     };
   }
 
@@ -71,6 +71,6 @@ export async function createNotificationAction(
 
   return {
     status: "success",
-    message: "Notification sent."
+    message: "ส่งการแจ้งเตือนแล้ว"
   };
 }

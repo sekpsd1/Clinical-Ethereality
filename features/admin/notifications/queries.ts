@@ -55,7 +55,7 @@ function formatDate(date: Date | null): string | null {
 function mapRecipient(user: Awaited<ReturnType<typeof getRecipients>>[number]): AdminNotificationRecipient {
   return {
     id: user.id,
-    label: `${user.displayName ?? "LINE user"} / ${user.lineUserId}`,
+    label: `${user.displayName ?? "ผู้ใช้ LINE"} / ${user.lineUserId}`,
     role: user.role,
     status: user.status
   };
@@ -64,7 +64,7 @@ function mapRecipient(user: Awaited<ReturnType<typeof getRecipients>>[number]): 
 function mapNotification(notification: NotificationWithUser): AdminNotificationItem {
   return {
     id: notification.id,
-    userName: notification.user.displayName ?? "LINE user",
+    userName: notification.user.displayName ?? "ผู้ใช้ LINE",
     userLineId: notification.user.lineUserId,
     type: notification.type,
     channel: notification.channel,

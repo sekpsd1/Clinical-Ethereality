@@ -17,7 +17,7 @@ export async function upsertProductAction(
   const parsed = upsertProductSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
-    return actionError("Product details are invalid. Check slug, name, and price.", parsed.error);
+    return actionError("รายละเอียดสินค้าไม่ถูกต้อง กรุณาตรวจ slug ชื่อสินค้า และราคา", parsed.error);
   }
 
   const { productId, ...productData } = parsed.data;
@@ -77,12 +77,12 @@ export async function upsertProductAction(
       }
     });
   } catch {
-    return actionError("Product could not be saved. Check for duplicate slug and try again.");
+    return actionError("ยังบันทึกสินค้าไม่ได้ กรุณาตรวจ slug ซ้ำแล้วลองอีกครั้ง");
   }
 
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
 
-  return actionSuccess(productId ? "Product updated." : "Product created.");
+  return actionSuccess(productId ? "อัปเดตสินค้าแล้ว" : "สร้างสินค้าแล้ว");
 }

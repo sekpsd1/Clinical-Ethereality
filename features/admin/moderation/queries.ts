@@ -57,7 +57,7 @@ function mapArticle(article: ArticleWithAuthor): AdminModerationQueueItem {
     type: "article",
     title: article.title,
     body: article.body,
-    authorName: article.author.displayName ?? "LINE user",
+    authorName: article.author.displayName ?? "ผู้ใช้ LINE",
     authorLineId: article.author.lineUserId,
     status: article.status,
     createdAt: formatDate(article.createdAt)
@@ -70,7 +70,7 @@ function mapComment(comment: CommentWithDetails): AdminModerationQueueItem {
     type: "comment",
     title: comment.article.title,
     body: comment.body,
-    authorName: comment.user.displayName ?? "LINE user",
+    authorName: comment.user.displayName ?? "ผู้ใช้ LINE",
     authorLineId: comment.user.lineUserId,
     status: comment.status,
     createdAt: formatDate(comment.createdAt)

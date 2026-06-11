@@ -24,6 +24,7 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
   const actionState = archiveState.status !== "idle" ? archiveState : hideState.status !== "idle" ? hideState : restoreState;
   const isArchived = item.status === "archived";
   const isHidden = item.status === "hidden";
+  const itemTypeLabel = item.type === "article" ? "บทความ" : "ความคิดเห็น";
 
   return (
     <div className="flex shrink-0 flex-col items-end gap-2">
@@ -35,6 +36,7 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
             className="bg-success text-white"
             icon="restore"
             item={item}
+            label={`คืนค่า${itemTypeLabel}`}
           />
         ) : null}
         {!isHidden && !isArchived ? (
@@ -44,6 +46,7 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
             className="bg-warning text-white"
             icon="hide"
             item={item}
+            label={`ซ่อน${itemTypeLabel}`}
           />
         ) : null}
         {!isArchived ? (
@@ -53,6 +56,7 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
             className="bg-danger text-white"
             icon="archive"
             item={item}
+            label={`เก็บถาวร${itemTypeLabel}`}
           />
         ) : null}
       </div>
@@ -76,20 +80,22 @@ function ModerationActionForm({
   actionName,
   className,
   icon,
-  item
+  item,
+  label
 }: {
   action: (payload: FormData) => void;
   actionName: "restore" | "hide" | "archive";
   className: string;
   icon: "restore" | "hide" | "archive";
   item: Pick<AdminModerationQueueItem, "id" | "type">;
+  label: string;
 }) {
   return (
     <form action={action}>
       <input type="hidden" name="itemId" value={item.id} />
       <input type="hidden" name="itemType" value={item.type} />
       <input type="hidden" name="action" value={actionName} />
-      <ActionIconButton ariaLabel={`${actionName} ${item.type}`} className={className} icon={icon} />
+      <ActionIconButton ariaLabel={label} className={className} icon={icon} title={label} />
     </form>
   );
 }
@@ -97,11 +103,13 @@ function ModerationActionForm({
 function ActionIconButton({
   ariaLabel,
   className,
-  icon
+  icon,
+  title
 }: {
   ariaLabel: string;
   className: string;
   icon: "restore" | "hide" | "archive";
+  title: string;
 }) {
   const { pending } = useFormStatus();
   const Icon = icon === "restore" ? Eye : icon === "hide" ? EyeOff : Archive;
@@ -112,6 +120,7 @@ function ActionIconButton({
       className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
       aria-label={ariaLabel}
       disabled={pending}
+      title={title}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
     </button>

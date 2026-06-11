@@ -24,30 +24,30 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
     <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
       {product ? <input type="hidden" name="productId" value={product.id} /> : null}
       <div className="grid gap-3">
-        <TextField label="Name" name="name" defaultValue={product?.name ?? ""} placeholder="Product name" />
+        <TextField label="ชื่อสินค้า" name="name" defaultValue={product?.name ?? ""} placeholder="ชื่อสินค้า" />
         <TextField label="Slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="clinical-product-name" />
-        <TextField label="Image URL" name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="/images/..." />
+        <TextField label="URL รูปภาพ" name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="/images/..." />
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">Description</span>
+          <span className="block text-[10px] font-bold uppercase text-muted">รายละเอียด</span>
           <textarea
             className="mt-1 min-h-20 w-full resize-none rounded-[8px] border border-border bg-white px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
             defaultValue={product?.description ?? ""}
             name="description"
-            placeholder="Short clinical product description"
+            placeholder="รายละเอียดสินค้าหรือข้อมูลทางคลินิกแบบย่อ"
           />
         </label>
         <div className="grid grid-cols-[1fr_1fr] gap-2">
-          <TextField label="Price" name="price" defaultValue={product?.price ?? "0.00"} placeholder="0.00" type="number" />
+          <TextField label="ราคา" name="price" defaultValue={product?.price ?? "0.00"} placeholder="0.00" type="number" />
           <label>
-            <span className="block text-[10px] font-bold uppercase text-muted">Status</span>
+            <span className="block text-[10px] font-bold uppercase text-muted">สถานะ</span>
             <select
               className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
               defaultValue={product?.status ?? "draft"}
               name="status"
             >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
+              <option value="draft">ฉบับร่าง</option>
+              <option value="active">เผยแพร่</option>
+              <option value="archived">เก็บถาวร</option>
             </select>
           </label>
         </div>
@@ -59,9 +59,9 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
               name="requiresPrescription"
               type="checkbox"
             />
-            Requires prescription
+            ต้องใช้ใบสั่งยา
           </label>
-          <SubmitButton label={product ? "Save product" : "Create product"} />
+          <SubmitButton label={product ? "บันทึกสินค้า" : "สร้างสินค้า"} />
         </div>
       </div>
       {state.status !== "idle" ? (

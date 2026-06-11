@@ -22,17 +22,17 @@ function getTypeTone(type: AdminNotificationItem["type"]): "neutral" | "success"
 export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
   const summaryItems = [
     {
-      label: "Unread",
+      label: "ยังไม่อ่าน",
       value: String(data.summary.unread),
       tone: "warning"
     },
     {
-      label: "Recent",
+      label: "ล่าสุด",
       value: String(data.summary.totalRecent),
       tone: "neutral"
     },
     {
-      label: "Recipients",
+      label: "ผู้รับ",
       value: String(data.summary.recipients),
       tone: "success"
     }
@@ -41,10 +41,10 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Notifications</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Admin message center</h2>
+        <p className="text-label font-bold uppercase text-white/75">การแจ้งเตือน</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">ศูนย์ข้อความผู้ดูแล</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          Send in-app notifications to customers and staff, then review recent delivery records.
+          ส่งข้อความในแอปให้ลูกค้าและทีมงาน พร้อมตรวจประวัติการส่งล่าสุด
         </p>
       </section>
 
@@ -62,15 +62,15 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Send notification</h2>
+          <h2 className="font-headline text-lg font-bold text-text">ส่งการแจ้งเตือน</h2>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>
-            {data.unavailable ? "Database offline" : "Ready"}
+            {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : "พร้อมใช้งาน"}
           </StatusBadge>
         </div>
         {data.unavailable ? (
           <EmptyNotifications
-            title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before sending notifications."
+            title="ยังเชื่อมต่อฐานข้อมูลไม่ได้"
+            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนส่งการแจ้งเตือน"
           />
         ) : (
           <AdminNotificationForm recipients={data.recipients} />
@@ -78,10 +78,10 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-headline text-lg font-bold text-text">Recent notifications</h2>
+        <h2 className="font-headline text-lg font-bold text-text">การแจ้งเตือนล่าสุด</h2>
 
         {!data.unavailable && data.notifications.length === 0 ? (
-          <EmptyNotifications title="No notifications yet" body="Messages sent from this page will appear here." />
+          <EmptyNotifications title="ยังไม่มีการแจ้งเตือน" body="ข้อความที่ส่งจากหน้านี้จะแสดงที่นี่" />
         ) : null}
 
         {data.notifications.map((notification) => {
@@ -102,17 +102,17 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
                     <StatusBadge tone={tone}>{notification.type}</StatusBadge>
                   </div>
                   <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted">
-                    {notification.body ?? "No message body."}
+                    {notification.body ?? "ไม่มีเนื้อหาข้อความ"}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="Recipient" value={notification.userLineId} icon="user" />
-                <InfoTile label="Read" value={notification.readAt ?? "Unread"} icon="read" />
+                <InfoTile label="ผู้รับ" value={notification.userLineId} icon="user" />
+                <InfoTile label="อ่านเมื่อ" value={notification.readAt ?? "ยังไม่อ่าน"} icon="read" />
               </div>
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
-                Created {notification.createdAt} / {notification.channel}
+                สร้างเมื่อ {notification.createdAt} / {notification.channel}
               </p>
             </article>
           );

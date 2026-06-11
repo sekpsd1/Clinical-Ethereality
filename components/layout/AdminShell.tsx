@@ -48,7 +48,7 @@ const adminNavItems = [
     icon: ClipboardCheck
   },
   {
-    label: "Moderation",
+    label: "ดูแลชุมชน",
     href: "/admin/moderation",
     icon: ShieldAlert
   },
