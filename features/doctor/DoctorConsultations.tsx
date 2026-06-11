@@ -1,4 +1,6 @@
-import { ClipboardList, FileText, Stethoscope } from "lucide-react";
+import Link from "next/link";
+import type { Route } from "next";
+import { ClipboardList, FileText, MessageCircle, Pill, Stethoscope } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
@@ -26,7 +28,11 @@ function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "s
     return "success";
   }
 
-  if (status === "requested" || status === "pending_payment" || status === "scheduled" || status === "live") {
+  if (status === "scheduled" || status === "live") {
+    return "success";
+  }
+
+  if (status === "requested" || status === "pending_payment") {
     return "warning";
   }
 
@@ -48,19 +54,19 @@ function canWritePrescription(consultation: DoctorConsultationItem): boolean {
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
   const summaryItems = [
     {
-      label: "นัดหมาย",
+      label: "พร้อมตรวจ",
       value: String(data.summary.scheduled),
-      tone: "warning"
+      tone: "success"
     },
     {
       label: "กำลังปรึกษา",
       value: String(data.summary.live),
-      tone: "neutral"
+      tone: "warning"
     },
     {
       label: "เสร็จสิ้น",
       value: String(data.summary.completed),
-      tone: "success"
+      tone: "neutral"
     }
   ] as const;
 
@@ -70,7 +76,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
         <p className="text-label font-bold uppercase text-white/75">งานแพทย์</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวปรึกษา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          ตรวจสอบคิวปรึกษา ข้อมูลผู้ป่วยเบื้องต้น และสถานะใบสั่งยา
+          ตรวจคิวปรึกษา สถานะชำระเงิน แบบประเมินก่อนพบแพทย์ แชท และใบสั่งยาในจุดเดียว
         </p>
       </section>
 
@@ -96,11 +102,14 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
 
         {data.unavailable ? (
           <EmptyDoctorQueue
-            title="Database is not connected"
+            title="ยังโหลดข้อมูลไม่ได้"
             body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนตรวจสอบคิวปรึกษา"
           />
         ) : data.missingDoctorProfile ? (
-          <EmptyDoctorQueue title="ยังไม่มีโปรไฟล์แพทย์" body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงคิวที่ได้รับมอบหมาย" />
+          <EmptyDoctorQueue
+            title="ยังไม่มีโปรไฟล์แพทย์"
+            body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงคิวที่ได้รับมอบหมาย"
+          />
         ) : data.consultations.length === 0 ? (
           <EmptyDoctorQueue title="ยังไม่มีคิวปรึกษา" body="คิวผู้ป่วยที่ได้รับมอบหมายจะแสดงที่นี่" />
         ) : null}
@@ -122,32 +131,15 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                     </div>
                     <StatusBadge tone={tone}>{consultationStatusLabels[consultation.status]}</StatusBadge>
                   </div>
+
+                  <WorkflowStrip consultation={consultation} />
+
                   <p className="mt-3 text-xs leading-5 text-muted">
                     {consultation.summary ?? "ยังไม่มีบันทึกการปรึกษา"}
                   </p>
 
-                  {consultation.assessment ? (
-                    <div className="mt-3 rounded-[8px] bg-primary/5 p-3 text-xs leading-5 text-muted">
-                      <p className="font-bold text-primary">แบบประเมินก่อนปรึกษา</p>
-                      <p className="mt-1">
-                        อาการ: {consultation.assessment.symptomLabel} - ระยะเวลา: {consultation.assessment.durationLabel}
-                      </p>
-                      <p className="mt-1">
-                        คำแนะนำ: {consultation.assessment.recommendationSpecialty} ({consultation.assessment.recommendationTopic})
-                      </p>
-                      <p className="mt-1 italic">{consultation.assessment.recommendationReason}</p>
-                    </div>
-                  ) : null}
-
-                  {consultation.latestChatMessage ? (
-                    <div className="mt-3 rounded-[8px] border border-primary/10 bg-white/70 p-3 text-xs leading-5 text-muted">
-                      <p className="font-bold text-primary">ข้อความล่าสุดในแชท</p>
-                      <p className="mt-1 line-clamp-2">{consultation.latestChatMessage.body}</p>
-                      <p className="mt-1 truncate text-[10px] font-semibold text-muted">
-                        {consultation.latestChatMessage.senderName} - {consultation.latestChatMessage.createdAt}
-                      </p>
-                    </div>
-                  ) : null}
+                  {consultation.assessment ? <AssessmentPanel consultation={consultation} /> : null}
+                  {consultation.latestChatMessage ? <LatestChatPanel consultation={consultation} /> : null}
                 </div>
               </div>
 
@@ -164,6 +156,8 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                 />
               </div>
 
+              <ActionRow consultation={consultation} />
+
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 สร้างเมื่อ {consultation.createdAt}
               </p>
@@ -173,6 +167,96 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
           );
         })}
       </section>
+    </div>
+  );
+}
+
+function WorkflowStrip({ consultation }: { consultation: DoctorConsultationItem }) {
+  return (
+    <div className="mt-3 rounded-[8px] border border-primary/10 bg-primary/5 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-primary">{consultation.readinessTitle}</p>
+          <p className="mt-1 text-xs leading-5 text-muted">{consultation.readinessDescription}</p>
+        </div>
+        <StatusBadge tone={consultation.readinessTone}>{consultation.readinessLabel}</StatusBadge>
+      </div>
+      <div className="mt-3 rounded-[8px] bg-white/70 px-3 py-2 text-xs leading-5 text-muted">
+        <span className="font-bold text-text">ชำระเงิน: </span>
+        <span>{consultation.paymentStatusLabel}</span>
+        <span className="mx-1 text-border">/</span>
+        <span>{consultation.paymentStatusDescription}</span>
+      </div>
+    </div>
+  );
+}
+
+function AssessmentPanel({ consultation }: { consultation: DoctorConsultationItem }) {
+  if (!consultation.assessment) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 rounded-[8px] bg-primary/5 p-3 text-xs leading-5 text-muted">
+      <p className="font-bold text-primary">แบบประเมินก่อนปรึกษา</p>
+      <p className="mt-1">
+        อาการ: {consultation.assessment.symptomLabel} / ระยะเวลา: {consultation.assessment.durationLabel}
+      </p>
+      <p className="mt-1">
+        แนะนำ: {consultation.assessment.recommendationSpecialty} ({consultation.assessment.recommendationTopic})
+      </p>
+      <p className="mt-1 italic">{consultation.assessment.recommendationReason}</p>
+      <p className="mt-1 text-[10px] font-semibold text-muted">ทำแบบประเมินเมื่อ {consultation.assessment.completedAt}</p>
+    </div>
+  );
+}
+
+function LatestChatPanel({ consultation }: { consultation: DoctorConsultationItem }) {
+  if (!consultation.latestChatMessage) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 rounded-[8px] border border-primary/10 bg-white/70 p-3 text-xs leading-5 text-muted">
+      <p className="font-bold text-primary">ข้อความล่าสุดในแชท</p>
+      <p className="mt-1 line-clamp-2">{consultation.latestChatMessage.body}</p>
+      <p className="mt-1 truncate text-[10px] font-semibold text-muted">
+        {consultation.latestChatMessage.senderName} / {consultation.latestChatMessage.createdAt}
+      </p>
+    </div>
+  );
+}
+
+function ActionRow({ consultation }: { consultation: DoctorConsultationItem }) {
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-2">
+      {consultation.consultRoomHref ? (
+        <Link
+          href={consultation.consultRoomHref as Route}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary text-xs font-bold text-white shadow-payment-active"
+        >
+          <MessageCircle aria-hidden="true" className="size-4" strokeWidth={2.1} />
+          เปิดแชท/ห้องปรึกษา
+        </Link>
+      ) : (
+        <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
+          ยังไม่พร้อมเปิดห้อง
+        </span>
+      )}
+
+      {canWritePrescription(consultation) ? (
+        <a
+          href={`#prescription-${consultation.id}`}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-3 text-xs font-bold text-primary ring-1 ring-primary/25"
+        >
+          <Pill aria-hidden="true" className="size-4" strokeWidth={2.1} />
+          เขียนใบสั่งยา
+        </a>
+      ) : (
+        <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
+          ยังเขียนใบสั่งยาไม่ได้
+        </span>
+      )}
     </div>
   );
 }

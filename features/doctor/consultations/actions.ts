@@ -25,7 +25,7 @@ export async function submitPrescriptionAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Prescription note must be at least 5 characters."
+      message: "กรุณาระบุบันทึกใบสั่งยาอย่างน้อย 5 ตัวอักษร"
     };
   }
 
@@ -71,6 +71,17 @@ export async function submitPrescriptionAction(
         throw new Error("Consultation is not ready for prescription writing.");
       }
 
+      const notification = {
+        userId: consultation.patientId,
+        type: "prescription" as const,
+        channel: "in_app" as const,
+        title: "แพทย์ออกใบสั่งยาแล้ว",
+        body: "คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้ โดยไม่ต้องรอขั้นตอนตรวจเอกสารซ้ำ",
+        metadataJson: {
+          consultationId: consultation.id,
+          href: "/consult/prescriptions"
+        }
+      };
       const latestPrescription = consultation.prescriptions[0] ?? null;
       const canUpdateLatest = latestPrescription?.status === "draft" || latestPrescription?.status === "rejected";
 
@@ -100,15 +111,10 @@ export async function submitPrescriptionAction(
         });
         await tx.notification.create({
           data: {
-            userId: consultation.patientId,
-            type: "prescription",
-            channel: "in_app",
-            title: "แพทย์ออกใบสั่งยาแล้ว",
-            body: "คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้ โดยไม่ต้องรอขั้นตอนตรวจเอกสารซ้ำ",
+            ...notification,
             metadataJson: {
-              prescriptionId: latestPrescription.id,
-              consultationId: consultation.id,
-              href: "/consult/prescriptions"
+              ...notification.metadataJson,
+              prescriptionId: latestPrescription.id
             }
           }
         });
@@ -144,15 +150,10 @@ export async function submitPrescriptionAction(
       });
       await tx.notification.create({
         data: {
-          userId: consultation.patientId,
-          type: "prescription",
-          channel: "in_app",
-          title: "แพทย์ออกใบสั่งยาแล้ว",
-          body: "คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้ โดยไม่ต้องรอขั้นตอนตรวจเอกสารซ้ำ",
+          ...notification,
           metadataJson: {
-            prescriptionId: prescription.id,
-            consultationId: consultation.id,
-            href: "/consult/prescriptions"
+            ...notification.metadataJson,
+            prescriptionId: prescription.id
           }
         }
       });
@@ -160,7 +161,7 @@ export async function submitPrescriptionAction(
   } catch {
     return {
       status: "error",
-      message: "Prescription could not be submitted. Check the consultation status and try again."
+      message: "ยังส่งใบสั่งยาไม่ได้ กรุณาตรวจสอบสถานะ consult แล้วลองใหม่"
     };
   }
 

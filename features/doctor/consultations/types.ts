@@ -5,6 +5,14 @@ export type DoctorConsultationItem = {
   patientName: string;
   patientLineId: string;
   status: ConsultationStatus;
+  readinessLabel: string;
+  readinessTitle: string;
+  readinessDescription: string;
+  readinessTone: "neutral" | "success" | "warning" | "danger";
+  paymentStatusLabel: string;
+  paymentStatusDescription: string;
+  canOpenConsultRoom: boolean;
+  consultRoomHref: string | null;
   scheduledAt: string | null;
   summary: string | null;
   prescriptionCount: number;

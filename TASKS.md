@@ -256,6 +256,7 @@
 ## Phase 10: Consultation And Pharmacy Workflows
 
 - [x] Build doctor consultation list
+- [x] Add doctor consultation workflow polish for readiness, payment status, assessment, chat, and prescription actions
 - [x] Build patient log access for doctors
 - [x] Build admin schedule editor for doctor availability
 - [ ] Build Zoom SDK video consultation room integration

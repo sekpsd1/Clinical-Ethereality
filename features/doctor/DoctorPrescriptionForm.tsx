@@ -19,22 +19,23 @@ const initialActionState: DoctorPrescriptionActionState = {
 
 export function DoctorPrescriptionForm({ consultation }: DoctorPrescriptionFormProps) {
   const [state, formAction] = useActionState(submitPrescriptionAction, initialActionState);
-  const defaultNotes = consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected"
-    ? consultation.latestPrescriptionNotes ?? ""
-    : "";
+  const defaultNotes =
+    consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected"
+      ? consultation.latestPrescriptionNotes ?? ""
+      : "";
 
   return (
     <form action={formAction} className="mt-4 rounded-[8px] bg-primary/5 p-3">
       <input type="hidden" name="consultationId" value={consultation.id} />
       <label className="text-[10px] font-bold uppercase text-muted" htmlFor={`prescription-${consultation.id}`}>
-        Prescription note
+        บันทึกใบสั่งยา
       </label>
       <textarea
         id={`prescription-${consultation.id}`}
         name="notes"
         defaultValue={defaultNotes}
         className="mt-2 min-h-24 w-full resize-none rounded-[8px] border border-border bg-white/85 px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
-        placeholder="Medication, dose, usage instructions, warnings, and follow-up notes"
+        placeholder="ระบุชื่อยา ขนาดยา วิธีใช้ คำเตือน และคำแนะนำติดตามอาการ"
       />
       <div className="mt-3 flex items-center justify-between gap-3">
         <p
@@ -59,7 +60,7 @@ function SubmitButton() {
     <button
       type="submit"
       className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-60"
-      aria-label="Submit prescription"
+      aria-label="ส่งใบสั่งยา"
       disabled={pending}
     >
       <SendHorizontal aria-hidden="true" className="size-4" strokeWidth={2.1} />

@@ -47,7 +47,7 @@ function formatMessageTime(date: Date): string {
   }).format(date);
 }
 
-export async function getLiveConsultationChat(): Promise<LiveConsultationChatData> {
+export async function getLiveConsultationChat(consultationId?: string): Promise<LiveConsultationChatData> {
   noStore();
 
   const session = await getCurrentSession();
@@ -59,7 +59,32 @@ export async function getLiveConsultationChat(): Promise<LiveConsultationChatDat
   try {
     const consultation = await prisma.consultation.findFirst({
       where:
-        session.role === "doctor"
+        consultationId
+          ? session.role === "doctor"
+            ? {
+                id: consultationId,
+                doctor: {
+                  userId: session.userId
+                },
+                status: {
+                  in: ["scheduled", "live", "completed"]
+                }
+              }
+            : session.role === "admin"
+              ? {
+                  id: consultationId,
+                  status: {
+                    in: ["scheduled", "live", "completed"]
+                  }
+                }
+              : {
+                  id: consultationId,
+                  patientId: session.userId,
+                  status: {
+                    in: ["scheduled", "live", "completed"]
+                  }
+                }
+          : session.role === "doctor"
           ? {
               doctor: {
                 userId: session.userId
