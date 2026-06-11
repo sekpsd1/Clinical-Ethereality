@@ -16,7 +16,7 @@ declare global {
 }
 
 type LoginState = "checking" | "redirecting" | "error";
-type DevBypassRole = "customer" | "doctor" | "admin";
+type DevBypassRole = "customer" | "doctor" | "pharmacist" | "admin";
 
 function loadLiffSdk(): Promise<LiffClient> {
   if (window.liff) {
@@ -76,7 +76,14 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
         throw new Error("Local dev bypass is not available.");
       }
 
-      const roleHomePath = role === "admin" ? "/admin" : role === "doctor" ? "/doctor/consultations" : safeNextPath;
+      const roleHomePath =
+        role === "admin"
+          ? "/admin"
+          : role === "doctor"
+            ? "/doctor/consultations"
+            : role === "pharmacist"
+              ? "/pharmacist/prescriptions"
+              : safeNextPath;
 
       window.location.replace(roleHomePath);
     } catch (error) {
@@ -191,6 +198,14 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-white px-5 text-sm font-bold text-primary disabled:opacity-60"
             >
               {devLoadingRole === "doctor" ? "Opening..." : "Enter as doctor"}
+            </button>
+            <button
+              type="button"
+              onClick={() => createDevSession("pharmacist")}
+              disabled={devLoadingRole !== null}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-white px-5 text-sm font-bold text-primary disabled:opacity-60"
+            >
+              {devLoadingRole === "pharmacist" ? "Opening..." : "Enter as pharmacist"}
             </button>
             <p className="text-xs leading-5 text-muted">Local development bypass is enabled. Production still requires LINE.</p>
           </div>

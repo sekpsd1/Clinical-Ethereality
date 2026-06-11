@@ -32,6 +32,7 @@
 - `Enter as customer`
 - `Enter as admin`
 - `Enter as doctor`
+- `Enter as pharmacist`
 
 หลังทดสอบแต่ละบทบาท ให้ logout ก่อนเปลี่ยน role:
 
@@ -42,10 +43,7 @@
 
 ### หมายเหตุสำหรับ pharmacist
 
-ตอนนี้หน้า login ยังไม่มีปุ่ม `Enter as pharmacist` แต่ API รองรับ dev pharmacist session แล้ว วิธีทดสอบมี 2 ทาง:
-
-- ให้ login เป็น admin แล้วเข้า `/pharmacist/prescriptions` และ `/pharmacist/orders` ได้ เพราะ admin มีสิทธิ์ support queue เหล่านี้
-- ถ้าต้องทดสอบเป็น pharmacist จริง ให้ทีม dev เพิ่มปุ่ม pharmacist หรือสร้าง dev session ให้ก่อน
+ให้กด `Enter as pharmacist` เพื่อเข้า `/pharmacist/prescriptions` โดยตรง ถ้าต้องให้ admin ช่วยตรวจ queue เดียวกัน สามารถ login เป็น admin แล้วเข้า `/pharmacist/prescriptions` หรือ `/pharmacist/orders` ได้เช่นกัน เพราะ admin มีสิทธิ์ support queue เหล่านี้
 
 ## 4. Checklist ภาพรวมที่ต้องทดสอบ
 
@@ -300,7 +298,7 @@ Login เป็น doctor แล้วเข้า:
 
 ## 9. Pharmacist Flow
 
-ถ้าไม่มีปุ่ม pharmacist ให้ login เป็น admin แล้วเข้า route เหล่านี้เพื่อตรวจ queue:
+Login เป็น pharmacist แล้วเข้า:
 
 - `http://localhost:3001/pharmacist/prescriptions`
 - `http://localhost:3001/pharmacist/orders`

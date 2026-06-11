@@ -161,6 +161,18 @@ test.describe("customer mobile smoke", () => {
   });
 });
 
+test.describe("local auth smoke", () => {
+  test("shows local dev role entry buttons for all test roles", async ({ page }) => {
+    await page.goto("/auth/line");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("button", { name: "Enter as customer" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter as admin" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter as doctor" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter as pharmacist" })).toBeVisible();
+  });
+});
+
 test.describe("role route smoke", () => {
   test("admin dashboard is reachable with an admin dev session", async ({ page }) => {
     await signInAs(page, "admin");
