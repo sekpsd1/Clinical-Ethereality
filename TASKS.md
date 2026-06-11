@@ -166,7 +166,7 @@
 - [x] Build `CommentComposer`
 - [x] Build `NotificationItem`
 - [x] Build `ProfileSettingsItem`
-- [ ] Build reusable domain cards and rows from Stitch patterns
+- [x] Build reusable domain cards and rows from Stitch patterns
 
 ## Phase 5: Consult Stitch Screens
 

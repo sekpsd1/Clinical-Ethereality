@@ -1,4 +1,5 @@
 import { CheckCircle2, CreditCard, ImageOff, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
@@ -196,15 +197,6 @@ function EvidenceRow({
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" strokeWidth={2.1} />
       <span className="shrink-0 text-[10px] font-bold uppercase text-muted">{label}</span>
       <span className="min-w-0 flex-1 text-right">{content}</span>
-    </div>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <p className="text-[10px] font-bold uppercase text-muted">{label}</p>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, PackageCheck, Pill, Tags } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminProductForm } from "@/features/admin/AdminProductForm";
 import type { AdminProductItem, AdminProductsData } from "@/features/admin/products/types";
@@ -115,9 +116,9 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <InfoTile label="ราคา" value={`฿${product.price}`} icon="product" />
-                <InfoTile label="สต็อก" value={product.inventoryQuantity === null ? "ยังไม่มี" : String(product.inventoryQuantity)} icon="product" />
-                <InfoTile label="ใบสั่งยา" value={product.requiresPrescription ? "ต้องใช้" : "ไม่ต้องใช้"} icon="rx" />
+                <InfoTile label="ราคา" value={`฿${product.price}`} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="สต็อก" value={product.inventoryQuantity === null ? "ยังไม่มี" : String(product.inventoryQuantity)} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="ใบสั่งยา" value={product.requiresPrescription ? "ต้องใช้" : "ไม่ต้องใช้"} icon={<Pill aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
@@ -139,20 +140,6 @@ function EmptyProductCatalog({ title, body }: { title: string; body: string }) {
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function InfoTile({ label, value, icon }: { label: string; value: string; icon: "product" | "rx" }) {
-  const Icon = icon === "rx" ? Pill : PackageCheck;
-
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <div className="flex items-center gap-1.5 text-muted">
-        <Icon aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-        <p className="text-[10px] font-bold uppercase">{label}</p>
-      </div>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

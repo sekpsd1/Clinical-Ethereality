@@ -1,5 +1,6 @@
 import { Clock3, ShieldAlert, Stethoscope, UserRound } from "lucide-react";
 import Link from "next/link";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/design-system/variants";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
@@ -216,15 +217,6 @@ function EmptyQueue({ title, body }: { title: string; body: string }) {
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <p className="text-[10px] font-bold uppercase text-muted">{label}</p>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { ClipboardCheck, FileText, Stethoscope } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { PharmacistPrescriptionActions } from "@/features/pharmacist/PharmacistPrescriptionActions";
 import type {
@@ -111,8 +112,8 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="สร้างเมื่อ" value={prescription.createdAt} icon="file" />
-                <InfoTile label="ตรวจเมื่อ" value={prescription.verifiedAt ?? "ยังไม่ตรวจ"} icon="doctor" />
+                <InfoTile label="สร้างเมื่อ" value={prescription.createdAt} icon={<FileText aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="ตรวจเมื่อ" value={prescription.verifiedAt ?? "ยังไม่ตรวจ"} icon={<Stethoscope aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
 
               {prescription.notes || prescription.consultationSummary ? (
@@ -141,20 +142,6 @@ function EmptyPrescriptionQueue({ title, body }: { title: string; body: string }
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function InfoTile({ label, value, icon }: { label: string; value: string; icon: "doctor" | "file" }) {
-  const Icon = icon === "doctor" ? Stethoscope : FileText;
-
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <div className="flex items-center gap-1.5 text-muted">
-        <Icon aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-        <p className="text-[10px] font-bold uppercase">{label}</p>
-      </div>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

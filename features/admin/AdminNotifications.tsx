@@ -1,4 +1,5 @@
 import { Bell, CheckCircle2, UsersRound } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminNotificationForm } from "@/features/admin/AdminNotificationForm";
 import type { AdminNotificationItem, AdminNotificationsData } from "@/features/admin/notifications/types";
@@ -108,8 +109,8 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="ผู้รับ" value={notification.userLineId} icon="user" />
-                <InfoTile label="อ่านเมื่อ" value={notification.readAt ?? "ยังไม่อ่าน"} icon="read" />
+                <InfoTile label="ผู้รับ" value={notification.userLineId} icon={<UsersRound aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="อ่านเมื่อ" value={notification.readAt ?? "ยังไม่อ่าน"} icon={<CheckCircle2 aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 สร้างเมื่อ {notification.createdAt} / {notification.channel}
@@ -127,20 +128,6 @@ function EmptyNotifications({ title, body }: { title: string; body: string }) {
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function InfoTile({ label, value, icon }: { label: string; value: string; icon: "read" | "user" }) {
-  const Icon = icon === "read" ? CheckCircle2 : UsersRound;
-
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <div className="flex items-center gap-1.5 text-muted">
-        <Icon aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-        <p className="text-[10px] font-bold uppercase">{label}</p>
-      </div>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Boxes, PackageCheck, ShieldAlert } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminInventoryForm } from "@/features/admin/AdminInventoryForm";
 import type { AdminInventoryData, AdminInventoryItem } from "@/features/admin/inventory/types";
@@ -121,9 +122,9 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <InfoTile label="พร้อมขาย" value={String(item.availableQuantity)} icon="stock" />
-                <InfoTile label="คงคลัง" value={String(item.quantity)} icon="stock" />
-                <InfoTile label="จองไว้" value={String(item.reservedQuantity)} icon="reserved" />
+                <InfoTile label="พร้อมขาย" value={String(item.availableQuantity)} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="คงคลัง" value={String(item.quantity)} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="จองไว้" value={String(item.reservedQuantity)} icon={<ShieldAlert aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
 
               <AdminInventoryForm item={item} />
@@ -140,20 +141,6 @@ function EmptyInventory({ title, body }: { title: string; body: string }) {
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function InfoTile({ label, value, icon }: { label: string; value: string; icon: "reserved" | "stock" }) {
-  const Icon = icon === "reserved" ? ShieldAlert : PackageCheck;
-
-  return (
-    <div className="rounded-[8px] bg-primary/5 px-3 py-2">
-      <div className="flex items-center gap-1.5 text-muted">
-        <Icon aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-        <p className="text-[10px] font-bold uppercase">{label}</p>
-      </div>
-      <p className="mt-0.5 truncate font-bold text-primary">{value}</p>
     </div>
   );
 }

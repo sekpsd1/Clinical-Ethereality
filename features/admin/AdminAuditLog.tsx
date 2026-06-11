@@ -1,4 +1,5 @@
 import { DatabaseZap, FileClock, ReceiptText, ScrollText } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { AdminAuditLogData, AdminAuditLogItem } from "@/features/admin/audit/types";
 
@@ -69,22 +70,27 @@ function AuditLogCard({ log }: { log: AdminAuditLogItem }) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
-        <InfoTile label="ผู้ดำเนินการ" value={log.actor} />
-        <InfoTile label="เวลาบันทึก" value={log.createdAt} />
+        <InfoTile
+          label="ผู้ดำเนินการ"
+          value={log.actor}
+          density="comfortable"
+          descriptionList
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 break-words font-semibold text-text"
+        />
+        <InfoTile
+          label="เวลาบันทึก"
+          value={log.createdAt}
+          density="comfortable"
+          descriptionList
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 break-words font-semibold text-text"
+        />
       </dl>
 
       <pre className="mt-4 max-h-44 overflow-auto rounded-[8px] bg-slate-50 p-3 text-[11px] leading-5 text-slate-600">
         {log.metadata}
       </pre>
     </article>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] bg-primary/5 p-3">
-      <dt className="font-bold uppercase tracking-[0.08em] text-muted">{label}</dt>
-      <dd className="mt-1 break-words font-semibold text-text">{value}</dd>
-    </div>
   );
 }

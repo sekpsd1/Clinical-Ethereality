@@ -1,4 +1,5 @@
 import { CalendarClock, Clock3, Stethoscope, ToggleRight } from "lucide-react";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
 import { AdminScheduleToggleButton } from "@/features/admin/AdminScheduleToggleButton";
@@ -76,10 +77,34 @@ function ScheduleSlotCard({ slot }: { slot: AdminDoctorAvailabilitySlot }) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <InfoTile label="วัน" value={slot.weekdayLabel} />
-        <InfoTile label="เวลา" value={slot.timeRange} />
-        <InfoTile label="ระยะเวลาต่อรอบ" value={`${slot.slotMinutes} นาที`} />
-        <InfoTile label="อัปเดต" value={slot.updatedAt} />
+        <InfoTile
+          label="วัน"
+          value={slot.weekdayLabel}
+          density="comfortable"
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 text-sm text-text"
+        />
+        <InfoTile
+          label="เวลา"
+          value={slot.timeRange}
+          density="comfortable"
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 text-sm text-text"
+        />
+        <InfoTile
+          label="ระยะเวลาต่อรอบ"
+          value={`${slot.slotMinutes} นาที`}
+          density="comfortable"
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 text-sm text-text"
+        />
+        <InfoTile
+          label="อัปเดต"
+          value={slot.updatedAt}
+          density="comfortable"
+          labelClassName="tracking-[0.08em]"
+          valueClassName="mt-1 text-sm text-text"
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
@@ -93,14 +118,5 @@ function ScheduleSlotCard({ slot }: { slot: AdminDoctorAvailabilitySlot }) {
         <AdminScheduleToggleButton availabilityId={slot.id} isActive={slot.isActive} />
       </div>
     </article>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] bg-primary/5 p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">{label}</p>
-      <p className="mt-1 truncate text-sm font-bold text-text">{value}</p>
-    </div>
   );
 }

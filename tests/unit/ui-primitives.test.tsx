@@ -11,6 +11,7 @@ import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { IconButton } from "@/components/ui/IconButton";
+import { InfoTile } from "@/components/ui/InfoTile";
 import { NotificationItem } from "@/components/ui/NotificationItem";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
@@ -90,6 +91,17 @@ const TestTextField = TextField as ComponentType<{
   placeholder?: string;
   hint?: string;
   error?: string;
+}>;
+
+const TestInfoTile = InfoTile as ComponentType<{
+  label: string;
+  value: ReactNode;
+  icon?: ReactNode;
+  density?: "compact" | "comfortable";
+  descriptionList?: boolean;
+  className?: string;
+  labelClassName?: string;
+  valueClassName?: string;
 }>;
 
 const TestSearchField = SearchField as ComponentType<{
@@ -318,6 +330,34 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("Browse store");
     expect(html).toContain("border-dashed");
     expect(html).toContain("bg-primary/10");
+  });
+
+  it("renders reusable info tiles with compact and description-list variants", () => {
+    const compactHtml = render(
+      createElement(TestInfoTile, {
+        label: "ยอดรวม",
+        value: "฿800",
+        icon: createElement("span", { "aria-hidden": true }, "i")
+      })
+    );
+    const descriptionHtml = render(
+      createElement(TestInfoTile, {
+        label: "ผู้ดำเนินการ",
+        value: "Admin",
+        density: "comfortable",
+        descriptionList: true,
+        valueClassName: "text-text"
+      })
+    );
+
+    expect(compactHtml).toContain("ยอดรวม");
+    expect(compactHtml).toContain("฿800");
+    expect(compactHtml).toContain("px-3");
+    expect(compactHtml).toContain("py-2");
+    expect(descriptionHtml).toContain("<dt");
+    expect(descriptionHtml).toContain("<dd");
+    expect(descriptionHtml).toContain("p-3");
+    expect(descriptionHtml).toContain("text-text");
   });
 
   it("maps payment statuses to semantic badges", () => {
