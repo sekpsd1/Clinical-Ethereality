@@ -55,6 +55,10 @@ function formatDate(date: Date | null): string | null {
   }).format(date);
 }
 
+function getPatientReference(lineUserId: string): string {
+  return `รหัสผู้ป่วย ${lineUserId.slice(-6).toUpperCase()}`;
+}
+
 function mapPatientLogs(consultations: ConsultationWithDetails[]): DoctorPatientLogItem[] {
   const logsByPatient = new Map<string, ConsultationWithDetails[]>();
 
@@ -71,8 +75,8 @@ function mapPatientLogs(consultations: ConsultationWithDetails[]): DoctorPatient
 
     return {
       id: latestConsultation.patientId,
-      patientName: latestConsultation.patient.displayName ?? "LINE patient",
-      patientLineId: latestConsultation.patient.lineUserId,
+      patientName: latestConsultation.patient.displayName ?? "ผู้ป่วยจาก LINE",
+      patientLineId: getPatientReference(latestConsultation.patient.lineUserId),
       consultationCount: patientConsultations.length,
       latestConsultationStatus: latestConsultation.status,
       latestConsultationAt: formatDate(latestConsultation.scheduledAt ?? latestConsultation.updatedAt),

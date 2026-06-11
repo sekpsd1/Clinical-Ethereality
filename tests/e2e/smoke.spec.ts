@@ -219,8 +219,8 @@ test.describe("role route smoke", () => {
 
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/doctor\/consultations$/);
-    await expect(page.getByRole("link", { name: "Consults" })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("link", { name: "Patients" })).toBeVisible();
+    await expect(page.locator('nav a[href="/doctor/consultations"]')).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('nav a[href="/doctor/patients"]')).toBeVisible();
   });
 
   test("pharmacist prescription queue is reachable with a pharmacist dev session", async ({ page }) => {

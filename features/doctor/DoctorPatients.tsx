@@ -39,17 +39,17 @@ function getStatusTone(status: DoctorPatientLogItem["latestConsultationStatus"])
 export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
   const summaryItems = [
     {
-      label: "Patients",
+      label: "ผู้ป่วย",
       value: String(data.summary.totalPatients),
       tone: "neutral"
     },
     {
-      label: "Active",
+      label: "กำลังดูแล",
       value: String(data.summary.activeConsultations),
       tone: "warning"
     },
     {
-      label: "Rx",
+      label: "ใบสั่งยา",
       value: String(data.summary.prescriptions),
       tone: "success"
     }
@@ -58,10 +58,10 @@ export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Patient Logs</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">Assigned patient history</h2>
+        <p className="text-label font-bold uppercase text-white/75">ประวัติผู้ป่วย</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">ผู้ป่วยที่ได้รับมอบหมาย</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          View patients connected to doctor consultations with recent notes and prescription context.
+          ตรวจประวัติผู้ป่วยที่เกี่ยวข้องกับคิวปรึกษา พร้อมบันทึกล่าสุดและบริบทใบสั่งยา
         </p>
       </section>
 
@@ -79,21 +79,21 @@ export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">Patients</h2>
+          <h2 className="font-headline text-lg font-bold text-text">รายการผู้ป่วย</h2>
           <StatusBadge tone={data.unavailable || data.missingDoctorProfile ? "danger" : "success"}>
-            {data.unavailable ? "Database offline" : data.missingDoctorProfile ? "Profile needed" : "Ready"}
+            {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : data.missingDoctorProfile ? "ต้องมีโปรไฟล์แพทย์" : "พร้อมใช้งาน"}
           </StatusBadge>
         </div>
 
         {data.unavailable ? (
           <EmptyPatientLogs
-            title="Database is not connected"
-            body="Set DATABASE_URL and run the Prisma schema before reviewing patient logs."
+            title="ยังโหลดข้อมูลไม่ได้"
+            body="ตั้งค่า DATABASE_URL และเตรียม Prisma schema ก่อนตรวจประวัติผู้ป่วย"
           />
         ) : data.missingDoctorProfile ? (
-          <EmptyPatientLogs title="Doctor profile is missing" body="Approve or create a doctor profile before showing assigned patient logs." />
+          <EmptyPatientLogs title="ยังไม่มีโปรไฟล์แพทย์" body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงประวัติผู้ป่วยที่ได้รับมอบหมาย" />
         ) : data.patients.length === 0 ? (
-          <EmptyPatientLogs title="No patient logs yet" body="Patients with assigned consultations will appear here." />
+          <EmptyPatientLogs title="ยังไม่มีประวัติผู้ป่วย" body="ผู้ป่วยที่มีคิวปรึกษากับแพทย์จะแสดงที่นี่" />
         ) : null}
 
         {data.patients.map((patient) => {
@@ -116,26 +116,26 @@ export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
                     ) : null}
                   </div>
                   <p className="mt-3 text-xs leading-5 text-muted">
-                    {patient.latestSummary ?? "No consultation summary has been recorded yet."}
+                    {patient.latestSummary ?? "ยังไม่มีบันทึกสรุปการปรึกษา"}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="Consults" value={`${patient.consultationCount}`} icon="consult" />
+                <InfoTile label="คิวปรึกษา" value={`${patient.consultationCount}`} icon="consult" />
                 <InfoTile
-                  label="Prescription"
+                  label="ใบสั่งยา"
                   value={
                     patient.latestPrescriptionStatus
                       ? `${prescriptionStatusLabels[patient.latestPrescriptionStatus]} (${patient.prescriptionCount})`
-                      : "None"
+                      : "ยังไม่มี"
                   }
                   icon="note"
                 />
               </div>
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
-                Latest visit {patient.latestConsultationAt ?? "not scheduled"}
+                นัดล่าสุด {patient.latestConsultationAt ?? "ยังไม่กำหนด"}
               </p>
             </article>
           );

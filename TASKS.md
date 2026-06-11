@@ -259,6 +259,7 @@
 - [x] Build doctor consultation list
 - [x] Add doctor consultation workflow polish for readiness, payment status, assessment, chat, and prescription actions
 - [x] Build patient log access for doctors
+- [x] Add Thai doctor patient-log language and privacy polish
 - [x] Build admin schedule editor for doctor availability
 - [ ] Build Zoom SDK video consultation room integration
 - [x] Build persisted in-app consultation chat foundation separate from LINE
