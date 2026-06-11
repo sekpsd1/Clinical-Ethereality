@@ -11,23 +11,23 @@ export function CustomerRewards({ data }: { data: CustomerRewardsData }) {
 
       <main className="mx-auto w-full max-w-mobile space-y-7 px-6 py-7">
         <section className="overflow-hidden rounded-[24px] border border-white/40 bg-primary p-6 text-white shadow-[0_10px_30px_rgba(0,96,103,0.16)]">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Reward Balance</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">แต้มสะสมคงเหลือ</p>
           <div className="mt-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-5xl font-extrabold leading-none">{data.balance}</p>
-              <p className="mt-2 text-sm font-semibold text-white/75">available points</p>
+              <p className="mt-2 text-sm font-semibold text-white/75">แต้มที่ใช้ได้</p>
             </div>
             <span className="flex size-14 items-center justify-center rounded-full bg-white/15">
               <Sparkles aria-hidden="true" className="size-7" />
             </span>
           </div>
           <p className="mt-6 rounded-[18px] bg-white/10 px-4 py-3 text-sm leading-6 text-white/80">
-            {data.expiringSoon > 0 ? `${data.expiringSoon} points expire within 30 days.` : "No points expiring within 30 days."}
+            {data.expiringSoon > 0 ? `${data.expiringSoon} แต้มจะหมดอายุภายใน 30 วัน` : "ไม่มีแต้มที่จะหมดอายุภายใน 30 วัน"}
           </p>
         </section>
 
         <section className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
-          <h2 className="text-base font-extrabold text-primary">Reward rules</h2>
+          <h2 className="text-base font-extrabold text-primary">กติกาแต้มสะสม</h2>
           <div className="mt-4 space-y-3 text-sm leading-6 text-[#3e494a]">
             <p>{rewardRules.orderEarnRate.label}</p>
             <p>{rewardRules.communityComment.label}</p>
@@ -67,10 +67,10 @@ function RewardsHeader() {
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_40px_40px_-15px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
       <div className="mx-auto flex h-16 w-full max-w-mobile items-center justify-between px-7">
         <div className="flex items-center gap-4">
-          <Link href="/profile" aria-label="Back to profile" className="text-primary">
+          <Link href="/profile" aria-label="กลับไปหน้าโปรไฟล์" className="text-primary">
             <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.4} />
           </Link>
-          <p className="text-lg font-bold tracking-wide text-primary">Rewards</p>
+          <p className="text-lg font-bold tracking-wide text-primary">แต้มสะสม</p>
         </div>
         <Gift aria-hidden="true" className="size-6 text-primary" />
       </div>
@@ -87,7 +87,7 @@ function RewardLedgerRow({ item }: { item: CustomerRewardLedgerItem }) {
         <h2 className="text-sm font-extrabold text-[#191c1e]">{item.sourceLabel}</h2>
         <p className="mt-1 text-xs leading-5 text-[#3e494a]">
           {item.createdAt}
-          {item.expiresAt ? ` / expires ${item.expiresAt}` : ""}
+          {item.expiresAt ? ` / หมดอายุ ${item.expiresAt}` : ""}
         </p>
       </div>
       <p className={isSpend ? "text-lg font-extrabold text-[#ba1a1a]" : "text-lg font-extrabold text-primary"}>

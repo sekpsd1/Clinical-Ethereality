@@ -206,6 +206,7 @@
 - [x] Add saved articles supporting screen if needed
 - [x] Add shipping addresses supporting screen if needed
 - [x] Add settings supporting screen if needed
+- [x] Add Thai customer profile, settings, and rewards polish
 
 ## Phase 8: Admin Dashboard
 

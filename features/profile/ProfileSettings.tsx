@@ -188,7 +188,7 @@ function PrivacyConsentPanel({ data }: { data: CustomerConsentData }) {
               }
             >
               {item.accepted ? <CheckCircle2 aria-hidden="true" className="size-3" /> : <Clock3 aria-hidden="true" className="size-3" />}
-              {item.accepted ? "Accepted" : "Pending"}
+              {item.accepted ? "ยอมรับแล้ว" : "รอยอมรับ"}
             </span>
           </div>
 

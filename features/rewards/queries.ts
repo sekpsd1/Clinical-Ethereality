@@ -6,10 +6,10 @@ import type { CustomerRewardLedgerItem, CustomerRewardsData } from "@/features/r
 type RewardRecord = Awaited<ReturnType<typeof getRewardLedger>>[number];
 
 const sourceLabels: Record<RewardRecord["sourceType"], string> = {
-  consultation: "Consultation",
-  order: "Order",
-  community: "Community",
-  admin_adjustment: "Wellness credit"
+  consultation: "การปรึกษาแพทย์",
+  order: "คำสั่งซื้อ",
+  community: "ชุมชน",
+  admin_adjustment: "เครดิตดูแลสุขภาพ"
 };
 
 function getRewardLedger(userId: string) {

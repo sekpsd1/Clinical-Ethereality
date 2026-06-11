@@ -2,15 +2,15 @@ import type { Prisma, RewardPointSource } from "@prisma/client";
 
 export const rewardRules = {
   orderEarnRate: {
-    label: "Earn 1 point per ฿10 paid order value",
+    label: "รับ 1 แต้มต่อยอดคำสั่งซื้อที่ชำระแล้วทุก 10 บาท",
     pointsPerThb: 0.1
   },
   communityComment: {
-    label: "Earn 5 points for a visible community comment",
+    label: "รับ 5 แต้มเมื่อแสดงความคิดเห็นในชุมชนและผ่านการแสดงผล",
     points: 5
   },
   wellnessCredit: {
-    label: "Spend 50 points for a wellness credit",
+    label: "ใช้ 50 แต้มเพื่อแลกเครดิตดูแลสุขภาพ",
     points: 50
   }
 } as const;

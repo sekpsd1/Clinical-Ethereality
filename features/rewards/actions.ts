@@ -33,7 +33,7 @@ export async function redeemWellnessCreditAction(): Promise<void> {
         type: "reward",
         channel: "in_app",
         title: "ใช้แต้มสำเร็จ",
-        body: "คุณใช้ 50 แต้มเพื่อรับ wellness credit แล้ว",
+        body: "คุณใช้ 50 แต้มเพื่อรับเครดิตดูแลสุขภาพแล้ว",
         metadataJson: {
           href: "/profile/rewards"
         }

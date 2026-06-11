@@ -19,8 +19,8 @@ type ProfileMenuItem = {
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
-  { label: "ประวัติคำแนะนำจากแพทย์", icon: ClipboardList },
-  { label: "รายการยาของฉัน", icon: Pill },
+  { label: "ประวัติคำแนะนำจากแพทย์", icon: ClipboardList, href: "/consult/advice-log" },
+  { label: "รายการยาของฉัน", icon: Pill, href: "/consult/prescriptions" },
   { label: "บทความที่บันทึกไว้", icon: Bookmark, href: "/profile/saved-articles" },
   { label: "ที่อยู่จัดส่ง", icon: Truck, href: "/profile/shipping-addresses" }
 ];
@@ -47,7 +47,7 @@ export function UserProfile() {
 
             <h1 className="text-3xl font-extrabold tracking-tight text-white">K. Ananya</h1>
             <div className="mt-3 rounded-full border border-white/30 bg-white/20 px-5 py-2 backdrop-blur-md">
-              <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">Verified Member</span>
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">สมาชิกที่ยืนยันแล้ว</span>
             </div>
           </div>
         </section>
@@ -55,11 +55,11 @@ export function UserProfile() {
         <div className="relative z-20 -mt-8 space-y-8 px-7">
           <section className="grid grid-cols-2 rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
             <div className="flex flex-col gap-2 border-r border-[#bdc9ca]/20 text-center">
-              <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">Advice</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">คำแนะนำ</span>
               <span className="text-2xl font-bold text-primary">12</span>
             </div>
             <div className="flex flex-col gap-2 text-center">
-              <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">Posts</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">โพสต์</span>
               <span className="text-2xl font-bold text-primary">5</span>
             </div>
           </section>
@@ -83,7 +83,7 @@ export function UserProfile() {
           <section className="pb-12 pt-8 text-center">
             <LogoutButton />
             <p className="mt-5 text-[10px] uppercase tracking-[0.22em] text-[#6e797a]">
-              App Version 2.4.0 Clinical Edition
+              เวอร์ชันแอป 2.4.0 Clinical Edition
             </p>
           </section>
         </div>
