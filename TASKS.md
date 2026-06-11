@@ -233,6 +233,7 @@
 - [x] Add data-backed admin payment review queue foundation
 - [x] Add payment review clarity for admin evidence, provider result, QR payload, slip URL, reviewer, and Thai status labels
 - [x] Add manual admin payment verify/reject Server Action boundaries
+- [x] Extract manual payment review rules into a tested domain service
 - [x] Add data-backed admin order management queue foundation
 - [x] Add manual admin order fulfillment Server Action boundaries
 - [x] Add data-backed admin inventory management queue foundation

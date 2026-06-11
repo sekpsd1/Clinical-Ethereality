@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
-import { writeAuditLog } from "@/lib/audit/audit-log";
 import { reviewPaymentSchema } from "@/features/admin/payments/schema";
+import { applyManualPaymentReview } from "@/features/payments/service";
 
 export type AdminPaymentActionState = {
   status: "idle" | "success" | "error";
@@ -29,63 +29,12 @@ export async function reviewPaymentAction(
     };
   }
 
-  const reviewedAt = new Date();
-
   try {
     await prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findUnique({
-        where: {
-          id: parsed.data.paymentId
-        },
-        select: {
-          id: true,
-          orderId: true,
-          status: true
-        }
-      });
-
-      if (!payment) {
-        throw new Error("Payment not found.");
-      }
-
-      if (payment.status !== "pending_review") {
-        throw new Error("Payment has already been reviewed.");
-      }
-
-      await tx.payment.update({
-        where: {
-          id: payment.id
-        },
-        data: {
-          status: parsed.data.status,
-          reviewedById: session.userId,
-          reviewedAt,
-          verificationPayload: {
-            reviewedAt: reviewedAt.toISOString(),
-            reviewedBy: session.userId,
-            source: "admin_manual_review"
-          }
-        }
-      });
-
-      await tx.order.update({
-        where: {
-          id: payment.orderId
-        },
-        data: {
-          status: parsed.data.status === "verified" ? "preparing" : "pending_payment"
-        }
-      });
-
-      await writeAuditLog(tx, {
+      await applyManualPaymentReview(tx, {
+        paymentId: parsed.data.paymentId,
+        status: parsed.data.status,
         actorId: session.userId,
-        action: "payment.manual_review",
-        entityType: "payment",
-        entityId: payment.id,
-        metadata: {
-          orderId: payment.orderId,
-          status: parsed.data.status
-        }
       });
     });
   } catch {
