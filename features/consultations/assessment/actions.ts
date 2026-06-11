@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { assertPermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
+import { getAppEnv } from "@/lib/env/schema";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
 import { durationLabels, getAssessmentRecommendation, symptomLabels } from "@/features/consultations/assessment/rules";
 
@@ -15,7 +17,10 @@ function formDataToObject(formData: FormData) {
 
 export async function submitConsultAssessmentAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
-  assertPermission(session, "consultation:create:self");
+
+  if (!hasPermission(session, "consultation:create:self")) {
+    redirect(getAssessmentRoleRedirectPath(session.role) as Route);
+  }
 
   const parsed = submitConsultAssessmentSchema.safeParse(formDataToObject(formData));
 
@@ -87,4 +92,26 @@ export async function submitConsultAssessmentAction(formData: FormData): Promise
   revalidatePath("/admin/audit");
 
   redirect(`/consult/assessment/complete?assessment=${assessment.id}`);
+}
+
+function getAssessmentRoleRedirectPath(role: string): string {
+  const env = getAppEnv();
+
+  if (process.env.NODE_ENV !== "production" && env.ENABLE_DEV_AUTH_BYPASS) {
+    return `/auth/line?next=${encodeURIComponent("/consult/assessment?retake=1")}&forceRoleSelect=1`;
+  }
+
+  if (role === "doctor") {
+    return "/doctor/consultations";
+  }
+
+  if (role === "pharmacist") {
+    return "/pharmacist/prescriptions";
+  }
+
+  if (role === "admin") {
+    return "/admin";
+  }
+
+  return "/consult/assessment";
 }

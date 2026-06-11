@@ -53,7 +53,15 @@ function loadLiffSdk(): Promise<LiffClient> {
   });
 }
 
-export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: boolean; nextPath: string }) {
+export function LineLiffLogin({
+  allowDevBypass,
+  forceRoleSelect,
+  nextPath
+}: {
+  allowDevBypass: boolean;
+  forceRoleSelect?: boolean;
+  nextPath: string;
+}) {
   const [state, setState] = useState<LoginState>("checking");
   const [message, setMessage] = useState("Checking your LINE session...");
   const [devLoadingRole, setDevLoadingRole] = useState<DevBypassRole | null>(null);
@@ -96,6 +104,12 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
     let cancelled = false;
 
     async function completeLogin() {
+      if (forceRoleSelect && allowDevBypass) {
+        setState("error");
+        setMessage("เลือกบทบาทลูกค้าเพื่อทดสอบหน้าลูกค้า");
+        return;
+      }
+
       if (!liffId) {
         setState("error");
         setMessage("LINE LIFF is not configured yet.");
@@ -161,7 +175,7 @@ export function LineLiffLogin({ allowDevBypass, nextPath }: { allowDevBypass: bo
     return () => {
       cancelled = true;
     };
-  }, [liffId, safeNextPath]);
+  }, [allowDevBypass, forceRoleSelect, liffId, safeNextPath]);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-app px-6 text-text">

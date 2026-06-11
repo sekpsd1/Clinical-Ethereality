@@ -115,6 +115,24 @@ test.describe("customer mobile smoke", () => {
     await expect(page).toHaveURL(/\/consult\/assessment\/complete/);
   });
 
+  test("/consult/assessment/duration redirects staff sessions to local role selection instead of throwing", async ({ page }) => {
+    await signInAs(page, "doctor");
+    await page.goto("/consult/assessment/duration?symptom=headache");
+
+    await expectNoAppError(page);
+    await page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ }).click();
+    await page.getByRole("button", { name: /^ถัดไป$/ }).click();
+    await expect(page).toHaveURL((url) => {
+      return (
+        url.pathname === "/auth/line" &&
+        url.searchParams.get("next") === "/consult/assessment?retake=1" &&
+        url.searchParams.get("forceRoleSelect") === "1"
+      );
+    });
+    await expect(page.getByText("เลือกบทบาทลูกค้าเพื่อทดสอบหน้าลูกค้า")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter as customer" })).toBeVisible();
+  });
+
   test("/consult/assessment/complete shows recommendation and links to consult", async ({ page }) => {
     await page.goto("/consult/assessment/complete");
 

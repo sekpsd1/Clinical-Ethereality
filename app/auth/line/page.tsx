@@ -5,6 +5,7 @@ export default async function LineAuthPage({
   searchParams
 }: {
   searchParams?: Promise<{
+    forceRoleSelect?: string;
     next?: string;
   }>;
 }) {
@@ -12,5 +13,11 @@ export default async function LineAuthPage({
   const env = getAppEnv();
   const allowDevBypass = process.env.NODE_ENV !== "production" && env.ENABLE_DEV_AUTH_BYPASS;
 
-  return <LineLiffLogin allowDevBypass={allowDevBypass} nextPath={params?.next ?? "/consult/assessment"} />;
+  return (
+    <LineLiffLogin
+      allowDevBypass={allowDevBypass}
+      forceRoleSelect={params?.forceRoleSelect === "1"}
+      nextPath={params?.next ?? "/consult/assessment"}
+    />
+  );
 }
