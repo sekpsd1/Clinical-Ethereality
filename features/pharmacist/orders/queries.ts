@@ -63,7 +63,7 @@ function getOrderCode(orderId: string): string {
 
 function getItemSummary(order: OrderWithDetails): string {
   if (order.items.length === 0) {
-    return "No products in this order";
+    return "ไม่มีสินค้าในออเดอร์นี้";
   }
 
   return order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
@@ -95,7 +95,7 @@ function mapOrder(
   return {
     id: order.id,
     orderCode: getOrderCode(order.id),
-    customerName: order.user.displayName ?? "LINE customer",
+    customerName: order.user.displayName ?? "ลูกค้าจาก LINE",
     customerLineId: order.user.lineUserId,
     status: order.status,
     total: formatMoney(order.grandTotal),

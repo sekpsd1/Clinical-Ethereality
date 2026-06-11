@@ -25,7 +25,7 @@ export async function updatePharmacistOrderAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Order update request is invalid."
+      message: "คำขออัปเดตออเดอร์ไม่ถูกต้อง"
     };
   }
 
@@ -43,7 +43,7 @@ export async function updatePharmacistOrderAction(
   } catch {
     return {
       status: "error",
-      message: "Order status could not be updated. Check the current status and try again."
+      message: "อัปเดตสถานะออเดอร์ไม่ได้ โปรดตรวจสถานะล่าสุดแล้วลองอีกครั้ง"
     };
   }
 
@@ -53,6 +53,6 @@ export async function updatePharmacistOrderAction(
 
   return {
     status: "success",
-    message: "Order status updated."
+    message: "อัปเดตสถานะออเดอร์แล้ว"
   };
 }

@@ -30,27 +30,30 @@ export function PharmacistOrderActionButtons({ order }: PharmacistOrderActionBut
           <OrderActionForm
             action={prepareAction}
             actionName="mark_preparing"
-            ariaLabel={`Start preparation for ${order.orderCode}`}
+            ariaLabel={`เริ่มจัดเตรียมยา ${order.orderCode}`}
             className="bg-primary text-white"
             icon="prepare"
+            title="เริ่มจัดเตรียม"
           />
         ) : null}
         {order.status === "preparing" ? (
           <OrderActionForm
             action={shipAction}
             actionName="mark_shipped"
-            ariaLabel={`Mark ${order.orderCode} as shipped`}
+            ariaLabel={`บันทึกว่าออเดอร์ ${order.orderCode} จัดส่งแล้ว`}
             className="bg-primary text-white"
             icon="ship"
+            title="จัดส่งแล้ว"
           />
         ) : null}
         {order.status === "shipped" ? (
           <OrderActionForm
             action={deliverAction}
             actionName="mark_delivered"
-            ariaLabel={`Mark ${order.orderCode} as delivered`}
+            ariaLabel={`บันทึกว่าออเดอร์ ${order.orderCode} ส่งสำเร็จแล้ว`}
             className="bg-success text-white"
             icon="deliver"
+            title="ส่งสำเร็จ"
           />
         ) : null}
       </div>
@@ -73,19 +76,21 @@ export function PharmacistOrderActionButtons({ order }: PharmacistOrderActionBut
     actionName,
     ariaLabel,
     className,
-    icon
+    icon,
+    title
   }: {
     action: (payload: FormData) => void;
     actionName: "mark_preparing" | "mark_shipped" | "mark_delivered";
     ariaLabel: string;
     className: string;
     icon: "prepare" | "ship" | "deliver";
+    title: string;
   }) {
     return (
       <form action={action}>
         <input type="hidden" name="orderId" value={order.id} />
         <input type="hidden" name="action" value={actionName} />
-        <ActionIconButton ariaLabel={ariaLabel} className={className} icon={icon} />
+        <ActionIconButton ariaLabel={ariaLabel} className={className} icon={icon} title={title} />
       </form>
     );
   }
@@ -94,11 +99,13 @@ export function PharmacistOrderActionButtons({ order }: PharmacistOrderActionBut
 function ActionIconButton({
   ariaLabel,
   className,
-  icon
+  icon,
+  title
 }: {
   ariaLabel: string;
   className: string;
   icon: "prepare" | "ship" | "deliver";
+  title: string;
 }) {
   const { pending } = useFormStatus();
   const Icon = icon === "prepare" ? PackageCheck : icon === "ship" ? Truck : CheckCircle2;
@@ -109,6 +116,7 @@ function ActionIconButton({
       className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
       aria-label={ariaLabel}
       disabled={pending}
+      title={title}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
     </button>

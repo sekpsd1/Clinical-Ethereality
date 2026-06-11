@@ -266,6 +266,7 @@
 - [x] Build prescription verification workflow
 - [x] Build medicine preparation workflow
 - [x] Build pharmacist order status updates
+- [x] Add Thai pharmacist order language and fulfillment status polish
 
 ## Phase 11: Articles, Community, And Notifications
 
