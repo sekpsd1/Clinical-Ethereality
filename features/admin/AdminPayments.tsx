@@ -66,7 +66,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">PromptPay Review</p>
+        <p className="text-label font-bold uppercase text-white/75">ตรวจสลิป PromptPay</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวตรวจสอบการชำระเงิน</h2>
         <p className="mt-2 max-w-[360px] text-sm leading-6 text-white/80">
           ตรวจสถานะสลิป หลักฐาน QR และผลจาก SlipOK/EasySlip ก่อนส่งต่อคำสั่งซื้อให้คลินิกเตรียมสินค้า
@@ -139,10 +139,10 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
               </div>
 
               <div className="mt-3 grid gap-2 text-xs">
-                <EvidenceRow icon="qr" label="QR payload" value={payment.qrPayloadStatus} />
-                <EvidenceRow icon="slip" label="Slip URL" value={payment.slipImageUrl ?? "ยังไม่มี URL/ไฟล์สลิป"} href={payment.slipImageUrl} />
+                <EvidenceRow icon="qr" label="ข้อมูล QR" value={payment.qrPayloadStatus} />
+                <EvidenceRow icon="slip" label="ลิงก์สลิป" value={payment.slipImageUrl ?? "ยังไม่มี URL/ไฟล์สลิป"} href={payment.slipImageUrl} />
                 {payment.transRef ? <EvidenceRow icon="check" label="เลขอ้างอิง" value={payment.transRef} /> : null}
-                {payment.verifiedAmount ? <EvidenceRow icon="check" label="ยอดจาก provider" value={payment.verifiedAmount} /> : null}
+                {payment.verifiedAmount ? <EvidenceRow icon="check" label="ยอดจากผู้ให้บริการ" value={payment.verifiedAmount} /> : null}
                 {payment.receiverName ? <EvidenceRow icon="check" label="ชื่อผู้รับ" value={payment.receiverName} /> : null}
               </div>
 

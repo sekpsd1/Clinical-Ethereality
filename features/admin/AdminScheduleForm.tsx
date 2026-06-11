@@ -32,7 +32,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
         </span>
         <div>
           <h2 className="font-headline text-lg font-bold text-text">เพิ่มเวลาว่างแพทย์</h2>
-          <p className="mt-1 text-xs leading-5 text-muted">ใช้สำหรับกำหนด slot ที่ทีม admin สามารถเปิดรับนัดหมายได้</p>
+          <p className="mt-1 text-xs leading-5 text-muted">ใช้สำหรับกำหนดช่วงเวลาที่ทีมผู้ดูแลสามารถเปิดรับนัดหมายได้</p>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
           </label>
 
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ระยะ slot</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ระยะเวลาต่อรอบ</span>
             <select
               name="slotMinutes"
               disabled={isDisabled}
@@ -117,7 +117,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
           <input
             name="notes"
             disabled={isDisabled}
-            placeholder="เช่น รับเฉพาะ follow-up หรือ teleconsult"
+            placeholder="เช่น รับเฉพาะติดตามอาการ หรือปรึกษาออนไลน์"
             className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
           />
         </label>

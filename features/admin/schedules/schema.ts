@@ -17,7 +17,7 @@ export const upsertDoctorAvailabilitySchema = z
     notes: z.string().max(500).optional()
   })
   .refine((value) => value.startTime < value.endTime, {
-    message: "End time must be after start time.",
+    message: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม",
     path: ["endTime"]
   });
 

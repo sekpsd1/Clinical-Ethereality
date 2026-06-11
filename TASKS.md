@@ -270,6 +270,7 @@
 - [x] Build medicine preparation workflow
 - [x] Build pharmacist order status updates
 - [x] Add Thai pharmacist order language and fulfillment status polish
+- [x] Add Thai admin inventory, payment, order, schedule, and pharmacist prescription queue copy polish
 
 ## Phase 11: Articles, Community, And Notifications
 

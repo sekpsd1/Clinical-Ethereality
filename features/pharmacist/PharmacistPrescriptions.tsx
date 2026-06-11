@@ -53,7 +53,7 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Prescription Queue</p>
+        <p className="text-label font-bold uppercase text-white/75">คิวใบสั่งยา</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวตรวจใบสั่งยา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
           ตรวจใบสั่งยาจากแพทย์ก่อนส่งต่อคำสั่งซื้อเข้าสู่การจัดเตรียมยา

@@ -61,7 +61,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Order Operations</p>
+        <p className="text-label font-bold uppercase text-white/75">จัดการคำสั่งซื้อ</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คำสั่งซื้อและจัดส่ง</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
           ติดตามคำสั่งซื้อที่ชำระแล้ว เตรียมยา และอัปเดตสถานะจัดส่งด้วยขั้นตอนสั้นที่สุด

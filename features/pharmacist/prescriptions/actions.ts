@@ -95,11 +95,11 @@ export async function reviewPrescriptionAction(
           userId: prescription.patientId,
           type: "prescription",
           channel: "in_app",
-          title: parsed.data.status === "verified" ? "Prescription verified" : "Prescription needs doctor revision",
+          title: parsed.data.status === "verified" ? "ยืนยันใบสั่งยาแล้ว" : "ใบสั่งยาต้องให้แพทย์แก้ไข",
           body:
             parsed.data.status === "verified"
-              ? "The pharmacist verified your prescription. You can now follow the medicine order step."
-              : "The pharmacist rejected the prescription. Your doctor can revise and submit it again.",
+              ? "เภสัชกรยืนยันใบสั่งยาแล้ว คุณสามารถทำขั้นตอนสั่งซื้อยาได้"
+              : "เภสัชกรปฏิเสธใบสั่งยา แพทย์สามารถแก้ไขและส่งใหม่ได้",
           metadataJson: {
             prescriptionId: prescription.id,
             href: "/consult/prescriptions"

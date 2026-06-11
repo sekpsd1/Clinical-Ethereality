@@ -11,14 +11,14 @@ export function AdminSchedules({ data }: { data: AdminSchedulesData }) {
         <p className="text-label font-bold uppercase text-white/75">ตารางแพทย์</p>
         <h2 className="mt-2 font-headline text-2xl font-bold">จัดการเวลาว่างสำหรับนัดหมาย</h2>
         <p className="mt-2 text-sm leading-6 text-white/80">
-          กำหนดวัน เวลา และระยะ slot เพื่อให้ทีมปฏิบัติการเปิดรับนัดหมายได้อย่างปลอดภัยและตรวจสอบย้อนหลังได้
+          กำหนดวัน เวลา และระยะเวลาต่อรอบ เพื่อให้ทีมปฏิบัติการเปิดรับนัดหมายได้อย่างปลอดภัยและตรวจสอบย้อนหลังได้
         </p>
       </section>
 
       <section className="grid grid-cols-3 gap-2">
         <SummaryTile label="แพทย์พร้อมรับนัด" value={data.summary.activeDoctors} icon="doctor" />
-        <SummaryTile label="slot เปิดอยู่" value={data.summary.activeSlots} icon="active" />
-        <SummaryTile label="slot ปิดไว้" value={data.summary.inactiveSlots} icon="inactive" />
+        <SummaryTile label="ช่วงเวลาที่เปิดอยู่" value={data.summary.activeSlots} icon="active" />
+        <SummaryTile label="ช่วงเวลาที่ปิดไว้" value={data.summary.inactiveSlots} icon="inactive" />
       </section>
 
       {data.unavailable ? (
@@ -38,7 +38,7 @@ export function AdminSchedules({ data }: { data: AdminSchedulesData }) {
         {!data.unavailable && data.slots.length === 0 ? (
           <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
             <h3 className="text-sm font-bold text-text">ยังไม่มีเวลาว่างแพทย์</h3>
-            <p className="mt-2 text-xs leading-5 text-muted">เพิ่ม slot แรกจากฟอร์มด้านบนเพื่อเริ่มจัดตารางรับนัด</p>
+            <p className="mt-2 text-xs leading-5 text-muted">เพิ่มช่วงเวลาแรกจากฟอร์มด้านบนเพื่อเริ่มจัดตารางรับนัด</p>
           </div>
         ) : null}
 
@@ -78,7 +78,7 @@ function ScheduleSlotCard({ slot }: { slot: AdminDoctorAvailabilitySlot }) {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <InfoTile label="วัน" value={slot.weekdayLabel} />
         <InfoTile label="เวลา" value={slot.timeRange} />
-        <InfoTile label="ระยะ slot" value={`${slot.slotMinutes} นาที`} />
+        <InfoTile label="ระยะเวลาต่อรอบ" value={`${slot.slotMinutes} นาที`} />
         <InfoTile label="อัปเดต" value={slot.updatedAt} />
       </div>
 

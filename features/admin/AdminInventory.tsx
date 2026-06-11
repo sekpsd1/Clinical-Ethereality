@@ -58,7 +58,7 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">Inventory</p>
+        <p className="text-label font-bold uppercase text-white/75">คลังสินค้า</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">สต็อกสินค้าและยา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
           ตรวจจำนวนคงคลัง จำนวนที่ถูกจอง และเกณฑ์แจ้งเตือนก่อนกระทบการจัดยา
@@ -82,7 +82,7 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
           <h2 className="font-headline text-lg font-bold text-text">รายการสต็อก</h2>
           <div className="flex items-center gap-2">
             <Link href="/admin/products" className="text-xs font-bold text-primary">
-              Products
+              สินค้า
             </Link>
             <StatusBadge tone={data.unavailable ? "danger" : "success"}>
               {data.unavailable ? "ฐานข้อมูลออฟไลน์" : "พร้อมใช้งาน"}
@@ -93,7 +93,7 @@ export function AdminInventory({ data }: { data: AdminInventoryData }) {
         {data.unavailable ? (
           <EmptyInventory title="ยังไม่ได้เชื่อมต่อฐานข้อมูล" body="ตั้งค่า DATABASE_URL และรัน Prisma schema ก่อนจัดการสต็อก" />
         ) : data.items.length === 0 ? (
-          <EmptyInventory title="ยังไม่มีรายการสต็อก" body="สินค้า active พร้อม inventory record จะแสดงที่นี่" />
+          <EmptyInventory title="ยังไม่มีรายการสต็อก" body="สินค้าเปิดขายที่มีข้อมูลสต็อกจะแสดงที่นี่" />
         ) : null}
 
         {data.items.map((item) => {

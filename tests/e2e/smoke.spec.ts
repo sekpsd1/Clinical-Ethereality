@@ -210,7 +210,7 @@ test.describe("role route smoke", () => {
     await expect(page).toHaveURL(/\/admin\/payments$/);
     await expect(page.getByRole("heading", { name: "คิวตรวจสอบการชำระเงิน" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "รายการชำระเงิน" })).toBeVisible();
-    await expect(page.getByText("QR payload", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("ข้อมูล QR", { exact: true }).first()).toBeVisible();
   });
 
   test("doctor queue is reachable with a doctor dev session", async ({ page }) => {
