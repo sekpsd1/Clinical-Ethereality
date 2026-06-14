@@ -44,6 +44,69 @@ Production launch is blocked until:
 
 Use `.env.production.example` as the production variable checklist.
 
+## Production Environment Checklist
+
+Set these before the first hosted dry run:
+
+- `NODE_ENV=production`
+- `NEXT_PUBLIC_APP_NAME`
+- `NEXT_PUBLIC_APP_URL`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_ISSUER`
+- `JWT_ACCESS_TOKEN_TTL`
+- `JWT_REFRESH_TOKEN_TTL`
+- `ENABLE_DEV_AUTH_BYPASS=false`
+
+Set these before testing production LINE login:
+
+- `NEXT_PUBLIC_LINE_LIFF_ID`
+- `LINE_CHANNEL_ID`
+- `LINE_CHANNEL_SECRET`
+- `LINE_LOGIN_CALLBACK_URL`
+
+Set these before testing real PromptPay/slip workflows:
+
+- `THAI_QR_PROMPTPAY_ID`
+- `SLIP_VERIFICATION_PROVIDER`
+- `SLIP_VERIFICATION_API_URL`
+- `SLIP_VERIFICATION_API_KEY`
+- `SLIPOK_BRANCH_ID`, only if SlipOK is selected
+- `SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME`
+- `PAYMENT_WEBHOOK_SECRET`
+
+Set one storage provider before testing real upload flows:
+
+- Cloudinary: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- S3-compatible: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
+
+Set these before enabling video consultation:
+
+- `ZOOM_SDK_KEY`
+- `ZOOM_SDK_SECRET`
+- `ZOOM_ACCOUNT_ID`
+- `ZOOM_CLIENT_ID`
+- `ZOOM_CLIENT_SECRET`
+- `ZOOM_WEBHOOK_SECRET`
+
+Set these before launch monitoring:
+
+- `SENTRY_DSN`
+- `NEXT_PUBLIC_SENTRY_DSN`
+- `SENTRY_TRACES_SAMPLE_RATE`
+- `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`
+- `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` only when source-map upload is approved
+
+Production feature flags should remain `false` until each workflow is approved for live use:
+
+- `ENABLE_PATIENT_PORTAL`
+- `ENABLE_ONLINE_BOOKING`
+- `ENABLE_PAYMENTS`
+- `ENABLE_AI_FEATURES`
+- `ENABLE_COMMUNITY`
+- `ENABLE_VIDEO_CONSULTATIONS`
+- `ENABLE_PRESCRIPTIONS`
+
 ## Deployment Checklist
 
 Before each production deploy:

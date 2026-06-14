@@ -77,6 +77,53 @@ npm run build:plesk
 
 The build must create `.next/standalone/server.js` and prepare `deploy/plesk`.
 
+## Owner Inputs Before Dry Run
+
+Collect these values from the hosting owner before the first Plesk dry run. Store real values only in Plesk or a secure secret channel.
+
+- Production domain or subdomain, for example `https://app.example.com`
+- Plesk application root path
+- Plesk document root path
+- MySQL host, port, database name, username, and password
+- SSL status for the production domain
+- LINE LIFF production channel values, if login will be tested on the hosted URL
+- PromptPay identifier and payment provider values, if payment verification will be tested
+- Storage provider choice, either Cloudinary or S3-compatible storage, if uploads will be tested
+- Zoom SDK values, if video consultation will be tested
+- Sentry values, if production monitoring will be tested
+
+Do not use real patient data, real prescription files, real license documents, or real payment slips during the first dry run.
+
+## Local Plesk Artifact Dry Run
+
+Run this on the developer machine before uploading to Plesk:
+
+```bash
+npm install
+npx prisma generate
+npx prisma validate
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build:plesk
+```
+
+Confirm these files exist before uploading:
+
+- `deploy/plesk/server.js`
+- `deploy/plesk/package.json`
+- `deploy/plesk/.next/static`
+- `deploy/plesk/public`
+
+Optional local artifact check:
+
+```bash
+cd deploy/plesk
+NODE_ENV=production PORT=3001 node server.js
+```
+
+Then visit `http://localhost:3001/api/health`. Stop this local artifact server before returning to `npm run dev`.
+
 ## Standalone Artifact Copy
 
 If Plesk expects `server.js` at the application root, prepare the standalone output with:
@@ -106,6 +153,37 @@ Expected health response:
 {"status":"ok","service":"clinical-ethereality"}
 ```
 
+## Plesk Dry-Run Checklist
+
+Use this for the first hosted dry run before any real launch.
+
+1. Create or select the production subdomain in Plesk.
+2. Enable SSL/TLS for the domain before testing login callbacks.
+3. Open the Node.js page and select Node.js `20.20.2`.
+4. Set application mode to `production`.
+5. Set document root to `public`.
+6. Set startup file to `server.js`.
+7. Upload the contents of `deploy/plesk` into the application root.
+8. Add environment variables from `.env.production.example` with real values only in Plesk.
+9. Confirm `ENABLE_DEV_AUTH_BYPASS=false`.
+10. Run `NPM install` in Plesk if `node_modules` is not uploaded with the artifact.
+11. Restart the app.
+12. Open `/api/health`.
+13. Open `/auth/line` and confirm the page loads.
+14. Open `/admin`, `/doctor`, and `/pharmacist` while logged out and confirm protected routes do not expose data.
+15. Record any Plesk build, startup, memory, or permission errors before changing code.
+
+If the app fails to start, check these in order:
+
+- `server.js` exists at the application root.
+- `.next/static` and `public` are beside `server.js`.
+- `DATABASE_URL` is reachable from the Plesk server.
+- `JWT_SECRET` is set and at least 32 characters.
+- `NEXT_PUBLIC_APP_URL` matches the hosted URL.
+- `LINE_LOGIN_CALLBACK_URL` matches the hosted callback URL.
+- Node.js version is `20.20.2` or another supported Node.js 20 LTS version.
+- Plesk logs do not show missing package, permission, or memory errors.
+
 ## Database Workflow
 
 - Use production MySQL/MariaDB only for production.
@@ -123,6 +201,22 @@ Expected health response:
 - `ENABLE_DEV_AUTH_BYPASS` is false.
 - PromptPay and slip verification show configured/not-configured states without exposing real values.
 - Sentry or approved monitoring is receiving non-sensitive test events, if enabled.
+
+## Hosted Smoke Test Checklist
+
+After the Plesk dry run is healthy, test only with synthetic data:
+
+- Customer auth entry loads at `/auth/line`.
+- Customer assessment flow loads from `/consult/assessment`.
+- Doctor list loads at `/consult`.
+- Booking page loads at `/consult/booking/somchai`.
+- Appointment detail page hides protected data from the wrong role.
+- Doctor queue loads for a doctor account.
+- Doctor patient log shows assessment summary without raw LINE IDs.
+- Admin payment review loads without exposing secret values.
+- Store, cart, order tracking, and prescription-required purchase paths load.
+- External prescription attachment flow stores metadata only and does not store file bytes in MySQL.
+- Admin integration readiness reports configured/missing keys without showing secret values.
 
 ## Rollback
 
