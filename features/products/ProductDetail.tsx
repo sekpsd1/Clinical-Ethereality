@@ -12,7 +12,7 @@ import {
   UserRound
 } from "lucide-react";
 import { addToCartAction } from "@/features/cart/actions";
-import { createExternalPrescriptionOrderAction } from "@/features/products/prescriptions/actions";
+import { ExternalPrescriptionOrderForm } from "@/features/products/ExternalPrescriptionOrderForm";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 import type { StorageReadiness } from "@/lib/storage/provider";
 
@@ -205,45 +205,7 @@ function ExternalPrescriptionOrderCard({
         </p>
       ) : null}
 
-      <form action={createExternalPrescriptionOrderAction} className="space-y-3">
-        <input type="hidden" name="productSlug" value={product.slug} />
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">Prescription file URL</span>
-          <input
-            required
-            type="url"
-            name="attachmentUrl"
-            placeholder="https://..."
-            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
-          />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">File name</span>
-          <input
-            required
-            type="text"
-            name="fileName"
-            placeholder="prescription.pdf"
-            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
-          />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">File type</span>
-          <input
-            type="text"
-            name="mimeType"
-            placeholder="application/pdf"
-            className="mt-2 h-12 w-full rounded-[16px] border border-[#bdc9ca]/60 bg-white/85 px-4 text-sm font-medium text-[#191c1e] outline-none transition focus:border-primary"
-          />
-        </label>
-        <button
-          type="submit"
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking active:scale-[0.98]"
-        >
-          <ShoppingCart aria-hidden="true" className="size-5" />
-          สั่งซื้อพร้อมใบสั่งยา
-        </button>
-      </form>
+      <ExternalPrescriptionOrderForm productSlug={product.slug} />
     </section>
   );
 }
