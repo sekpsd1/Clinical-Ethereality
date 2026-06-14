@@ -20,7 +20,7 @@ Production launch is blocked until:
 
 ## Required Services
 
-- Vercel production deployment
+- Vercel production deployment, or an approved Plesk Node.js production deployment that follows `PLESK_DEPLOYMENT.md`
 - Managed MySQL production database
 - Production LINE LIFF/channel
 - Production Cloudinary account/folder or S3-compatible bucket
@@ -39,7 +39,7 @@ Production launch is blocked until:
 - `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` must point only to the approved production Sentry project.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` should be set when production source-map uploads are approved.
 - Preview or staging credentials must never be reused in production.
-- Secrets must be stored in Vercel production environment settings, not committed to git.
+- Secrets must be stored in Vercel production environment settings, Plesk Node.js environment variables, or an approved secret manager, not committed to git.
 - Feature flags for payments, prescriptions, community, video, and patient portal should stay disabled until their compliance and vendor gates are approved.
 
 Use `.env.production.example` as the production variable checklist.

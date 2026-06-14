@@ -117,7 +117,7 @@ Selected stack:
 - Validation: Zod
 - Forms: React Hook Form
 - Testing: Vitest for unit tests, Playwright for end-to-end tests
-- Hosting: Vercel
+- Hosting: Vercel preferred; Plesk Node.js hosting is supported when the plan can run a persistent Node.js app
 
 Preferred first implementation path:
 
@@ -127,7 +127,7 @@ Preferred first implementation path:
 4. Implement LINE LIFF login and JWT session handling
 5. Add Zoom SDK integration boundaries for consultations
 6. Add Thai QR payment records and Slip Verification API review flow
-7. Deploy on Vercel with managed MySQL and object storage
+7. Deploy on Vercel with managed MySQL and object storage, or deploy the standalone Node.js build on an approved Plesk Node.js plan
 
 ## System Architecture
 
@@ -834,8 +834,8 @@ Recommended environments:
 
 Recommended hosting:
 
-- App: Vercel
-- Database: managed MySQL provider compatible with Prisma and Vercel deployment
+- App: Vercel preferred; Plesk Node.js hosting is acceptable when Node.js 20.x LTS and persistent startup files are supported
+- Database: managed MySQL provider compatible with Prisma and the selected deployment target
 - File storage: Cloudinary or S3-compatible provider
 - Monitoring: Sentry
 - Analytics: privacy-conscious product analytics, added only when needed
@@ -852,6 +852,7 @@ Deployment requirements:
 Deployment runbook:
 
 - See `DEPLOYMENT.md` for the Vercel preview, staging, and production readiness checklist.
+- See `PLESK_DEPLOYMENT.md` for the Plesk Node.js standalone deployment checklist.
 - See `STAGING.md` and `.env.staging.example` for the staging environment setup checklist.
 - See `PRODUCTION.md` and `.env.production.example` for the production environment launch gates.
 - See `BACKUPS.md` for database and object-storage backup and restore procedures.

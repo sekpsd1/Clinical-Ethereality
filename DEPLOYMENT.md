@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-Clinical Ethereality deploys as a single Next.js application on Vercel with Prisma and MySQL. Keep preview, staging, and production environments separate because consultations, prescriptions, payments, orders, notifications, and community moderation records are sensitive.
+Clinical Ethereality deploys as a single Next.js application with Prisma and MySQL. Vercel remains the preferred managed deployment path, and Plesk Node.js hosting is an accepted owner-selected alternative when the plan can run a persistent Node.js app. Keep preview, staging, and production environments separate because consultations, prescriptions, payments, orders, notifications, and community moderation records are sensitive.
 
 ## Vercel Project
 
@@ -12,6 +12,20 @@ Clinical Ethereality deploys as a single Next.js application on Vercel with Pris
 - Health check path: `/api/health`
 
 `vercel.json` pins the shared deployment commands and disables the local dev auth bypass by default. Do not override `ENABLE_DEV_AUTH_BYPASS` to `true` in any hosted Vercel environment.
+
+## Plesk Node.js Hosting
+
+Use Plesk only when the hosting plan exposes the Node.js application feature, supports Node.js 20.x LTS, and can run a persistent startup file. The current Next.js config emits a standalone production server for this path.
+
+Plesk baseline:
+
+- Node.js version: `20.20.2`
+- Application mode: `production`
+- Document root: `public`
+- Startup file: `server.js`
+- Health check path: `/api/health`
+
+See `PLESK_DEPLOYMENT.md` for the full Plesk runbook, standalone artifact copy steps, environment checklist, restart procedure, and rollback notes.
 
 ## Preview Deployments
 
@@ -82,7 +96,7 @@ Production backups must follow `BACKUPS.md` and remain enabled before patient-li
 
 ## Environment Variables
 
-Use `.env.example` as the source list for required keys. Store actual values in Vercel environment settings, not in git.
+Use `.env.example` as the source list for required keys. Store actual values in Vercel environment settings, Plesk Node.js environment variables, or an approved secret manager, not in git.
 
 Minimum deployment keys:
 

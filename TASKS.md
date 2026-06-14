@@ -303,6 +303,7 @@
 - [x] Configure preview deployments
 - [x] Configure staging environment
 - [x] Configure production environment
+- [x] Add Plesk Node.js standalone deployment readiness docs and config
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch
