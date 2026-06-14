@@ -250,6 +250,7 @@ test.describe("role route smoke", () => {
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/admin\/products$/);
     await expect(page.getByText("ลิงก์รูปภาพที่อัปโหลดไว้แล้ว").first()).toBeVisible();
+    await expect(page.getByText("เลือกไฟล์รูปสินค้า").first()).toBeVisible();
     await expect(page.getByText("ยังไม่ใช่ช่องอัปโหลดไฟล์จริง", { exact: false }).first()).toBeVisible();
   });
 

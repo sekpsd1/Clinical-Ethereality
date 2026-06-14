@@ -243,7 +243,7 @@
 ## Phase 9: Customer And Commerce Workflows
 
 - [x] Build admin product catalog management
-- [x] Add product image URL guidance for upload-ready admin catalog testing
+- [x] Add product image upload UX stub and hosted URL guidance for upload-ready admin catalog testing
 - [x] Build product browsing
 - [x] Build product detail view
 - [x] Build cart workflow

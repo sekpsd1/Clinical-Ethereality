@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Save } from "lucide-react";
+import { Save, Upload } from "lucide-react";
 import { upsertProductAction } from "@/features/admin/products/actions";
 import { cn } from "@/lib/design-system/variants";
 import type { AdminProductActionState } from "@/features/admin/products/actions";
@@ -26,13 +26,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
       <div className="grid gap-3">
         <TextField label="ชื่อสินค้า" name="name" defaultValue={product?.name ?? ""} placeholder="ชื่อสินค้า" />
         <TextField label="Slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="clinical-product-name" />
-        <TextField
-          label="ลิงก์รูปภาพที่อัปโหลดไว้แล้ว"
-          name="imageUrl"
-          defaultValue={product?.imageUrl ?? ""}
-          placeholder="/images/products/example.png หรือ https://cdn.example.com/product.png"
-          hint="ยังไม่ใช่ช่องอัปโหลดไฟล์จริง ใช้เฉพาะรูปสินค้าที่อัปโหลดไว้แล้ว ห้ามใส่ลิงก์เอกสารส่วนตัว ใบอนุญาต สลิป หรือข้อมูล sensitive"
-        />
+        <ProductImageUploadStub defaultImageUrl={product?.imageUrl ?? ""} />
         <label>
           <span className="block text-[10px] font-bold uppercase text-muted">รายละเอียด</span>
           <textarea
@@ -82,6 +76,41 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
         </p>
       ) : null}
     </form>
+  );
+}
+
+function ProductImageUploadStub({ defaultImageUrl }: { defaultImageUrl: string }) {
+  const [selectedFileName, setSelectedFileName] = useState("");
+
+  return (
+    <div className="grid gap-2">
+      <TextField
+        label="ลิงก์รูปภาพที่อัปโหลดไว้แล้ว"
+        name="imageUrl"
+        defaultValue={defaultImageUrl}
+        placeholder="/images/products/example.png หรือ https://cdn.example.com/product.png"
+        hint="ใช้เฉพาะรูปสินค้าที่อัปโหลดไว้แล้ว ห้ามใส่ลิงก์เอกสารส่วนตัว ใบอนุญาต สลิป หรือข้อมูล sensitive"
+      />
+      <div className="rounded-[8px] border border-dashed border-primary/30 bg-primary/5 px-3 py-3">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-[8px] bg-white px-3 py-2 text-xs font-bold text-primary shadow-chip">
+          <Upload aria-hidden="true" className="size-4" strokeWidth={2.1} />
+          เลือกไฟล์รูปสินค้า
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            type="file"
+            onChange={(event) => {
+              setSelectedFileName(event.currentTarget.files?.[0]?.name ?? "");
+            }}
+          />
+        </label>
+        <p className="mt-2 text-[11px] font-semibold leading-5 text-muted">
+          {selectedFileName
+            ? `เลือกไฟล์แล้ว: ${selectedFileName} ยังไม่อัปโหลดจริง กรุณาใส่ลิงก์หลังอัปโหลดในช่องด้านบน`
+            : "ยังไม่ใช่ช่องอัปโหลดไฟล์จริง ใช้เพื่อเตรียม UX ก่อนเชื่อม Cloudinary/S3"}
+        </p>
+      </div>
+    </div>
   );
 }
 
