@@ -300,6 +300,7 @@
 - [x] Verify mobile-first LINE LIFF viewport behavior
 - [x] Add integration tests for protected workflows
 - [x] Add Playwright smoke tests
+- [x] Add readable Thai localhost team testing guide for customer, doctor, pharmacist, and admin flows
 - [x] Configure preview deployments
 - [x] Configure staging environment
 - [x] Configure production environment
