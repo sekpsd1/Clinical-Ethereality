@@ -1,6 +1,7 @@
 .next/
 node_modules/
 dist/
+deploy/
 coverage/
 test-results/
 playwright-report/

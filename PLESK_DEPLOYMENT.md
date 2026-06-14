@@ -72,24 +72,20 @@ npx prisma validate
 npm run typecheck
 npm run lint
 npm run test:unit
-npm run build
+npm run build:plesk
 ```
 
-The build must create `.next/standalone/server.js`.
+The build must create `.next/standalone/server.js` and prepare `deploy/plesk`.
 
 ## Standalone Artifact Copy
 
-If Plesk expects `server.js` at the application root, copy the standalone output into a deployment folder:
+If Plesk expects `server.js` at the application root, prepare the standalone output with:
 
 ```bash
-rm -rf deploy/plesk
-mkdir -p deploy/plesk/.next
-cp -R .next/standalone/* deploy/plesk/
-cp -R .next/static deploy/plesk/.next/static
-cp -R public deploy/plesk/public
+npm run build:plesk
 ```
 
-On Windows, do the equivalent copy through File Manager, SFTP, or a deployment script. Upload the contents of `deploy/plesk` to the Plesk application root. Keep `.next/static` and `public` beside the standalone server.
+The script copies `.next/standalone`, `.next/static`, and `public` into `deploy/plesk`, then verifies that `server.js`, `package.json`, `.next/static`, and `public` exist. Upload the contents of `deploy/plesk` to the Plesk application root. Keep `.next/static` and `public` beside the standalone server.
 
 ## Plesk Start And Restart
 
