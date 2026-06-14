@@ -5,10 +5,10 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
-import { writeAuditLog } from "@/lib/audit/audit-log";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { verifyConsultationSlipSchema } from "@/features/consultations/payment/schema";
+import { applyConsultationPaymentVerification } from "@/features/consultations/payment/service";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -74,45 +74,10 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
 
   try {
     await prisma.$transaction(async (tx) => {
-      if (result.ok) {
-        await tx.consultation.update({
-          where: {
-            id: consultation.id
-          },
-          data: {
-            status: "scheduled"
-          }
-        });
-
-        await tx.notification.create({
-          data: {
-            userId: session.userId,
-            type: "consultation",
-            channel: "in_app",
-            title: "ยืนยันการชำระค่าปรึกษาแล้ว",
-            body: "นัดหมายของคุณได้รับการยืนยันแล้ว กรุณาเปิดห้องรอก่อนเวลานัด",
-            metadataJson: {
-              consultationId: consultation.id,
-              href: `/consult/appointments/${consultation.id}`,
-              provider: result.provider,
-              transRef: result.transRef
-            }
-          }
-        });
-      }
-
-      await writeAuditLog(tx, {
+      await applyConsultationPaymentVerification(tx, {
         actorId: session.userId,
-        action: result.ok ? "consultation.payment_verified" : "consultation.payment_rejected",
-        entityType: "consultation",
-        entityId: consultation.id,
-        metadata: {
-          provider: result.provider,
-          status: result.status,
-          transRef: result.transRef,
-          amount: result.amount,
-          receiverName: result.receiverName
-        }
+        consultation,
+        result
       });
     });
   } catch {
