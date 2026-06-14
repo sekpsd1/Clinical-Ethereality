@@ -307,6 +307,7 @@
 - [x] Add Plesk Node.js standalone deployment readiness docs and config
 - [x] Add Plesk standalone artifact build script
 - [x] Add Plesk dry-run checklist, hosted smoke checks, and production environment grouping for owner-managed deployment
+- [x] Add remote team testing guide for Plesk hosted QA without exposing secrets or real sensitive data
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch

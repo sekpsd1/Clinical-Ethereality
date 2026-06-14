@@ -218,6 +218,8 @@ After the Plesk dry run is healthy, test only with synthetic data:
 - External prescription attachment flow stores metadata only and does not store file bytes in MySQL.
 - Admin integration readiness reports configured/missing keys without showing secret values.
 
+For the full remote QA checklist after Plesk deployment, use `PLESK_TEAM_TESTING_GUIDE.md`.
+
 ## Rollback
 
 1. Keep the previous standalone artifact or Plesk backup before deployment.
