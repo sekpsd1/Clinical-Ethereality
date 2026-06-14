@@ -21,9 +21,18 @@ function getBarcodeDetector(): BarcodeDetectorConstructor | null {
   return candidate ?? null;
 }
 
+function formatFileSize(byteSize: number): string {
+  if (byteSize < 1024 * 1024) {
+    return `${Math.max(1, Math.round(byteSize / 1024))} KB`;
+  }
+
+  return `${(byteSize / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipVerificationProps) {
   const router = useRouter();
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [qrPayload, setQrPayload] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -50,15 +59,16 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
     }
 
     setFileName(file.name);
+    setFileSize(formatFileSize(file.size));
     setPreviewUrl(URL.createObjectURL(file));
     setStatus("reading");
-    setMessage("กำลังอ่าน QR จากรูปสลิปนี้");
+    setMessage("เลือกไฟล์แล้ว กำลังอ่าน QR จากรูปสลิปในเครื่อง");
 
     const BarcodeDetector = getBarcodeDetector();
 
     if (!BarcodeDetector) {
       setStatus("idle");
-      setMessage("เบราว์เซอร์นี้อ่าน QR อัตโนมัติไม่ได้ กรุณาวาง QR payload หรือ hosted slip URL ด้านล่าง");
+      setMessage("ไฟล์ยังไม่ถูกอัปโหลดขึ้น cloud เบราว์เซอร์นี้อ่าน QR อัตโนมัติไม่ได้ กรุณาวาง QR payload หรือ hosted slip URL ด้านล่าง");
       return;
     }
 
@@ -71,16 +81,16 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
 
       if (!nextPayload) {
         setStatus("idle");
-        setMessage("ไม่พบ QR ในสลิปนี้ กรุณาใช้รูปที่ชัดขึ้นหรือวาง payload เอง");
+        setMessage("ไฟล์ยังไม่ถูกอัปโหลดขึ้น cloud และไม่พบ QR ในสลิปนี้ กรุณาใช้รูปที่ชัดขึ้นหรือวาง QR payload เอง");
         return;
       }
 
       setQrPayload(nextPayload);
       setStatus("idle");
-      setMessage("พบ QR ของสลิปแล้ว กดส่งเพื่อตรวจสอบการชำระเงิน");
+      setMessage("อ่าน QR จากไฟล์ในเครื่องได้แล้ว กดส่งสลิปเพื่อตรวจสอบกับ provider");
     } catch {
       setStatus("idle");
-      setMessage("อ่านรูปสลิปไม่ได้ กรุณาใช้รูปที่ชัดขึ้นหรือวาง payload เอง");
+      setMessage("อ่านรูปสลิปไม่ได้ ไฟล์ยังไม่ถูกอัปโหลดขึ้น cloud กรุณาใช้รูปที่ชัดขึ้นหรือวาง QR payload เอง");
     }
   }
 
@@ -92,7 +102,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
 
     if (!trimmedPayload && !trimmedImageUrl) {
       setStatus("error");
-      setMessage("กรุณาอัปโหลดสลิปที่อ่านได้ วาง QR payload หรือใส่ hosted slip image URL");
+      setMessage("กรุณาเลือกสลิปที่อ่าน QR ได้ วาง QR payload หรือใส่ hosted slip image URL");
       return;
     }
 
@@ -147,7 +157,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
         </div>
       </div>
 
-      <label className="mt-4 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[18px] bg-teal-50/70 px-4 py-5 text-center text-primary ring-1 ring-teal-100">
+      <label className="mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-[18px] bg-teal-50/70 px-4 py-5 text-center text-primary ring-1 ring-teal-100">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="" className="mb-3 max-h-28 rounded-[14px] object-contain" />
@@ -155,10 +165,14 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
           <CloudUpload aria-hidden="true" className="mb-3 size-8" />
         )}
         <span className="text-sm font-bold">{fileName ?? "อัปโหลดสลิปโอนเงิน"}</span>
+        {fileSize ? <span className="mt-1 text-[11px] font-semibold text-[#3e494a]">{fileSize}</span> : null}
         <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3e494a]">
           อ่าน QR ในเครื่องก่อนส่งไปตรวจสอบกับ provider
         </span>
-        <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isBusy} />
+        <span className="mt-2 text-[11px] font-semibold leading-5 text-[#6e797a]">
+          ไฟล์ที่เลือกยังไม่ถูกอัปโหลดขึ้น cloud จนกว่าจะเชื่อม Cloudinary/S3
+        </span>
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileChange} disabled={isBusy} />
       </label>
 
       <div className="mt-4 space-y-3">
@@ -184,7 +198,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
             disabled={isBusy}
           />
           <span className="mt-2 block text-[11px] leading-5 text-[#6e797a]">
-            ถ้าใส่ URL ระบบจะบันทึกเป็น metadata ของไฟล์สลิปและตรวจว่าอยู่ใน storage base URL ที่ตั้งไว้
+            ใช้ช่องนี้เมื่อสลิปถูกอัปโหลดไว้ใน storage แล้ว ระบบจะบันทึกเป็น metadata โดยไม่เก็บไฟล์ในฐานข้อมูล
           </span>
         </label>
       </div>

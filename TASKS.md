@@ -253,7 +253,7 @@
 - [x] Build customer order tracking
 - [x] Build admin order management
 - [x] Minimize admin order management steps
-- [x] Build slip upload and payment review workflow
+- [x] Build slip upload UX stub, local QR extraction, hosted URL fallback, and payment review workflow
 - [x] Build admin manual payment review foundation
 - [x] Add SlipOK/EasySlip verification API boundary
 - [x] Extract provider slip verification persistence into the payment domain service

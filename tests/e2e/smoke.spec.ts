@@ -177,6 +177,16 @@ test.describe("customer mobile smoke", () => {
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.locator("header h1")).toBeVisible();
   });
+
+  test("/store/orders clarifies local slip upload before cloud storage", async ({ page }) => {
+    await page.goto("/store/orders");
+
+    await expectNoAppError(page);
+    await expect(page.getByText("ตรวจสอบสลิป PromptPay").first()).toBeVisible();
+    await expect(page.getByText("อัปโหลดสลิปโอนเงิน").first()).toBeVisible();
+    await expect(page.getByText("ไฟล์ที่เลือกยังไม่ถูกอัปโหลดขึ้น cloud", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText("Hosted slip image URL").first()).toBeVisible();
+  });
 });
 
 test.describe("local auth smoke", () => {
