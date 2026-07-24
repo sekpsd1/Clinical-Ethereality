@@ -4,6 +4,8 @@ This runbook is for hosting Clinical Ethereality on a Plesk plan that has the No
 
 Do not commit production secrets. Put real values only in Plesk environment variables or the approved secret manager.
 
+For the current move from the temporary cPanel proof-of-run host to the new Plesk host, start with `PLESK_MIGRATION_HANDOFF.md`, then use this runbook for the detailed deploy procedure.
+
 ## Required Plesk Capability
 
 - Node.js application menu is available for the domain.
@@ -30,7 +32,7 @@ For a standalone Next.js deployment, `server.js` is produced by `npm run build` 
 - `.next/static`
 - `public`
 - `package.json`
-- `node_modules`, installed by Plesk or copied from the build artifact
+- `node_modules`, copied from the `deploy/plesk` build artifact
 
 ## Environment Variables
 
@@ -75,7 +77,11 @@ npm run test:unit
 npm run build:plesk
 ```
 
-The build must create `.next/standalone/server.js` and prepare `deploy/plesk`.
+The build must create `.next/standalone/server.js` and prepare `deploy/plesk`. The
+artifact includes Prisma engines for both common Plesk Linux families (Debian and
+RHEL/AlmaLinux), so do not replace its `node_modules` with a Windows-only install.
+Protected-route middleware runs on the Next.js Node.js runtime so JWT validation
+uses the same Plesk environment variables as the authentication route handlers.
 
 ## Owner Inputs Before Dry Run
 
@@ -134,6 +140,36 @@ npm run build:plesk
 
 The script copies `.next/standalone`, `.next/static`, and `public` into `deploy/plesk`, then verifies that `server.js`, `package.json`, `.next/static`, and `public` exist. Upload the contents of `deploy/plesk` to the Plesk application root. Keep `.next/static` and `public` beside the standalone server.
 
+When packaging on Windows for extraction by Plesk/Linux, create the archive with
+POSIX path separators. PowerShell `Compress-Archive` can produce backslash paths
+that Plesk's `unzip` rejects.
+
+## GitHub Deployment
+
+Plesk can pull the private GitHub repository and run deployment actions after the
+source files are published. Configure the repository in **manual deployment** mode
+first, then switch to automatic deployment only after a successful hosted smoke test.
+
+1. In Plesk, open **Websites & Domains > app subdomain > Git > Add Repository**.
+2. Choose **Remote Git hosting**, branch `main`, and the GitHub repository URL.
+3. Use Plesk's generated SSH public key as a GitHub deploy key with read-only access.
+4. Set the deployment target to the Node.js application root.
+5. In **Repository Settings**, enable additional deployment actions and enter:
+
+```bash
+npm ci --include=dev --no-audit --no-fund
+npm run build:plesk-host
+```
+
+6. Keep the Node.js startup file as `server.js` and document root as `public`.
+7. Click **Deploy from Repository**, wait for both commands to finish, then click
+   **Restart App** in the Node.js screen.
+
+`build:plesk-host` builds on Linux and copies required static/public files into
+`.next/standalone`; the committed root `server.js` then starts that standalone app.
+Do not add `prisma db push` to automatic deployment actions. Apply production schema
+changes separately with a reviewed backup and migration procedure.
+
 ## Plesk Start And Restart
 
 In Plesk:
@@ -143,7 +179,8 @@ In Plesk:
 3. Set application mode to `production`.
 4. Set startup file to `server.js`.
 5. Confirm environment variables.
-6. Click `NPM install` if dependencies are not already installed.
+6. Do not click `NPM install` after uploading this standalone artifact; its
+   production dependencies and Linux Prisma engine are already included.
 7. Click `Restart App`.
 8. Visit `/api/health`.
 
@@ -166,7 +203,9 @@ Use this for the first hosted dry run before any real launch.
 7. Upload the contents of `deploy/plesk` into the application root.
 8. Add environment variables from `.env.production.example` with real values only in Plesk.
 9. Confirm `ENABLE_DEV_AUTH_BYPASS=false`.
-10. Run `NPM install` in Plesk if `node_modules` is not uploaded with the artifact.
+10. Keep the `node_modules` folder from the artifact. Do not run `NPM install` in
+    Plesk unless the deployment procedure has also explicitly provided the Prisma
+    schema and a Linux-side `prisma generate` step.
 11. Restart the app.
 12. Open `/api/health`.
 13. Open `/auth/line` and confirm the page loads.

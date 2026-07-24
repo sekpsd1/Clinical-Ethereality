@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:plesk": "npm run build && node scripts/prepare-plesk-artifact.cjs",
+    "build:plesk-host": "npm run build && node scripts/prepare-plesk-host-runtime.cjs",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint .",

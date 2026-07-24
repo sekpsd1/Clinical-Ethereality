@@ -126,8 +126,8 @@ This checklist tracks information needed from the client before implementation a
 
 ## Technical Access Needed Later
 
-- [ ] LINE Developers account access
-- [ ] LINE LIFF ID
+- [x] LINE Developers account access: owner access was received for setup work; keep channel secrets out of git
+- [x] LINE LIFF ID: received and used in a hosted smoke build; keep exact operational values in environment configuration
 - [ ] LINE channel ID and secret
 - [ ] Vercel project access
 - [ ] Managed MySQL access
@@ -181,6 +181,7 @@ Received from the client:
 - Client/owner direction clarified that consultation chat must be an in-app chat separate from LINE. The first foundation is implemented with Prisma/MySQL consultation messages, access checks, audit logs, in-app notifications, live consult UI binding, and latest-message visibility for doctors; Firebase or another realtime provider is not selected yet.
 - Admin compliance now includes an owner-managed integration readiness panel for PromptPay/payment webhook, SlipOK/EasySlip, storage, LINE LIFF, and Zoom environment variables; it reports only configured/missing keys and does not expose secret values.
 - File storage foundation now centralizes Cloudinary/S3 readiness, validates hosted URLs against a configured storage base URL when present, extracts storage keys, and records external prescription/payment slip attachment metadata without committing files or secrets.
+- Temporary cPanel hosting proved the standalone app health check and LINE Login redirect, but shared-host resource limits made it unsuitable as the ongoing deployment target. Client is moving to a new Plesk host; first hosted Plesk smoke deployment is pending.
 
 Still needed from the client:
 
@@ -194,7 +195,8 @@ Still needed from the client:
 
 Still owner-managed:
 
-- LINE LIFF channel configuration.
+- Final LINE LIFF/channel callback configuration on the new Plesk URL.
+- New Plesk hosting credentials, database credentials, SSL confirmation, and environment-variable setup.
 - Zoom SDK credentials.
 - Cloudinary or S3-compatible file storage credentials.
 - EasySlip API key and webhook details.

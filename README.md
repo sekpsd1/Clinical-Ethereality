@@ -86,6 +86,7 @@ Current planning references:
 - `PHARMACY_SOP_DRAFT.md` drafts the clinic-as-pharmacy prescription verification, medicine preparation, packing, shipment, exception, and audit flow for client review.
 - `CLIENT_SOP_REVIEW_MESSAGE.md` provides owner-facing LINE/email copy for requesting client review of the pharmacy SOP and remaining fulfillment decisions.
 - `DOCTOR_INTAKE_TEMPLATE.md`, `CONSULT_ASSESSMENT_INTAKE_TEMPLATE.md`, `PRODUCT_CATALOG_TEMPLATE.csv`, and `PHARMACIST_INTAKE_TEMPLATE.md` provide owner-sendable templates for collecting the remaining MVP data from the client.
+- `PLESK_MIGRATION_HANDOFF.md` records the current cPanel proof-of-run result and the checklist for moving the next hosted deployment to Plesk.
 
 Future scope:
 

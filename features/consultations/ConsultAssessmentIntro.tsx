@@ -30,16 +30,16 @@ export function ConsultAssessmentIntro() {
             </div>
 
             <div className="mt-12 space-y-5">
-              <h2 className="font-headline text-[2.05rem] font-extrabold leading-[1.14] tracking-normal text-[#006067]">
+              <h2 className="font-headline text-[1.78rem] font-extrabold leading-[1.18] tracking-normal text-[#006067]">
                 ยินดีต้อนรับสู่
                 <br />
-                <span className="block text-[1.42rem] leading-[1.22] text-[#111827]">
+                <span className="block text-[1.2rem] leading-[1.28] text-[#111827]">
                   Health & Commerce
                   <br />
                   Unified Platform
                 </span>
               </h2>
-              <p className="text-pretty font-body text-[1.12rem] leading-[1.76] tracking-normal text-[#3e494a]">
+              <p className="text-pretty font-body text-[1rem] leading-[1.7] tracking-normal text-[#3e494a]">
                 แบบประเมินสั้นๆ เพียง 2 นาทีนี้จะช่วยให้เราเข้าใจความต้องการของคุณ
                 เพื่อให้เราสามารถแนะนำแนวทางและผู้เชี่ยวชาญที่เหมาะสมที่สุดสำหรับคุณ
               </p>
@@ -48,10 +48,10 @@ export function ConsultAssessmentIntro() {
             <div className="mt-12 w-full space-y-7">
               <Link
                 href="/consult/assessment/symptoms"
-                className="flex min-h-[76px] w-full items-center justify-center gap-4 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-5 font-headline text-[1.25rem] font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
+                className="flex min-h-[68px] w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-5 font-headline text-[1.125rem] font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
               >
                 <span className="whitespace-nowrap">เริ่มทำแบบประเมิน</span>
-                <ArrowRight aria-hidden="true" className="size-8" strokeWidth={2.4} />
+                <ArrowRight aria-hidden="true" className="size-7" strokeWidth={2.4} />
               </Link>
 
               <p className="px-4 font-label text-xs leading-6 tracking-[0.12em] text-[#6e797a]/70">

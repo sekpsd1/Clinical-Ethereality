@@ -15,9 +15,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "A valid LINE ID token is required." }, { status: 400 });
   }
 
+  let step = "verify_line_token";
+
   try {
     const identity = await verifyLineIdToken(parsed.data.idToken);
+    step = "upsert_user";
     const userSession = await upsertLineCustomer(identity);
+    step = "create_auth_session";
     const session = await createAuthSessionRecord(userSession, {
       userAgent: request.headers.get("user-agent"),
       ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -34,7 +38,22 @@ export async function POST(request: NextRequest) {
     });
 
     return setSessionCookies(response, session);
-  } catch {
-    return NextResponse.json({ ok: false, error: "Unable to verify LINE login." }, { status: 401 });
+  } catch (error) {
+    const errorCode =
+      typeof error === "object" && error && "code" in error && typeof error.code === "string"
+        ? error.code
+        : undefined;
+
+    // Keep production responses generic while preserving a safe diagnostic signal in server logs.
+    console.error("[auth/line/session] failed", {
+      step,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode
+    });
+
+    return NextResponse.json(
+      { ok: false, error: "Unable to create an app session." },
+      { status: step === "verify_line_token" ? 401 : 503 }
+    );
   }
 }

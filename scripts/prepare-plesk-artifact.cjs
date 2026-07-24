@@ -6,6 +6,11 @@ const nextStandaloneDir = path.join(workspace, ".next", "standalone");
 const nextStaticDir = path.join(workspace, ".next", "static");
 const publicDir = path.join(workspace, "public");
 const outputDir = path.join(workspace, "deploy", "plesk");
+const prismaClientSourceDir = path.join(workspace, "node_modules", ".prisma", "client");
+const prismaEngines = [
+  "libquery_engine-debian-openssl-3.0.x.so.node",
+  "libquery_engine-rhel-openssl-3.0.x.so.node"
+];
 
 function assertInsideWorkspace(targetPath) {
   const resolvedWorkspace = path.resolve(workspace);
@@ -40,11 +45,23 @@ function verifyArtifact() {
   for (const [label, targetPath] of requiredPaths) {
     assertExists(targetPath, label);
   }
+
+  const prismaClientDir = path.join(outputDir, "node_modules", ".prisma", "client");
+  assertExists(prismaClientDir, "Prisma Client");
+
+  for (const engine of prismaEngines) {
+    assertExists(path.join(prismaClientDir, engine), `Prisma engine (${engine})`);
+  }
 }
 
 assertExists(path.join(nextStandaloneDir, "server.js"), ".next standalone server");
 assertExists(nextStaticDir, ".next static assets");
 assertExists(publicDir, "public assets");
+assertExists(prismaClientSourceDir, "generated Prisma Client");
+
+for (const engine of prismaEngines) {
+  assertExists(path.join(prismaClientSourceDir, engine), `generated Prisma engine (${engine})`);
+}
 
 assertInsideWorkspace(outputDir);
 fs.rmSync(outputDir, {
@@ -58,6 +75,11 @@ fs.mkdirSync(path.join(outputDir, ".next"), {
 copyRequiredDir(nextStandaloneDir, outputDir, ".next standalone output");
 copyRequiredDir(nextStaticDir, path.join(outputDir, ".next", "static"), ".next static assets");
 copyRequiredDir(publicDir, path.join(outputDir, "public"), "public assets");
+
+const prismaClientDestinationDir = path.join(outputDir, "node_modules", ".prisma", "client");
+for (const engine of prismaEngines) {
+  fs.copyFileSync(path.join(prismaClientSourceDir, engine), path.join(prismaClientDestinationDir, engine));
+}
 
 verifyArtifact();
 

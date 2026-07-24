@@ -306,8 +306,13 @@
 - [x] Configure production environment
 - [x] Add Plesk Node.js standalone deployment readiness docs and config
 - [x] Add Plesk standalone artifact build script
+- [x] Bundle Plesk-compatible Prisma engines in the standalone artifact and add safe LINE session failure diagnostics
 - [x] Add Plesk dry-run checklist, hosted smoke checks, and production environment grouping for owner-managed deployment
 - [x] Add remote team testing guide for Plesk hosted QA without exposing secrets or real sensitive data
+- [x] Add cPanel-to-Plesk migration handoff after the temporary cPanel proof-of-run and LINE LIFF smoke check
+- [x] Run protected-route middleware on the Node.js runtime so Plesk JWT refresh and route verification share runtime secrets
+- [x] Add Plesk GitHub deployment build helper for standalone Next.js runtime output
+- [ ] Complete first hosted Plesk smoke deployment after the new Plesk host is ready
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch
