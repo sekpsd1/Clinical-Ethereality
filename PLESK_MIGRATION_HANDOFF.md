@@ -6,7 +6,7 @@ Do not commit real database passwords, LINE secrets, PromptPay identifiers, bank
 
 ## Current Hosting Status
 
-The temporary cPanel deployment proved that the standalone Next.js application can run on shared hosting when Node.js is available.
+The temporary cPanel deployment proved that the standalone Next.js application can run on shared hosting when Node.js is available. The active hosted test environment is now Plesk at `https://app.bccgroup-thailand.com`.
 
 Verified on the temporary cPanel host:
 
@@ -18,14 +18,15 @@ Verified on the temporary cPanel host:
 Decision:
 
 - Treat the cPanel host as a proof-of-run only.
-- Move the next hosted deployment to Plesk because Plesk is expected to provide a clearer Node.js app control surface, environment variable management, restart flow, and possible Git deployment path.
+- Use Plesk for hosted UAT. HTTPS, MySQL schema, `/api/health`, Git pull/deploy, and Node.js startup are working.
+- Keep Git deployment manual until all hosted UAT checks pass. Build through the Plesk Node.js command panel because this host's Git deployment shell does not expose npm correctly.
 
 ## Plesk Host Requirements
 
 Confirm these before the first deploy:
 
 - Node.js app support is enabled.
-- Node.js 20.x LTS is selectable.
+- Node.js `24.18.0` is selectable and active on the hosted application.
 - App mode can be set to `production`.
 - Startup file can be set to `server.js`.
 - Environment variables can be added without exposing values publicly.
@@ -45,7 +46,7 @@ https://app.bccgroup-thailand.com
 Use these values unless the new host requires a different folder layout:
 
 ```text
-Node.js version: 20.x LTS
+Node.js version: 24.18.0
 Application mode: production
 Application root: app.bccgroup-thailand.com application folder
 Document root: public
@@ -182,8 +183,7 @@ Avoid these on the new Plesk host unless necessary:
 
 ## Current Blockers Before Full Hosted QA
 
-- New Plesk hosting account is not ready yet.
-- Production database credentials for the new host are pending.
-- LINE callback must be confirmed against the final hosted URL after the Plesk app is live.
+- Deploy the current Git `main` build, which reads the LIFF ID at runtime, then verify LINE LIFF login on a mobile device.
+- Approve dedicated LINE test accounts for doctor, admin, and pharmacist if that role is retained for MVP fulfillment.
 - EasySlip, Zoom, and real file-storage credentials remain owner-managed.
 - FDA numbers remain pending from the client.

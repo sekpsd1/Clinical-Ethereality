@@ -9,7 +9,7 @@ For the current move from the temporary cPanel proof-of-run host to the new Ples
 ## Required Plesk Capability
 
 - Node.js application menu is available for the domain.
-- Node.js 20.x LTS is selectable. Use `20.20.2` from the currently available HostAtom/Plesk list.
+- Node.js 24.x LTS is selectable. Use the currently hosted version `24.18.0`.
 - The app can run a persistent startup file.
 - The app can run `npm install` and `npm run build`.
 - Custom environment variables can be configured.
@@ -18,7 +18,7 @@ For the current move from the temporary cPanel proof-of-run host to the new Ples
 
 ## Recommended Plesk Settings
 
-- Node.js version: `20.20.2`
+- Node.js version: `24.18.0`
 - Package manager: `npm`
 - Application mode: `production`
 - Application root: the folder containing the deployed application files
@@ -154,20 +154,27 @@ first, then switch to automatic deployment only after a successful hosted smoke 
 2. Choose **Remote Git hosting**, branch `main`, and the GitHub repository URL.
 3. Use Plesk's generated SSH public key as a GitHub deploy key with read-only access.
 4. Set the deployment target to the Node.js application root.
-5. In **Repository Settings**, enable additional deployment actions and enter:
+5. Start with **manual deployment**. On the current host, do **not** enable
+   additional deployment actions: its non-interactive Git shell does not expose
+   the selected Node.js runtime and fails with `nodenv: npm: command not found`.
+6. Click **Pull Now**, then **Deploy Now**.
+7. Open **Node.js > Run Node.js commands**, select Node.js `24.18.0` and npm,
+   then run these commands one at a time:
 
 ```bash
 npm ci --include=dev --no-audit --no-fund
 npm run build:plesk-host
 ```
 
-6. Keep the Node.js startup file as `server.js` and document root as `public`.
-7. Click **Deploy from Repository**, wait for both commands to finish, then click
-   **Restart App** in the Node.js screen.
+8. Keep the Node.js startup file as `server.js` and document root as `public`.
+9. Click **Restart App** in the Node.js screen.
 
-`build:plesk-host` builds on Linux and copies required static/public files into
+`npm ci` is expected to pass with the current committed `package-lock.json`.
+If it reports a lock-file mismatch, click **Pull Now** and **Deploy Now** again
+before retrying; do not run an ad-hoc `npm install` on the server. `build:plesk-host`
+builds on Linux and copies required static/public files into
 `.next/standalone`; the committed root `server.js` then starts that standalone app.
-Do not add `prisma db push` to automatic deployment actions. Apply production schema
+Do not add `prisma db push` to deployment actions. Apply production schema
 changes separately with a reviewed backup and migration procedure.
 
 ## Plesk Start And Restart
@@ -175,7 +182,7 @@ changes separately with a reviewed backup and migration procedure.
 In Plesk:
 
 1. Open the domain's Node.js page.
-2. Set Node.js version to `20.20.2`.
+2. Set Node.js version to `24.18.0`.
 3. Set application mode to `production`.
 4. Set startup file to `server.js`.
 5. Confirm environment variables.
@@ -196,7 +203,7 @@ Use this for the first hosted dry run before any real launch.
 
 1. Create or select the production subdomain in Plesk.
 2. Enable SSL/TLS for the domain before testing login callbacks.
-3. Open the Node.js page and select Node.js `20.20.2`.
+3. Open the Node.js page and select Node.js `24.18.0`.
 4. Set application mode to `production`.
 5. Set document root to `public`.
 6. Set startup file to `server.js`.
@@ -220,7 +227,7 @@ If the app fails to start, check these in order:
 - `JWT_SECRET` is set and at least 32 characters.
 - `NEXT_PUBLIC_APP_URL` matches the hosted URL.
 - `LINE_LOGIN_CALLBACK_URL` matches the hosted callback URL.
-- Node.js version is `20.20.2` or another supported Node.js 20 LTS version.
+- Node.js version is `24.18.0` or another approved Node.js LTS version.
 - Plesk logs do not show missing package, permission, or memory errors.
 
 ## Database Workflow
@@ -272,7 +279,7 @@ For the full remote QA checklist after Plesk deployment, use `PLESK_TEAM_TESTING
 Use Vercel or a VPS instead of Plesk if:
 
 - Plesk cannot run a persistent Node.js process.
-- The hosting plan cannot choose Node.js 20.x LTS.
+- The hosting plan cannot choose an approved Node.js LTS version.
 - Build memory is too low for `npm run build`.
 - File permissions block `.next/standalone` or `.next/static`.
 - The team needs SSH-level control for queues, cron, or custom process supervision.
