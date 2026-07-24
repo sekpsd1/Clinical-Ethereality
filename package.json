@@ -30,6 +30,9 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@emnapi/core": "1.11.2",
+    "@emnapi/runtime": "1.11.2",
+    "@emnapi/wasi-threads": "1.2.2",
     "@playwright/test": "^1.60.0",
     "@types/node": "^22.10.2",
     "@types/qrcode": "^1.5.6",
