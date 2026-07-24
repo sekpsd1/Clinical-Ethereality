@@ -17,6 +17,7 @@ export default async function LineAuthPage({
     <LineLiffLogin
       allowDevBypass={allowDevBypass}
       forceRoleSelect={params?.forceRoleSelect === "1"}
+      liffId={env.NEXT_PUBLIC_LINE_LIFF_ID}
       nextPath={params?.next ?? "/consult/assessment"}
     />
   );

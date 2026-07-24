@@ -56,16 +56,17 @@ function loadLiffSdk(): Promise<LiffClient> {
 export function LineLiffLogin({
   allowDevBypass,
   forceRoleSelect,
+  liffId,
   nextPath
 }: {
   allowDevBypass: boolean;
   forceRoleSelect?: boolean;
+  liffId?: string;
   nextPath: string;
 }) {
   const [state, setState] = useState<LoginState>("checking");
   const [message, setMessage] = useState("Checking your LINE session...");
   const [devLoadingRole, setDevLoadingRole] = useState<DevBypassRole | null>(null);
-  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
   const safeNextPath = useMemo(() => (nextPath.startsWith("/") ? nextPath : "/consult/assessment"), [nextPath]);
 
   async function createDevSession(role: DevBypassRole) {
