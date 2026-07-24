@@ -2,6 +2,15 @@
 
 เอกสารนี้ใช้สำหรับทีมตรวจสอบที่อยู่นอกเครื่อง local และทดสอบผ่าน URL บน Plesk หรือ staging/production-like hosting เท่านั้น ห้ามใช้ข้อมูลผู้ป่วยจริง เลขใบอนุญาตจริง เลขบัญชีจริง รูปเอกสารจริง หรือข้อมูลส่วนตัวจริงระหว่างทดสอบ
 
+## สถานะ UAT ปัจจุบัน
+
+- Testing URL: `https://app.bccgroup-thailand.com`
+- Health check: ผ่านเมื่อเปิด `/api/health`
+- Host: Plesk + Node.js 24.18.0 + MySQL
+- LINE LIFF: ต้อง deploy commit ที่อ่านค่า LIFF ตอน runtime แล้วทดสอบบนมือถืออีกครั้งก่อนให้ทีมเริ่ม flow ที่ต้อง login
+- Staff roles: ต้องให้ admin อนุมัติบัญชี LINE ทดสอบเป็น doctor, pharmacist และ admin ก่อนเริ่มทดสอบตามบทบาท
+- ระบบภายนอกที่ยังไม่พร้อมสำหรับ UAT แบบใช้งานจริง: Zoom, EasySlip, Cloudinary/S3 และ realtime chat provider
+
 ## 1. ข้อมูลที่เจ้าของระบบต้องกรอกก่อนส่งให้ทีม
 
 ให้กรอกข้อมูลเหล่านี้ในข้อความส่งงานหรือเอกสารภายในทีม ห้าม commit ค่า secret ลง repo

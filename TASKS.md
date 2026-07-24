@@ -312,7 +312,7 @@
 - [x] Add cPanel-to-Plesk migration handoff after the temporary cPanel proof-of-run and LINE LIFF smoke check
 - [x] Run protected-route middleware on the Node.js runtime so Plesk JWT refresh and route verification share runtime secrets
 - [x] Add Plesk GitHub deployment build helper for standalone Next.js runtime output
-- [ ] Complete first hosted Plesk smoke deployment after the new Plesk host is ready
+- [ ] Complete first hosted Plesk smoke deployment: HTTPS health check is passing on `app.bccgroup-thailand.com`; complete LINE LIFF login, approved staff-role access, and the end-to-end UAT flow before marking complete
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch
