@@ -12,6 +12,10 @@ const lineIdTokenResponseSchema = z.object({
   email: z.string().email().optional()
 });
 
+const lineTokenResponseSchema = z.object({
+  id_token: z.string().min(1)
+});
+
 export type LineIdentity = {
   lineUserId: string;
   displayName?: string;
@@ -55,4 +59,35 @@ export async function verifyLineIdToken(idToken: string): Promise<LineIdentity> 
     pictureUrl: result.picture,
     email: result.email
   };
+}
+
+export async function exchangeLineAuthorizationCode(code: string): Promise<LineIdentity> {
+  const { LINE_CHANNEL_ID, LINE_CHANNEL_SECRET, LINE_LOGIN_CALLBACK_URL } = getAppEnv();
+
+  if (!LINE_CHANNEL_ID || !LINE_CHANNEL_SECRET || !LINE_LOGIN_CALLBACK_URL) {
+    throw new Error("LINE Login server configuration is incomplete.");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: LINE_LOGIN_CALLBACK_URL,
+    client_id: LINE_CHANNEL_ID,
+    client_secret: LINE_CHANNEL_SECRET
+  });
+  const response = await fetch("https://api.line.me/oauth2/v2.1/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body,
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("LINE authorization code exchange failed.");
+  }
+
+  const result = lineTokenResponseSchema.parse(await response.json());
+  return verifyLineIdToken(result.id_token);
 }

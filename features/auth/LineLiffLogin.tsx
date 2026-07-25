@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type LiffClient = {
   init: (config: { liffId: string }) => Promise<void>;
+  isInClient: () => boolean;
   isLoggedIn: () => boolean;
   login: (config?: { redirectUri?: string }) => void;
   getIDToken: () => string | null;
@@ -55,11 +56,13 @@ function loadLiffSdk(): Promise<LiffClient> {
 
 export function LineLiffLogin({
   allowDevBypass,
+  authError,
   forceRoleSelect,
   liffId,
   nextPath
 }: {
   allowDevBypass: boolean;
+  authError?: string;
   forceRoleSelect?: boolean;
   liffId?: string;
   nextPath: string;
@@ -68,6 +71,7 @@ export function LineLiffLogin({
   const [message, setMessage] = useState("Checking your LINE session...");
   const [devLoadingRole, setDevLoadingRole] = useState<DevBypassRole | null>(null);
   const safeNextPath = useMemo(() => (nextPath.startsWith("/") ? nextPath : "/consult/assessment"), [nextPath]);
+  const browserLoginHref = `/api/auth/line/login?next=${encodeURIComponent(safeNextPath)}`;
 
   async function createDevSession(role: DevBypassRole) {
     setDevLoadingRole(role);
@@ -111,6 +115,16 @@ export function LineLiffLogin({
         return;
       }
 
+      if (authError) {
+        setState("error");
+        setMessage(
+          authError === "cancelled"
+            ? "LINE login was cancelled. Please try again."
+            : "Unable to complete LINE login. Please try again."
+        );
+        return;
+      }
+
       if (!liffId) {
         setState("error");
         setMessage("LINE LIFF is not configured yet.");
@@ -133,6 +147,13 @@ export function LineLiffLogin({
       }
 
       await liff.init({ liffId });
+
+      if (!liff.isInClient()) {
+        setState("redirecting");
+        setMessage("Opening LINE login...");
+        window.location.replace(browserLoginHref);
+        return;
+      }
 
       if (!liff.isLoggedIn()) {
         setState("redirecting");
@@ -176,7 +197,7 @@ export function LineLiffLogin({
     return () => {
       cancelled = true;
     };
-  }, [allowDevBypass, forceRoleSelect, liffId, safeNextPath]);
+  }, [allowDevBypass, authError, browserLoginHref, forceRoleSelect, liffId, safeNextPath]);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-app px-6 text-text">
@@ -226,7 +247,7 @@ export function LineLiffLogin({
           </div>
         ) : (
           <a
-            href="/auth/line"
+            href={browserLoginHref}
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-white"
           >
             Try again

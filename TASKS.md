@@ -83,9 +83,10 @@
 - [x] Confirm LINE Mini App/LINE LIFF as the required customer entry path
 - [x] Confirm no standalone customer email/password or guest access for MVP
 - [x] Add local-only development auth bypass for previewing customer and admin screens
-- [ ] Configure LINE LIFF channel
+- [x] Configure LINE LIFF channel
 - [x] Implement LINE LIFF client login entrypoint
 - [x] Implement LINE LIFF ID-token verification endpoint
+- [x] Implement LINE Login OAuth callback for desktop browser authentication
 - [x] Implement JWT issuing and validation
 - [x] Implement persisted JWT refresh token revocation or re-authentication strategy
 - [x] Implement initial JWT refresh endpoint
@@ -312,7 +313,7 @@
 - [x] Add cPanel-to-Plesk migration handoff after the temporary cPanel proof-of-run and LINE LIFF smoke check
 - [x] Run protected-route middleware on the Node.js runtime so Plesk JWT refresh and route verification share runtime secrets
 - [x] Add Plesk GitHub deployment build helper for standalone Next.js runtime output
-- [ ] Complete first hosted Plesk smoke deployment: HTTPS health check is passing on `app.bccgroup-thailand.com`; complete LINE LIFF login, approved staff-role access, and the end-to-end UAT flow before marking complete
+- [ ] Complete first hosted Plesk smoke deployment: HTTPS health check and mobile LINE LIFF login are passing on `app.bccgroup-thailand.com`; deploy and verify desktop LINE Login, approved staff-role access, and the end-to-end UAT flow before marking complete
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch

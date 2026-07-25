@@ -27,7 +27,7 @@
 1. เปิด LIFF URL ที่ทีมงานส่งให้จากมือถือและแอป LINE
 2. ระบบต้องแสดงชื่อ Clinical Ethereality และเข้าสู่หน้าแบบประเมิน
 3. ปิดและเปิด LIFF ใหม่ ระบบต้องไม่ค้างที่ข้อความตรวจสอบ LINE session
-4. เปิด `https://app.bccgroup-thailand.com/auth/line` บนคอมพิวเตอร์ ระบบอาจพาไปหน้า LINE Login ได้ตามปกติ
+4. เปิด `https://app.bccgroup-thailand.com/auth/line?next=%2Fadmin` บนคอมพิวเตอร์ ระบบพาไปหน้า LINE Login หนึ่งครั้ง แล้วกลับเข้า `/admin` เมื่อบัญชีได้รับสิทธิ์ admin แล้ว
 
 สิ่งที่ต้องแจ้งทันที: หน้า `LINE LIFF is not configured yet`, `Unable to create an app session`, หน้าหมุนไม่หยุด หรือหน้า 400 จาก LINE
 

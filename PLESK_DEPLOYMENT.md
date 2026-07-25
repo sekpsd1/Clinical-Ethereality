@@ -227,6 +227,7 @@ If the app fails to start, check these in order:
 - `JWT_SECRET` is set and at least 32 characters.
 - `NEXT_PUBLIC_APP_URL` matches the hosted URL.
 - `LINE_LOGIN_CALLBACK_URL` matches the hosted callback URL.
+- In LINE Developers, the LINE Login callback URL is exactly `https://app.bccgroup-thailand.com/api/auth/line/callback` for the current hosted app.
 - Node.js version is `24.18.0` or another approved Node.js LTS version.
 - Plesk logs do not show missing package, permission, or memory errors.
 
@@ -242,6 +243,7 @@ If the app fails to start, check these in order:
 
 - `GET /api/health` returns `ok`.
 - `/auth/line` loads.
+- Open `https://app.bccgroup-thailand.com/auth/line?next=%2Fadmin` from a desktop browser. It must complete LINE Login once and return to `/admin` for an approved admin account; it must not loop back to the LINE Login screen.
 - Customer routes redirect unauthenticated users to LINE auth.
 - `/admin`, `/doctor`, and `/pharmacist` enforce role boundaries.
 - `ENABLE_DEV_AUTH_BYPASS` is false.

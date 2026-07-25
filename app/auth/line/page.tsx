@@ -6,6 +6,7 @@ export default async function LineAuthPage({
 }: {
   searchParams?: Promise<{
     forceRoleSelect?: string;
+    error?: string;
     next?: string;
   }>;
 }) {
@@ -16,6 +17,7 @@ export default async function LineAuthPage({
   return (
     <LineLiffLogin
       allowDevBypass={allowDevBypass}
+      authError={params?.error}
       forceRoleSelect={params?.forceRoleSelect === "1"}
       liffId={env.NEXT_PUBLIC_LINE_LIFF_ID}
       nextPath={params?.next ?? "/consult/assessment"}
