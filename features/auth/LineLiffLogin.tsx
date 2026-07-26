@@ -7,6 +7,8 @@ type LiffClient = {
   isInClient: () => boolean;
   isLoggedIn: () => boolean;
   login: (config?: { redirectUri?: string }) => void;
+  logout: () => void;
+  closeWindow: () => void;
   getIDToken: () => string | null;
   getAccessToken: () => string | null;
 };

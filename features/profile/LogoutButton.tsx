@@ -24,6 +24,12 @@ export function LogoutButton({
       method: "POST"
     }).catch(() => undefined);
 
+    if (window.liff?.isInClient()) {
+      window.liff.closeWindow();
+      return;
+    }
+
+    window.liff?.logout();
     window.location.replace(redirectTo);
   }
 

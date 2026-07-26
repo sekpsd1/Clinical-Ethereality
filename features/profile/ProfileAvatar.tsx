@@ -25,7 +25,7 @@ export function ProfileAvatar({ avatarUrl, displayName }: { avatarUrl: string | 
 
   return (
     <Image
-      src={avatarUrl}
+      src="/api/profile/avatar"
       alt={`รูปโปรไฟล์ของ ${displayName}`}
       fill
       sizes="128px"
