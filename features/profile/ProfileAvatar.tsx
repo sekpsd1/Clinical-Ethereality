@@ -25,11 +25,12 @@ export function ProfileAvatar({ avatarUrl, displayName }: { avatarUrl: string | 
 
   return (
     <Image
-      src="/api/profile/avatar"
+      src={avatarUrl}
       alt={`รูปโปรไฟล์ของ ${displayName}`}
       fill
       sizes="128px"
       unoptimized
+      referrerPolicy="no-referrer"
       className="rounded-full object-cover"
       onError={() => setImageFailed(true)}
     />
