@@ -37,6 +37,21 @@ test.describe("protected workflow integration", () => {
     await expectAuthRedirect(page, "/staff-invite/doctor");
   });
 
+  test("sends each signed-in role to its operational home screen", async ({ page }) => {
+    const destinations: Array<[DevRole, RegExp]> = [
+      ["customer", /\/consult(?:\/assessment)?$/],
+      ["doctor", /\/doctor\/consultations$/],
+      ["pharmacist", /\/pharmacist\/prescriptions$/],
+      ["admin", /\/admin$/]
+    ];
+
+    for (const [role, destination] of destinations) {
+      await signInAs(page, role);
+      await page.goto("/auth/role-home");
+      await expect(page).toHaveURL(destination);
+    }
+  });
+
   test("keeps customer sessions out of admin, doctor, and pharmacist workflows", async ({ page }) => {
     await signInAs(page, "customer");
 

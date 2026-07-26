@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { normalizePostLoginPath, resolvePostLoginPath } from "@/features/auth/role-routing";
+import { isRole } from "@/lib/permissions/roles";
 
 type LiffClient = {
   init: (config: { liffId: string }) => Promise<void>;
@@ -21,6 +23,20 @@ declare global {
 
 type LoginState = "checking" | "redirecting" | "error";
 type DevBypassRole = "customer" | "doctor" | "pharmacist" | "admin";
+
+async function getResponsePostLoginPath(response: Response, requestedPath: string): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        session?: {
+          role?: unknown;
+        };
+      }
+    | null;
+
+  return isRole(payload?.session?.role)
+    ? resolvePostLoginPath(payload.session.role, requestedPath)
+    : "/auth/role-home";
+}
 
 function loadLiffSdk(): Promise<LiffClient> {
   if (window.liff) {
@@ -73,7 +89,7 @@ export function LineLiffLogin({
   const [state, setState] = useState<LoginState>("checking");
   const [message, setMessage] = useState("Checking your LINE session...");
   const [devLoadingRole, setDevLoadingRole] = useState<DevBypassRole | null>(null);
-  const safeNextPath = useMemo(() => (nextPath.startsWith("/") ? nextPath : "/consult/assessment"), [nextPath]);
+  const safeNextPath = useMemo(() => normalizePostLoginPath(nextPath), [nextPath]);
   const browserLoginHref = `/api/auth/line/login?next=${encodeURIComponent(safeNextPath)}`;
 
   async function createDevSession(role: DevBypassRole) {
@@ -92,16 +108,7 @@ export function LineLiffLogin({
         throw new Error("Local dev bypass is not available.");
       }
 
-      const roleHomePath =
-        role === "admin"
-          ? "/admin"
-          : role === "doctor"
-            ? "/doctor/consultations"
-            : role === "pharmacist"
-              ? "/pharmacist/prescriptions"
-              : safeNextPath;
-
-      window.location.replace(roleHomePath);
+      window.location.replace(await getResponsePostLoginPath(response, safeNextPath));
     } catch (error) {
       setDevLoadingRole(null);
       setMessage(error instanceof Error ? error.message : "Unable to create a local dev session.");
@@ -139,7 +146,7 @@ export function LineLiffLogin({
       }).catch(() => null);
 
       if (!cancelled && refreshResponse?.ok) {
-        window.location.replace(safeNextPath);
+        window.location.replace(await getResponsePostLoginPath(refreshResponse, safeNextPath));
         return;
       }
 
@@ -186,7 +193,7 @@ export function LineLiffLogin({
         throw new Error("Unable to create an app session.");
       }
 
-      window.location.replace(safeNextPath);
+      window.location.replace(await getResponsePostLoginPath(sessionResponse, safeNextPath));
     }
 
     completeLogin().catch((error: unknown) => {

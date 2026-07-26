@@ -14,8 +14,8 @@ afterEach(() => {
 describe("LINE OAuth URL helpers", () => {
   it("accepts only local absolute next paths", () => {
     expect(normalizeLineAuthNextPath("/admin")).toBe("/admin");
-    expect(normalizeLineAuthNextPath("//attacker.example")).toBe("/consult/assessment");
-    expect(normalizeLineAuthNextPath("https://attacker.example")).toBe("/consult/assessment");
+    expect(normalizeLineAuthNextPath("//attacker.example")).toBe("/auth/role-home");
+    expect(normalizeLineAuthNextPath("https://attacker.example")).toBe("/auth/role-home");
   });
 
   it("uses the configured public origin behind a reverse proxy", () => {

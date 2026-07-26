@@ -20,7 +20,7 @@ export default async function LineAuthPage({
       authError={params?.error}
       forceRoleSelect={params?.forceRoleSelect === "1"}
       liffId={env.NEXT_PUBLIC_LINE_LIFF_ID}
-      nextPath={params?.next ?? "/consult/assessment"}
+      nextPath={params?.next ?? "/auth/role-home"}
     />
   );
 }

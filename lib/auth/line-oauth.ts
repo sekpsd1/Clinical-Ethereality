@@ -4,7 +4,7 @@ export const lineOAuthCookieNames = {
 } as const;
 
 export function normalizeLineAuthNextPath(value: string | null | undefined): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/consult/assessment";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/auth/role-home";
 }
 
 export function getPublicAppOrigin(fallbackOrigin: string): string {

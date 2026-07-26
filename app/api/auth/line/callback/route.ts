@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeLineAuthorizationCode } from "@/lib/auth/line";
+import { resolvePostLoginPath } from "@/features/auth/role-routing";
 import {
   getLineOAuthCookieOptions,
   getPublicAppOrigin,
@@ -18,7 +19,7 @@ function readNextPath(request: NextRequest): string {
   try {
     return normalizeLineAuthNextPath(value ? decodeURIComponent(value) : undefined);
   } catch {
-    return "/consult/assessment";
+    return "/auth/role-home";
   }
 }
 
@@ -66,7 +67,8 @@ export async function GET(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
       ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
     });
-    const response = NextResponse.redirect(new URL(nextPath, getPublicAppOrigin(request.nextUrl.origin)));
+    const destinationPath = resolvePostLoginPath(authSession.role, nextPath);
+    const response = NextResponse.redirect(new URL(destinationPath, getPublicAppOrigin(request.nextUrl.origin)));
     await setSessionCookies(response, authSession);
     return clearLineOAuthCookies(response);
   } catch (error) {
