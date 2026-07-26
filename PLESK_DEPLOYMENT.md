@@ -53,6 +53,7 @@ Required before production testing:
 - `LINE_CHANNEL_ID`
 - `LINE_CHANNEL_SECRET`
 - `LINE_LOGIN_CALLBACK_URL`
+- `STAFF_UPLOAD_DIR` set to an absolute writable directory outside the application root
 
 Required only when each integration is enabled:
 
@@ -60,6 +61,12 @@ Required only when each integration is enabled:
 - Storage: Cloudinary or S3-compatible keys
 - Video: Zoom SDK and webhook keys
 - Monitoring: Sentry DSNs and optional source-map upload keys
+
+Create `STAFF_UPLOAD_DIR` as a private persistent directory that is not served by
+Apache/nginx and is not replaced by Git deployment. The Plesk Node.js system user
+must be able to read and write this directory. Staff profile photos are delivered
+through an application route; license proofs require an authenticated admin
+session and are never served directly from the document root.
 
 Never paste actual PromptPay, bank, tax, license, LINE, Zoom, storage, payment, database, or JWT secret values into repo files or screenshots.
 
@@ -209,15 +216,21 @@ Use this for the first hosted dry run before any real launch.
 6. Set startup file to `server.js`.
 7. Upload the contents of `deploy/plesk` into the application root.
 8. Add environment variables from `.env.production.example` with real values only in Plesk.
-9. Confirm `ENABLE_DEV_AUTH_BYPASS=false`.
-10. Keep the `node_modules` folder from the artifact. Do not run `NPM install` in
+9. Create the private staff upload directory outside the application root, set
+   `STAFF_UPLOAD_DIR` to its absolute path, and confirm the Node.js user can write
+   to it.
+10. Confirm `ENABLE_DEV_AUTH_BYPASS=false`.
+11. Keep the `node_modules` folder from the artifact. Do not run `NPM install` in
     Plesk unless the deployment procedure has also explicitly provided the Prisma
     schema and a Linux-side `prisma generate` step.
-11. Restart the app.
-12. Open `/api/health`.
-13. Open `/auth/line` and confirm the page loads.
-14. Open `/admin`, `/doctor`, and `/pharmacist` while logged out and confirm protected routes do not expose data.
-15. Record any Plesk build, startup, memory, or permission errors before changing code.
+12. Restart the app.
+13. Open `/api/health`.
+14. Open `/auth/line` and confirm the page loads.
+15. Open `/admin`, `/doctor`, and `/pharmacist` while logged out and confirm protected routes do not expose data.
+16. Submit synthetic staff profile and license files, verify that only an admin
+    can open the license proof, and confirm that a Git deploy does not remove the
+    uploaded files.
+17. Record any Plesk build, startup, memory, or permission errors before changing code.
 
 If the app fails to start, check these in order:
 

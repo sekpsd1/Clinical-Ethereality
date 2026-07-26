@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { isRole, type Role } from "@/lib/permissions/roles";
 import type { AdminUserApprovalItem, AdminUserApprovalsData } from "@/features/admin/users/types";
+import { staffFileEntityTypes } from "@/features/staff-files/types";
 
 type UserWithStaffProfiles = Awaited<ReturnType<typeof getUsersWithStaffProfiles>>[number];
 
@@ -13,7 +14,23 @@ async function getUsersWithStaffProfiles() {
     take: 50,
     include: {
       doctorProfile: true,
-      pharmacistProfile: true
+      pharmacistProfile: true,
+      fileAttachments: {
+        where: {
+          status: "attached",
+          entityType: {
+            in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        select: {
+          entityType: true,
+          storageUrl: true,
+          fileName: true
+        }
+      }
     }
   });
 }
@@ -66,6 +83,13 @@ function formatSubmittedAt(date: Date): string {
 }
 
 function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
+  const profilePhoto = user.fileAttachments.find(
+    (attachment) => attachment.entityType === staffFileEntityTypes.profilePhoto
+  );
+  const licenseProof = user.fileAttachments.find(
+    (attachment) => attachment.entityType === staffFileEntityTypes.licenseProof
+  );
+
   return {
     id: user.id,
     name: user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
@@ -75,6 +99,9 @@ function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
     status: user.status,
     staffStatus: user.doctorProfile?.status ?? user.pharmacistProfile?.status,
     profile: getStaffProfileText(user),
+    profilePhotoUrl: profilePhoto?.storageUrl ?? null,
+    licenseProofUrl: licenseProof?.storageUrl ?? null,
+    licenseProofName: licenseProof?.fileName ?? null,
     submittedAt: formatSubmittedAt(user.createdAt)
   };
 }

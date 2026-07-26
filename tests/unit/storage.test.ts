@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { envSchema } from "@/lib/env/schema";
 import { normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
 import { getStorageReadiness } from "@/lib/storage/provider";
+import {
+  StaffFileError,
+  validateStaffFileContent,
+  validateStaffFileUpload
+} from "@/features/staff-files/service";
 
 function buildEnv(overrides: Record<string, string | undefined> = {}) {
   return envSchema.parse({
@@ -76,5 +81,64 @@ describe("file storage foundation", () => {
         readiness
       )
     ).toThrow(/outside the configured storage base URL/);
+  });
+
+  it("accepts staff profile images and license PDFs within their limits", () => {
+    expect(
+      validateStaffFileUpload({
+        kind: "profilePhoto",
+        file: new File(["photo"], "doctor.jpg", { type: "image/jpeg" })
+      })
+    ).toBe(".jpg");
+    expect(
+      validateStaffFileUpload({
+        kind: "licenseProof",
+        file: new File(["license"], "license.pdf", { type: "application/pdf" })
+      })
+    ).toBe(".pdf");
+  });
+
+  it("rejects PDFs as profile photos and oversized license proofs", () => {
+    expect(() =>
+      validateStaffFileUpload({
+        kind: "profilePhoto",
+        file: new File(["photo"], "profile.pdf", { type: "application/pdf" })
+      })
+    ).toThrowError(StaffFileError);
+
+    const oversized = new File([new Uint8Array(10 * 1024 * 1024 + 1)], "license.pdf", {
+      type: "application/pdf"
+    });
+
+    expect(() =>
+      validateStaffFileUpload({
+        kind: "licenseProof",
+        file: oversized
+      })
+    ).toThrowError(StaffFileError);
+  });
+
+  it("accepts file content with a matching signature", () => {
+    expect(() =>
+      validateStaffFileContent("application/pdf", new TextEncoder().encode("%PDF-1.7"))
+    ).not.toThrow();
+    expect(() =>
+      validateStaffFileContent("image/jpeg", new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))
+    ).not.toThrow();
+    expect(() =>
+      validateStaffFileContent(
+        "image/png",
+        new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+      )
+    ).not.toThrow();
+    expect(() =>
+      validateStaffFileContent("image/webp", new TextEncoder().encode("RIFF0000WEBP"))
+    ).not.toThrow();
+  });
+
+  it("rejects file content that does not match its declared type", () => {
+    expect(() =>
+      validateStaffFileContent("application/pdf", new TextEncoder().encode("not a pdf"))
+    ).toThrowError(new StaffFileError("FILE_CONTENT_INVALID"));
   });
 });

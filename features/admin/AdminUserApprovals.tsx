@@ -4,6 +4,7 @@ import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/design-system/variants";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
+import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
 import type { AdminUserApprovalItem, AdminUserApprovalsData } from "@/features/admin/users/types";
 
 const auditItems = [
@@ -184,6 +185,19 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
                 <InfoTile label="ปัจจุบัน" value={formatRole(user.currentRole)} />
                 <InfoTile label="สิทธิ์ที่ขอ" value={formatRole(user.requestedRole)} />
               </div>
+
+              {user.requestedRole === "doctor" ||
+              user.requestedRole === "pharmacist" ||
+              user.currentRole === "doctor" ||
+              user.currentRole === "pharmacist" ? (
+                <AdminStaffFileControls
+                  userId={user.id}
+                  userName={user.name}
+                  profilePhotoUrl={user.profilePhotoUrl}
+                  licenseProofUrl={user.licenseProofUrl}
+                  licenseProofName={user.licenseProofName}
+                />
+              ) : null}
 
               <div className="mt-4 flex flex-col gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-muted">

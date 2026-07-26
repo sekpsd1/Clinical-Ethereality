@@ -10,6 +10,12 @@ import {
   updateUserRoleSchema,
   updateUserStatusSchema
 } from "@/features/admin/users/schema";
+import {
+  getStaffFileErrorMessage,
+  StaffFileError,
+  storeStaffFiles
+} from "@/features/staff-files/service";
+import { staffFileEntityTypes, type StaffFileKind } from "@/features/staff-files/types";
 
 export type AdminUserActionState = {
   status: "idle" | "success" | "error";
@@ -44,6 +50,23 @@ export async function approveStaffRoleAction(
 
   try {
     await prisma.$transaction(async (tx) => {
+      if (parsed.data.role === "doctor" || parsed.data.role === "pharmacist") {
+        const requiredFileCount = await tx.fileAttachment.count({
+          where: {
+            ownerId: parsed.data.userId,
+            entityId: parsed.data.userId,
+            entityType: {
+              in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
+            },
+            status: "attached"
+          }
+        });
+
+        if (requiredFileCount < 2) {
+          throw new Error("STAFF_FILES_REQUIRED");
+        }
+      }
+
       await tx.user.update({
         where: {
           id: parsed.data.userId
@@ -99,7 +122,14 @@ export async function approveStaffRoleAction(
         }
       });
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "STAFF_FILES_REQUIRED") {
+      return {
+        status: "error",
+        message: "ต้องมีรูปโปรไฟล์ทางการและเอกสารใบอนุญาตครบก่อนอนุมัติ"
+      };
+    }
+
     return {
       status: "error",
       message: "ไม่สามารถอนุมัติสิทธิ์ได้ กรุณาตรวจสอบฐานข้อมูลแล้วลองใหม่"
@@ -111,6 +141,94 @@ export async function approveStaffRoleAction(
   return {
     status: "success",
     message: "อนุมัติสิทธิ์เรียบร้อยแล้ว"
+  };
+}
+
+export async function uploadStaffFileAction(
+  _previousState: AdminUserActionState,
+  formData: FormData
+): Promise<AdminUserActionState> {
+  const session = await requireAdminSession();
+  assertPermission(session, "admin:access");
+  const userId = formData.get("userId");
+  const kind = formData.get("kind");
+  const file = formData.get("file");
+
+  if (
+    typeof userId !== "string" ||
+    !userId ||
+    (kind !== "profilePhoto" && kind !== "licenseProof") ||
+    !(file instanceof File) ||
+    file.size === 0
+  ) {
+    return {
+      status: "error",
+      message: "ข้อมูลไฟล์ไม่ครบ กรุณาเลือกไฟล์แล้วลองใหม่"
+    };
+  }
+
+  try {
+    const target = await prisma.user.findUnique({
+      where: {
+        id: userId
+      },
+      select: {
+        role: true,
+        doctorProfile: {
+          select: {
+            id: true
+          }
+        },
+        pharmacistProfile: {
+          select: {
+            id: true
+          }
+        }
+      }
+    });
+
+    if (
+      !target ||
+      (!target.doctorProfile &&
+        !target.pharmacistProfile &&
+        target.role !== "doctor" &&
+        target.role !== "pharmacist")
+    ) {
+      return {
+        status: "error",
+        message: "อัปโหลดไฟล์บุคลากรได้เฉพาะบัญชีแพทย์หรือเภสัชกร"
+      };
+    }
+
+    await storeStaffFiles({
+      actorId: session.userId,
+      ownerId: userId,
+      uploads: [
+        {
+          kind: kind as StaffFileKind,
+          file
+        }
+      ]
+    });
+  } catch (error) {
+    if (error instanceof StaffFileError) {
+      return {
+        status: "error",
+        message: getStaffFileErrorMessage(error)
+      };
+    }
+
+    return {
+      status: "error",
+      message: "ไม่สามารถอัปโหลดไฟล์บุคลากรได้ กรุณาลองใหม่"
+    };
+  }
+
+  revalidatePath("/admin/users");
+
+  return {
+    status: "success",
+    message: kind === "profilePhoto" ? "อัปโหลดรูปโปรไฟล์แล้ว" : "อัปโหลดเอกสารใบอนุญาตแล้ว"
   };
 }
 

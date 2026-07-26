@@ -4,6 +4,11 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "20mb"
+    }
+  },
   images: {
     remotePatterns: [
       {

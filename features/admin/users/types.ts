@@ -12,6 +12,9 @@ export type AdminUserApprovalItem = {
   status: AdminUserApprovalStatus;
   staffStatus?: AdminStaffProfileStatus;
   profile: string;
+  profilePhotoUrl: string | null;
+  licenseProofUrl: string | null;
+  licenseProofName: string | null;
   submittedAt: string;
 };
 

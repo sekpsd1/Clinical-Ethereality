@@ -5,6 +5,7 @@ deploy/
 coverage/
 test-results/
 playwright-report/
+.local-uploads/
 *.log
 *.tsbuildinfo
 .env

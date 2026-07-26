@@ -74,6 +74,7 @@ NEXT_PUBLIC_LINE_LIFF_ID=<LINE LIFF ID>
 LINE_CHANNEL_ID=<LINE Login channel ID>
 LINE_CHANNEL_SECRET=<LINE Login channel secret>
 LINE_LOGIN_CALLBACK_URL=https://app.bccgroup-thailand.com/api/auth/line/callback
+STAFF_UPLOAD_DIR=<absolute private writable directory outside application root>
 ```
 
 Add these only when each integration is ready:
@@ -90,6 +91,12 @@ SENTRY_* variables
 ```
 
 Keep real values only in Plesk or an approved secret manager.
+
+`STAFF_UPLOAD_DIR` is required for temporary host-based staff profile and license
+uploads. Create it outside the Git deployment/application root, do not expose it
+as a document root, and grant read/write access only to the Plesk Node.js system
+user. Profile photos are served through the app; license proofs are restricted to
+authenticated admins.
 
 ## LINE Developer Settings
 
@@ -185,5 +192,8 @@ Avoid these on the new Plesk host unless necessary:
 
 - Deploy the current Git `main` build, which reads the LIFF ID at runtime, then verify LINE LIFF login on a mobile device.
 - Approve dedicated LINE test accounts for doctor, admin, and pharmacist if that role is retained for MVP fulfillment.
-- EasySlip, Zoom, and real file-storage credentials remain owner-managed.
+- EasySlip, Zoom, and Cloudinary/S3 credentials remain owner-managed. Staff
+  profile and license uploads can use the temporary private Plesk directory while
+  broader payment, prescription, and attachment storage still needs the selected
+  object-storage provider.
 - FDA numbers remain pending from the client.

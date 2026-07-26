@@ -2,9 +2,10 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, FileCheck2, ImageUp, ShieldCheck } from "lucide-react";
 import { requestStaffInviteAction, type StaffInviteActionState } from "@/features/staff-invite/actions";
 import type { StaffInviteRole } from "@/features/staff-invite/schema";
+import { staffFileAccept } from "@/features/staff-files/types";
 import { cn } from "@/lib/design-system/variants";
 
 const roleLabels: Record<StaffInviteRole, string> = {
@@ -118,6 +119,39 @@ export function StaffInviteRequest({
                   className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
                 />
               </label>
+            ) : null}
+
+            {role !== "admin" ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-bold text-text">
+                  <span className="inline-flex items-center gap-2">
+                    <ImageUp aria-hidden="true" className="size-4 text-primary" />
+                    รูปโปรไฟล์ทางการ
+                  </span>
+                  <input
+                    type="file"
+                    name="profilePhoto"
+                    accept={staffFileAccept.profilePhoto}
+                    required
+                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 py-2 text-xs font-normal text-text file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-bold file:text-primary"
+                  />
+                  <span className="text-xs font-normal leading-5 text-muted">JPG, PNG หรือ WEBP ไม่เกิน 5 MB</span>
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-bold text-text">
+                  <span className="inline-flex items-center gap-2">
+                    <FileCheck2 aria-hidden="true" className="size-4 text-primary" />
+                    เอกสารใบอนุญาต
+                  </span>
+                  <input
+                    type="file"
+                    name="licenseProof"
+                    accept={staffFileAccept.licenseProof}
+                    required
+                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 py-2 text-xs font-normal text-text file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-bold file:text-primary"
+                  />
+                  <span className="text-xs font-normal leading-5 text-muted">PDF, JPG, PNG หรือ WEBP ไม่เกิน 10 MB</span>
+                </label>
+              </div>
             ) : null}
 
             <SubmitButton />

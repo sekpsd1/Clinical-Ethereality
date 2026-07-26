@@ -257,6 +257,8 @@ test.describe("role route smoke", () => {
     await expect(page.getByRole("heading", { name: "ขอสิทธิ์แพทย์" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "ชื่อ", exact: true })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "นามสกุล", exact: true })).toBeVisible();
+    await expect(page.getByLabel("รูปโปรไฟล์ทางการ")).toBeVisible();
+    await expect(page.getByLabel("เอกสารใบอนุญาต")).toBeVisible();
     await expect(page.getByRole("button", { name: "ส่งคำขอให้แอดมินตรวจ" })).toBeVisible();
   });
 
@@ -268,6 +270,8 @@ test.describe("role route smoke", () => {
     await expect(page.getByRole("heading", { name: "ขอสิทธิ์เภสัชกร" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "ชื่อ", exact: true })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "นามสกุล", exact: true })).toBeVisible();
+    await expect(page.getByLabel("รูปโปรไฟล์ทางการ")).toBeVisible();
+    await expect(page.getByLabel("เอกสารใบอนุญาต")).toBeVisible();
   });
 
   test("admin compliance readiness is reachable with an admin dev session", async ({ page }) => {

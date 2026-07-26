@@ -5,6 +5,11 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { staffInviteRequestSchema } from "@/features/staff-invite/schema";
+import {
+  getStaffFileErrorMessage,
+  StaffFileError,
+  storeStaffFiles
+} from "@/features/staff-files/service";
 
 export type StaffInviteActionState = {
   status: "idle" | "success" | "error";
@@ -12,7 +17,7 @@ export type StaffInviteActionState = {
 };
 
 function formDataToObject(formData: FormData) {
-  return Object.fromEntries(formData.entries());
+  return Object.fromEntries(Array.from(formData.entries()).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
 function optionalText(value?: string) {
@@ -49,6 +54,46 @@ export async function requestStaffInviteAction(
   }
 
   try {
+    if (parsed.data.role !== "admin") {
+      const profilePhoto = formData.get("profilePhoto");
+      const licenseProof = formData.get("licenseProof");
+
+      if (!(profilePhoto instanceof File) || profilePhoto.size === 0 || !(licenseProof instanceof File) || licenseProof.size === 0) {
+        return {
+          status: "error",
+          message: "กรุณาแนบรูปโปรไฟล์ทางการและเอกสารใบอนุญาตให้ครบ"
+        };
+      }
+
+      const eligibleUser = await prisma.user.findUnique({
+        where: {
+          id: session.userId
+        },
+        select: {
+          status: true
+        }
+      });
+
+      if (!eligibleUser || eligibleUser.status === "suspended" || eligibleUser.status === "archived") {
+        throw new Error("USER_NOT_ELIGIBLE");
+      }
+
+      await storeStaffFiles({
+        actorId: session.userId,
+        ownerId: session.userId,
+        uploads: [
+          {
+            kind: "profilePhoto",
+            file: profilePhoto
+          },
+          {
+            kind: "licenseProof",
+            file: licenseProof
+          }
+        ]
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: {
@@ -125,7 +170,14 @@ export async function requestStaffInviteAction(
         }
       });
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof StaffFileError) {
+      return {
+        status: "error",
+        message: getStaffFileErrorMessage(error)
+      };
+    }
+
     return {
       status: "error",
       message: "ยังส่งคำขอไม่ได้ กรุณาตรวจสอบสถานะบัญชีหรือฐานข้อมูลแล้วลองใหม่"
