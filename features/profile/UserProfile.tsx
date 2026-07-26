@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 import { LogoutButton } from "@/features/profile/LogoutButton";
+import { ProfileAvatar } from "@/features/profile/ProfileAvatar";
 import type { CustomerProfileData } from "@/features/profile/types";
 
 type ProfileMenuItem = {
@@ -39,7 +40,9 @@ export function UserProfile({ data }: { data: CustomerProfileData }) {
           <div className="relative z-10 flex flex-col items-center">
             <div className="relative mb-4">
               <div className="flex size-32 items-center justify-center overflow-hidden rounded-full border-4 border-white/30 bg-[#142326] p-1 shadow-2xl">
-                <ProfilePortrait avatarUrl={data.avatarUrl} displayName={data.displayName} />
+                <div className="relative h-full w-full overflow-hidden rounded-full">
+                  <ProfileAvatar avatarUrl={data.avatarUrl} displayName={data.displayName} />
+                </div>
               </div>
               <div className="absolute bottom-0 right-2 flex size-9 items-center justify-center rounded-full bg-white text-primary shadow-md">
                 <ShieldCheck aria-hidden="true" className="size-5 fill-primary text-white" />
@@ -114,27 +117,5 @@ function ProfileHeader() {
         </div>
       </div>
     </header>
-  );
-}
-
-function ProfilePortrait({ avatarUrl, displayName }: { avatarUrl: string | null; displayName: string }) {
-  if (avatarUrl) {
-    return (
-      // LINE profile images are remote user content and are rendered without image optimization.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={avatarUrl} alt={`รูปโปรไฟล์ของ ${displayName}`} className="h-full w-full rounded-full object-cover" />
-    );
-  }
-
-  const initials = displayName.trim().slice(0, 2).toUpperCase() || "CE";
-
-  return (
-    <div
-      role="img"
-      aria-label={`รูปโปรไฟล์ของ ${displayName}`}
-      className="flex h-full w-full items-center justify-center rounded-full bg-[#e3f3f1] text-3xl font-bold text-primary"
-    >
-      {initials}
-    </div>
   );
 }

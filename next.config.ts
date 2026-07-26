@@ -3,7 +3,15 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  typedRoutes: true
+  typedRoutes: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "profile.line-scdn.net"
+      }
+    ]
+  }
 };
 
 export default withSentryConfig(nextConfig, {
