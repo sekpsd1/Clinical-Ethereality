@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyLineIdToken } from "@/lib/auth/line";
+import { enrichLineIdentityWithProfile, verifyLineIdToken } from "@/lib/auth/line";
 import { createAuthSessionRecord, setSessionCookies } from "@/lib/auth/session";
 import { upsertLineCustomer } from "@/lib/auth/users";
 
 const lineSessionRequestSchema = z.object({
-  idToken: z.string().min(1)
+  idToken: z.string().min(1),
+  accessToken: z.string().min(1)
 });
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
   let step = "verify_line_token";
 
   try {
-    const identity = await verifyLineIdToken(parsed.data.idToken);
+    const verifiedIdentity = await verifyLineIdToken(parsed.data.idToken);
+    const identity = await enrichLineIdentityWithProfile(verifiedIdentity, parsed.data.accessToken);
     step = "upsert_user";
     const userSession = await upsertLineCustomer(identity);
     step = "create_auth_session";

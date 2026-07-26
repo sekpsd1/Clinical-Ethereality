@@ -13,7 +13,14 @@ const lineIdTokenResponseSchema = z.object({
 });
 
 const lineTokenResponseSchema = z.object({
+  access_token: z.string().min(1),
   id_token: z.string().min(1)
+});
+
+const lineProfileResponseSchema = z.object({
+  userId: z.string().min(1),
+  displayName: z.string().min(1),
+  pictureUrl: z.string().url().optional()
 });
 
 export type LineIdentity = {
@@ -22,6 +29,44 @@ export type LineIdentity = {
   pictureUrl?: string;
   email?: string;
 };
+
+async function getLineProfile(accessToken: string): Promise<LineIdentity> {
+  const response = await fetch("https://api.line.me/v2/profile", {
+    headers: {
+      authorization: `Bearer ${accessToken}`
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("LINE profile request failed.");
+  }
+
+  const profile = lineProfileResponseSchema.parse(await response.json());
+
+  return {
+    lineUserId: profile.userId,
+    displayName: profile.displayName,
+    pictureUrl: profile.pictureUrl
+  };
+}
+
+export async function enrichLineIdentityWithProfile(
+  identity: LineIdentity,
+  accessToken: string
+): Promise<LineIdentity> {
+  const profile = await getLineProfile(accessToken);
+
+  if (profile.lineUserId !== identity.lineUserId) {
+    throw new Error("LINE profile does not match the verified ID token.");
+  }
+
+  return {
+    ...identity,
+    displayName: profile.displayName ?? identity.displayName,
+    pictureUrl: profile.pictureUrl ?? identity.pictureUrl
+  };
+}
 
 export async function verifyLineIdToken(idToken: string): Promise<LineIdentity> {
   const { LINE_CHANNEL_ID } = getAppEnv();
@@ -89,5 +134,7 @@ export async function exchangeLineAuthorizationCode(code: string): Promise<LineI
   }
 
   const result = lineTokenResponseSchema.parse(await response.json());
-  return verifyLineIdToken(result.id_token);
+  const identity = await verifyLineIdToken(result.id_token);
+
+  return enrichLineIdentityWithProfile(identity, result.access_token);
 }

@@ -8,6 +8,7 @@ type LiffClient = {
   isLoggedIn: () => boolean;
   login: (config?: { redirectUri?: string }) => void;
   getIDToken: () => string | null;
+  getAccessToken: () => string | null;
 };
 
 declare global {
@@ -165,9 +166,10 @@ export function LineLiffLogin({
       }
 
       const idToken = liff.getIDToken();
+      const accessToken = liff.getAccessToken();
 
-      if (!idToken) {
-        throw new Error("LINE did not return an ID token.");
+      if (!idToken || !accessToken) {
+        throw new Error("LINE did not return the required login tokens.");
       }
 
       const sessionResponse = await fetch("/api/auth/line/session", {
@@ -175,7 +177,7 @@ export function LineLiffLogin({
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify({ idToken })
+        body: JSON.stringify({ idToken, accessToken })
       });
 
       if (!sessionResponse.ok) {
