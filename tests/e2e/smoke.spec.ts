@@ -78,6 +78,17 @@ test.describe("customer mobile smoke", () => {
     });
   }
 
+  test("customer can open the contact details editor", async ({ page }) => {
+    await page.goto("/profile/settings?section=account");
+
+    await page.getByRole("button", { name: "แก้ไขข้อมูลติดต่อ" }).click();
+    await expect(page.getByLabel("อีเมล")).toBeVisible();
+    await expect(page.getByLabel("เบอร์โทรศัพท์")).toBeVisible();
+
+    await page.getByRole("button", { name: "ยกเลิก" }).click();
+    await expect(page.getByRole("button", { name: "แก้ไขข้อมูลติดต่อ" })).toBeVisible();
+  });
+
   test("/consult/assessment loads as a focused assessment intro", async ({ page }) => {
     await page.goto("/consult/assessment?retake=1");
 

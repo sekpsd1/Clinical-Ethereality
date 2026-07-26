@@ -6,11 +6,31 @@ import { submitConsultAssessmentSchema } from "@/features/consultations/assessme
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
+import { updateProfileContactSchema } from "@/features/profile/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
 import { createExternalPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 describe("feature validation schemas", () => {
+  it("validates and normalizes customer contact details", () => {
+    expect(
+      updateProfileContactSchema.parse({
+        email: " customer@example.com ",
+        phone: "081-234-5678"
+      })
+    ).toEqual({
+      email: "customer@example.com",
+      phone: "0812345678"
+    });
+
+    expect(
+      updateProfileContactSchema.safeParse({
+        email: "invalid-email",
+        phone: "123"
+      }).success
+    ).toBe(false);
+  });
+
   it("validates cart mutations with bounded integer quantities", () => {
     expect(cartMutationSchema.parse({ slug: "vitamin-c-complex" })).toEqual({
       slug: "vitamin-c-complex",

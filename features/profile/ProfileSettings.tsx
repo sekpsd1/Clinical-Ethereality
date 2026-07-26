@@ -12,6 +12,7 @@ import {
   UserRound
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { AccountContactEditor } from "@/features/profile/AccountContactEditor";
 import { acceptCustomerConsentAction } from "@/features/legal/actions";
 import type { CustomerConsentData } from "@/features/legal/types";
 import type { CustomerProfileData } from "@/features/profile/types";
@@ -177,6 +178,8 @@ export function ProfileSettings({
       >
         {activeSection === "privacy" ? (
           <PrivacyConsentPanel data={consentData} />
+        ) : activeSection === "account" && activeDetail ? (
+          <AccountContactEditor rows={activeDetail.rows} email={profileData.email} phone={profileData.phone} />
         ) : activeDetail ? (
           <SettingDetailRows rows={activeDetail.rows} />
         ) : (

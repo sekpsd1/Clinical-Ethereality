@@ -201,6 +201,7 @@
 
 - [x] Build user profile screen
 - [x] Connect the customer profile name, LINE avatar, member status, completed consultation count, published post count, and account settings to authenticated Prisma data
+- [x] Allow authenticated customers to update their own email and phone with validation, permission checks, and audit logging
 - [x] Build community hub screen
 - [x] Build create post screen
 - [x] Build article/post detail and comments screen
