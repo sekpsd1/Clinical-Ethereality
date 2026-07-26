@@ -107,6 +107,10 @@ export async function requestStaffInviteAction(
           id: session.userId
         },
         data: {
+          displayName:
+            parsed.data.role !== "admin"
+              ? `${parsed.data.firstName} ${parsed.data.lastName}`
+              : undefined,
           status: "pending_review"
         }
       });

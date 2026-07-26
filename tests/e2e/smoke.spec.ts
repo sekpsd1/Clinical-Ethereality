@@ -255,7 +255,19 @@ test.describe("role route smoke", () => {
 
     await expectNoAppError(page);
     await expect(page.getByRole("heading", { name: "ขอสิทธิ์แพทย์" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "ชื่อ", exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "นามสกุล", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "ส่งคำขอให้แอดมินตรวจ" })).toBeVisible();
+  });
+
+  test("pharmacist invite request collects the applicant name", async ({ page }) => {
+    await signInAs(page, "customer");
+    await page.goto("/staff-invite/pharmacist");
+
+    await expectNoAppError(page);
+    await expect(page.getByRole("heading", { name: "ขอสิทธิ์เภสัชกร" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "ชื่อ", exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "นามสกุล", exact: true })).toBeVisible();
   });
 
   test("admin compliance readiness is reachable with an admin dev session", async ({ page }) => {

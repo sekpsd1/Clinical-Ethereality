@@ -63,6 +63,31 @@ export function StaffInviteRequest({
           <input type="hidden" name="role" value={role} />
           <div className="flex flex-col gap-4">
             {role !== "admin" ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-bold text-text">
+                  ชื่อ
+                  <input
+                    name="firstName"
+                    autoComplete="given-name"
+                    required
+                    placeholder="ชื่อจริง"
+                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-bold text-text">
+                  นามสกุล
+                  <input
+                    name="lastName"
+                    autoComplete="family-name"
+                    required
+                    placeholder="นามสกุล"
+                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            {role !== "admin" ? (
               <label className="flex flex-col gap-2 text-sm font-bold text-text">
                 เลขใบประกอบวิชาชีพ
                 <input

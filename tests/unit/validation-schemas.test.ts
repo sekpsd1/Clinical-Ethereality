@@ -11,6 +11,7 @@ import { updateProfileContactSchema } from "@/features/profile/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
 import { createExternalPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
+import { staffInviteRequestSchema } from "@/features/staff-invite/schema";
 
 describe("feature validation schemas", () => {
   it("limits direct admin role changes to customer and admin accounts", () => {
@@ -18,6 +19,42 @@ describe("feature validation schemas", () => {
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "customer" }).success).toBe(true);
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "doctor" }).success).toBe(false);
     expect(updateUserRoleSchema.safeParse({ userId: "", role: "admin" }).success).toBe(false);
+  });
+
+  it("requires a first and last name for licensed staff access requests", () => {
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "doctor",
+        firstName: "สมชาย",
+        lastName: "ใจดี",
+        licenseNumber: "ว.12345",
+        specialty: "เวชศาสตร์ครอบครัว"
+      }).success
+    ).toBe(true);
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "doctor",
+        firstName: "",
+        lastName: ""
+      }).success
+    ).toBe(false);
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "pharmacist",
+        firstName: "สมหญิง",
+        lastName: "ใจดี",
+        licenseNumber: "ภ.12345",
+        pharmacyName: "บางกอก ไซโตเจเนติกซ์"
+      }).success
+    ).toBe(true);
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "pharmacist",
+        firstName: "",
+        lastName: ""
+      }).success
+    ).toBe(false);
+    expect(staffInviteRequestSchema.safeParse({ role: "admin" }).success).toBe(true);
   });
 
   it("validates and normalizes customer contact details", () => {
