@@ -79,7 +79,7 @@ function formatStatus(user: AdminUserApprovalItem): string {
   return statusLabels[status] ?? status;
 }
 
-export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
+export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApprovalsData; currentUserId: string }) {
   const approvalSummary = [
     {
       label: "รอตรวจสอบ",
@@ -185,12 +185,12 @@ export function AdminUserApprovals({ data }: { data: AdminUserApprovalsData }) {
                 <InfoTile label="สิทธิ์ที่ขอ" value={formatRole(user.requestedRole)} />
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+              <div className="mt-4 flex flex-col gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-muted">
                   <Clock3 aria-hidden="true" className="size-3.5 shrink-0" />
                   <span className="truncate">{user.submittedAt}</span>
                 </div>
-                <AdminUserActionButtons user={user} />
+                <AdminUserActionButtons user={user} isCurrentUser={user.id === currentUserId} />
               </div>
             </article>
           );

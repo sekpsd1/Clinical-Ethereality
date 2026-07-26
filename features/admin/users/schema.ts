@@ -11,3 +11,7 @@ export const approveStaffRoleSchema = adminUserIdSchema.extend({
 export const updateUserStatusSchema = adminUserIdSchema.extend({
   status: z.enum(["active", "suspended", "archived"])
 });
+
+export const updateUserRoleSchema = adminUserIdSchema.extend({
+  role: z.enum(["customer", "admin"])
+});

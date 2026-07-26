@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { updateUserRoleSchema } from "@/features/admin/users/schema";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
 import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
@@ -12,6 +13,13 @@ import { createExternalPrescriptionOrderSchema } from "@/features/products/presc
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 
 describe("feature validation schemas", () => {
+  it("limits direct admin role changes to customer and admin accounts", () => {
+    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "admin" }).success).toBe(true);
+    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "customer" }).success).toBe(true);
+    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "doctor" }).success).toBe(false);
+    expect(updateUserRoleSchema.safeParse({ userId: "", role: "admin" }).success).toBe(false);
+  });
+
   it("validates and normalizes customer contact details", () => {
     expect(
       updateProfileContactSchema.parse({

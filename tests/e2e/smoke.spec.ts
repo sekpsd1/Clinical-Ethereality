@@ -246,6 +246,7 @@ test.describe("role route smoke", () => {
     await expect(page.locator('a[href="/staff-invite/doctor"]')).toBeVisible();
     await expect(page.locator('a[href="/staff-invite/pharmacist"]')).toBeVisible();
     await expect(page.locator('a[href="/staff-invite/admin"]')).toBeVisible();
+    await expect(page.getByText("เปลี่ยนสิทธิ์").first()).toBeVisible();
   });
 
   test("staff invite request page is reachable with a customer dev session", async ({ page }) => {
