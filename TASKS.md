@@ -200,6 +200,7 @@
 ## Phase 7: Community And Profile Stitch Screens
 
 - [x] Build user profile screen
+- [x] Connect the customer profile name, LINE avatar, member status, completed consultation count, published post count, and account settings to authenticated Prisma data
 - [x] Build community hub screen
 - [x] Build create post screen
 - [x] Build article/post detail and comments screen

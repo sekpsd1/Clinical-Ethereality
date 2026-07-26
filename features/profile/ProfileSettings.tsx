@@ -14,6 +14,7 @@ import {
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { acceptCustomerConsentAction } from "@/features/legal/actions";
 import type { CustomerConsentData } from "@/features/legal/types";
+import type { CustomerProfileData } from "@/features/profile/types";
 
 type SettingSectionKey = "account" | "privacy" | "notifications" | "security" | "language";
 
@@ -60,12 +61,8 @@ const settingsItems: SettingItem[] = [
 const sectionDetails: Record<SettingSectionKey, { title: string; body: string; rows: Array<{ label: string; value: string }> }> = {
   account: {
     title: "ข้อมูลบัญชี",
-    body: "ข้อมูลบัญชีแสดงเฉพาะข้อมูลจำลองที่ปลอดภัย จนกว่าจะเชื่อมต่อ LINE LIFF production",
-    rows: [
-      { label: "ชื่อที่แสดง", value: "K. Ananya" },
-      { label: "สถานะสมาชิก", value: "ผ่านการยืนยัน" },
-      { label: "บัญชี LINE", value: "รอการตั้งค่า LINE LIFF จริง" }
-    ]
+    body: "ข้อมูลบัญชีนี้เชื่อมกับบัญชี LINE และข้อมูลติดต่อที่บันทึกไว้ในระบบ",
+    rows: []
   },
   privacy: {
     title: "ความเป็นส่วนตัวและความยินยอม",
@@ -101,9 +98,31 @@ const sectionDetails: Record<SettingSectionKey, { title: string; body: string; r
   }
 };
 
-export function ProfileSettings({ consentData, section }: { consentData: CustomerConsentData; section?: string }) {
+export function ProfileSettings({
+  consentData,
+  profileData,
+  section
+}: {
+  consentData: CustomerConsentData;
+  profileData: CustomerProfileData;
+  section?: string;
+}) {
   const activeSection = getActiveSection(section);
-  const activeDetail = activeSection ? sectionDetails[activeSection] : null;
+  const activeDetail = activeSection
+    ? activeSection === "account"
+      ? {
+          ...sectionDetails.account,
+          body: "ข้อมูลบัญชีนี้เชื่อมกับบัญชี LINE และข้อมูลติดต่อที่บันทึกไว้ในระบบ",
+          rows: [
+            { label: "ชื่อที่แสดง", value: profileData.displayName },
+            { label: "สถานะสมาชิก", value: profileData.memberStatus },
+            { label: "บัญชี LINE", value: "เชื่อมต่อแล้ว" },
+            { label: "อีเมล", value: profileData.email ?? "ยังไม่ได้ระบุ" },
+            { label: "เบอร์โทรศัพท์", value: profileData.phone ?? "ยังไม่ได้ระบุ" }
+          ]
+        }
+      : sectionDetails[activeSection]
+    : null;
 
   return (
     <div className="min-h-dvh w-full overflow-hidden bg-[linear-gradient(180deg,#e0f2f1_0%,#f7f9fb_58%,#eef3f4_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
@@ -126,8 +145,12 @@ export function ProfileSettings({ consentData, section }: { consentData: Custome
               <Settings aria-hidden="true" className="size-7" strokeWidth={2.4} />
             </span>
             <div>
-              <h1 className="text-[24px] font-extrabold leading-7 text-[#191c1e]">K. Ananya</h1>
-              <p className="mt-1 text-sm font-medium text-[#3e494a]">การตั้งค่าสมาชิกที่ผ่านการยืนยัน</p>
+              <h1 className="text-[24px] font-extrabold leading-7 text-[#191c1e]">
+                {profileData.displayName}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-[#3e494a]">
+                การตั้งค่า · {profileData.memberStatus}
+              </p>
             </div>
           </div>
           <p className="text-sm leading-6 text-[#3e494a]">

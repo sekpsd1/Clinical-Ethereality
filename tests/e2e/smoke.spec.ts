@@ -166,6 +166,8 @@ test.describe("customer mobile smoke", () => {
     await page.goto("/profile");
 
     await expectNoAppError(page);
+    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator("main h1")).not.toHaveText("K. Ananya");
     await page.getByRole("button", { name: "ออกจากระบบ" }).click();
     await expect(page).toHaveURL(/\/auth\/line\?next=%2Fconsult%2Fassessment%3Fretake%3D1$/);
   });

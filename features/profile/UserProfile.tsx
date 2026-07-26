@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 import { LogoutButton } from "@/features/profile/LogoutButton";
+import type { CustomerProfileData } from "@/features/profile/types";
 
 type ProfileMenuItem = {
   label: string;
@@ -25,7 +26,7 @@ const profileMenuItems: ProfileMenuItem[] = [
   { label: "ที่อยู่จัดส่ง", icon: Truck, href: "/profile/shipping-addresses" }
 ];
 
-export function UserProfile() {
+export function UserProfile({ data }: { data: CustomerProfileData }) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <ProfileHeader />
@@ -38,16 +39,16 @@ export function UserProfile() {
           <div className="relative z-10 flex flex-col items-center">
             <div className="relative mb-4">
               <div className="flex size-32 items-center justify-center overflow-hidden rounded-full border-4 border-white/30 bg-[#142326] p-1 shadow-2xl">
-                <ProfilePortrait />
+                <ProfilePortrait avatarUrl={data.avatarUrl} displayName={data.displayName} />
               </div>
               <div className="absolute bottom-0 right-2 flex size-9 items-center justify-center rounded-full bg-white text-primary shadow-md">
                 <ShieldCheck aria-hidden="true" className="size-5 fill-primary text-white" />
               </div>
             </div>
 
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">K. Ananya</h1>
+            <h1 className="max-w-[20rem] truncate text-3xl font-extrabold tracking-tight text-white">{data.displayName}</h1>
             <div className="mt-3 rounded-full border border-white/30 bg-white/20 px-5 py-2 backdrop-blur-md">
-              <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">สมาชิกที่ยืนยันแล้ว</span>
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">{data.memberStatus}</span>
             </div>
           </div>
         </section>
@@ -56,11 +57,11 @@ export function UserProfile() {
           <section className="grid grid-cols-2 rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
             <div className="flex flex-col gap-2 border-r border-[#bdc9ca]/20 text-center">
               <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">คำแนะนำ</span>
-              <span className="text-2xl font-bold text-primary">12</span>
+              <span className="text-2xl font-bold text-primary">{data.adviceCount}</span>
             </div>
             <div className="flex flex-col gap-2 text-center">
               <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">โพสต์</span>
-              <span className="text-2xl font-bold text-primary">5</span>
+              <span className="text-2xl font-bold text-primary">{data.postCount}</span>
             </div>
           </section>
 
@@ -116,20 +117,24 @@ function ProfileHeader() {
   );
 }
 
-function ProfilePortrait() {
+function ProfilePortrait({ avatarUrl, displayName }: { avatarUrl: string | null; displayName: string }) {
+  if (avatarUrl) {
+    return (
+      // LINE profile images are remote user content and are rendered without image optimization.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={avatarUrl} alt={`รูปโปรไฟล์ของ ${displayName}`} className="h-full w-full rounded-full object-cover" />
+    );
+  }
+
+  const initials = displayName.trim().slice(0, 2).toUpperCase() || "CE";
+
   return (
     <div
       role="img"
-      aria-label="รูปโปรไฟล์ของ K. Ananya"
-      className="relative h-full w-full overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_25%,#5a3827_0%,#111827_52%,#0b1113_100%)]"
+      aria-label={`รูปโปรไฟล์ของ ${displayName}`}
+      className="flex h-full w-full items-center justify-center rounded-full bg-[#e3f3f1] text-3xl font-bold text-primary"
     >
-      <div className="absolute left-[29%] top-[18%] h-[47%] w-[42%] rounded-full bg-[#d49b72]" />
-      <div className="absolute left-[25%] top-[13%] h-[48%] w-[52%] rounded-t-full bg-[#302016]" />
-      <div className="absolute left-[36%] top-[34%] h-[7%] w-[7%] rounded-full bg-[#3b2a22]" />
-      <div className="absolute right-[34%] top-[34%] h-[7%] w-[7%] rounded-full bg-[#3b2a22]" />
-      <div className="absolute left-[43%] top-[44%] h-[9%] w-[8%] rounded-full border-r-2 border-[#936247]" />
-      <div className="absolute left-[40%] top-[55%] h-[4%] w-[20%] rounded-full bg-[#9f4f47]" />
-      <div className="absolute bottom-0 left-[19%] h-[38%] w-[62%] rounded-t-[34px] bg-[#7bb3aa]" />
+      {initials}
     </div>
   );
 }
