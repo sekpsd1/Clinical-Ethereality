@@ -71,3 +71,4 @@ export const staffInviteRequestSchema = z
   });
 
 export type StaffInviteRole = z.infer<typeof staffInviteRoleSchema>;
+export type StaffInviteRequestData = z.infer<typeof staffInviteRequestSchema>;

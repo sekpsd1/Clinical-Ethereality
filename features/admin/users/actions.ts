@@ -12,10 +12,10 @@ import {
 } from "@/features/admin/users/schema";
 import {
   getStaffFileErrorMessage,
-  StaffFileError,
-  storeStaffFiles
+  StaffFileError
 } from "@/features/staff-files/service";
 import { staffFileEntityTypes, type StaffFileKind } from "@/features/staff-files/types";
+import { uploadAdminStaffFile } from "@/features/admin/users/staff-files";
 
 export type AdminUserActionState = {
   status: "idle" | "success" | "error";
@@ -183,53 +183,24 @@ export async function uploadStaffFileAction(
   }
 
   try {
-    const target = await prisma.user.findUnique({
-      where: {
-        id: userId
-      },
-      select: {
-        role: true,
-        doctorProfile: {
-          select: {
-            id: true
-          }
-        },
-        pharmacistProfile: {
-          select: {
-            id: true
-          }
-        }
-      }
-    });
-
-    if (
-      !target ||
-      (!target.doctorProfile &&
-        !target.pharmacistProfile &&
-        target.role !== "doctor" &&
-        target.role !== "pharmacist")
-    ) {
-      return {
-        status: "error",
-        message: "อัปโหลดไฟล์บุคลากรได้เฉพาะบัญชีแพทย์หรือเภสัชกร"
-      };
-    }
-
-    await storeStaffFiles({
+    await uploadAdminStaffFile({
       actorId: session.userId,
       ownerId: userId,
-      uploads: [
-        {
-          kind: kind as StaffFileKind,
-          file
-        }
-      ]
+      kind: kind as StaffFileKind,
+      file
     });
   } catch (error) {
     if (error instanceof StaffFileError) {
       return {
         status: "error",
         message: getStaffFileErrorMessage(error)
+      };
+    }
+
+    if (error instanceof Error && error.message === "STAFF_PROFILE_REQUIRED") {
+      return {
+        status: "error",
+        message: "อัปโหลดไฟล์บุคลากรได้เฉพาะบัญชีแพทย์หรือเภสัชกร"
       };
     }
 

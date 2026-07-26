@@ -1,16 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink, FileCheck2, ImageUp, Upload } from "lucide-react";
-import { uploadStaffFileAction, type AdminUserActionState } from "@/features/admin/users/actions";
 import { staffFileAccept, type StaffFileKind } from "@/features/staff-files/types";
 import { cn } from "@/lib/design-system/variants";
-
-const initialState: AdminUserActionState = {
-  status: "idle",
-  message: ""
-};
 
 export function AdminStaffFileControls({
   userId,
@@ -25,19 +19,14 @@ export function AdminStaffFileControls({
   licenseProofUrl: string | null;
   licenseProofName: string | null;
 }) {
-  const [photoState, photoAction] = useActionState(uploadStaffFileAction, initialState);
-  const [licenseState, licenseAction] = useActionState(uploadStaffFileAction, initialState);
-  const actionState = licenseState.status !== "idle" ? licenseState : photoState;
-
   return (
     <div className="mt-4 rounded-[8px] border border-border/70 bg-primary/[0.035] p-3">
       <p className="text-xs font-bold text-text">ตรวจสอบเอกสารบุคลากร</p>
       <p className="mt-1 text-[11px] font-semibold leading-5 text-muted">
-        เปิดตรวจรูปและใบอนุญาตก่อนอนุมัติ หากข้อมูลไม่ถูกต้องสามารถอัปโหลดไฟล์ทดแทนได้
+        ผู้ดูแลระบบเป็นผู้เพิ่มรูปโปรไฟล์ทางการและเอกสารใบอนุญาต ก่อนอนุมัติสิทธิ์บุคลากร
       </p>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <UploadForm
-          action={photoAction}
           accept={staffFileAccept.profilePhoto}
           currentUrl={profilePhotoUrl}
           icon="photo"
@@ -47,7 +36,6 @@ export function AdminStaffFileControls({
           userName={userName}
         />
         <UploadForm
-          action={licenseAction}
           accept={staffFileAccept.licenseProof}
           currentName={licenseProofName}
           currentUrl={licenseProofUrl}
@@ -58,23 +46,11 @@ export function AdminStaffFileControls({
           userName={userName}
         />
       </div>
-      {actionState.status !== "idle" ? (
-        <p
-          role="status"
-          className={cn(
-            "mt-3 text-xs font-semibold",
-            actionState.status === "success" ? "text-success" : "text-danger"
-          )}
-        >
-          {actionState.message}
-        </p>
-      ) : null}
     </div>
   );
 }
 
 function UploadForm({
-  action,
   accept,
   currentName,
   currentUrl,
@@ -84,7 +60,6 @@ function UploadForm({
   userId,
   userName
 }: {
-  action: (payload: FormData) => void;
   accept: string;
   currentName?: string | null;
   currentUrl: string | null;
@@ -94,10 +69,52 @@ function UploadForm({
   userId: string;
   userName: string;
 }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<{
+    status: "idle" | "success" | "error";
+    message: string;
+  }>({
+    status: "idle",
+    message: ""
+  });
   const Icon = icon === "photo" ? ImageUp : FileCheck2;
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setPending(true);
+    setResult({ status: "idle", message: "" });
+
+    try {
+      const response = await fetch("/api/admin/staff-files", {
+        method: "POST",
+        body: new FormData(form)
+      });
+      const payload = (await response.json()) as { message?: string };
+      const message = payload.message ?? (response.ok ? "อัปโหลดไฟล์แล้ว" : "อัปโหลดไฟล์ไม่สำเร็จ");
+
+      setResult({
+        status: response.ok ? "success" : "error",
+        message
+      });
+
+      if (response.ok) {
+        form.reset();
+        router.refresh();
+      }
+    } catch {
+      setResult({
+        status: "error",
+        message: "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่"
+      });
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
-    <form action={action} className="rounded-[8px] border border-border bg-white p-3">
+    <form onSubmit={handleSubmit} className="rounded-[8px] border border-border bg-white p-3">
       <input type="hidden" name="userId" value={userId} />
       <input type="hidden" name="kind" value={kind} />
       <div className="flex items-center justify-between gap-2">
@@ -126,14 +143,23 @@ function UploadForm({
         aria-label={`${label}ของ ${userName}`}
         className="mt-3 block w-full text-[11px] text-muted file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-bold file:text-primary"
       />
-      <UploadButton label={currentUrl ? "เปลี่ยนไฟล์" : "อัปโหลด"} />
+      <UploadButton label={currentUrl ? "เปลี่ยนไฟล์" : "อัปโหลด"} pending={pending} />
+      {result.status !== "idle" ? (
+        <p
+          role="status"
+          className={cn(
+            "mt-2 text-[11px] font-semibold",
+            result.status === "success" ? "text-success" : "text-danger"
+          )}
+        >
+          {result.message}
+        </p>
+      ) : null}
     </form>
   );
 }
 
-function UploadButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-
+function UploadButton({ label, pending }: { label: string; pending: boolean }) {
   return (
     <button
       type="submit"
