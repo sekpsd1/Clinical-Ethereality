@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Save, XCircle } from "lucide-react";
 import {
-  approveStaffRoleAction,
   updateUserRoleAction,
   updateUserStatusAction
 } from "@/features/admin/users/actions";
@@ -23,11 +23,48 @@ const initialActionState: AdminUserActionState = {
 };
 
 export function AdminUserActionButtons({ user, isCurrentUser }: AdminUserActionButtonsProps) {
+  const router = useRouter();
   const [suspendState, suspendAction] = useActionState(updateUserStatusAction, initialActionState);
-  const [approveState, approveAction] = useActionState(approveStaffRoleAction, initialActionState);
+  const [approveState, setApproveState] = useState<AdminUserActionState>(initialActionState);
+  const [approvePending, setApprovePending] = useState(false);
   const [roleState, roleAction] = useActionState(updateUserRoleAction, initialActionState);
   const actionState =
     roleState.status !== "idle" ? roleState : approveState.status !== "idle" ? approveState : suspendState;
+
+  async function handleApprove() {
+    setApprovePending(true);
+    setApproveState(initialActionState);
+
+    try {
+      const response = await fetch("/api/admin/users/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          role: user.requestedRole
+        })
+      });
+      const payload = (await response.json()) as { message?: string };
+
+      setApproveState({
+        status: response.ok ? "success" : "error",
+        message: payload.message ?? (response.ok ? "อนุมัติสิทธิ์เรียบร้อยแล้ว" : "ไม่สามารถอนุมัติสิทธิ์ได้")
+      });
+
+      if (response.ok) {
+        router.refresh();
+      }
+    } catch {
+      setApproveState({
+        status: "error",
+        message: "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่"
+      });
+    } finally {
+      setApprovePending(false);
+    }
+  }
 
   return (
     <div className="flex min-w-0 flex-1 flex-col items-end gap-2">
@@ -67,11 +104,14 @@ export function AdminUserActionButtons({ user, isCurrentUser }: AdminUserActionB
               />
             </form>
             {user.requestedRole !== "customer" ? (
-              <form action={approveAction}>
-                <input type="hidden" name="userId" value={user.id} />
-                <input type="hidden" name="role" value={user.requestedRole} />
-                <ActionIconButton ariaLabel={`อนุมัติ ${user.name}`} className="bg-primary text-white" icon="approve" />
-              </form>
+              <ActionIconButton
+                ariaLabel={`อนุมัติ ${user.name}`}
+                className="bg-primary text-white"
+                icon="approve"
+                onClick={handleApprove}
+                pendingOverride={approvePending}
+                type="button"
+              />
             ) : null}
           </div>
         </>
@@ -110,21 +150,28 @@ function SaveRoleButton({ userName }: { userName: string }) {
 function ActionIconButton({
   ariaLabel,
   className,
-  icon
+  icon,
+  onClick,
+  pendingOverride,
+  type = "submit"
 }: {
   ariaLabel: string;
   className: string;
   icon: "approve" | "suspend";
+  onClick?: () => void;
+  pendingOverride?: boolean;
+  type?: "button" | "submit";
 }) {
   const { pending } = useFormStatus();
   const Icon = icon === "approve" ? CheckCircle2 : XCircle;
 
   return (
     <button
-      type="submit"
+      type={type}
       className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
       aria-label={ariaLabel}
-      disabled={pending}
+      disabled={pendingOverride ?? pending}
+      onClick={onClick}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
     </button>
