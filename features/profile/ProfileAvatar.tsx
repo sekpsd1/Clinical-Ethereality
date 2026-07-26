@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export function ProfileAvatar({ avatarUrl, displayName }: { avatarUrl: string | null; displayName: string }) {
@@ -24,14 +23,14 @@ export function ProfileAvatar({ avatarUrl, displayName }: { avatarUrl: string | 
   }
 
   return (
-    <Image
+    // LINE profile URLs are already optimized by LINE's CDN. A native image avoids
+    // host validation and optimizer behavior that differs between LIFF and Plesk.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       src={avatarUrl}
       alt={`รูปโปรไฟล์ของ ${displayName}`}
-      fill
-      sizes="128px"
-      unoptimized
       referrerPolicy="no-referrer"
-      className="rounded-full object-cover"
+      className="absolute inset-0 h-full w-full rounded-full object-cover"
       onError={() => setImageFailed(true)}
     />
   );
