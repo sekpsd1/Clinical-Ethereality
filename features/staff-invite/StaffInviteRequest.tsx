@@ -29,13 +29,17 @@ const initialState: StaffInviteActionState = {
 export function StaffInviteRequest({
   role,
   displayName,
-  currentStatus
+  currentStatus,
+  requestStatus
 }: {
   role: StaffInviteRole;
   displayName: string;
   currentStatus: string;
+  requestStatus?: string;
 }) {
   const [state, action] = useActionState(requestStaffInviteAction, initialState);
+  const submitted = state.status === "success" || requestStatus === "pending_review";
+  const approved = requestStatus === "approved";
 
   return (
     <main className="min-h-dvh bg-app px-4 py-[calc(1.5rem+env(safe-area-inset-top))] text-text">
@@ -61,7 +65,27 @@ export function StaffInviteRequest({
           </p>
         </section>
 
-        <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+        {submitted || approved ? (
+          <section className="rounded-[8px] border border-border bg-white/90 p-5 text-center shadow-payment-card">
+            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 aria-hidden="true" className="size-7" strokeWidth={2.1} />
+            </span>
+            <h2 className="mt-4 font-headline text-xl font-bold text-text">
+              {approved ? `อนุมัติสิทธิ์${roleLabels[role]}แล้ว` : "ส่งคำขอเรียบร้อยแล้ว"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {approved
+                ? "กรุณาออกจากระบบแล้วเปิดแอปผ่าน LINE อีกครั้ง เพื่อเริ่มใช้งานด้วยสิทธิ์ใหม่"
+                : `คำขอสิทธิ์${roleLabels[role]}อยู่ระหว่างการตรวจสอบ ผู้ดูแลระบบจะตรวจเอกสารและเปิดสิทธิ์ให้เมื่อข้อมูลครบถ้วน`}
+            </p>
+            {!approved ? (
+              <p className="mt-3 rounded-[8px] bg-primary/5 px-3 py-2 text-xs font-semibold leading-5 text-primary">
+                เมื่อตรวจสอบเสร็จ ระบบจะแจ้งผลในศูนย์การแจ้งเตือน
+              </p>
+            ) : null}
+          </section>
+        ) : (
+          <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
           <input type="hidden" name="role" value={role} />
           <div className="flex flex-col gap-4">
             {role !== "admin" ? (
@@ -189,7 +213,8 @@ export function StaffInviteRequest({
               {state.message}
             </p>
           ) : null}
-        </form>
+          </form>
+        )}
       </section>
     </main>
   );

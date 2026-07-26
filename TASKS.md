@@ -318,6 +318,7 @@
 - [x] Add Plesk GitHub deployment build helper for standalone Next.js runtime output
 - [x] Add responsive desktop admin navigation, admin logout, and public-origin LINE OAuth redirects for Passenger/Plesk
 - [x] Add temporary private Plesk uploads for staff profile photos and license proofs from staff invite and Admin, with admin-only license access, approval prerequisites, file metadata, and audit logs
+- [x] Keep doctor/pharmacist applicants active as customers during review, show a Thai pending-review confirmation, expose clearer admin document-review controls, and create an in-app approval notification
 - [x] Normalize doctor specialty requests with a controlled multi-select list and optional custom specialty
 - [ ] Complete first hosted Plesk smoke deployment: HTTPS health check and mobile LINE LIFF login are passing on `app.bccgroup-thailand.com`; deploy and verify desktop LINE Login, approved staff-role access, and the end-to-end UAT flow before marking complete
 - [x] Enable backups

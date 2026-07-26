@@ -31,7 +31,10 @@ export function AdminStaffFileControls({
 
   return (
     <div className="mt-4 rounded-[8px] border border-border/70 bg-primary/[0.035] p-3">
-      <p className="text-xs font-bold text-text">ไฟล์บุคลากร</p>
+      <p className="text-xs font-bold text-text">ตรวจสอบเอกสารบุคลากร</p>
+      <p className="mt-1 text-[11px] font-semibold leading-5 text-muted">
+        เปิดตรวจรูปและใบอนุญาตก่อนอนุมัติ หากข้อมูลไม่ถูกต้องสามารถอัปโหลดไฟล์ทดแทนได้
+      </p>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <UploadForm
           action={photoAction}
@@ -109,7 +112,7 @@ function UploadForm({
             rel="noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-bold text-primary"
           >
-            เปิดดู
+            เปิดตรวจสอบ
             <ExternalLink aria-hidden="true" className="size-3" />
           </a>
         ) : null}

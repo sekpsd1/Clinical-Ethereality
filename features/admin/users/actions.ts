@@ -111,6 +111,21 @@ export async function approveStaffRoleAction(
         });
       }
 
+      await tx.notification.create({
+        data: {
+          userId: parsed.data.userId,
+          type: "system",
+          channel: "in_app",
+          title: "คำขอสิทธิ์ได้รับการอนุมัติ",
+          body:
+            parsed.data.role === "doctor"
+              ? "สิทธิ์แพทย์ได้รับการอนุมัติแล้ว กรุณาออกจากระบบและเข้าใหม่เพื่อเริ่มใช้งาน"
+              : parsed.data.role === "pharmacist"
+                ? "สิทธิ์เภสัชกรได้รับการอนุมัติแล้ว กรุณาออกจากระบบและเข้าใหม่เพื่อเริ่มใช้งาน"
+                : "สิทธิ์ผู้ดูแลระบบได้รับการอนุมัติแล้ว กรุณาออกจากระบบและเข้าใหม่เพื่อเริ่มใช้งาน"
+        }
+      });
+
       await writeAuditLog(tx, {
         actorId: session.userId,
         action: "user.approve_staff_role",

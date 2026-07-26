@@ -171,7 +171,7 @@ export async function requestStaffInviteAction(
             parsed.data.role !== "admin"
               ? `${parsed.data.firstName} ${parsed.data.lastName}`
               : undefined,
-          status: "pending_review"
+          status: parsed.data.role === "admin" ? "pending_review" : undefined
         }
       });
 

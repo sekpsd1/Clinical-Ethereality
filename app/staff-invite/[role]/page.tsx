@@ -39,15 +39,34 @@ export default async function StaffInvitePage({
     select: {
       displayName: true,
       lineUserId: true,
-      status: true
+      status: true,
+      doctorProfile: {
+        select: {
+          status: true
+        }
+      },
+      pharmacistProfile: {
+        select: {
+          status: true
+        }
+      }
     }
   });
+  const requestStatus =
+    role === "doctor"
+      ? user?.doctorProfile?.status
+      : role === "pharmacist"
+        ? user?.pharmacistProfile?.status
+        : user?.status === "pending_review"
+          ? "pending_review"
+          : undefined;
 
   return (
     <StaffInviteRequest
       role={role}
       displayName={user?.displayName ?? session.displayName ?? user?.lineUserId ?? "บัญชี LINE"}
-      currentStatus={statusLabels[user?.status ?? "active"] ?? "ใช้งานอยู่"}
+      currentStatus={statusLabels[requestStatus ?? user?.status ?? "active"] ?? "ใช้งานอยู่"}
+      requestStatus={requestStatus}
     />
   );
 }
