@@ -28,7 +28,7 @@ describe("feature validation schemas", () => {
         firstName: "สมชาย",
         lastName: "ใจดี",
         licenseNumber: "ว.12345",
-        specialty: "เวชศาสตร์ครอบครัว"
+        specialties: ["family_medicine"]
       }).success
     ).toBe(true);
     expect(
@@ -36,6 +36,23 @@ describe("feature validation schemas", () => {
         role: "doctor",
         firstName: "",
         lastName: ""
+      }).success
+    ).toBe(false);
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "doctor",
+        firstName: "สมชาย",
+        lastName: "ใจดี",
+        specialties: []
+      }).success
+    ).toBe(false);
+    expect(
+      staffInviteRequestSchema.safeParse({
+        role: "doctor",
+        firstName: "สมชาย",
+        lastName: "ใจดี",
+        specialties: ["other"],
+        otherSpecialty: ""
       }).success
     ).toBe(false);
     expect(

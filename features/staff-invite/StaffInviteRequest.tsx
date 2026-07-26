@@ -6,6 +6,7 @@ import { CheckCircle2, FileCheck2, ImageUp, ShieldCheck } from "lucide-react";
 import { requestStaffInviteAction, type StaffInviteActionState } from "@/features/staff-invite/actions";
 import type { StaffInviteRole } from "@/features/staff-invite/schema";
 import { staffFileAccept } from "@/features/staff-files/types";
+import { doctorSpecialtyChoices } from "@/features/staff-invite/doctor-specialties";
 import { cn } from "@/lib/design-system/variants";
 
 const roleLabels: Record<StaffInviteRole, string> = {
@@ -100,14 +101,34 @@ export function StaffInviteRequest({
             ) : null}
 
             {role === "doctor" ? (
-              <label className="flex flex-col gap-2 text-sm font-bold text-text">
-                ความเชี่ยวชาญ
-                <input
-                  name="specialty"
-                  placeholder="เช่น ผิวหนังและความงาม"
-                  className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
-                />
-              </label>
+              <fieldset className="flex flex-col gap-3">
+                <legend className="text-sm font-bold text-text">ความเชี่ยวชาญ</legend>
+                <p className="text-xs leading-5 text-muted">เลือกได้ไม่เกิน 3 รายการ</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {doctorSpecialtyChoices.map((choice) => (
+                    <label
+                      key={choice.value}
+                      className="flex min-h-11 items-center gap-3 rounded-[8px] border border-border bg-white px-3 py-2 text-sm font-semibold text-text"
+                    >
+                      <input
+                        type="checkbox"
+                        name="specialties"
+                        value={choice.value}
+                        className="size-4 accent-primary"
+                      />
+                      <span>{choice.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className="flex flex-col gap-2 text-sm font-bold text-text">
+                  ระบุความเชี่ยวชาญอื่น ๆ
+                  <input
+                    name="otherSpecialty"
+                    placeholder="กรอกเมื่อเลือก อื่น ๆ"
+                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
+                  />
+                </label>
+              </fieldset>
             ) : null}
 
             {role === "pharmacist" ? (

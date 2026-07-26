@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { staffInviteRequestSchema } from "@/features/staff-invite/schema";
+import { formatDoctorSpecialties } from "@/features/staff-invite/doctor-specialties";
 import {
   getStaffFileErrorMessage,
   StaffFileError,
@@ -17,7 +18,16 @@ export type StaffInviteActionState = {
 };
 
 function formDataToObject(formData: FormData) {
-  return Object.fromEntries(Array.from(formData.entries()).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+  return {
+    ...Object.fromEntries(
+      Array.from(formData.entries()).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string"
+      )
+    ),
+    specialties: formData
+      .getAll("specialties")
+      .filter((value): value is string => typeof value === "string")
+  };
 }
 
 function optionalText(value?: string) {
@@ -42,7 +52,7 @@ export async function requestStaffInviteAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "ข้อมูลคำขอไม่ถูกต้อง"
+      message: parsed.error.issues[0]?.message ?? "ข้อมูลคำขอไม่ถูกต้อง"
     };
   }
 
@@ -110,6 +120,11 @@ export async function requestStaffInviteAction(
       }
 
       if (parsed.data.role === "doctor") {
+        const specialty = formatDoctorSpecialties(
+          parsed.data.specialties ?? [],
+          parsed.data.otherSpecialty
+        );
+
         await tx.doctor.upsert({
           where: {
             userId: session.userId
@@ -117,12 +132,12 @@ export async function requestStaffInviteAction(
           create: {
             userId: session.userId,
             licenseNumber: optionalText(parsed.data.licenseNumber),
-            specialty: optionalText(parsed.data.specialty),
+            specialty,
             status: "pending_review"
           },
           update: {
             licenseNumber: optionalText(parsed.data.licenseNumber),
-            specialty: optionalText(parsed.data.specialty),
+            specialty,
             status: "pending_review"
           }
         });
