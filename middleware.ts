@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessTokenAtEdge } from "@/lib/auth/edge-jwt";
 import { authCookieNames } from "@/lib/auth/cookies";
+import { getPublicAppOrigin } from "@/lib/auth/line-oauth";
 import type { Role } from "@/lib/permissions/roles";
 
 const protectedPrefixes = ["/consult", "/store", "/community", "/notifications", "/profile"];
@@ -29,7 +30,7 @@ function pathStartsWith(pathname: string, prefix: string): boolean {
 
 function createAuthRedirect(request: NextRequest): NextResponse {
   const url = request.nextUrl.clone();
-  const signInUrl = new URL("/auth/line", request.url);
+  const signInUrl = new URL("/auth/line", getPublicAppOrigin(request.nextUrl.origin));
 
   signInUrl.searchParams.set("next", `${url.pathname}${url.search}`);
 
@@ -55,7 +56,7 @@ export async function middleware(request: NextRequest) {
     const claims = await verifyAccessTokenAtEdge(accessToken);
 
     if (roleBoundary && !roleBoundary.roles.includes(claims.role)) {
-      return NextResponse.redirect(new URL("/consult", request.url));
+      return NextResponse.redirect(new URL("/consult", getPublicAppOrigin(request.nextUrl.origin)));
     }
 
     return NextResponse.next();

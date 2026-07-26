@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getLineOAuthCookieOptions,
+  getPublicAppOrigin,
   lineOAuthCookieNames,
   normalizeLineAuthNextPath
 } from "@/lib/auth/line-oauth";
@@ -14,7 +15,7 @@ export function GET(request: NextRequest) {
   const { LINE_CHANNEL_ID, LINE_LOGIN_CALLBACK_URL } = getAppEnv();
 
   if (!LINE_CHANNEL_ID || !LINE_LOGIN_CALLBACK_URL) {
-    const errorUrl = new URL("/auth/line", request.nextUrl.origin);
+    const errorUrl = new URL("/auth/line", getPublicAppOrigin(request.nextUrl.origin));
     errorUrl.searchParams.set("next", nextPath);
     errorUrl.searchParams.set("error", "configuration");
     return NextResponse.redirect(errorUrl);

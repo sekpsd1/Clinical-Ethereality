@@ -1,0 +1,32 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { getPublicAppOrigin, normalizeLineAuthNextPath } from "@/lib/auth/line-oauth";
+
+const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+afterEach(() => {
+  if (originalAppUrl === undefined) {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+  } else {
+    process.env.NEXT_PUBLIC_APP_URL = originalAppUrl;
+  }
+});
+
+describe("LINE OAuth URL helpers", () => {
+  it("accepts only local absolute next paths", () => {
+    expect(normalizeLineAuthNextPath("/admin")).toBe("/admin");
+    expect(normalizeLineAuthNextPath("//attacker.example")).toBe("/consult/assessment");
+    expect(normalizeLineAuthNextPath("https://attacker.example")).toBe("/consult/assessment");
+  });
+
+  it("uses the configured public origin behind a reverse proxy", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.bccgroup-thailand.com/admin";
+
+    expect(getPublicAppOrigin("http://0.0.0.0:3000")).toBe("https://app.bccgroup-thailand.com");
+  });
+
+  it("falls back when the configured URL is invalid", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "not-a-url";
+
+    expect(getPublicAppOrigin("http://localhost:3001")).toBe("http://localhost:3001");
+  });
+});

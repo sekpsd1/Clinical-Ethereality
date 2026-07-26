@@ -133,8 +133,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
   }>;
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
+    <div className="flex flex-col gap-5 lg:gap-6">
+      <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking sm:mx-0 sm:rounded-[8px] sm:px-6 lg:px-8 lg:py-7">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-label font-bold uppercase text-white/75">ภาพรวมปัจจุบัน</p>
@@ -142,12 +142,12 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
           </div>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>{data.unavailable ? "ฐานข้อมูลออฟไลน์" : "ใช้งานอยู่"}</StatusBadge>
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-3 gap-2 lg:gap-4">
           {summaryMetrics.map((metric) => {
             const Icon = metric.icon;
 
             return (
-              <div key={metric.label} className="rounded-[8px] bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur-card">
+              <div key={metric.label} className="rounded-[8px] bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur-card lg:p-5">
                 <Icon aria-hidden="true" className="size-4 text-white/80" strokeWidth={2.2} />
                 <p className="mt-3 font-headline text-2xl font-bold">{metric.value}</p>
                 <p className="mt-1 text-[10px] font-semibold leading-4 text-white/75">{metric.label}</p>
@@ -157,7 +157,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-3 lg:gap-4">
         {riskItems.map((item) => {
           const Icon = item.icon;
 
@@ -183,30 +183,32 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
           </Link>
         </div>
 
-        {queueItems.map((item) => {
-          const Icon = item.icon;
+        <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+          {queueItems.map((item) => {
+            const Icon = item.icon;
 
-          return (
-            <article
-              key={item.title}
-              className="flex items-center gap-3 rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card"
-            >
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
-                <Icon aria-hidden="true" className="size-5" strokeWidth={2.1} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="truncate text-sm font-bold text-text">{item.title}</h3>
+            return (
+              <article
+                key={item.title}
+                className="flex items-center gap-3 rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card"
+              >
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
+                  <Icon aria-hidden="true" className="size-5" strokeWidth={2.1} />
                 </div>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{item.detail}</p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <span className="font-headline text-xl font-bold text-text">{item.count}</span>
-                <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
-              </div>
-            </article>
-          );
-        })}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-sm font-bold text-text">{item.title}</h3>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{item.detail}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <span className="font-headline text-xl font-bold text-text">{item.count}</span>
+                  <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">

@@ -61,7 +61,7 @@ test.describe("protected workflow integration", () => {
 
     await page.goto("/doctor/consultations");
     await expect(page).toHaveURL(/\/doctor\/consultations$/);
-    await expect(page.getByRole("link", { name: "Consults" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "คิวปรึกษา" })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/pharmacist/prescriptions");
     await expect(page).toHaveURL(/\/pharmacist\/prescriptions$/);

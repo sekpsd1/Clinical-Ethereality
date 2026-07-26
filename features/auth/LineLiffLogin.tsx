@@ -109,9 +109,9 @@ export function LineLiffLogin({
     let cancelled = false;
 
     async function completeLogin() {
-      if (forceRoleSelect && allowDevBypass) {
+      if (allowDevBypass) {
         setState("error");
-        setMessage("เลือกบทบาทลูกค้าเพื่อทดสอบหน้าลูกค้า");
+        setMessage(forceRoleSelect ? "เลือกบทบาทลูกค้าเพื่อทดสอบหน้าลูกค้า" : "เลือกบทบาทเพื่อทดสอบระบบในเครื่อง");
         return;
       }
 

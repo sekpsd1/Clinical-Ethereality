@@ -7,6 +7,20 @@ export function normalizeLineAuthNextPath(value: string | null | undefined): str
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/consult/assessment";
 }
 
+export function getPublicAppOrigin(fallbackOrigin: string): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!configuredUrl) {
+    return fallbackOrigin;
+  }
+
+  try {
+    return new URL(configuredUrl).origin;
+  } catch {
+    return fallbackOrigin;
+  }
+}
+
 export function getLineOAuthCookieOptions() {
   return {
     httpOnly: true,

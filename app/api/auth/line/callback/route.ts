@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeLineAuthorizationCode } from "@/lib/auth/line";
 import {
   getLineOAuthCookieOptions,
+  getPublicAppOrigin,
   lineOAuthCookieNames,
   normalizeLineAuthNextPath
 } from "@/lib/auth/line-oauth";
@@ -37,7 +38,7 @@ function clearLineOAuthCookies(response: NextResponse): NextResponse {
 }
 
 function redirectToAuthError(request: NextRequest, nextPath: string, error: string): NextResponse {
-  const url = new URL("/auth/line", request.nextUrl.origin);
+  const url = new URL("/auth/line", getPublicAppOrigin(request.nextUrl.origin));
   url.searchParams.set("next", nextPath);
   url.searchParams.set("error", error);
   return clearLineOAuthCookies(NextResponse.redirect(url));
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
       ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
     });
-    const response = NextResponse.redirect(new URL(nextPath, request.nextUrl.origin));
+    const response = NextResponse.redirect(new URL(nextPath, getPublicAppOrigin(request.nextUrl.origin)));
     await setSessionCookies(response, authSession);
     return clearLineOAuthCookies(response);
   } catch (error) {

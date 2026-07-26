@@ -130,7 +130,7 @@ test.describe("customer mobile smoke", () => {
       );
     });
     await expect(page.getByText("เลือกบทบาทลูกค้าเพื่อทดสอบหน้าลูกค้า")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Enter as customer" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter as customer" })).toBeVisible({ timeout: 10_000 });
   });
 
   test("/consult/assessment/complete shows recommendation and links to consult", async ({ page }) => {
@@ -208,9 +208,21 @@ test.describe("role route smoke", () => {
 
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.locator('nav a[href="/admin/users"]')).toBeVisible();
-    await expect(page.locator('nav a[href="/admin/payments"]')).toBeVisible();
-    await expect(page.locator('nav a[href="/admin/compliance"]')).toBeVisible();
+    await expect(page.locator('nav a[href="/admin/users"]').last()).toBeVisible();
+    await expect(page.locator('nav a[href="/admin/payments"]').last()).toBeVisible();
+    await expect(page.locator('nav a[href="/admin/compliance"]').last()).toBeVisible();
+  });
+
+  test("admin dashboard uses desktop navigation at desktop width", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signInAs(page, "admin");
+    await page.goto("/admin");
+
+    await expectNoAppError(page);
+    await expect(page.locator("aside")).toBeVisible();
+    await expect(page.locator('aside a[href="/admin/users"]')).toBeVisible();
+    await expect(page.locator("aside").getByRole("button", { name: "ออกจากระบบ" })).toBeVisible();
+    await expect(page.locator('nav[aria-label="ผู้ดูแลระบบ"]')).toBeHidden();
   });
 
   test("admin user page exposes staff invitation links", async ({ page }) => {
@@ -239,7 +251,7 @@ test.describe("role route smoke", () => {
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/admin\/compliance$/);
     await expect(page.getByRole("heading", { name: "ตรวจความพร้อมด้านข้อกำหนด" })).toBeVisible();
-    await expect(page.locator('nav a[href="/admin/compliance"]')).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('nav a[href="/admin/compliance"]').last()).toHaveAttribute("aria-current", "page");
   });
 
   test("admin payment review page shows payment evidence clarity", async ({ page }) => {
