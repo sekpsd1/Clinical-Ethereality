@@ -282,6 +282,9 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("Consent pending");
     expect(html).toContain("rounded-t-[32px]");
     expect(html).toContain("bottom-20");
+    expect(html).toContain("top-[calc(env(safe-area-inset-top)+0.75rem)]");
+    expect(html).toContain("max-h-full");
+    expect(html).toContain("overflow-y-auto");
     expect(closedHtml).not.toContain("Hidden");
   });
 
