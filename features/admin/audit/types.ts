@@ -17,5 +17,10 @@ export type AdminAuditLogData = {
     prescription: number;
     operations: number;
   };
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
   unavailable?: boolean;
 };

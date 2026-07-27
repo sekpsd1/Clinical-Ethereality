@@ -88,24 +88,36 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">เริ่ม</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">เริ่ม (24 ชั่วโมง)</span>
             <input
               name="startTime"
-              type="time"
+              type="text"
+              inputMode="numeric"
+              pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+              maxLength={5}
               disabled={isDisabled}
               defaultValue="09:00"
+              placeholder="09:00"
+              title="กรอกเวลาแบบ 24 ชั่วโมง เช่น 09:00 หรือ 17:30"
+              autoComplete="off"
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
               required
             />
           </label>
 
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">สิ้นสุด</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">สิ้นสุด (24 ชั่วโมง)</span>
             <input
               name="endTime"
-              type="time"
+              type="text"
+              inputMode="numeric"
+              pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+              maxLength={5}
               disabled={isDisabled}
               defaultValue="12:00"
+              placeholder="12:00"
+              title="กรอกเวลาแบบ 24 ชั่วโมง เช่น 09:00 หรือ 17:30"
+              autoComplete="off"
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
               required
             />

@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { DatabaseZap, FileClock, ReceiptText, ScrollText } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -38,8 +40,59 @@ export function AdminAuditLog({ data }: { data: AdminAuditLogData }) {
           <AuditLogCard key={log.id} log={log} />
         ))}
       </section>
+
+      {!data.unavailable && data.summary.total > 0 ? (
+        <nav
+          aria-label="หน้าบันทึกการตรวจสอบ"
+          className="flex items-center justify-between gap-3 rounded-[8px] border border-border bg-white/85 p-3 text-xs shadow-payment-card"
+        >
+          <PaginationLink
+            href={getAuditPageHref(data.pagination.page - 1)}
+            disabled={data.pagination.page <= 1}
+          >
+            ก่อนหน้า
+          </PaginationLink>
+          <p className="font-semibold text-muted">
+            หน้า {data.pagination.page} จาก {data.pagination.totalPages} · แสดงสูงสุด{" "}
+            {data.pagination.pageSize} รายการต่อหน้า
+          </p>
+          <PaginationLink
+            href={getAuditPageHref(data.pagination.page + 1)}
+            disabled={data.pagination.page >= data.pagination.totalPages}
+          >
+            ถัดไป
+          </PaginationLink>
+        </nav>
+      ) : null}
     </div>
   );
+}
+
+function PaginationLink({
+  children,
+  disabled,
+  href
+}: {
+  children: string;
+  disabled: boolean;
+  href: Route;
+}) {
+  const className =
+    "inline-flex h-9 min-w-20 items-center justify-center rounded-[8px] border border-border px-3 font-bold";
+
+  if (disabled) {
+    return <span className={`${className} cursor-not-allowed text-muted/50`}>{children}</span>;
+  }
+
+  return (
+    <Link href={href} className={`${className} bg-white text-primary`}>
+      {children}
+    </Link>
+  );
+}
+
+function getAuditPageHref(page: number): Route {
+  return `/admin/audit?page=${page}` as Route;
 }
 
 function SummaryTile({ icon, label, value }: { icon: "total" | "payment" | "prescription" | "operations"; label: string; value: number }) {
