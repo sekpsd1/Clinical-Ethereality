@@ -28,7 +28,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
         <TextField label="ชื่อสินค้า" name="name" defaultValue={product?.name ?? ""} placeholder="ชื่อสินค้า" />
         <TextField label="Slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="clinical-product-name" />
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">หมวดหมู่สินค้า</span>
+          <span className="block text-[13px] font-bold text-muted">หมวดหมู่สินค้า</span>
           <select
             className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
             defaultValue={product?.category ?? "other"}
@@ -92,7 +92,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
         />
         <div className="grid grid-cols-[1fr_1fr] gap-2">
           <label>
-            <span className="block text-[10px] font-bold uppercase text-muted">สถานะ</span>
+            <span className="block text-[13px] font-bold text-muted">สถานะ</span>
             <select
               className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
               defaultValue={product?.status ?? "draft"}
@@ -158,7 +158,7 @@ function TextAreaField({
 }) {
   return (
     <label>
-      <span className="block text-[10px] font-bold uppercase text-muted">{label}</span>
+      <span className="block text-[13px] font-bold text-muted">{label}</span>
       <textarea
         className={cn(
           "mt-1 w-full resize-y rounded-[8px] border border-border bg-white px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary",
@@ -224,7 +224,7 @@ function TextField({
 }) {
   return (
     <label>
-      <span className="block text-[10px] font-bold uppercase text-muted">{label}</span>
+      <span className="block text-[13px] font-bold text-muted">{label}</span>
       <input
         className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
         aria-describedby={hint ? `${name}-hint` : undefined}
