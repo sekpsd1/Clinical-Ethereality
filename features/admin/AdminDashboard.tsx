@@ -10,6 +10,7 @@ import {
   UserCheck,
   UsersRound
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -18,38 +19,35 @@ import type { AdminDashboardData } from "@/features/admin/dashboard/types";
 
 type DashboardTone = "neutral" | "success" | "warning" | "danger";
 
-const activityItems = [
-  "อัปโหลดสลิปชำระเงินสำหรับคำสั่งซื้อ CE-1042",
-  "มีคำขออัปเดตตารางของ นพ.สมชาย",
-  "เภสัชกรตรวจสอบ RX-209 เสร็จแล้ว",
-  "เปิดรายงานชุมชนสำหรับบทความวิตามิน"
-] as const;
-
 export function AdminDashboard({ data }: { data: AdminDashboardData }) {
   const summaryMetrics = [
     {
       label: "รอตรวจชำระ",
       value: String(data.operations.paymentsPendingReview),
       tone: data.operations.paymentsPendingReview > 0 ? "warning" : "success",
-      icon: CreditCard
+      icon: CreditCard,
+      href: "/admin/payments"
     },
     {
       label: "ใบสั่งยา",
       value: String(data.operations.prescriptionsPendingVerification),
       tone: data.operations.prescriptionsPendingVerification > 0 ? "warning" : "success",
-      icon: FileText
+      icon: FileText,
+      href: "/pharmacist/prescriptions"
     },
     {
       label: "รอจัดเตรียม",
       value: String(data.operations.ordersAwaitingPreparation),
       tone: data.operations.ordersAwaitingPreparation > 0 ? "neutral" : "success",
-      icon: PackageCheck
+      icon: PackageCheck,
+      href: "/admin/orders"
     }
   ] satisfies Array<{
     label: string;
     value: string;
     tone: DashboardTone;
     icon: typeof CreditCard;
+    href: string;
   }>;
 
   const queueItems = [
@@ -59,7 +57,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.userApprovals.pendingReview,
       badge: data.unavailable ? "ออฟไลน์" : "ตรวจสอบ",
       tone: data.unavailable ? "danger" : "warning",
-      icon: UsersRound
+      icon: UsersRound,
+      href: "/admin/users"
     },
     {
       title: "คำปรึกษาที่รอดำเนินการ",
@@ -67,7 +66,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.operations.pendingConsultations,
       badge: "วันนี้",
       tone: data.operations.pendingConsultations > 0 ? "neutral" : "success",
-      icon: CalendarClock
+      icon: CalendarClock,
+      href: "/doctor/consultations"
     },
     {
       title: "การชำระเงินรอตรวจสอบ",
@@ -75,7 +75,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.operations.paymentsPendingReview,
       badge: "การเงิน",
       tone: data.operations.paymentsPendingReview > 0 ? "warning" : "success",
-      icon: CreditCard
+      icon: CreditCard,
+      href: "/admin/payments"
     },
     {
       title: "ใบสั่งยารอตรวจสอบ",
@@ -83,7 +84,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.operations.prescriptionsPendingVerification,
       badge: "คลินิก",
       tone: data.operations.prescriptionsPendingVerification > 0 ? "warning" : "success",
-      icon: ClipboardCheck
+      icon: ClipboardCheck,
+      href: "/pharmacist/prescriptions"
     },
     {
       title: "คำสั่งซื้อรอจัดเตรียม",
@@ -91,7 +93,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.operations.ordersAwaitingPreparation,
       badge: "ปฏิบัติการ",
       tone: data.operations.ordersAwaitingPreparation > 0 ? "neutral" : "success",
-      icon: PackageCheck
+      icon: PackageCheck,
+      href: "/admin/orders"
     },
     {
       title: "เนื้อหาชุมชนที่ต้องกลั่นกรอง",
@@ -99,7 +102,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       count: data.operations.moderationQueue,
       badge: "ความปลอดภัย",
       tone: data.operations.moderationQueue > 0 ? "danger" : "success",
-      icon: ShieldAlert
+      icon: ShieldAlert,
+      href: "/admin/moderation"
     }
   ] satisfies Array<{
     title: string;
@@ -108,6 +112,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
     badge: string;
     tone: DashboardTone;
     icon: typeof UsersRound;
+    href: string;
   }>;
 
   const riskItems = [
@@ -115,7 +120,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       title: "สต็อกต่ำ",
       detail: data.unavailable ? "รอเชื่อมต่อฐานข้อมูลเพื่ออ่านสต็อก" : `${data.operations.lowStockProducts} รายการต่ำกว่าเกณฑ์`,
       tone: data.unavailable ? "danger" : data.operations.lowStockProducts > 0 ? "warning" : "success",
-      icon: AlertTriangle
+      icon: AlertTriangle,
+      href: "/admin/inventory"
     },
     {
       title: "การเปลี่ยนสิทธิ์",
@@ -123,13 +129,15 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         ? "รอเชื่อมต่อฐานข้อมูลเพื่ออ่านคิวสิทธิ์"
         : `${data.userApprovals.approvedStaff} บัญชีบุคลากรอนุมัติแล้ว, ${data.userApprovals.suspended} บัญชีถูกระงับ`,
       tone: data.unavailable ? "danger" : "neutral",
-      icon: UserCheck
+      icon: UserCheck,
+      href: "/admin/users"
     }
   ] satisfies Array<{
     title: string;
     detail: string;
     tone: DashboardTone;
     icon: typeof AlertTriangle;
+    href: string;
   }>;
 
   return (
@@ -147,11 +155,15 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
             const Icon = metric.icon;
 
             return (
-              <div key={metric.label} className="rounded-[8px] bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur-card lg:p-5">
+              <Link
+                key={metric.label}
+                href={metric.href as Route}
+                className="rounded-[8px] bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur-card transition hover:bg-white/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:p-5"
+              >
                 <Icon aria-hidden="true" className="size-4 text-white/80" strokeWidth={2.2} />
                 <p className="mt-3 font-headline text-2xl font-bold">{metric.value}</p>
                 <p className="mt-1 text-[10px] font-semibold leading-4 text-white/75">{metric.label}</p>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -162,14 +174,16 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
           const Icon = item.icon;
 
           return (
-            <GlassSurface key={item.title} className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <Icon aria-hidden="true" className="size-5 text-primary" strokeWidth={2.1} />
-                <StatusBadge tone={item.tone}>{item.tone === "warning" ? "ตรวจสอบ" : item.tone === "danger" ? "รอระบบ" : "บันทึก"}</StatusBadge>
-              </div>
-              <h3 className="mt-4 text-sm font-bold text-text">{item.title}</h3>
-              <p className="mt-1 text-xs leading-5 text-muted">{item.detail}</p>
-            </GlassSurface>
+            <Link key={item.title} href={item.href as Route} className="block">
+              <GlassSurface className="h-full p-4 transition hover:border-primary/40">
+                <div className="flex items-center justify-between gap-3">
+                  <Icon aria-hidden="true" className="size-5 text-primary" strokeWidth={2.1} />
+                  <StatusBadge tone={item.tone}>{item.tone === "warning" ? "ตรวจสอบ" : item.tone === "danger" ? "รอระบบ" : "บันทึก"}</StatusBadge>
+                </div>
+                <h3 className="mt-4 text-sm font-bold text-text">{item.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-muted">{item.detail}</p>
+              </GlassSurface>
+            </Link>
           );
         })}
       </section>
@@ -177,10 +191,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-headline text-lg font-bold text-text">คิวงาน</h2>
-          <Link href="/admin/users" className="inline-flex items-center gap-1 text-xs font-bold text-primary">
-            ดูทั้งหมด
-            <ArrowUpRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
-          </Link>
+          <p className="text-xs font-semibold text-muted">เลือกคิวเพื่อเปิดหน้าปฏิบัติงาน</p>
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
@@ -188,8 +199,9 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
             const Icon = item.icon;
 
             return (
-              <article
+              <Link
                 key={item.title}
+                href={item.href as Route}
                 className="flex items-center gap-3 rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card"
               >
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
@@ -204,8 +216,9 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <span className="font-headline text-xl font-bold text-text">{item.count}</span>
                   <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
+                  <ArrowUpRight aria-hidden="true" className="size-4 text-primary" strokeWidth={2.1} />
                 </div>
-              </article>
+              </Link>
             );
           })}
         </div>
@@ -214,17 +227,29 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
         <div className="flex items-center justify-between">
           <h2 className="font-headline text-lg font-bold text-text">กิจกรรมล่าสุด</h2>
-          <StatusBadge>ตรวจทาน</StatusBadge>
+          <StatusBadge>{data.recentActivities.length} รายการ</StatusBadge>
         </div>
         <div className="mt-4 flex flex-col">
-          {activityItems.map((item, index) => (
-            <div
-              key={item}
-              className={cn("flex gap-3 py-3", index !== activityItems.length - 1 && "border-b border-border/70")}
+          {data.recentActivities.length === 0 ? (
+            <p className="py-3 text-sm text-muted">ยังไม่มีบันทึกกิจกรรมจากระบบ</p>
+          ) : null}
+          {data.recentActivities.map((item, index) => (
+            <Link
+              key={item.id}
+              href={item.href as Route}
+              className={cn(
+                "flex items-start gap-3 py-3",
+                index !== data.recentActivities.length - 1 && "border-b border-border/70"
+              )}
             >
               <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
-              <p className="text-sm leading-5 text-muted">{item}</p>
-            </div>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold leading-5 text-text">{item.title}</span>
+                <span className="mt-1 block truncate text-xs leading-5 text-muted">{item.detail}</span>
+                <span className="mt-1 block text-[11px] font-semibold text-muted">{item.createdAt}</span>
+              </span>
+              <ArrowUpRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" strokeWidth={2.1} />
+            </Link>
           ))}
         </div>
       </section>

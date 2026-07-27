@@ -23,6 +23,8 @@ const products: Product[] = [
     id: "fallback-antiviral-gel",
     name: "Antiviral Gel",
     slug: "clinical-retinoid-cream",
+    category: "medicine",
+    categoryLabel: "ยาและเวชภัณฑ์",
     price: "฿1,200",
     imageAlt: "Antiviral gel tube in clinical packaging",
     imageUrl: null,
@@ -38,6 +40,8 @@ const products: Product[] = [
     id: "fallback-vitamin",
     name: "Multi-Vitamin 30 Tabs",
     slug: "vitamin-c-complex",
+    category: "supplement",
+    categoryLabel: "วิตามินและอาหารเสริม",
     price: "฿450",
     imageAlt: "Multi-vitamin bottle on a studio background",
     imageUrl: null,
@@ -53,6 +57,8 @@ const products: Product[] = [
     id: "fallback-kit",
     name: "แพ็กเกจตรวจ HPV (Home Kit)",
     slug: "paracetamol-500mg",
+    category: "health-equipment",
+    categoryLabel: "อุปกรณ์สุขภาพ",
     price: "฿2,500",
     imageAlt: "HPV home testing kit with clinical packaging",
     imageUrl: null,
@@ -175,6 +181,7 @@ function ProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="mt-5 min-w-0">
+        <p className="truncate text-[10px] font-bold text-primary">{product.categoryLabel}</p>
         <h3 className="truncate text-[18px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
         <p className="mt-2 text-[23px] font-extrabold leading-7 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
@@ -198,6 +205,7 @@ function FeaturedProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col py-1">
+        <p className="text-[10px] font-bold text-primary">{product.categoryLabel}</p>
         <h3 className="text-[19px] font-bold leading-7 text-[#191c1e]">{product.name}</h3>
         <p className="mt-3 text-[13px] leading-5 text-[#3e494a]">{product.description}</p>
         <p className="mt-4 text-[25px] font-extrabold leading-8 text-primary">{product.price}</p>

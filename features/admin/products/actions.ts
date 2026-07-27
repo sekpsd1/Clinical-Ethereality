@@ -23,7 +23,13 @@ export async function upsertProductAction(
   const { productId, ...productData } = parsed.data;
   const normalizedData = {
     ...productData,
+    shortDescription: productData.shortDescription || null,
     description: productData.description || null,
+    usageInstructions: productData.usageInstructions || null,
+    fdaNumber: productData.fdaNumber || null,
+    warnings: productData.warnings || null,
+    storageInstructions: productData.storageInstructions || null,
+    specialFulfillmentNotes: productData.specialFulfillmentNotes || null,
     imageUrl: productData.imageUrl || null,
     price: productData.price.toFixed(2)
   };
@@ -45,8 +51,10 @@ export async function upsertProductAction(
           entityId: productId,
           metadata: {
             slug: normalizedData.slug,
+            category: normalizedData.category,
             status: normalizedData.status,
-            requiresPrescription: normalizedData.requiresPrescription
+            requiresPrescription: normalizedData.requiresPrescription,
+            controlledOrRestricted: normalizedData.controlledOrRestricted
           }
         });
       } else {
@@ -70,8 +78,10 @@ export async function upsertProductAction(
           entityId: product.id,
           metadata: {
             slug: product.slug,
+            category: product.category,
             status: product.status,
-            requiresPrescription: product.requiresPrescription
+            requiresPrescription: product.requiresPrescription,
+            controlledOrRestricted: product.controlledOrRestricted
           }
         });
       }

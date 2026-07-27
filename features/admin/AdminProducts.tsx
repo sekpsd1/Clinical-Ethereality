@@ -110,8 +110,9 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
                     <StatusBadge tone={tone}>{productStatusLabels[product.status]}</StatusBadge>
                   </div>
                   <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted">
-                    {product.description || "ยังไม่มีรายละเอียดสินค้า"}
+                    {product.shortDescription || product.description || "ยังไม่มีรายละเอียดสินค้า"}
                   </p>
+                  <p className="mt-2 text-[10px] font-bold text-primary">{product.categoryLabel}</p>
                 </div>
               </div>
 

@@ -87,6 +87,8 @@ const seedProducts = [
   {
     name: "HPV Home Test Kit 14 สายพันธุ์",
     slug: "hpv-home-test-14",
+    category: "health-equipment",
+    shortDescription: "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee ครอบคลุม 14 สายพันธุ์",
     description:
       "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 14 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1200.00",
@@ -102,6 +104,8 @@ const seedProducts = [
   {
     name: "HPV Home Test Kit 18 สายพันธุ์",
     slug: "hpv-home-test-18",
+    category: "health-equipment",
+    shortDescription: "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee ครอบคลุม 18 สายพันธุ์",
     description:
       "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 18 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1500.00",
@@ -117,6 +121,8 @@ const seedProducts = [
   {
     name: "HPV Home Test Kit 29 สายพันธุ์",
     slug: "hpv-home-test-29",
+    category: "health-equipment",
+    shortDescription: "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee ครอบคลุม 29 สายพันธุ์",
     description:
       "ชุดตรวจ HPV จากปัสสาวะด้วยอุปกรณ์ Colli-Pee สำหรับตรวจหาเชื้อ HPV 29 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "2000.00",
@@ -132,6 +138,8 @@ const seedProducts = [
   {
     name: "STIs Home Test Kit 14 รายการ",
     slug: "stis-home-test-14",
+    category: "health-equipment",
+    shortDescription: "ชุดตรวจโรคติดต่อทางเพศสัมพันธ์จากปัสสาวะ 14 รายการ พร้อมอุปกรณ์ Colli-Pee",
     description:
       "ชุดตรวจโรคติดต่อทางเพศสัมพันธ์จากปัสสาวะ 14 รายการ พร้อมอุปกรณ์เก็บตัวอย่าง Colli-Pee เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1500.00",
@@ -147,6 +155,8 @@ const seedProducts = [
   {
     name: "HPV Self Swab Kit 14 สายพันธุ์",
     slug: "hpv-self-swab-14",
+    category: "health-equipment",
+    shortDescription: "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจ HPV 14 สายพันธุ์",
     description:
       "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 14 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1200.00",
@@ -162,6 +172,8 @@ const seedProducts = [
   {
     name: "HPV Self Swab Kit 18 สายพันธุ์",
     slug: "hpv-self-swab-18",
+    category: "health-equipment",
+    shortDescription: "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจ HPV 18 สายพันธุ์",
     description:
       "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 18 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1500.00",
@@ -177,6 +189,8 @@ const seedProducts = [
   {
     name: "HPV Self Swab Kit 29 สายพันธุ์",
     slug: "hpv-self-swab-29",
+    category: "health-equipment",
+    shortDescription: "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจ HPV 29 สายพันธุ์",
     description:
       "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจหาเชื้อ HPV 29 สายพันธุ์ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "2000.00",
@@ -192,6 +206,8 @@ const seedProducts = [
   {
     name: "STIs Self Swab Kit 14 รายการ",
     slug: "stis-self-swab-14",
+    category: "health-equipment",
+    shortDescription: "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจโรคติดต่อทางเพศสัมพันธ์ 14 รายการ",
     description:
       "ชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab สำหรับตรวจโรคติดต่อทางเพศสัมพันธ์ 14 รายการ เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "1500.00",
@@ -207,6 +223,8 @@ const seedProducts = [
   {
     name: "STIs 14 + HPV 29 Home Test Bundle",
     slug: "stis-hpv-29-home-test-bundle",
+    category: "health-equipment",
+    shortDescription: "แพ็กเกจตรวจจากปัสสาวะ รวม STIs 14 รายการ และ HPV 29 สายพันธุ์",
     description:
       "แพ็กเกจรวม STIs 14 รายการ และ HPV 29 สายพันธุ์ สำหรับการตรวจจากปัสสาวะด้วยอุปกรณ์ Colli-Pee เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "3500.00",
@@ -222,6 +240,8 @@ const seedProducts = [
   {
     name: "STIs 14 + HPV 29 Self Swab Bundle",
     slug: "stis-hpv-29-self-swab-bundle",
+    category: "health-equipment",
+    shortDescription: "แพ็กเกจ self swab รวม STIs 14 รายการ และ HPV 29 สายพันธุ์",
     description:
       "แพ็กเกจรวม STIs 14 รายการ และ HPV 29 สายพันธุ์ สำหรับชุดเก็บสิ่งส่งตรวจด้วยตนเองแบบ self swab เลข อย. อยู่ระหว่างดำเนินการ ราคานี้รวม VAT แต่ไม่รวมค่าขนส่ง",
     price: "3500.00",

@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminProductItem, AdminProductsData } from "@/features/admin/products/types";
+import { getProductCategoryLabel, productCategories, type ProductCategory } from "@/features/products/categories";
 
 type ProductWithInventory = Awaited<ReturnType<typeof getProductsForAdmin>>[number];
 
@@ -27,11 +28,24 @@ function formatPrice(value: unknown): string {
 }
 
 function mapProduct(product: ProductWithInventory): AdminProductItem {
+  const category = productCategories.some((item) => item.value === product.category)
+    ? (product.category as ProductCategory)
+    : "other";
+
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
+    category,
+    categoryLabel: getProductCategoryLabel(category),
+    shortDescription: product.shortDescription ?? "",
     description: product.description ?? "",
+    usageInstructions: product.usageInstructions ?? "",
+    fdaNumber: product.fdaNumber ?? "",
+    warnings: product.warnings ?? "",
+    storageInstructions: product.storageInstructions ?? "",
+    controlledOrRestricted: product.controlledOrRestricted,
+    specialFulfillmentNotes: product.specialFulfillmentNotes ?? "",
     imageUrl: product.imageUrl ?? "",
     price: formatPrice(product.price),
     status: product.status,

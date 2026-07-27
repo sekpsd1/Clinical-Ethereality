@@ -413,21 +413,30 @@ model Prescription {
 }
 
 model Product {
-  id                   String        @id @default(cuid())
-  name                 String
-  slug                 String        @unique
-  description          String?       @db.Text
-  price                Decimal       @db.Decimal(10, 2)
-  imageUrl             String?       @db.Text
-  requiresPrescription Boolean       @default(false)
-  status               ProductStatus @default(draft)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  id                      String        @id @default(cuid())
+  name                    String
+  slug                    String        @unique
+  category                String        @default("other") @db.VarChar(80)
+  shortDescription        String?       @db.VarChar(300)
+  description             String?       @db.Text
+  usageInstructions       String?       @db.Text
+  fdaNumber               String?       @db.VarChar(120)
+  warnings                String?       @db.Text
+  storageInstructions     String?       @db.Text
+  controlledOrRestricted  Boolean       @default(false)
+  specialFulfillmentNotes String?       @db.Text
+  price                   Decimal       @db.Decimal(10, 2)
+  imageUrl                String?       @db.Text
+  requiresPrescription    Boolean       @default(false)
+  status                  ProductStatus @default(draft)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   inventory  Inventory?
   orderItems OrderItem[]
 
   @@index([status])
+  @@index([category])
   @@index([requiresPrescription])
 }
 

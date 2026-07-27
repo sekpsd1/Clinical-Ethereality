@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Save, Upload } from "lucide-react";
 import { upsertProductAction } from "@/features/admin/products/actions";
+import { productCategories } from "@/features/products/categories";
 import { cn } from "@/lib/design-system/variants";
 import type { AdminProductActionState } from "@/features/admin/products/actions";
 import type { AdminProductItem } from "@/features/admin/products/types";
@@ -26,18 +27,70 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
       <div className="grid gap-3">
         <TextField label="ชื่อสินค้า" name="name" defaultValue={product?.name ?? ""} placeholder="ชื่อสินค้า" />
         <TextField label="Slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="clinical-product-name" />
-        <ProductImageUploadStub defaultImageUrl={product?.imageUrl ?? ""} />
         <label>
-          <span className="block text-[10px] font-bold uppercase text-muted">รายละเอียด</span>
-          <textarea
-            className="mt-1 min-h-20 w-full resize-none rounded-[8px] border border-border bg-white px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
-            defaultValue={product?.description ?? ""}
-            name="description"
-            placeholder="รายละเอียดสินค้าหรือข้อมูลทางคลินิกแบบย่อ"
-          />
+          <span className="block text-[10px] font-bold uppercase text-muted">หมวดหมู่สินค้า</span>
+          <select
+            className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-bold text-text outline-none transition focus:border-primary"
+            defaultValue={product?.category ?? "other"}
+            name="category"
+          >
+            {productCategories.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
+          </select>
         </label>
+        <ProductImageUploadStub defaultImageUrl={product?.imageUrl ?? ""} />
+        <TextAreaField
+          label="รายละเอียดย่อ"
+          name="shortDescription"
+          defaultValue={product?.shortDescription ?? ""}
+          placeholder="ข้อความสั้นสำหรับการ์ดสินค้า ไม่เกิน 300 ตัวอักษร"
+          minHeightClass="min-h-16"
+        />
+        <TextAreaField
+          label="รายละเอียดเต็ม"
+          name="description"
+          defaultValue={product?.description ?? ""}
+          placeholder="ข้อมูลสินค้าฉบับเต็มสำหรับหน้ารายละเอียด"
+        />
+        <TextAreaField
+          label="วิธีใช้"
+          name="usageInstructions"
+          defaultValue={product?.usageInstructions ?? ""}
+          placeholder="วิธีใช้ ปริมาณ และความถี่ตามข้อมูลที่ได้รับอนุมัติ"
+        />
         <div className="grid grid-cols-[1fr_1fr] gap-2">
+          <TextField
+            label="เลข อย."
+            name="fdaNumber"
+            defaultValue={product?.fdaNumber ?? ""}
+            placeholder="เว้นว่างหากรอยืนยัน"
+          />
           <TextField label="ราคา" name="price" defaultValue={product?.price ?? "0.00"} placeholder="0.00" type="number" />
+        </div>
+        <TextAreaField
+          label="คำเตือน / ข้อห้ามใช้"
+          name="warnings"
+          defaultValue={product?.warnings ?? ""}
+          placeholder="อาการแพ้ กลุ่มที่ไม่ควรใช้ และข้อควรระวัง"
+        />
+        <TextAreaField
+          label="การเก็บรักษา"
+          name="storageInstructions"
+          defaultValue={product?.storageInstructions ?? ""}
+          placeholder="อุณหภูมิ แสง ความชื้น และข้อกำหนดการเก็บรักษา"
+          minHeightClass="min-h-16"
+        />
+        <TextAreaField
+          label="หมายเหตุการจัดเตรียม / จัดส่ง"
+          name="specialFulfillmentNotes"
+          defaultValue={product?.specialFulfillmentNotes ?? ""}
+          placeholder="เช่น ต้องควบคุมอุณหภูมิ หรือมีขั้นตอนแพ็กเฉพาะ"
+          minHeightClass="min-h-16"
+        />
+        <div className="grid grid-cols-[1fr_1fr] gap-2">
           <label>
             <span className="block text-[10px] font-bold uppercase text-muted">สถานะ</span>
             <select
@@ -50,17 +103,28 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
               <option value="archived">เก็บถาวร</option>
             </select>
           </label>
+          <div className="flex flex-col justify-end gap-2 pb-1">
+            <label className="flex min-w-0 items-center gap-2 text-xs font-bold text-muted">
+              <input
+                className="size-4 rounded border-border text-primary"
+                defaultChecked={product?.requiresPrescription ?? false}
+                name="requiresPrescription"
+                type="checkbox"
+              />
+              ต้องใช้ใบสั่งยา
+            </label>
+            <label className="flex min-w-0 items-center gap-2 text-xs font-bold text-muted">
+              <input
+                className="size-4 rounded border-border text-primary"
+                defaultChecked={product?.controlledOrRestricted ?? false}
+                name="controlledOrRestricted"
+                type="checkbox"
+              />
+              สินค้าควบคุม/จำกัด
+            </label>
+          </div>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-          <label className="flex min-w-0 items-center gap-2 text-xs font-bold text-muted">
-            <input
-              className="size-4 rounded border-border text-primary"
-              defaultChecked={product?.requiresPrescription ?? false}
-              name="requiresPrescription"
-              type="checkbox"
-            />
-            ต้องใช้ใบสั่งยา
-          </label>
+        <div className="flex items-center justify-end gap-3 border-t border-border/70 pt-3">
           <SubmitButton label={product ? "บันทึกสินค้า" : "สร้างสินค้า"} />
         </div>
       </div>
@@ -76,6 +140,35 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
         </p>
       ) : null}
     </form>
+  );
+}
+
+function TextAreaField({
+  defaultValue,
+  label,
+  minHeightClass = "min-h-24",
+  name,
+  placeholder
+}: {
+  defaultValue: string;
+  label: string;
+  minHeightClass?: string;
+  name: string;
+  placeholder: string;
+}) {
+  return (
+    <label>
+      <span className="block text-[10px] font-bold uppercase text-muted">{label}</span>
+      <textarea
+        className={cn(
+          "mt-1 w-full resize-y rounded-[8px] border border-border bg-white px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary",
+          minHeightClass
+        )}
+        defaultValue={defaultValue}
+        name={name}
+        placeholder={placeholder}
+      />
+    </label>
   );
 }
 

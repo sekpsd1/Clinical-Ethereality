@@ -1,5 +1,12 @@
 export type AdminDashboardData = {
   unavailable?: boolean;
+  recentActivities: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    createdAt: string;
+    href: string;
+  }>;
   userApprovals: {
     pendingReview: number;
     approvedStaff: number;

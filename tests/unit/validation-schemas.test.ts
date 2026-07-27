@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { updateUserRoleSchema } from "@/features/admin/users/schema";
+import { upsertProductSchema } from "@/features/admin/products/schema";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
 import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
@@ -9,11 +10,38 @@ import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/do
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { updateProfileContactSchema } from "@/features/profile/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
+import { getProductCategoryLabel } from "@/features/products/categories";
 import { createExternalPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 import { staffInviteRequestSchema } from "@/features/staff-invite/schema";
 
 describe("feature validation schemas", () => {
+  it("validates structured product details and controlled categories", () => {
+    const product = {
+      name: "HPV Home Test Kit",
+      slug: "hpv-home-test-kit",
+      category: "health-equipment",
+      shortDescription: "ชุดตรวจสำหรับใช้งานที่บ้าน",
+      description: "รายละเอียดฉบับเต็มสำหรับหน้าสินค้า",
+      usageInstructions: "อ่านคู่มือก่อนใช้งาน",
+      fdaNumber: "ระหว่างดำเนินการ",
+      warnings: "ไม่ใช้หากบรรจุภัณฑ์เสียหาย",
+      storageInstructions: "เก็บที่อุณหภูมิห้อง",
+      specialFulfillmentNotes: "",
+      imageUrl: "/images/products/test-kit.jpg",
+      price: "1200.00",
+      status: "draft",
+      requiresPrescription: "false",
+      controlledOrRestricted: "false"
+    };
+
+    expect(upsertProductSchema.safeParse(product).success).toBe(true);
+    expect(upsertProductSchema.safeParse({ ...product, category: "uncontrolled-category" }).success).toBe(false);
+    expect(upsertProductSchema.safeParse({ ...product, shortDescription: "x".repeat(301) }).success).toBe(false);
+    expect(getProductCategoryLabel("health-equipment")).toBe("อุปกรณ์สุขภาพ");
+    expect(getProductCategoryLabel("unknown")).toBe("สินค้าอื่น ๆ");
+  });
+
   it("limits direct admin role changes to customer and admin accounts", () => {
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "admin" }).success).toBe(true);
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "customer" }).success).toBe(true);

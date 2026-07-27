@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { getProductCategoryLabel } from "@/features/products/categories";
 import type {
   StoreMarketplaceData,
   StoreProductDetailData,
@@ -84,8 +85,10 @@ function mapProduct(product: ProductWithInventory, index: number): StoreProductL
     id: product.id,
     name: product.name,
     slug: product.slug,
+    category: product.category,
+    categoryLabel: getProductCategoryLabel(product.category),
     price: formatMoney(product.price),
-    description: product.description,
+    description: product.shortDescription ?? product.description,
     imageAlt: product.name,
     imageUrl: product.imageUrl,
     media: getProductMedia(product),
@@ -105,7 +108,13 @@ function mapProductDetail(product: ProductWithInventory): StoreProductDetailItem
     featured: false,
     longDescription:
       product.description ??
-      "ผลิตภัณฑ์นี้อยู่ในแคตตาล็อก Clinical Ethereality และควรใช้งานตามคำแนะนำของทีมคลินิกหรือเภสัชกร"
+      "ผลิตภัณฑ์นี้อยู่ในแคตตาล็อก Clinical Ethereality และควรใช้งานตามคำแนะนำของทีมคลินิกหรือเภสัชกร",
+    usageInstructions: product.usageInstructions,
+    fdaNumber: product.fdaNumber,
+    warnings: product.warnings,
+    storageInstructions: product.storageInstructions,
+    controlledOrRestricted: product.controlledOrRestricted,
+    specialFulfillmentNotes: product.specialFulfillmentNotes
   };
 }
 

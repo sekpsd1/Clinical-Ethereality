@@ -20,6 +20,8 @@ const fallbackProduct: StoreProductDetailItem = {
   id: "fallback-paracetamol",
   name: "Paracetamol 500mg",
   slug: "paracetamol-500mg",
+  category: "medicine",
+  categoryLabel: "ยาและเวชภัณฑ์",
   price: "฿1,200",
   description: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
   imageAlt: "Premium medical bottle of Paracetamol 500mg",
@@ -30,7 +32,13 @@ const fallbackProduct: StoreProductDetailItem = {
   requiresPrescription: false,
   stockLabel: "พร้อมจัดส่ง",
   featured: false,
-  longDescription: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า"
+  longDescription: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
+  usageInstructions: null,
+  fdaNumber: null,
+  warnings: null,
+  storageInstructions: null,
+  controlledOrRestricted: false,
+  specialFulfillmentNotes: null
 };
 
 export function ProductDetail({
@@ -58,6 +66,7 @@ export function ProductDetail({
 
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <div className="mb-5 flex flex-col gap-2">
+            <p className="text-[11px] font-bold text-primary">{product.categoryLabel}</p>
             <h1 className="text-[22px] font-extrabold leading-7 text-[#191c1e]">{product.name}</h1>
             <p className="text-[22px] font-bold leading-7 text-[#191c1e]">{product.price}</p>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e797a]">{product.stockLabel}</p>
@@ -73,6 +82,11 @@ export function ProductDetail({
                 </p>
               </div>
             </div>
+          ) : null}
+          {product.controlledOrRestricted ? (
+            <p className="mt-3 rounded-[16px] bg-[#fff4e8] px-4 py-3 text-xs font-bold leading-5 text-[#744500]">
+              สินค้าควบคุมหรือมีข้อจำกัด กรุณาตรวจสอบเงื่อนไขก่อนสั่งซื้อ
+            </p>
           ) : null}
         </section>
 
@@ -136,13 +150,25 @@ export function ProductDetail({
           <h2 className="mb-4 text-base font-extrabold leading-6 text-primary">รายละเอียดสินค้า</h2>
           <div className="space-y-4 text-sm leading-7 text-[#3e494a]">
             <p>{product.longDescription}</p>
-            <div className="flex items-center gap-3 font-semibold text-primary">
-              <ShieldCheck aria-hidden="true" className="size-5 fill-primary text-white" />
-              <span>ผ่านการทดสอบทางคลินิก</span>
-            </div>
-            <p className="rounded-[16px] bg-[#f7f9fb] p-4 text-xs italic leading-5 text-[#3e494a]">
-              คำเตือน: โปรดใช้ตามคำแนะนำของแพทย์อย่างเคร่งครัด หากมีอาการแพ้หรือระคายเคืองควรหยุดใช้และปรึกษาแพทย์ทันที
-            </p>
+            {product.usageInstructions ? <ProductInformation label="วิธีใช้" value={product.usageInstructions} /> : null}
+            {product.fdaNumber ? (
+              <div className="flex items-center gap-3 font-semibold text-primary">
+                <ShieldCheck aria-hidden="true" className="size-5 shrink-0 text-primary" />
+                <span>เลข อย. {product.fdaNumber}</span>
+              </div>
+            ) : null}
+            {product.warnings ? (
+              <div className="rounded-[16px] bg-[#f7f9fb] p-4 text-xs leading-5 text-[#3e494a]">
+                <p className="font-bold not-italic text-[#191c1e]">คำเตือน / ข้อห้ามใช้</p>
+                <p className="mt-1 whitespace-pre-line">{product.warnings}</p>
+              </div>
+            ) : null}
+            {product.storageInstructions ? (
+              <ProductInformation label="การเก็บรักษา" value={product.storageInstructions} />
+            ) : null}
+            {product.specialFulfillmentNotes ? (
+              <ProductInformation label="การจัดเตรียมและจัดส่ง" value={product.specialFulfillmentNotes} />
+            ) : null}
           </div>
         </section>
       </main>
@@ -171,6 +197,15 @@ export function ProductDetail({
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProductInformation({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="font-bold text-[#191c1e]">{label}</p>
+      <p className="mt-1 whitespace-pre-line">{value}</p>
     </div>
   );
 }

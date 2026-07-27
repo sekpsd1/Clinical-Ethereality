@@ -89,7 +89,10 @@ function mapProduct(product: ProductRecord): PrescriptionOrderProduct {
     id: product.id,
     name: product.name,
     slug: product.slug,
-    description: product.description ?? "ผลิตภัณฑ์ที่ต้องใช้ใบสั่งยาจากแพทย์ก่อนสั่งซื้อ",
+    description:
+      product.shortDescription ??
+      product.description ??
+      "ผลิตภัณฑ์ที่ต้องใช้ใบสั่งยาจากแพทย์ก่อนสั่งซื้อ",
     priceLabel: formatMoney(product.price),
     stockLabel: availableQuantity > 0 ? `พร้อมจัดส่ง ${availableQuantity} ชิ้น` : "สินค้าหมด",
     availableQuantity

@@ -10,6 +10,8 @@ export type StoreProductListItem = {
   id: string;
   name: string;
   slug: string;
+  category: string;
+  categoryLabel: string;
   price: string;
   description: string | null;
   imageAlt: string;
@@ -29,6 +31,12 @@ export type StoreMarketplaceData = {
 
 export type StoreProductDetailItem = StoreProductListItem & {
   longDescription: string;
+  usageInstructions: string | null;
+  fdaNumber: string | null;
+  warnings: string | null;
+  storageInstructions: string | null;
+  controlledOrRestricted: boolean;
+  specialFulfillmentNotes: string | null;
 };
 
 export type StoreProductDetailData = {
