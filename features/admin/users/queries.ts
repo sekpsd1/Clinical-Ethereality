@@ -100,6 +100,7 @@ function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
     staffStatus: user.doctorProfile?.status ?? user.pharmacistProfile?.status,
     profile: getStaffProfileText(user),
     profilePhotoUrl: profilePhoto?.storageUrl ?? null,
+    profilePhotoName: profilePhoto?.fileName ?? null,
     licenseProofUrl: licenseProof?.storageUrl ?? null,
     licenseProofName: licenseProof?.fileName ?? null,
     submittedAt: formatSubmittedAt(user.createdAt)

@@ -10,12 +10,14 @@ export function AdminStaffFileControls({
   userId,
   userName,
   profilePhotoUrl,
+  profilePhotoName,
   licenseProofUrl,
   licenseProofName
 }: {
   userId: string;
   userName: string;
   profilePhotoUrl: string | null;
+  profilePhotoName: string | null;
   licenseProofUrl: string | null;
   licenseProofName: string | null;
 }) {
@@ -28,6 +30,7 @@ export function AdminStaffFileControls({
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <UploadForm
           accept={staffFileAccept.profilePhoto}
+          currentName={profilePhotoName}
           currentUrl={profilePhotoUrl}
           icon="photo"
           kind="profilePhoto"

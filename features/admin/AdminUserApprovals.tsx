@@ -194,6 +194,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
                   userId={user.id}
                   userName={user.name}
                   profilePhotoUrl={user.profilePhotoUrl}
+                  profilePhotoName={user.profilePhotoName}
                   licenseProofUrl={user.licenseProofUrl}
                   licenseProofName={user.licenseProofName}
                 />
