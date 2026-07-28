@@ -6,6 +6,7 @@ import {
   Bell,
   CalendarClock,
   ClipboardCheck,
+  ContactRound,
   CreditCard,
   FileCheck2,
   PackageCheck,
@@ -24,7 +25,12 @@ const adminNavItems = [
     icon: ShieldCheck
   },
   {
-    label: "ผู้ใช้",
+    label: "ลูกค้า",
+    href: "/admin/customers",
+    icon: ContactRound
+  },
+  {
+    label: "บุคลากร",
     href: "/admin/users",
     icon: UsersRound
   },
@@ -134,7 +140,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         aria-label="ผู้ดูแลระบบ"
         className="fixed inset-x-0 bottom-0 z-footer border-t border-white/30 bg-white/85 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-bottom-nav backdrop-blur-topbar lg:hidden"
       >
-        <div className="mx-auto grid w-full max-w-mobile grid-cols-9 gap-1">
+        <div className="mx-auto flex w-full max-w-mobile snap-x gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
@@ -145,7 +151,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex min-h-[50px] flex-col items-center justify-center rounded-[14px] px-1 text-[10px] font-bold text-muted transition-colors",
+                  "flex min-h-[50px] min-w-16 flex-1 snap-start flex-col items-center justify-center rounded-[14px] px-1 text-[10px] font-bold text-muted transition-colors",
                   isActive && "bg-primary/10 text-primary"
                 )}
               >

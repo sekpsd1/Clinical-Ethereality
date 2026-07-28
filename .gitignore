@@ -2,6 +2,7 @@
 node_modules/
 dist/
 deploy/
+backups/
 coverage/
 test-results/
 playwright-report/

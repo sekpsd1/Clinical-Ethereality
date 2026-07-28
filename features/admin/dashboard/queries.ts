@@ -105,6 +105,7 @@ const activityLabels: Record<string, string> = {
   "consultation.payment_verified": "ยืนยันการชำระค่าปรึกษา",
   "consultation.payment_rejected": "ปฏิเสธการชำระค่าปรึกษา",
   "consult_assessment.complete": "ทำแบบประเมินก่อนพบแพทย์เสร็จสิ้น",
+  "consult_assessment.reset_for_customer": "เปิดให้ลูกค้าทำแบบประเมินใหม่",
   "consultation_message.create": "ส่งข้อความในการปรึกษา",
   "moderation.restore": "คืนค่าเนื้อหาชุมชน",
   "moderation.hide": "ซ่อนเนื้อหาชุมชน",
@@ -151,7 +152,11 @@ function getActivityHref(entityType: string): string {
     return "/pharmacist/prescriptions";
   }
 
-  if (entityType === "consultation" || entityType === "consult_assessment" || entityType === "consultation_message") {
+  if (entityType === "consult_assessment") {
+    return "/admin/customers";
+  }
+
+  if (entityType === "consultation" || entityType === "consultation_message") {
     return "/doctor/consultations";
   }
 

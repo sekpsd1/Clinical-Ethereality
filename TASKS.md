@@ -270,6 +270,11 @@
 - [x] Add doctor consultation workflow polish for readiness, payment status, assessment, chat, and prescription actions
 - [x] Build patient log access for doctors
 - [x] Add Thai doctor patient-log language and privacy polish
+- [x] Add admin customer and assessment oversight with privacy-scoped summary and detail views
+- [x] Let admins request a fresh customer assessment by expiring active assessments non-destructively with audit logging
+- [x] Add a guarded operator script and back up/reset the localhost assessment, appointment, consultation-message, prescription, slot-lock, and related-notification test data while preserving users, products, inventory, orders, and audit history
+- [x] Require an active customer assessment before allowing direct access to `/consult`
+- [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
 - [ ] Build Zoom SDK video consultation room integration
 - [x] Build persisted in-app consultation chat foundation separate from LINE
