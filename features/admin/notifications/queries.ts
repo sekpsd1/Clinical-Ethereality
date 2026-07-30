@@ -22,7 +22,6 @@ function getRecipients() {
     select: {
       id: true,
       displayName: true,
-      lineUserId: true,
       role: true,
       status: true
     }
@@ -36,7 +35,12 @@ function getRecentNotifications() {
     },
     take: 50,
     include: {
-      user: true
+      user: {
+        select: {
+          displayName: true,
+          role: true
+        }
+      }
     }
   });
 }
@@ -55,7 +59,7 @@ function formatDate(date: Date | null): string | null {
 function mapRecipient(user: Awaited<ReturnType<typeof getRecipients>>[number]): AdminNotificationRecipient {
   return {
     id: user.id,
-    label: `${user.displayName ?? "ผู้ใช้ LINE"} / ${user.lineUserId}`,
+    label: `${user.displayName ?? "ผู้ใช้ LINE"} / ${user.role}`,
     role: user.role,
     status: user.status
   };
@@ -65,7 +69,7 @@ function mapNotification(notification: NotificationWithUser): AdminNotificationI
   return {
     id: notification.id,
     userName: notification.user.displayName ?? "ผู้ใช้ LINE",
-    userLineId: notification.user.lineUserId,
+    userReference: notification.user.role,
     type: notification.type,
     channel: notification.channel,
     title: notification.title,

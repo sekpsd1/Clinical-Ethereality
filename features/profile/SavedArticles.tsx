@@ -2,37 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, BookmarkCheck, Search } from "lucide-react";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import type { SavedCommunityArticlesData } from "@/features/community/types";
 
-const savedArticles = [
-  {
-    title: "5 วิตามินเสริมภูมิคุ้มกันที่หมอแนะนำ",
-    eyebrow: "บทความจากแพทย์",
-    author: "Dr. Arisara",
-    likes: "1.2k",
-    date: "24 ต.ค.",
-    imageSrc: "/images/community/vitamin-bottles.png",
-    imageAlt: "ขวดวิตามินบนพื้นผิวคลินิกที่สะอาด",
-    badge: "บันทึกแล้ว",
-    icon: "verified" as const,
-    authorIcon: "person" as const,
-    href: "/community/vitamin-c-tips"
-  },
-  {
-    title: "รีวิว: ทานวิตามินซี 1000mg ติดต่อกัน 1 เดือน",
-    eyebrow: "ประสบการณ์สมาชิก",
-    author: "K. Ananya",
-    likes: "856",
-    date: "22 ต.ค.",
-    imageSrc: "/images/community/vitamin-review.png",
-    imageAlt: "ผู้หญิงยิ้มในแสงเช้าหลังดูแลสุขภาพ",
-    badge: "รีวิว",
-    badgeTone: "teal" as const,
-    icon: "review" as const,
-    authorIcon: "account" as const
-  }
-];
-
-export function SavedArticles() {
+export function SavedArticles({ data }: { data: SavedCommunityArticlesData }) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <Header />
@@ -45,7 +17,7 @@ export function SavedArticles() {
             </span>
             <div>
               <h1 className="text-[24px] font-extrabold leading-7 text-primary">บทความที่บันทึกไว้</h1>
-              <p className="mt-1 text-sm text-[#3e494a]">เก็บบทความสุขภาพที่ต้องการกลับมาอ่านภายหลัง</p>
+              <p className="mt-1 text-sm text-[#3e494a]">รายการส่วนตัวของบัญชีที่กำลังใช้งาน</p>
             </div>
           </div>
           <Link
@@ -58,14 +30,41 @@ export function SavedArticles() {
         </section>
 
         <section className="mt-8 grid grid-cols-1 gap-7">
-          {savedArticles.length === 0 ? (
+          {data.unavailable ? (
+            <EmptyState
+              title="ยังโหลดบทความที่บันทึกไม่ได้"
+              body="กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูลแล้วลองใหม่"
+              icon={<BookmarkCheck aria-hidden="true" className="size-5" />}
+            />
+          ) : data.articles.length === 0 ? (
             <EmptyState
               title="ยังไม่มีบทความที่บันทึก"
-              body="เมื่อกดบันทึกบทความจากชุมชน รายการจะปรากฏที่นี่"
+              body="กดบันทึกจากหน้ารายละเอียดบทความ แล้วรายการจะปรากฏเฉพาะในบัญชีของคุณ"
               icon={<BookmarkCheck aria-hidden="true" className="size-5" />}
             />
           ) : (
-            savedArticles.map((article) => <ArticleCard key={article.title} {...article} />)
+            data.articles.map((article, index) => (
+              <ArticleCard
+                key={article.id}
+                title={article.title}
+                eyebrow={article.category}
+                author={article.author}
+                likes={String(article.likesCount)}
+                date={article.time}
+                imageSrc={
+                  index % 3 === 0
+                    ? "/images/community/vitamin-bottles.png"
+                    : index % 3 === 1
+                      ? "/images/community/vitamin-review.png"
+                      : "/images/community/morning-forest.png"
+                }
+                imageAlt=""
+                badge="บันทึกแล้ว"
+                icon={article.authorRole === "customer" ? "review" : "verified"}
+                authorIcon={article.authorRole === "customer" ? "account" : "medical"}
+                href={`/community/${article.slug}`}
+              />
+            ))
           )}
         </section>
       </main>
@@ -77,7 +76,7 @@ function Header() {
   return (
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_0_40px_rgba(0,123,131,0.06)] backdrop-blur-[24px]">
       <div className="mx-auto flex h-[82px] w-full max-w-mobile items-center gap-4 px-7">
-        <Link href="/profile" aria-label="กลับไปหน้าโปรไฟล์" className="flex size-10 items-center justify-center rounded-full text-primary">
+        <Link href="/community" aria-label="กลับไปหน้าชุมชน" className="flex size-10 items-center justify-center rounded-full text-primary">
           <ArrowLeft aria-hidden="true" className="size-6" strokeWidth={2.4} />
         </Link>
         <div className="min-w-0">

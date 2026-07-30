@@ -643,6 +643,7 @@ async function upsertCommunity({ adminUserId, customerId }) {
     update: {
       authorId: adminUserId,
       title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
+      category: "วิตามิน & อาหารเสริม",
       body:
         "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายสามารถดูดซึมไปใช้ได้ทันทีตลอดวัน และควรแบ่งรับประทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่ หากมีโรคประจำตัวหรือใช้ยาประจำควรปรึกษาแพทย์หรือเภสัชกรก่อนเริ่มอาหารเสริมใหม่",
       status: "published",
@@ -652,6 +653,7 @@ async function upsertCommunity({ adminUserId, customerId }) {
       authorId: adminUserId,
       title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
       slug: "vitamin-c-tips",
+      category: "วิตามิน & อาหารเสริม",
       body:
         "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายสามารถดูดซึมไปใช้ได้ทันทีตลอดวัน และควรแบ่งรับประทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่ หากมีโรคประจำตัวหรือใช้ยาประจำควรปรึกษาแพทย์หรือเภสัชกรก่อนเริ่มอาหารเสริมใหม่",
       status: "published",
@@ -701,6 +703,81 @@ async function upsertCommunity({ adminUserId, customerId }) {
     }
   });
 
+  const customerPost = await prisma.article.upsert({
+    where: {
+      slug: "community-wellness-routine"
+    },
+    update: {
+      authorId: customerId,
+      title: "แบ่งปันกิจวัตรดูแลตัวเองในวันที่งานยุ่ง",
+      category: "การดูแลผิว",
+      body:
+        "ฉันจัดเวลาพักจากหน้าจอ ดื่มน้ำ และดูแลผิวตามคำแนะนำทั่วไป โดยไม่แชร์ข้อมูลการรักษาหรือข้อมูลสุขภาพส่วนตัว หากมีอาการผิดปกติควรปรึกษาผู้เชี่ยวชาญโดยตรง",
+      status: "published",
+      publishedAt: new Date("2026-05-04T03:00:00.000Z")
+    },
+    create: {
+      authorId: customerId,
+      title: "แบ่งปันกิจวัตรดูแลตัวเองในวันที่งานยุ่ง",
+      slug: "community-wellness-routine",
+      category: "การดูแลผิว",
+      body:
+        "ฉันจัดเวลาพักจากหน้าจอ ดื่มน้ำ และดูแลผิวตามคำแนะนำทั่วไป โดยไม่แชร์ข้อมูลการรักษาหรือข้อมูลสุขภาพส่วนตัว หากมีอาการผิดปกติควรปรึกษาผู้เชี่ยวชาญโดยตรง",
+      status: "published",
+      publishedAt: new Date("2026-05-04T03:00:00.000Z")
+    }
+  });
+
+  await prisma.savedArticle.upsert({
+    where: {
+      userId_articleId: {
+        userId: customerId,
+        articleId: publishedArticle.id
+      }
+    },
+    update: {},
+    create: {
+      userId: customerId,
+      articleId: publishedArticle.id
+    }
+  });
+
+  const seededReport = await prisma.communityReport.findFirst({
+    where: {
+      reporterId: adminUserId,
+      articleId: customerPost.id
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (seededReport) {
+    await prisma.communityReport.update({
+      where: {
+        id: seededReport.id
+      },
+      data: {
+        reason: "privacy",
+        details: "รายการทดสอบคิว moderation โดยเนื้อหายังคงเผยแพร่จนกว่าจะตรวจ",
+        status: "pending",
+        reviewerId: null,
+        reviewedAt: null,
+        resolutionAction: null
+      }
+    });
+  } else {
+    await prisma.communityReport.create({
+      data: {
+        reporterId: adminUserId,
+        articleId: customerPost.id,
+        reason: "privacy",
+        details: "รายการทดสอบคิว moderation โดยเนื้อหายังคงเผยแพร่จนกว่าจะตรวจ",
+        status: "pending"
+      }
+    });
+  }
+
   const article = await prisma.article.upsert({
     where: {
       slug: "seed-hidden-vitamin-c-review"
@@ -708,6 +785,7 @@ async function upsertCommunity({ adminUserId, customerId }) {
     update: {
       authorId: adminUserId,
       title: "บทความวิตามินซีที่ต้องตรวจทาน",
+      category: "วิตามิน & อาหารเสริม",
       body: "เนื้อหาทดสอบสำหรับ moderation queue",
       status: "hidden"
     },
@@ -715,6 +793,7 @@ async function upsertCommunity({ adminUserId, customerId }) {
       authorId: adminUserId,
       title: "บทความวิตามินซีที่ต้องตรวจทาน",
       slug: "seed-hidden-vitamin-c-review",
+      category: "วิตามิน & อาหารเสริม",
       body: "เนื้อหาทดสอบสำหรับ moderation queue",
       status: "hidden"
     }

@@ -35,18 +35,18 @@ function getStatusTone(status: AdminModerationQueueItem["status"]): "neutral" | 
 export function AdminModeration({ data }: { data: AdminModerationData }) {
   const summaryItems = [
     {
-      label: "บทความ",
+      label: "รอตรวจ",
+      value: String(data.summary.pendingReports),
+      tone: "warning"
+    },
+    {
+      label: "บทความซ่อน",
       value: String(data.summary.hiddenArticles),
       tone: "warning"
     },
     {
-      label: "ความคิดเห็น",
+      label: "ความคิดเห็นซ่อน",
       value: String(data.summary.hiddenComments),
-      tone: "warning"
-    },
-    {
-      label: "เก็บถาวร",
-      value: String(data.summary.archived),
       tone: "danger"
     }
   ] as const;
@@ -57,7 +57,7 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
         <p className="text-label font-bold uppercase text-white/75">ความปลอดภัยชุมชน</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวดูแลชุมชน</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          ตรวจบทความและความคิดเห็นที่ถูกซ่อน แล้วเลือกคืนค่า ซ่อน หรือเก็บถาวรได้ในขั้นตอนเดียว
+          ตรวจเหตุผลและบริบทของรายงานก่อนเลือกคงไว้ ซ่อน หรือเก็บถาวร
         </p>
       </section>
 
@@ -111,6 +111,15 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
                     <StatusBadge tone={tone}>{statusLabels[item.status]}</StatusBadge>
                   </div>
                   <p className="mt-3 line-clamp-3 text-xs leading-5 text-muted">{item.body}</p>
+                  {item.reportId ? (
+                    <div className="mt-3 rounded-[8px] border border-warning/30 bg-warning/10 p-3 text-xs leading-5 text-muted">
+                      <p className="font-bold text-text">เหตุผล: {item.reportReason}</p>
+                      {item.reportDetails ? <p className="mt-1">{item.reportDetails}</p> : null}
+                      <p className="mt-1">
+                        ผู้รายงาน: {item.reporterName} / {item.reportedAt}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -118,7 +127,7 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted">
                     <ShieldAlert aria-hidden="true" className="size-4 text-primary" strokeWidth={2.1} />
-                    <span className="truncate">{item.authorLineId}</span>
+                    <span className="truncate">เจ้าของเนื้อหา: {item.authorName}</span>
                   </div>
                   <p className="mt-1 truncate text-[11px] font-semibold text-muted">สร้างเมื่อ {item.createdAt}</p>
                 </div>

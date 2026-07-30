@@ -39,7 +39,10 @@ export function FooterNav() {
       <div className="mx-auto grid w-full max-w-mobile grid-cols-4 gap-2">
         {footerItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active =
+            (item.href === "/community" && pathname === "/profile/saved-articles") ||
+            (item.href !== "/profile" || pathname !== "/profile/saved-articles") &&
+              (pathname === item.href || pathname.startsWith(`${item.href}/`));
 
           return (
             <Link

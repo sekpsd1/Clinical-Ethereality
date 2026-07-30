@@ -4,17 +4,22 @@ export type CommunityCommentItem = {
   time: string;
   body: string;
   verified: boolean;
+  ownedByViewer: boolean;
   avatar: "somchai" | "pharmacist";
 };
 
 export type CommunityArticleDetailData = {
   id: string;
+  slug: string;
   title: string;
   body: string;
   author: string;
+  category: string;
   likesCount: number;
   commentsCount: number;
   likedByViewer: boolean;
+  savedByViewer: boolean;
+  ownedByViewer: boolean;
   comments: CommunityCommentItem[];
-  unavailable?: boolean;
+  state: "ready" | "missing" | "unavailable";
 };

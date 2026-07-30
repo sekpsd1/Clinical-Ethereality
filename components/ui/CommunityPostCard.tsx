@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { Heart, MessageSquare, MoreHorizontal, Share2 } from "lucide-react";
+import { Heart, MessageSquare, MoreHorizontal } from "lucide-react";
+import { ShareButton } from "@/components/ui/ShareButton";
 
 type CommunityPostCardProps = {
+  title?: string;
   author: string;
   time: string;
   body: string;
@@ -11,25 +13,55 @@ type CommunityPostCardProps = {
   liked?: boolean;
   portrait: "ananya" | "somchai";
   href?: string;
+  editHref?: string;
 };
 
-export function CommunityPostCard({ author, time, body, likes, comments, liked, portrait, href }: CommunityPostCardProps) {
-  const card = (
+export function CommunityPostCard({
+  title,
+  author,
+  time,
+  body,
+  likes,
+  comments,
+  liked,
+  portrait,
+  href,
+  editHref
+}: CommunityPostCardProps) {
+  const detailHref = href as Route | undefined;
+
+  return (
     <article className="rounded-[24px] border border-[#f2f4f6] bg-white p-6 shadow-[0_0_40px_rgba(0,96,103,0.04)]">
       <div className="mb-5 flex items-center gap-3">
         <span className="size-10 overflow-hidden rounded-full bg-slate-200">
           <MemberPortrait variant={portrait} />
         </span>
-        <div>
-          <h3 className="text-sm font-bold text-[#191c1e]">{author}</h3>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-bold text-[#191c1e]">{author}</h3>
           <p className="text-[10px] font-medium text-slate-400">{time}</p>
         </div>
-        <button type="button" aria-label="More actions" className="ml-auto text-slate-400">
-          <MoreHorizontal aria-hidden="true" className="size-6" />
-        </button>
+        {editHref || detailHref ? (
+          <Link
+            href={(editHref ?? detailHref) as Route}
+            aria-label={editHref ? "Edit your post" : "Open post"}
+            className="ml-auto text-slate-400"
+          >
+            <MoreHorizontal aria-hidden="true" className="size-6" />
+          </Link>
+        ) : null}
       </div>
 
-      <p className="mb-5 text-sm leading-7 text-[#3e494a]">{body}</p>
+      {detailHref ? (
+        <Link href={detailHref} className="block">
+          {title ? <h4 className="mb-2 text-base font-extrabold text-[#191c1e]">{title}</h4> : null}
+          <p className="mb-5 text-sm leading-7 text-[#3e494a]">{body}</p>
+        </Link>
+      ) : (
+        <>
+          {title ? <h4 className="mb-2 text-base font-extrabold text-[#191c1e]">{title}</h4> : null}
+          <p className="mb-5 text-sm leading-7 text-[#3e494a]">{body}</p>
+        </>
+      )}
 
       <div className="flex items-center gap-7 border-t border-[#eceef0] pt-4">
         <div className={liked ? "flex items-center gap-2 text-primary" : "flex items-center gap-2 text-slate-400"}>
@@ -40,14 +72,10 @@ export function CommunityPostCard({ author, time, body, likes, comments, liked, 
           <MessageSquare aria-hidden="true" className="size-5" fill="#94a3b8" />
           <span className="text-xs font-bold">{comments}</span>
         </div>
-        <button type="button" aria-label="Share post" className="ml-auto text-slate-400">
-          <Share2 aria-hidden="true" className="size-5" />
-        </button>
+        {href ? <ShareButton href={href} className="ml-auto text-slate-400" /> : null}
       </div>
     </article>
   );
-
-  return href ? <Link href={href as Route}>{card}</Link> : card;
 }
 
 function MemberPortrait({ variant }: { variant: CommunityPostCardProps["portrait"] }) {

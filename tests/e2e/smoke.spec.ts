@@ -62,7 +62,7 @@ test.describe("customer mobile smoke", () => {
     { path: "/community/search", activeLabel: "Community" },
     { path: "/notifications" },
     { path: "/profile", activeLabel: "Profile" },
-    { path: "/profile/saved-articles", activeLabel: "Profile" },
+    { path: "/profile/saved-articles", activeLabel: "Community" },
     { path: "/profile/shipping-addresses", activeLabel: "Profile" },
     { path: "/profile/settings", activeLabel: "Profile" },
     { path: "/profile/settings?section=account", activeLabel: "Profile" },
@@ -88,6 +88,26 @@ test.describe("customer mobile smoke", () => {
 
     await page.getByRole("button", { name: "ยกเลิก" }).click();
     await expect(page.getByRole("button", { name: "แก้ไขข้อมูลติดต่อ" })).toBeVisible();
+  });
+
+  test("community create form requires privacy acknowledgement and exposes owner-safe fields", async ({ page }) => {
+    await page.goto("/community/create");
+
+    await expect(page.getByRole("textbox", { name: "หัวข้อกระทู้" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "เนื้อหากระทู้" })).toBeVisible();
+    await expect(page.getByText("ยืนยันว่าโพสต์นี้ไม่มีชื่อผู้ป่วย", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: "โพสต์", exact: true })).toBeVisible();
+  });
+
+  test("community search controls use URL-backed query and category filters", async ({ page }) => {
+    await page.goto("/community/search?q=วิตามิน");
+
+    await expect(page.getByRole("searchbox", { name: "Search community" })).toHaveValue("วิตามิน");
+    await expect(page.getByRole("link", { name: "Clear search" })).toHaveAttribute("href", "/community/search");
+    await expect(page.getByRole("link", { name: "การดูแลผิว" })).toHaveAttribute(
+      "href",
+      /q=.*category=/
+    );
   });
 
   test("customer dev session resolves a database-backed customer", async ({ page }) => {

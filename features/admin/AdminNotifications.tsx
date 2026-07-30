@@ -125,7 +125,7 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="ผู้รับ" value={notification.userLineId} icon={<UsersRound aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="ประเภทบัญชี" value={notification.userReference} icon={<UsersRound aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
                 <InfoTile label="อ่านเมื่อ" value={notification.readAt ?? "ยังไม่อ่าน"} icon={<CheckCircle2 aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">

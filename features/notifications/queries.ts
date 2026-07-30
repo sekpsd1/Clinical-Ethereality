@@ -60,7 +60,8 @@ export function resolveCustomerNotificationHref(
   }
 
   if (
-    href === "/community/vitamin-c-tips" ||
+    href === "/community" ||
+    (typeof href === "string" && href.startsWith("/community/") && !href.startsWith("//")) ||
     href === "/store/orders" ||
     href === "/store" ||
     href === "/profile/rewards" ||
@@ -72,7 +73,7 @@ export function resolveCustomerNotificationHref(
   }
 
   if (notification.type === "community") {
-    return "/community/vitamin-c-tips";
+    return "/community";
   }
 
   if (notification.type === "order" || notification.type === "payment") {
