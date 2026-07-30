@@ -306,6 +306,7 @@ model Consultation {
   status        ConsultationStatus @default(requested)
   scheduledAt   DateTime?
   zoomMeetingId String?
+  zoomPassword  String?            @db.VarChar(120)
   zoomJoinUrl   String?            @db.Text
   summary       String?            @db.Text
   createdAt     DateTime           @default(now())
@@ -317,6 +318,7 @@ model Consultation {
   slotLock      ConsultationSlotLock? @relation(fields: [slotLockId], references: [id], onDelete: SetNull)
   prescriptions Prescription[]
   messages      ConsultationMessage[]
+  payment       Payment?
 
   @@index([patientId])
   @@index([doctorId])
@@ -394,6 +396,7 @@ model Prescription {
   pharmacistId   String?
   status         PrescriptionStatus @default(draft)
   notes          String?            @db.Text
+  itemsJson      Json?
   verifiedAt     DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
@@ -498,7 +501,8 @@ model OrderItem {
 
 model Payment {
   id                  String        @id @default(cuid())
-  orderId             String
+  orderId             String?
+  consultationId      String?       @unique
   method              PaymentMethod @default(promptpay)
   amount              Decimal       @db.Decimal(10, 2)
   status              PaymentStatus @default(pending_slip)
@@ -510,10 +514,12 @@ model Payment {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  order      Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  reviewedBy User? @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  order        Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  reviewedBy   User?         @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([consultationId])
   @@index([status])
   @@index([reviewedById])
   @@index([reviewedAt])

@@ -4,6 +4,7 @@ import { ClipboardList, FileText, MessageCircle, Pill, Stethoscope } from "lucid
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
+import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultationControls";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 const consultationStatusLabels: Record<string, string> = {
@@ -158,6 +159,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
               </div>
 
               <ActionRow consultation={consultation} />
+              <DoctorConsultationControls consultation={consultation} />
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 สร้างเมื่อ {consultation.createdAt}
@@ -188,6 +190,12 @@ function WorkflowStrip({ consultation }: { consultation: DoctorConsultationItem 
         <span className="mx-1 text-border">/</span>
         <span>{consultation.paymentStatusDescription}</span>
       </div>
+      {consultation.paymentEvidenceSummary ? (
+        <p className="mt-2 break-words text-[10px] font-semibold leading-4 text-muted">
+          หลักฐาน: {consultation.paymentEvidenceSummary}
+          {consultation.paymentReviewedAt ? ` • ตรวจเมื่อ ${consultation.paymentReviewedAt}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }

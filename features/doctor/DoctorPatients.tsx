@@ -1,4 +1,5 @@
-import { ClipboardList, FileText, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ClipboardList, FileText, UsersRound } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { DoctorPatientLogItem, DoctorPatientsData } from "@/features/doctor/patients/types";
@@ -138,6 +139,13 @@ export function DoctorPatients({ data }: { data: DoctorPatientsData }) {
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 นัดล่าสุด {patient.latestConsultationAt ?? "ยังไม่กำหนด"}
               </p>
+              <Link
+                href={`/doctor/patients/${patient.id}`}
+                className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-primary/10 px-4 text-xs font-bold text-primary"
+              >
+                เปิดประวัติที่ได้รับมอบหมาย
+                <ArrowRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
+              </Link>
             </article>
           );
         })}

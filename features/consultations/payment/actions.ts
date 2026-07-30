@@ -77,6 +77,11 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
       await applyConsultationPaymentVerification(tx, {
         actorId: session.userId,
         consultation,
+        evidence: {
+          amount: consultation.doctor.consultationFee ?? 1000,
+          qrPayload: parsed.data.qrPayload || undefined,
+          slipImageUrl: parsed.data.imageUrl || undefined
+        },
         result
       });
     });

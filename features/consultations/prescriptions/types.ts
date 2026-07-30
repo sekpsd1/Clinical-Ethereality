@@ -10,6 +10,7 @@ export type CustomerPrescriptionItem = {
   consultationDate: string;
   verifiedAt: string | null;
   notes: string;
+  medicationSummary: string | null;
   productSummary: string;
   linkedOrderCode: string | null;
   nextStepTitle: string;

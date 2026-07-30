@@ -4,6 +4,7 @@ import type {
   PharmacistPrescriptionItem,
   PharmacistPrescriptionsData
 } from "@/features/pharmacist/prescriptions/types";
+import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
 
 type PrescriptionWithDetails = Awaited<ReturnType<typeof getPrescriptionsForPharmacist>>[number];
 
@@ -57,6 +58,8 @@ function mapPrescription(prescription: PrescriptionWithDetails): PharmacistPresc
     doctorName: prescription.doctor.user.displayName ?? "แพทย์ยังไม่ระบุชื่อ",
     consultationSummary: prescription.consultation.summary,
     notes: prescription.notes,
+    medicationSummary:
+      parsePrescriptionItems(prescription.itemsJson).map(formatPrescriptionItem).join("\n") || null,
     productSummary: getProductSummary(prescription),
     createdAt: formatDate(prescription.createdAt) ?? "",
     verifiedAt: formatDate(prescription.verifiedAt)

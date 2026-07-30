@@ -66,8 +66,8 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
       ["LINE_LOGIN_CALLBACK_URL", hasValue(env.LINE_LOGIN_CALLBACK_URL)]
     ]),
     buildItem("Zoom SDK", "ใช้สำหรับ video consultation เมื่อต้องต่อ production video room", [
-      ["ZOOM_SDK_KEY", hasValue(env.ZOOM_SDK_KEY)],
-      ["ZOOM_SDK_SECRET", hasValue(env.ZOOM_SDK_SECRET)],
+      ["ZOOM_MEETING_SDK_CLIENT_ID", hasValue(env.ZOOM_MEETING_SDK_CLIENT_ID)],
+      ["ZOOM_MEETING_SDK_CLIENT_SECRET", hasValue(env.ZOOM_MEETING_SDK_CLIENT_SECRET)],
       ["ZOOM_ACCOUNT_ID", hasValue(env.ZOOM_ACCOUNT_ID)],
       ["ZOOM_CLIENT_ID", hasValue(env.ZOOM_CLIENT_ID)],
       ["ZOOM_CLIENT_SECRET", hasValue(env.ZOOM_CLIENT_SECRET)],

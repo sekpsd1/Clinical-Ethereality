@@ -1,43 +1,21 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import type { LiveConsultationChatData, LiveConsultationChatMessage } from "@/features/consultations/chat/types";
+import { isZoomMeetingSdkConfigured } from "@/lib/zoom/meeting-sdk";
+import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
 
-const fallbackMessages: LiveConsultationChatMessage[] = [
-  {
-    id: "fallback-doctor-1",
-    body: "สวัสดีครับ วันนี้มีอาการเป็นอย่างไรบ้างครับ?",
-    createdAt: "10:45",
-    senderName: "Dr. Aris Thorne",
-    senderRole: "doctor",
-    isOwnMessage: false
-  },
-  {
-    id: "fallback-patient-1",
-    body: "สวัสดีค่ะคุณหมอ รู้สึกปวดศีรษะมา 2 วันแล้วค่ะ และมีไข้ต่ำ ๆ ด้วย",
-    createdAt: "10:46",
-    senderName: "Patient",
-    senderRole: "customer",
-    isOwnMessage: true
-  },
-  {
-    id: "fallback-doctor-2",
-    body: "หมอแนะนำให้พักผ่อนมาก ๆ และดื่มน้ำให้เพียงพอนะครับ เดี๋ยวหมอจะสรุปคำแนะนำหลังปรึกษาให้",
-    createdAt: "10:48",
-    senderName: "Dr. Aris Thorne",
-    senderRole: "doctor",
-    isOwnMessage: false
-  }
-];
-
-const fallbackChatData: LiveConsultationChatData = {
+const emptyChatData: LiveConsultationChatData = {
   consultationId: null,
-  doctorName: "Dr. Aris Thorne",
+  viewerRole: null,
+  doctorName: "แพทย์ผู้ให้คำปรึกษา",
   doctorImageUrl: "/images/doctors/waiting-profile.png",
   patientImageUrl: "/images/profiles/current-user.png",
-  statusLabel: "Live",
+  statusLabel: "ยังไม่มีห้อง",
   canSend: false,
-  messages: fallbackMessages
+  videoHref: null,
+  videoMode: "unavailable",
+  returnHref: "/consult",
+  messages: []
 };
 
 function formatMessageTime(date: Date): string {
@@ -52,8 +30,19 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
 
   const session = await getCurrentSession();
 
-  if (!session || session.userId.startsWith("dev:")) {
-    return fallbackChatData;
+  if (!session) {
+    return emptyChatData;
+  }
+
+  const sessionEmptyData: LiveConsultationChatData = {
+    ...emptyChatData,
+    viewerRole: session.role,
+    doctorName: session.role === "doctor" ? session.displayName ?? "แพทย์ผู้ให้คำปรึกษา" : emptyChatData.doctorName,
+    returnHref: session.role === "doctor" || session.role === "admin" ? "/doctor/consultations" : "/consult"
+  };
+
+  if (session.userId.startsWith("dev:")) {
+    return sessionEmptyData;
   }
 
   try {
@@ -136,16 +125,36 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
     });
 
     if (!consultation) {
-      return fallbackChatData;
+      return sessionEmptyData;
     }
+
+    const sdkConfigured = isZoomMeetingSdkConfigured();
+    const videoHref =
+      consultation.zoomMeetingId && sdkConfigured
+        ? `/consult/live/zoom?consultation=${consultation.id}`
+        : consultation.zoomJoinUrl;
 
     return {
       consultationId: consultation.id,
+      viewerRole: session.role,
       doctorName: consultation.doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
       doctorImageUrl: consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-profile.png",
       patientImageUrl: consultation.patient.avatarUrl ?? "/images/profiles/current-user.png",
       statusLabel: consultation.status === "live" ? "Live" : consultation.status === "completed" ? "เสร็จสิ้น" : "นัดหมายแล้ว",
       canSend: consultation.status === "scheduled" || consultation.status === "live",
+      videoHref,
+      videoMode:
+        consultation.zoomMeetingId && sdkConfigured
+          ? "meeting_sdk"
+          : consultation.zoomJoinUrl
+            ? "external"
+            : "unavailable",
+      returnHref:
+        session.role === "doctor" || session.role === "admin"
+          ? "/doctor/consultations"
+          : consultation.status === "completed"
+            ? "/consult/advice-log"
+            : `/consult/appointments/${consultation.id}`,
       messages: consultation.messages.map((message) => ({
         id: message.id,
         body: message.body,
@@ -156,6 +165,6 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
       }))
     };
   } catch {
-    return fallbackChatData;
+    return sessionEmptyData;
   }
 }

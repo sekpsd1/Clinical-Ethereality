@@ -70,7 +70,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
         <p className="text-label font-bold uppercase text-white/75">ตรวจสลิป PromptPay</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวตรวจสอบการชำระเงิน</h2>
         <p className="mt-2 max-w-[360px] text-sm leading-6 text-white/80">
-          ตรวจสถานะสลิป หลักฐาน QR และผลจาก SlipOK/EasySlip ก่อนส่งต่อคำสั่งซื้อให้คลินิกเตรียมสินค้า
+          ตรวจสถานะสลิป หลักฐาน QR และผลจาก SlipOK/EasySlip สำหรับค่าปรึกษาและคำสั่งซื้อ
         </p>
       </section>
 
@@ -112,6 +112,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-text">{payment.orderCode}</h3>
                       <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">{payment.customerName}</p>
+                      <p className="mt-0.5 text-[10px] font-bold text-primary">{payment.paymentKindLabel}</p>
                     </div>
                     <StatusBadge tone={tone}>{statusLabels[payment.status]}</StatusBadge>
                   </div>
@@ -153,7 +154,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                   {payment.reviewedAt ? ` • ตรวจแล้ว ${payment.reviewedAt}` : ""}
                   {payment.reviewedByName ? ` • โดย ${payment.reviewedByName}` : ""}
                 </p>
-                {payment.status === "pending_review" ? <AdminPaymentReviewButtons payment={payment} /> : null}
+                {payment.status === "pending_review" && payment.canManualReview ? <AdminPaymentReviewButtons payment={payment} /> : null}
               </div>
             </article>
           );

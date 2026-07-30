@@ -6,9 +6,9 @@ Clinical Ethereality
 
 ## Phase
 
-Backend authentication and user persistence foundation.
+Doctor workflow completion and integration validation.
 
-The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS scaffold, the reviewed static customer Stitch screens, the first backend foundation for LINE LIFF authentication, Prisma-backed users/auth sessions, doctor/pharmacist profile models, JWT sessions, role/permission helpers, protected customer routes, and an initial role-protected admin dashboard shell. The customer UI remains static and unchanged; the backend foundation does not yet include Zoom SDK.
+The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS modular monolith with the reviewed Stitch screens, LINE LIFF/JWT authentication, Prisma/MySQL persistence, and role-protected customer, doctor, pharmacist, and admin workflows. The Doctor flow now includes assigned-patient detail access, full linked pre-consult assessments, persisted consultation payments, guarded appointment lifecycle transitions, audited structured prescriptions, in-app messages and notifications, and a Zoom Meeting SDK room foundation.
 
 ## Current Decisions
 
@@ -33,11 +33,12 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Route protection: customer app routes redirect unauthenticated users to `/auth/line`; future `/admin`, `/doctor`, and `/pharmacist` routes have role boundaries in middleware
 - Local development access: `ENABLE_DEV_AUTH_BYPASS=true` enables `/api/auth/dev-session` and local customer/admin buttons on `/auth/line`; when seeded users are available, dev sessions use real Prisma user IDs so local write workflows can satisfy foreign-key constraints. This is disabled in production and does not replace LINE LIFF for MVP
 - Local Plesk-copy Customer access: when the localhost database is a Plesk copy without `seed-line-customer`, the local-only Customer dev session now resolves the most recently active database customer instead of falling back to `dev:customer`. This fallback is restricted to `127.0.0.1`/`localhost` database URLs so it cannot select an arbitrary customer from a remote database.
+- Local Plesk-copy staff access: the local-only Doctor and Pharmacist dev sessions can resolve the first active approved database-backed staff profile when seed IDs are absent, keeping foreign-key-backed QA usable without creating placeholder staff identities. Production remains unaffected.
 - Admin foundation: `/admin` now has an admin-only shell and operational overview backed by Prisma counts for user approvals, consultations, payments, prescriptions, orders, inventory, and hidden community content when the database is available
 - Admin user approvals: `/admin/users` now reads Prisma users with doctor/pharmacist profiles when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions with inline success/error feedback for approving staff roles, suspending users, and changing an active account directly between customer and admin. Direct role changes cannot target the signed-in admin, cannot remove the last active admin, and are written to the audit log; doctor/pharmacist roles remain behind the license-review approval flow.
 - Admin staff queue scaling: `/admin/users` now excludes ordinary customers, defaults to the pending-approval queue, separates pending/approved/inactive staff into status tabs, searches by name or LINE ID, reports database-wide status totals, and paginates filtered results at 20 records per page while retaining the existing review cards and actions.
 - Staff invitation foundation: `/admin/users` now exposes invite links for doctor, pharmacist, and admin access requests; `/staff-invite/[role]` lets a signed-in LINE user submit a pending staff/admin access request without adding a new table, doctor and pharmacist requests require first and last name and save the combined name to the requesting account for admin review, and the existing admin approval queue remains the review surface. Doctor/pharmacist applicants stay active as customers while their staff profile is pending, see a Thai review confirmation after submission, and receive an in-app notification after approval.
-- Admin payment review foundation: `/admin/payments` now reads Prisma payment, order, customer, and item records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for manual PromptPay slip verification or rejection
+- Admin payment review foundation: `/admin/payments` now reads Prisma payment records for both orders and consultations with the relevant customer/doctor context. Manual PromptPay review remains limited to order payments because consultation verification is provider-owned.
 - Admin payment review clarity: `/admin/payments` now separates pending slip, pending review, verified, and rejected counts, uses readable Thai labels, and shows QR payload status, slip URL, review source/provider, provider result, transaction reference, verified amount, receiver name, reviewer, and reviewed timestamp when available
 - Manual payment review service extraction: `features/payments/service.ts` now owns the sensitive manual payment review transition rules, payment/order updates, customer notification, and audit logging; the admin Server Action stays thin and unit tests cover the pure review rules.
 - Admin order management foundation: `/admin/orders` now reads Prisma order, customer, item, payment, and shipment records when a database is available, falls back to a DB-offline empty state, and includes admin-only Server Actions for moving orders through preparation, shipped, and delivered states
@@ -63,7 +64,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Assessment entry enforcement: direct customer access to `/consult` now checks for an active assessment and redirects to `/consult/assessment` when none exists, preventing the doctor list from bypassing the required assessment flow. Non-customer roles continue to their own role home.
 - Customer notification foundation: `/notifications` now reads the signed-in user's Prisma in-app notifications, keeps the Stitch notification layout, maps notification types back to existing app destinations, and includes a customer-owned mark-read Server Action
 - Customer reward foundation: `/profile/rewards` now reads Prisma reward ledgers and user balances, checkout and community comments award points through shared rules, and customers can spend 50 points for a wellness credit with a reward notification
-- Doctor consultation, patient log, and prescription writing foundation: `/doctor/consultations` and `/doctor/patients` now read Prisma consultation, patient, and prescription records scoped to the signed-in doctor profile when a database is available, fall back to DB-offline/profile-missing empty states, allow admins to view all doctor queues for operations support, and include a doctor/admin Server Action for issuing prescription notes that customers can use for direct prescription-required ordering
+- Doctor consultation, patient log, and prescription writing foundation: `/doctor/consultations`, `/doctor/patients`, and `/doctor/patients/[patientId]` read Prisma consultation, patient, assessment, message, payment, and prescription records scoped to the signed-in doctor profile. Patient-detail reads require an assigned consultation and write privacy audit metadata; list views mask LINE identity references.
 - Pharmacist prescription queue foundation: `/pharmacist/prescriptions` now reads Prisma prescription, patient, doctor, consultation, and linked order-item records when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for manual prescription verification or rejection
 - Pharmacist medicine preparation foundation: `/pharmacist/orders` now reads paid, preparing, and shipped order queues with customer, payment, shipment, and item context when a database is available, falls back to a DB-offline empty state, and includes pharmacist/admin Server Actions for moving orders through preparation, shipped, and delivered states
 - Pharmacist order language/status polish: `/pharmacist/orders` now uses Thai queue copy, Thai order/payment/shipment labels, clearer external-prescription attachment visibility, and Thai action feedback while preserving the confirmed no-extra-document-review flow after prescription attachment.
@@ -77,10 +78,13 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Formal booking slot locking: consultation booking now creates a short-lived `ConsultationSlotLock` row with a unique `doctorId + scheduledAt` constraint before creating the pending-payment consultation, and the booking screen marks locked or already active consultation slots as unavailable so customers cannot select booked times
 - Booking lock release: expired pending-payment slot holds are released by marking the consultation `cancelled`, disconnecting/deleting the slot lock, notifying the customer, and writing an audit log before booking/payment/appointment reads.
 - Customer appointment detail foundation: `/consult/appointments/[consultationId]` now reads Prisma consultation data scoped to the signed-in customer, shows doctor, scheduled date/time, consultation status, fee, and routes the next CTA to consultation payment, waiting room, advice log, or rebooking based on status
-- Consultation payment status foundation: `/consult/payment?consultation=...` now reads the signed-in customer's Prisma consultation, generates PromptPay QR instructions from the configured PromptPay ID, submits slip QR payload or hosted slip image URL through the provider-neutral SlipOK/EasySlip client, moves verified consultations to `scheduled`, and shows pending, verified, rejected, provider-error, expired, and closed payment states without adding a new payment schema
-- Doctor consultation workflow polish: `/doctor/consultations` now highlights whether each consult is ready, waiting for payment, live, completed, or expired/cancelled, shows payment readiness, surfaces the pre-consult assessment before consult, and gives doctors clear entry points for the consultation room/chat and prescription writing.
-- Doctor-issued prescription service extraction: `features/prescriptions/service.ts` now owns the sensitive prescription-writing rules for doctor ownership, consultation readiness, latest prescription reuse, audit logging, and patient notification; the Server Action stays thin and unit tests cover the pure decision rules.
-- Doctor patient-log polish: `/doctor/patients` and the doctor shell now use Thai queue/patient-history copy, Thai empty/error states, Thai summary labels, and shortened patient references instead of raw LINE IDs on the patient-log list.
+- Consultation payment status foundation: `/consult/payment?consultation=...` now persists each consultation verification attempt in the shared `Payment` entity, retaining amount, QR/slip evidence, provider result, reviewed time, and verified/rejected state before moving verified consultations to `scheduled`.
+- Doctor consultation lifecycle: `/doctor/consultations` enforces assigned-doctor/admin ownership and the guarded `scheduled -> live -> completed` transitions. Completion requires a clinical summary, and each transition creates patient notifications and audit records.
+- Doctor live consultation: `/consult/live` reads only participant-owned persisted messages, removes demo records, polls for new in-app messages, and launches the authenticated Zoom client-view room when meeting metadata and Meeting SDK credentials are available.
+- Zoom integration foundation: starting a consultation can create a Zoom meeting through Server-to-Server OAuth, stores only meeting metadata/password on the consultation, generates short-lived Meeting SDK signatures server-side, and verifies Zoom webhook signatures plus URL validation. Production still requires owner-managed Meeting SDK/S2S credentials and end-to-end account validation.
+- Doctor-issued prescription service extraction: `features/prescriptions/service.ts` now owns the sensitive prescription-writing rules for doctor ownership, consultation readiness, structured medication/dosage/quantity/instructions/warnings persistence, audit logging, and patient notification; customer and pharmacist views render the same medication structure.
+- Doctor patient-log polish: `/doctor/patients` and `/doctor/patients/[patientId]` use Thai queue/history copy, full linked assessment answers, assigned-consultation history, privacy notices, and shortened patient references instead of raw LINE IDs.
+- Doctor notifications: `/doctor/notifications` shows doctor-owned Prisma notifications with read/unread actions, and the doctor shell bell links to this data-backed screen.
 - Customer prescription status foundation: `/consult/prescriptions` now reads Prisma prescriptions scoped to the signed-in customer, shows doctor-issued prescription readiness, clinic/order context, linked medicine order context, and next-step CTAs for advice log, prescription ordering, or order tracking
 - Prescription-required purchase guard: prescription-required product details now route customers to order-ready prescription status instead of direct cart add, and normal checkout rejects prescription-required cart products unless they are ordered through the prescription-linked flow
 - Latest client intake bundle: local owner-downloaded files received on 2026-06-08 outside the repo include one real doctor telemedicine profile/photo, home-test product catalog details and product images, clinic/facility license document image, payment/bank reference document, and corporate/certification images. Exact license, bank, tax, and personal document values must stay out of git and be configured or stored only through secure owner-managed channels.
@@ -92,7 +96,7 @@ The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS sc
 - Database migration foundation: Prisma initial migration `20260513120000_init` now captures the current MySQL schema for auth, staff profiles, consultations, prescriptions, commerce, inventory, payments, shipments, community, notifications, and reward records
 - Initial role assignment: LINE LIFF sessions default to `customer`; doctor, pharmacist, and admin roles remain reserved for the future invitation/approval flow
 - Permission enforcement direction: reusable server helpers in `lib/permissions/*` should be called from Server Actions and route handlers before sensitive reads or writes
-- Integration route placeholders: `/api/auth/line/callback`, `/api/webhooks/payments`, and `/api/webhooks/zoom` now exist as guarded placeholders; payment and Zoom persistence remain intentionally unimplemented until providers are selected
+- Integration route boundaries: `/api/auth/line/callback`, `/api/webhooks/payments`, and `/api/webhooks/zoom` handle external callbacks; Zoom webhook requests require a current signed HMAC and never persist the raw payload.
 - Recommended video call integration: Zoom SDK
 - Recommended payment approach: Thai QR plus automatic Slip Verification API using either SlipOK or EasySlip with API-key authentication
 - Slip verification provider decision: the system should support SlipOK or EasySlip through environment configuration; provider-specific API keys, SlipOK branch ID, expected receiver name, and endpoint overrides must stay in environment variables and never be committed
@@ -137,11 +141,11 @@ Core route areas:
 Consult:
 
 - Doctor list: implemented at `/consult`
-- Pre-doctor assessment: newly requested by the client as the first consult/app entry step before doctor selection; requirement received for 4 Stitch-designed pages, Stitch-defined answer types, recommendation by assessment topic with optional doctor selection, 7-day answer reuse, doctor-visible answers, and no image/file attachments. Intro page is implemented at `/consult/assessment`, symptom step 1/3 is implemented at `/consult/assessment/symptoms`, duration step 2/3 is implemented at `/consult/assessment/duration`, and completion/recommendation preview is implemented at `/consult/assessment/complete`. Assessment answers are persisted for 7 days in `ConsultAssessment`, the default app entry skips the assessment while a valid record exists, booking links the active assessment to the consultation, and doctor queue cards show the pre-consult answers. Final recommendation mapping labels and real doctor data are still pending.
+- Pre-doctor assessment: implemented across `/consult/assessment`, `/consult/assessment/symptoms`, `/consult/assessment/duration`, and `/consult/assessment/complete`. Answers persist for 7 days, booking links the active assessment to the consultation, the queue shows a compact summary, and assigned-doctor patient detail shows the full stored answers.
 - Doctor profile and booking: implemented at `/consult/booking/somchai`
 - Consultation PromptPay checkout: implemented at `/consult/payment` with customer-scoped consultation reads, PromptPay QR generation, and SlipOK/EasySlip verification status handling
 - Waiting room: implemented at `/consult/waiting-room`
-- Live consultation: implemented at `/consult/live`
+- Live consultation: implemented at `/consult/live`, with persisted role-scoped messages and an embedded Zoom client-view route at `/consult/live/zoom`
 - Advice log: implemented at `/consult/advice-log`
 - Prescription verification status: implemented at `/consult/prescriptions`
 
@@ -178,8 +182,9 @@ Admin:
 - Admin inventory management: implemented at `/admin/inventory` as a role-protected Prisma-backed stock queue with manual quantity and threshold updates
 - Admin moderation: implemented at `/admin/moderation` as a role-protected Prisma-backed community content queue with restore/hide/archive actions
 - Admin notifications: implemented at `/admin/notifications` as a role-protected Prisma-backed in-app notification sender and recent-notification review queue
-- Doctor consultation queue and prescription writing: implemented at `/doctor/consultations` as a role-protected Prisma-backed consultation queue scoped to the signed-in doctor profile, with guarded prescription note submission to pharmacist verification
-- Doctor patient logs: implemented at `/doctor/patients` as a role-protected Prisma-backed patient history view scoped to assigned consultations
+- Doctor consultation queue and prescription writing: implemented at `/doctor/consultations` with persisted payment evidence, full assessment access, guarded lifecycle actions, room/chat access, and structured prescription submission.
+- Doctor patient logs: implemented at `/doctor/patients` and `/doctor/patients/[patientId]` with assigned-consultation scoping and audited sensitive-record reads.
+- Doctor notifications: implemented at `/doctor/notifications` as a role-protected Prisma-backed notification screen.
 - Pharmacist prescription queue: implemented at `/pharmacist/prescriptions` as a role-protected Prisma-backed verification queue with manual verify/reject actions
 - Pharmacist medicine preparation: implemented at `/pharmacist/orders` as a role-protected Prisma-backed fulfillment queue with manual preparation/shipped/delivered actions
 
@@ -193,7 +198,7 @@ Admin:
 - Decide whether production will store protected health information
 - Decide whether HIPAA-eligible vendors and BAAs are required from day one
 - Decide whether customer product browsing and order tracking are public, authenticated, or hybrid
-- Confirm Zoom SDK implementation approach
+- Configure and validate production Zoom Meeting SDK and Server-to-Server OAuth credentials
 - Choose final Slip Verification API provider: SlipOK or EasySlip
 - Decide whether Thai QR payments are manual-review MVP or fully automated after slip verification
 - Community is included in MVP using the reviewed Stitch screens
@@ -397,7 +402,7 @@ Completed in the current frontend pass:
 - Local team testing guide: `TEAM_TESTING_GUIDE.md` is now readable Thai and covers localhost role login, customer assessment/booking/payment, doctor assessment visibility/chat/prescriptions, pharmacist fulfillment, admin operations, profile/community checks, bug severity, and report templates.
 - Local database verification: local MySQL schema `clinical_ethereality` was pushed and seeded with `npm run db:push` and `npm run db:seed` using the project-owned Docker MySQL container `clinical-ethereality-db` on `127.0.0.1:3307`.
 - Local Plesk-copy Customer verification: localhost schema `clinical_ethereality_host_copy` was used through a process-level `DATABASE_URL` override without changing `.env.local`. Customer mobile E2E passed 32/32 serial cases with HTTP-success checks, Customer authorization integration passed 2/2 cases, focused Customer unit coverage passed 26/26 cases, and lint, typecheck, and production build passed on 2026-07-30.
-- Verification passed after the latest changes: `npm run lint`, `npm run build`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npx prisma validate` with the local `DATABASE_URL` loaded from `.env.local`.
+- Doctor workflow verification on 2026-07-30 passed `npm run lint`, `npm run build`, `npm run typecheck`, `npx prisma validate`, 160 unit tests, 14 focused role/Doctor/Admin/Pharmacist E2E cases, and 4 final localhost smoke cases. The Plesk-copy database has no Prisma migration history, so only `20260730190000_complete_doctor_workflow` was applied directly to `clinical_ethereality_host_copy`; the production database was not changed.
 - Local dev server was restarted cleanly at `http://localhost:3001`.
 
 Known frontend caveats:
@@ -420,11 +425,11 @@ Not implemented yet:
 - Full browser-to-storage slip upload flow.
 - Production PromptPay/bank reference data has been received and must be configured securely through environment secrets such as `THAI_QR_PROMPTPAY_ID`; exact values must not be committed. Dynamic Thai QR payload generation is implemented for store checkout orders.
 - Production consultation payment verification requires `SLIP_VERIFICATION_PROVIDER`, `SLIP_VERIFICATION_API_KEY`, and provider-specific values such as `SLIPOK_BRANCH_ID` to be configured securely.
-- Zoom SDK integration for live consultations.
+- Production Zoom Meeting SDK and Server-to-Server OAuth credentials are not configured yet, so real meeting creation/camera/microphone UAT remains pending even though the guarded integration path is implemented.
 - Realtime chat transport/provider such as Firebase, Pusher, Ably, or WebSocket/SSE has not been selected or integrated yet; current MVP foundation persists messages through the existing Next.js/Prisma/MySQL architecture.
 - Actual Cloudinary/S3 upload provider integration for payment slips, externally attached prescriptions, and broader attachments; current foundation accepts and validates owner-managed hosted URLs and stores metadata only. Staff profile/license files are the narrow exception and can now use temporary private Plesk host storage.
 - First hosted Plesk smoke deployment is in progress on `https://app.bccgroup-thailand.com`: HTTPS, `/api/health`, Git/Node 24 deployment, and mobile LINE LIFF login are passing. Deploy and verify the desktop LINE Login OAuth callback, approve dedicated staff roles, and complete the end-to-end UAT flow before launch approval. The temporary cPanel host proved the standalone app and LINE Login build path but is not the preferred ongoing deployment target because of shared-host resource limits.
-- Broader Community/Profile data beyond the authenticated profile summary and current article interaction/reporting flows remains incomplete; saved-article and shipping-address support screens still use placeholder content. Broader doctor workflows beyond consultation lists, patient logs, and prescription writing, and pharmacist workflows beyond prescription verification and medicine preparation also remain incomplete.
+- Broader Community/Profile data beyond the authenticated profile summary and current article interaction/reporting flows remains incomplete; saved-article and shipping-address support screens still use placeholder content. Doctor production work now mainly remains Zoom credential/UAT validation and deciding whether polling should be replaced by a dedicated realtime transport.
 - Automated tests beyond the current permission unit coverage, feature validation schema coverage, Stitch UI primitive coverage, protected workflow integration coverage, Playwright smoke coverage, lint, build, and typecheck.
 
 ## Risk Notes
@@ -434,6 +439,7 @@ Not implemented yet:
 - Ownership and role scope should be represented on the main entities without expanding the database beyond the agreed entity list unless needed
 - AI features should wait until permissions, audit logging, and data boundaries are established
 - Payments, prescriptions, and pharmacy fulfillment introduce additional regulatory and operational complexity
+- `npm audit --omit=dev` reports 11 runtime advisories (0 critical, 4 high, 6 moderate, 1 low) in existing Next.js/Sentry/transitive packages; no Zoom package advisory was reported. Dependency upgrades should be handled as a separate tested maintenance task.
 
 ## Workspace Notes
 

@@ -29,13 +29,13 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
             <p className="text-label font-bold uppercase text-primary">แพทย์</p>
             <h1 className="truncate font-headline text-xl font-bold text-text">คิวปรึกษาและประวัติผู้ป่วย</h1>
           </div>
-          <button
-            type="button"
+          <Link
+            href="/doctor/notifications"
             aria-label="การแจ้งเตือน"
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
           >
             <Bell aria-hidden="true" className="size-5" strokeWidth={2.2} />
-          </button>
+          </Link>
         </div>
       </header>
 
