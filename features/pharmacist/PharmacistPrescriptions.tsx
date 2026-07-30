@@ -116,8 +116,11 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
                 <InfoTile label="ตรวจเมื่อ" value={prescription.verifiedAt ?? "ยังไม่ตรวจ"} icon={<Stethoscope aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>
 
-              {prescription.notes || prescription.consultationSummary ? (
+              {prescription.medicationSummary || prescription.notes || prescription.consultationSummary ? (
                 <div className="mt-4 rounded-[8px] bg-primary/5 p-3">
+                  {prescription.medicationSummary ? (
+                    <p className="whitespace-pre-wrap text-xs font-semibold leading-5 text-text">{prescription.medicationSummary}</p>
+                  ) : null}
                   <p className="line-clamp-3 text-xs leading-5 text-muted">
                     {prescription.notes ?? prescription.consultationSummary}
                   </p>

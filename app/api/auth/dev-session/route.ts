@@ -47,11 +47,24 @@ async function getDevSession(role: keyof typeof devLineUserIds): Promise<AuthSes
       }
     });
 
-    if ((!user || user.status !== "active" || user.role !== role) && role === "customer" && usesLocalDatabase()) {
+    if ((!user || user.status !== "active" || user.role !== role) && usesLocalDatabase()) {
       user = await prisma.user.findFirst({
         where: {
-          role: "customer",
-          status: "active"
+          role,
+          status: "active",
+          ...(role === "doctor"
+            ? {
+                doctorProfile: {
+                  status: "approved"
+                }
+              }
+            : role === "pharmacist"
+              ? {
+                  pharmacistProfile: {
+                    status: "approved"
+                  }
+                }
+              : {})
         },
         orderBy: [
           {

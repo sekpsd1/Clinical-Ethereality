@@ -279,9 +279,14 @@
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
 - [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
-- [ ] Build Zoom SDK video consultation room integration
+- [x] Build Zoom Meeting SDK client-view integration, Server-to-Server meeting creation, signature generation, and signed webhook handling; production owner credentials and hosted end-to-end validation remain pending
 - [x] Build persisted in-app consultation chat foundation separate from LINE
-- [x] Build prescription writing workflow
+- [x] Remove live-room demo messages and bind the room to participant-scoped persisted messages with near-real-time refresh
+- [x] Persist consultation payment evidence and status in the shared Payment entity
+- [x] Add guarded doctor appointment lifecycle controls for scheduled, live, and completed states
+- [x] Add assigned-patient detail with full pre-consult assessment visibility and audited privacy access
+- [x] Add doctor-owned in-app notification screen and read actions
+- [x] Build structured prescription writing workflow with medicine, dosage, quantity, instructions, and warnings
 - [x] Extract doctor-issued prescription writing rules into a tested domain service
 - [x] Build pharmacist prescription queue
 - [x] Build prescription verification workflow

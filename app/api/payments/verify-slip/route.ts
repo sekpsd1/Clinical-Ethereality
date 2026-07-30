@@ -50,7 +50,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "ไม่พบรายการชำระเงินนี้" }, { status: 404 });
   }
 
-  if (!canReadOwnRecord(session, payment.order.userId) && !hasPermission(session, "payment:review")) {
+  if (!payment.order) {
+    return NextResponse.json(
+      { ok: false, error: "รายการค่าปรึกษาต้องตรวจผ่านขั้นตอนชำระค่าปรึกษา" },
+      { status: 409 }
+    );
+  }
+  const order = payment.order;
+
+  if (!canReadOwnRecord(session, order.userId) && !hasPermission(session, "payment:review")) {
     return NextResponse.json({ ok: false, error: "ผู้ใช้ปัจจุบันไม่มีสิทธิ์ตรวจสอบรายการชำระเงินนี้" }, { status: 403 });
   }
 
@@ -84,8 +92,8 @@ export async function POST(request: NextRequest) {
         hostedSlipAttachment,
         payment: {
           id: payment.id,
-          orderId: payment.order.id,
-          orderUserId: payment.order.userId,
+          orderId: order.id,
+          orderUserId: order.userId,
           status: payment.status,
           slipImageUrl: payment.slipImageUrl
         },

@@ -41,6 +41,9 @@ function txMock() {
     },
     notification: {
       create: vi.fn()
+    },
+    payment: {
+      upsert: vi.fn()
     }
   };
 }
@@ -81,6 +84,10 @@ describe("consultation payment verification service", () => {
     await applyConsultationPaymentVerification(tx as never, {
       actorId: "patient-1",
       consultation: consultation(),
+      evidence: {
+        amount: 900,
+        qrPayload: "qr-payload"
+      },
       result: result()
     });
 
@@ -92,6 +99,19 @@ describe("consultation payment verification service", () => {
         status: "scheduled"
       }
     });
+    expect(tx.payment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          consultationId: "consultation-1"
+        },
+        create: expect.objectContaining({
+          consultationId: "consultation-1",
+          amount: 900,
+          status: "verified",
+          qrPayload: "qr-payload"
+        })
+      })
+    );
     expect(tx.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -122,6 +142,10 @@ describe("consultation payment verification service", () => {
     await applyConsultationPaymentVerification(tx as never, {
       actorId: "patient-1",
       consultation: consultation(),
+      evidence: {
+        amount: 900,
+        qrPayload: "qr-payload"
+      },
       result: result({
         ok: false,
         status: "rejected",
@@ -131,6 +155,13 @@ describe("consultation payment verification service", () => {
 
     expect(tx.consultation.update).not.toHaveBeenCalled();
     expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.payment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          status: "rejected"
+        })
+      })
+    );
     expect(tx.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 
-type PaymentWithOrder = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
+type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
 
 function getPaymentsForAdmin() {
   return prisma.payment.findMany({
@@ -23,7 +23,21 @@ function getPaymentsForAdmin() {
           user: true,
           items: {
             include: {
-              product: true
+              product: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      },
+      consultation: {
+        include: {
+          patient: true,
+          doctor: {
+            include: {
+              user: true
             }
           }
         }
@@ -62,7 +76,17 @@ function getOrderCode(orderId: string): string {
   return `CE-${orderId.slice(-6).toUpperCase()}`;
 }
 
-function getItemSummary(payment: PaymentWithOrder): string {
+function getItemSummary(payment: PaymentWithContext): string {
+  if (payment.consultation) {
+    const doctorName = payment.consultation.doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา";
+
+    return `ค่าปรึกษากับ ${doctorName}`;
+  }
+
+  if (!payment.order) {
+    return "ไม่พบบริบทของรายการชำระเงิน";
+  }
+
   if (payment.order.items.length === 0) {
     return "ไม่มีรายการสินค้าในคำสั่งซื้อ";
   }
@@ -135,7 +159,7 @@ function getResultLabel(status: AdminPaymentQueueItem["status"], resultStatus: s
   return "คืนเงินแล้ว";
 }
 
-function getPaymentEvidence(payment: PaymentWithOrder) {
+function getPaymentEvidence(payment: PaymentWithContext) {
   const payload = asRecord(payment.verificationPayload);
   const result = asRecord(payload.result as Prisma.JsonValue | null | undefined);
   const source = getString(payload.source);
@@ -163,15 +187,21 @@ function getPaymentEvidence(payment: PaymentWithOrder) {
   };
 }
 
-function mapPayment(payment: PaymentWithOrder): AdminPaymentQueueItem {
+function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
   const evidence = getPaymentEvidence(payment);
+  const customer = payment.order?.user ?? payment.consultation?.patient ?? null;
+  const referenceId = payment.orderId ?? payment.consultationId ?? payment.id;
+  const isConsultationPayment = Boolean(payment.consultationId);
 
   return {
     id: payment.id,
     orderId: payment.orderId,
-    orderCode: getOrderCode(payment.orderId),
-    customerName: payment.order.user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
-    customerLineId: payment.order.user.lineUserId,
+    consultationId: payment.consultationId,
+    orderCode: isConsultationPayment ? `CONSULT-${referenceId.slice(-6).toUpperCase()}` : getOrderCode(referenceId),
+    paymentKindLabel: isConsultationPayment ? "ค่าปรึกษาแพทย์" : "คำสั่งซื้อ",
+    canManualReview: Boolean(payment.orderId),
+    customerName: customer?.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    customerLineId: customer?.lineUserId ?? "ไม่พบผู้ใช้",
     amount: formatMoney(payment.amount),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,

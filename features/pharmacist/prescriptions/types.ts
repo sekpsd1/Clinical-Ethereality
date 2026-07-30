@@ -7,6 +7,7 @@ export type PharmacistPrescriptionItem = {
   doctorName: string;
   consultationSummary: string | null;
   notes: string | null;
+  medicationSummary: string | null;
   productSummary: string;
   createdAt: string;
   verifiedAt: string | null;

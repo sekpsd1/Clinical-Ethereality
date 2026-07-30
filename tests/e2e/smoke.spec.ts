@@ -328,8 +328,14 @@ test.describe("role route smoke", () => {
     await expectNoAppError(page);
     await expect(page).toHaveURL(/\/admin\/payments$/);
     await expect(page.getByRole("heading", { name: "คิวตรวจสอบการชำระเงิน" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "รายการชำระเงิน" })).toBeVisible();
-    await expect(page.getByText("ข้อมูล QR", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "รายการชำระเงิน", exact: true })).toBeVisible();
+    await expect(page.getByText("พร้อมใช้งาน", { exact: true }).first()).toBeVisible();
+    await expect(
+      page
+        .getByText("ข้อมูล QR", { exact: true })
+        .first()
+        .or(page.getByRole("heading", { name: "ยังไม่มีรายการชำระเงิน" }))
+    ).toBeVisible();
   });
 
   test("admin product form clarifies already-uploaded image links", async ({ page }) => {
@@ -351,6 +357,40 @@ test.describe("role route smoke", () => {
     await expect(page).toHaveURL(/\/doctor\/consultations$/);
     await expect(page.locator('nav a[href="/doctor/consultations"]')).toHaveAttribute("aria-current", "page");
     await expect(page.locator('nav a[href="/doctor/patients"]')).toBeVisible();
+  });
+
+  test("doctor dev session resolves an approved database-backed doctor", async ({ page }) => {
+    await signInAs(page, "doctor");
+    const response = await page.request.get("/api/auth/session");
+    const body = (await response.json()) as {
+      session?: {
+        userId?: string;
+        role?: string;
+      };
+    };
+
+    expect(response.ok()).toBe(true);
+    expect(body.session?.role).toBe("doctor");
+    expect(body.session?.userId).not.toMatch(/^dev:/);
+  });
+
+  test("doctor patient and notification screens are reachable", async ({ page }) => {
+    await signInAs(page, "doctor");
+    await page.goto("/doctor/patients");
+    await expectNoAppError(page);
+    await expect(page.getByRole("heading", { name: "ผู้ป่วยที่ได้รับมอบหมาย" })).toBeVisible();
+
+    await page.goto("/doctor/notifications");
+    await expectNoAppError(page);
+    await expect(page.getByRole("heading", { name: "การแจ้งเตือน" })).toBeVisible();
+  });
+
+  test("authenticated doctor live room does not expose demo consultation messages", async ({ page }) => {
+    await signInAs(page, "doctor");
+    await page.goto("/consult/live");
+    await expectNoAppError(page);
+    await expect(page.getByText("Dr. Aris Thorne")).toHaveCount(0);
+    await expect(page.getByText("รู้สึกปวดศีรษะมา 2 วันแล้ว", { exact: false })).toHaveCount(0);
   });
 
   test("pharmacist prescription queue is reachable with a pharmacist dev session", async ({ page }) => {

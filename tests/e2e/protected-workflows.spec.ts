@@ -64,11 +64,11 @@ test.describe("protected workflow integration", () => {
   test("enforces separate doctor and pharmacist workflow boundaries", async ({ page }) => {
     await signInAs(page, "doctor");
     await page.goto("/pharmacist/prescriptions");
-    await expect(page).toHaveURL(/\/consult$/);
+    await expect(page).toHaveURL(/\/doctor\/consultations$/);
 
     await signInAs(page, "pharmacist");
     await page.goto("/doctor/consultations");
-    await expect(page).toHaveURL(/\/consult$/);
+    await expect(page).toHaveURL(/\/pharmacist\/prescriptions$/);
   });
 
   test("allows admins to support protected doctor and pharmacist workflows", async ({ page }) => {

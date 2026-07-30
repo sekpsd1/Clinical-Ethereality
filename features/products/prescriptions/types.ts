@@ -15,6 +15,7 @@ export type PrescriptionOrderDetail = {
   pharmacistName: string | null;
   verifiedAt: string | null;
   notes: string;
+  medicationSummary: string | null;
   linkedOrderCode: string | null;
   products: PrescriptionOrderProduct[];
 };

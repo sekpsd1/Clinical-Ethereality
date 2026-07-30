@@ -1,4 +1,5 @@
-import type { ConsultationStatus, PrescriptionStatus } from "@prisma/client";
+import type { ConsultationStatus, PaymentStatus, PrescriptionStatus } from "@prisma/client";
+import type { PrescriptionMedicationItem } from "@/features/prescriptions/items";
 
 export type DoctorConsultationItem = {
   id: string;
@@ -11,6 +12,9 @@ export type DoctorConsultationItem = {
   readinessTone: "neutral" | "success" | "warning" | "danger";
   paymentStatusLabel: string;
   paymentStatusDescription: string;
+  paymentStatus: PaymentStatus | null;
+  paymentEvidenceSummary: string | null;
+  paymentReviewedAt: string | null;
   canOpenConsultRoom: boolean;
   consultRoomHref: string | null;
   scheduledAt: string | null;
@@ -19,6 +23,7 @@ export type DoctorConsultationItem = {
   latestPrescriptionId: string | null;
   latestPrescriptionStatus: PrescriptionStatus | null;
   latestPrescriptionNotes: string | null;
+  latestPrescriptionMedication: PrescriptionMedicationItem | null;
   latestChatMessage:
     | {
         body: string;

@@ -85,7 +85,11 @@ function PrescriptionCard({ prescription }: { prescription: CustomerPrescription
       </div>
 
       <div className="mt-4 rounded-[18px] bg-[#f7f9fb]/85 p-4">
-        <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">บันทึกจากแพทย์</p>
+        <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">รายการยาจากแพทย์</p>
+        {prescription.medicationSummary ? (
+          <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-[#191c1e]">{prescription.medicationSummary}</p>
+        ) : null}
+        <p className="mt-3 text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">บันทึกเพิ่มเติม</p>
         <p className="mt-2 text-sm leading-6 text-[#3e494a]">{prescription.notes}</p>
       </div>
 

@@ -137,6 +137,10 @@ export async function applyManualPaymentReview(
     throw new Error("Payment not found.");
   }
 
+  if (!payment.orderId || !payment.order) {
+    throw new Error("Consultation payments cannot use the order review workflow.");
+  }
+
   assertPaymentReadyForManualReview(payment.status);
 
   const transition = getManualPaymentReviewTransition(input.status);

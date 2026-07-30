@@ -25,7 +25,7 @@ export async function submitPrescriptionAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "กรุณาระบุบันทึกใบสั่งยาอย่างน้อย 5 ตัวอักษร"
+      message: "กรุณาระบุชื่อยา ขนาดยา จำนวน และวิธีใช้ให้ครบ"
     };
   }
 
@@ -33,7 +33,16 @@ export async function submitPrescriptionAction(
     await prisma.$transaction(async (tx) => {
       await issueDoctorPrescription(tx, {
         consultationId: parsed.data.consultationId,
-        notes: parsed.data.notes,
+        notes: parsed.data.notes ?? "",
+        medications: [
+          {
+            medicationName: parsed.data.medicationName,
+            dosage: parsed.data.dosage,
+            quantity: parsed.data.quantity,
+            instructions: parsed.data.instructions,
+            warnings: parsed.data.warnings || undefined
+          }
+        ],
         actorId: session.userId,
         actorRole: session.role
       });

@@ -1,6 +1,10 @@
 import type { ConsultationStatus, PrescriptionStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { Role } from "@/lib/permissions/roles";
+import {
+  toPrescriptionItemsJson,
+  type PrescriptionMedicationItem
+} from "@/features/prescriptions/items";
 
 export type DoctorPrescriptionConsultation = {
   id: string;
@@ -76,6 +80,7 @@ export async function issueDoctorPrescription(
   input: {
     consultationId: string;
     notes: string;
+    medications: PrescriptionMedicationItem[];
     actorId: string;
     actorRole: Role;
   }
@@ -122,12 +127,14 @@ export async function issueDoctorPrescription(
           consultation,
           plan,
           notes: input.notes,
+          medications: input.medications,
           issuedAt,
           actorId: input.actorId
         })
       : await createDoctorPrescription(tx, {
           consultation,
           notes: input.notes,
+          medications: input.medications,
           issuedAt,
           actorId: input.actorId
         });
@@ -154,6 +161,7 @@ async function updateExistingDoctorPrescription(
     consultation: DoctorPrescriptionConsultation;
     plan: Extract<DoctorPrescriptionWritePlan, { mode: "update" }>;
     notes: string;
+    medications: PrescriptionMedicationItem[];
     issuedAt: Date;
     actorId: string;
   }
@@ -164,6 +172,7 @@ async function updateExistingDoctorPrescription(
     },
     data: {
       notes: input.notes,
+      itemsJson: toPrescriptionItemsJson(input.medications),
       status: "verified",
       verifiedAt: input.issuedAt
     }
@@ -178,7 +187,8 @@ async function updateExistingDoctorPrescription(
       patientId: input.consultation.patientId,
       previousStatus: input.plan.previousStatus,
       nextStatus: "verified",
-      noAdditionalDocumentReview: true
+      noAdditionalDocumentReview: true,
+      medicationCount: input.medications.length
     }
   });
 
@@ -190,6 +200,7 @@ async function createDoctorPrescription(
   input: {
     consultation: DoctorPrescriptionConsultation;
     notes: string;
+    medications: PrescriptionMedicationItem[];
     issuedAt: Date;
     actorId: string;
   }
@@ -200,6 +211,7 @@ async function createDoctorPrescription(
       patientId: input.consultation.patientId,
       doctorId: input.consultation.doctorId,
       notes: input.notes,
+      itemsJson: toPrescriptionItemsJson(input.medications),
       status: "verified",
       verifiedAt: input.issuedAt
     }
@@ -214,7 +226,8 @@ async function createDoctorPrescription(
       consultationId: input.consultation.id,
       patientId: input.consultation.patientId,
       nextStatus: "verified",
-      noAdditionalDocumentReview: true
+      noAdditionalDocumentReview: true,
+      medicationCount: input.medications.length
     }
   });
 

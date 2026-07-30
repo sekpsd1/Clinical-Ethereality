@@ -8,6 +8,7 @@ import type {
   PrescriptionOrderProduct
 } from "@/features/products/prescriptions/types";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
+import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
 
 type PrescriptionRecord = NonNullable<Awaited<ReturnType<typeof getPrescriptionForOrder>>>;
 type ProductRecord = Awaited<ReturnType<typeof getPrescriptionProducts>>[number];
@@ -109,6 +110,8 @@ function mapPrescription(prescription: PrescriptionRecord, products: ProductReco
     pharmacistName: prescription.pharmacist?.user.displayName ?? null,
     verifiedAt: formatDate(prescription.verifiedAt),
     notes: prescription.notes ?? "ยังไม่มีบันทึกใบสั่งยา",
+    medicationSummary:
+      parsePrescriptionItems(prescription.itemsJson).map(formatPrescriptionItem).join("\n") || null,
     linkedOrderCode: linkedOrder ? getOrderCode(linkedOrder.id) : null,
     products: products.map(mapProduct)
   };

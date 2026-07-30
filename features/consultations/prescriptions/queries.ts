@@ -5,6 +5,7 @@ import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import type { CustomerPrescriptionItem, CustomerPrescriptionsData } from "@/features/consultations/prescriptions/types";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
+import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
 
 type PrescriptionRecord = Awaited<ReturnType<typeof getPrescriptionsForCustomer>>[number];
 
@@ -134,6 +135,8 @@ function mapPrescription(prescription: PrescriptionRecord): CustomerPrescription
     consultationDate: formatDate(prescription.consultation.scheduledAt ?? prescription.consultation.createdAt),
     verifiedAt: prescription.verifiedAt ? formatDate(prescription.verifiedAt) : null,
     notes: prescription.notes ?? "ยังไม่มีบันทึกใบสั่งยา",
+    medicationSummary:
+      parsePrescriptionItems(prescription.itemsJson).map(formatPrescriptionItem).join("\n") || null,
     productSummary: getProductSummary(prescription),
     linkedOrderCode: getLinkedOrderCode(prescription),
     nextStepTitle: nextStep.title,

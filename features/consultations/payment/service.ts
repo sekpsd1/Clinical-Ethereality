@@ -14,6 +14,12 @@ export type ConsultationPaymentSnapshot = {
   status: ConsultationStatus;
 };
 
+export type ConsultationPaymentEvidence = {
+  amount: number;
+  qrPayload?: string;
+  slipImageUrl?: string;
+};
+
 const consultationPaymentVerificationTransitions: Record<
   "verified" | "rejected",
   ConsultationPaymentVerificationTransition
@@ -47,12 +53,45 @@ export async function applyConsultationPaymentVerification(
   input: {
     actorId: string;
     consultation: ConsultationPaymentSnapshot;
+    evidence: ConsultationPaymentEvidence;
     result: SlipVerificationResult;
   }
 ) {
   assertConsultationReadyForPaymentVerification(input.consultation.status);
 
   const transition = getConsultationPaymentVerificationTransition(input.result.ok);
+  const reviewedAt = new Date();
+
+  await tx.payment.upsert({
+    where: {
+      consultationId: input.consultation.id
+    },
+    create: {
+      consultationId: input.consultation.id,
+      amount: input.evidence.amount,
+      status: input.result.ok ? "verified" : "rejected",
+      qrPayload: input.evidence.qrPayload,
+      slipImageUrl: input.evidence.slipImageUrl,
+      reviewedAt,
+      verificationPayload: {
+        reviewedAt: reviewedAt.toISOString(),
+        source: input.result.provider,
+        result: toJsonValue(input.result)
+      }
+    },
+    update: {
+      amount: input.evidence.amount,
+      status: input.result.ok ? "verified" : "rejected",
+      qrPayload: input.evidence.qrPayload,
+      slipImageUrl: input.evidence.slipImageUrl,
+      reviewedAt,
+      verificationPayload: {
+        reviewedAt: reviewedAt.toISOString(),
+        source: input.result.provider,
+        result: toJsonValue(input.result)
+      }
+    }
+  });
 
   if (transition.nextStatus) {
     await tx.consultation.update({
@@ -98,4 +137,8 @@ export async function applyConsultationPaymentVerification(
       receiverName: input.result.receiverName
     }
   });
+}
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue;
 }

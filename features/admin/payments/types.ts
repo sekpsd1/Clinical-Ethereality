@@ -2,8 +2,11 @@ import type { PaymentStatus } from "@prisma/client";
 
 export type AdminPaymentQueueItem = {
   id: string;
-  orderId: string;
+  orderId: string | null;
+  consultationId: string | null;
   orderCode: string;
+  paymentKindLabel: string;
+  canManualReview: boolean;
   customerName: string;
   customerLineId: string;
   amount: string;

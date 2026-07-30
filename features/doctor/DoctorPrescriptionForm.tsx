@@ -9,7 +9,10 @@ import type { DoctorPrescriptionActionState } from "@/features/doctor/consultati
 import type { DoctorConsultationItem } from "@/features/doctor/consultations/types";
 
 type DoctorPrescriptionFormProps = {
-  consultation: Pick<DoctorConsultationItem, "id" | "latestPrescriptionNotes" | "latestPrescriptionStatus">;
+  consultation: Pick<
+    DoctorConsultationItem,
+    "id" | "latestPrescriptionMedication" | "latestPrescriptionNotes" | "latestPrescriptionStatus"
+  >;
 };
 
 const initialActionState: DoctorPrescriptionActionState = {
@@ -23,19 +26,67 @@ export function DoctorPrescriptionForm({ consultation }: DoctorPrescriptionFormP
     consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected"
       ? consultation.latestPrescriptionNotes ?? ""
       : "";
+  const defaultMedication =
+    consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected"
+      ? consultation.latestPrescriptionMedication
+      : null;
 
   return (
     <form action={formAction} className="mt-4 rounded-[8px] bg-primary/5 p-3">
       <input type="hidden" name="consultationId" value={consultation.id} />
-      <label className="text-[10px] font-bold uppercase text-muted" htmlFor={`prescription-${consultation.id}`}>
-        บันทึกใบสั่งยา
+      <p className="text-[10px] font-bold uppercase text-muted">
+        รายการยา
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <PrescriptionField
+          id={`medication-${consultation.id}`}
+          label="ชื่อยา"
+          name="medicationName"
+          defaultValue={defaultMedication?.medicationName}
+          className="col-span-2"
+        />
+        <PrescriptionField
+          id={`dosage-${consultation.id}`}
+          label="ขนาดยา"
+          name="dosage"
+          defaultValue={defaultMedication?.dosage}
+        />
+        <PrescriptionField
+          id={`quantity-${consultation.id}`}
+          label="จำนวน"
+          name="quantity"
+          defaultValue={defaultMedication?.quantity}
+        />
+      </div>
+      <label className="mt-3 block text-[10px] font-bold uppercase text-muted" htmlFor={`instructions-${consultation.id}`}>
+        วิธีใช้
+      </label>
+      <textarea
+        id={`instructions-${consultation.id}`}
+        name="instructions"
+        defaultValue={defaultMedication?.instructions}
+        className="mt-2 min-h-20 w-full resize-none rounded-[8px] border border-border bg-white/85 px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
+        placeholder="เช่น รับประทานครั้งละ 1 เม็ด หลังอาหาร วันละ 2 ครั้ง"
+      />
+      <label className="mt-3 block text-[10px] font-bold uppercase text-muted" htmlFor={`warnings-${consultation.id}`}>
+        คำเตือน
+      </label>
+      <textarea
+        id={`warnings-${consultation.id}`}
+        name="warnings"
+        defaultValue={defaultMedication?.warnings}
+        className="mt-2 min-h-16 w-full resize-none rounded-[8px] border border-border bg-white/85 px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
+        placeholder="ข้อควรระวัง อาการแพ้ หรือเงื่อนไขที่ต้องหยุดยา"
+      />
+      <label className="mt-3 block text-[10px] font-bold uppercase text-muted" htmlFor={`prescription-${consultation.id}`}>
+        บันทึกเพิ่มเติม
       </label>
       <textarea
         id={`prescription-${consultation.id}`}
         name="notes"
         defaultValue={defaultNotes}
         className="mt-2 min-h-24 w-full resize-none rounded-[8px] border border-border bg-white/85 px-3 py-2 text-sm leading-5 text-text outline-none transition focus:border-primary"
-        placeholder="ระบุชื่อยา ขนาดยา วิธีใช้ คำเตือน และคำแนะนำติดตามอาการ"
+        placeholder="คำแนะนำติดตามอาการหรือหมายเหตุทางคลินิก"
       />
       <div className="mt-3 flex items-center justify-between gap-3">
         <p
@@ -50,6 +101,32 @@ export function DoctorPrescriptionForm({ consultation }: DoctorPrescriptionFormP
         <SubmitButton />
       </div>
     </form>
+  );
+}
+
+function PrescriptionField({
+  id,
+  label,
+  name,
+  defaultValue,
+  className
+}: {
+  id: string;
+  label: string;
+  name: string;
+  defaultValue?: string;
+  className?: string;
+}) {
+  return (
+    <label htmlFor={id} className={className}>
+      <span className="text-[10px] font-bold uppercase text-muted">{label}</span>
+      <input
+        id={id}
+        name={name}
+        defaultValue={defaultValue}
+        className="mt-1 min-h-10 w-full rounded-[8px] border border-border bg-white/85 px-3 text-sm text-text outline-none transition focus:border-primary"
+      />
+    </label>
   );
 }
 
