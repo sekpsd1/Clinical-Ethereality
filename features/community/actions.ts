@@ -8,6 +8,13 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { communityPostSchema, updateCommunityPostSchema } from "@/features/community/schema";
+import {
+  communityImageEntityType,
+  deleteCommunityImage,
+  getCommunityImageErrorMessage,
+  prepareCommunityImage,
+  type PreparedCommunityImage
+} from "@/features/community/images/service";
 
 export type CommunityPostActionState = {
   status: "idle" | "error";
@@ -28,6 +35,38 @@ function createPostSlug(title: string): string {
     .slice(0, 70);
 
   return `${base || "community-post"}-${randomUUID().slice(0, 8)}`;
+}
+
+function getImageFile(formData: FormData): File | null {
+  const value = formData.get("coverImage");
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+function communityImageAttachmentData(
+  image: PreparedCommunityImage,
+  ownerId: string,
+  articleId: string
+) {
+  return {
+    id: image.attachmentId,
+    ownerId,
+    purpose: "other" as const,
+    status: "attached" as const,
+    entityType: communityImageEntityType,
+    entityId: articleId,
+    storageUrl: image.storageUrl,
+    storageKey: image.storageKey,
+    fileName: image.fileName,
+    mimeType: image.mimeType,
+    byteSize: image.byteSize,
+    metadataJson: {
+      storageProvider: "local_host",
+      visibility: "authenticated_community",
+      width: image.width,
+      height: image.height,
+      metadataStripped: true
+    }
+  };
 }
 
 export async function createCommunityPostAction(
@@ -63,15 +102,38 @@ export async function createCommunityPostAction(
   }
 
   const slug = createPostSlug(parsed.data.title);
+  const articleId = randomUUID();
+  const imageFile = getImageFile(formData);
+  let preparedImage: PreparedCommunityImage | null = null;
+
+  if (imageFile) {
+    try {
+      preparedImage = await prepareCommunityImage({
+        file: imageFile,
+        ownerId: session.userId,
+        articleId
+      });
+    } catch (error) {
+      return {
+        status: "error",
+        message: getCommunityImageErrorMessage(error),
+        fieldErrors: {
+          coverImage: [getCommunityImageErrorMessage(error)]
+        }
+      };
+    }
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
       const article = await tx.article.create({
         data: {
+          id: articleId,
           authorId: session.userId,
           title: parsed.data.title,
           slug,
           category: parsed.data.category,
+          coverImageUrl: preparedImage?.storageUrl,
           body: parsed.data.body,
           status: "published",
           publishedAt: new Date()
@@ -81,6 +143,12 @@ export async function createCommunityPostAction(
         }
       });
 
+      if (preparedImage) {
+        await tx.fileAttachment.create({
+          data: communityImageAttachmentData(preparedImage, session.userId, article.id)
+        });
+      }
+
       await writeAuditLog(tx, {
         actorId: session.userId,
         action: "community.post.create",
@@ -88,11 +156,14 @@ export async function createCommunityPostAction(
         entityId: article.id,
         metadata: {
           category: parsed.data.category,
-          privacyAcknowledged: true
+          privacyAcknowledged: true,
+          imageAttachmentId: preparedImage?.attachmentId ?? null
         }
       });
     });
   } catch {
+    await preparedImage?.cleanup();
+
     return {
       status: "error",
       message: "ยังสร้างโพสต์ไม่ได้ กรุณาลองอีกครั้ง"
@@ -122,6 +193,63 @@ export async function updateCommunityPostAction(
   }
 
   let postSlug = "";
+  const imageFile = getImageFile(formData);
+  const removeImage = formData.get("removeImage") === "on";
+  const existing = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      authorId: session.userId,
+      status: {
+        in: ["draft", "published"]
+      }
+    },
+    select: {
+      id: true,
+      slug: true
+    }
+  });
+
+  if (!existing) {
+    return {
+      status: "error",
+      message: "ไม่พบโพสต์ที่คุณมีสิทธิ์แก้ไข"
+    };
+  }
+
+  let preparedImage: PreparedCommunityImage | null = null;
+
+  if (imageFile) {
+    try {
+      preparedImage = await prepareCommunityImage({
+        file: imageFile,
+        ownerId: session.userId,
+        articleId: existing.id
+      });
+    } catch (error) {
+      return {
+        status: "error",
+        message: getCommunityImageErrorMessage(error),
+        fieldErrors: {
+          coverImage: [getCommunityImageErrorMessage(error)]
+        }
+      };
+    }
+  }
+
+  const shouldReplaceImage = Boolean(preparedImage) || removeImage;
+  const previousImages = shouldReplaceImage
+    ? await prisma.fileAttachment.findMany({
+        where: {
+          entityType: communityImageEntityType,
+          entityId: existing.id,
+          ownerId: session.userId,
+          status: "attached"
+        },
+        select: {
+          storageKey: true
+        }
+      })
+    : [];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -153,9 +281,34 @@ export async function updateCommunityPostAction(
         data: {
           title: parsed.data.title,
           body: parsed.data.body,
-          category: parsed.data.category
+          category: parsed.data.category,
+          ...(shouldReplaceImage
+            ? {
+                coverImageUrl: preparedImage?.storageUrl ?? null
+              }
+            : {})
         }
       });
+
+      if (shouldReplaceImage) {
+        await tx.fileAttachment.updateMany({
+          where: {
+            entityType: communityImageEntityType,
+            entityId: current.id,
+            ownerId: session.userId,
+            status: "attached"
+          },
+          data: {
+            status: "archived"
+          }
+        });
+      }
+
+      if (preparedImage) {
+        await tx.fileAttachment.create({
+          data: communityImageAttachmentData(preparedImage, session.userId, current.id)
+        });
+      }
 
       await writeAuditLog(tx, {
         actorId: session.userId,
@@ -166,16 +319,22 @@ export async function updateCommunityPostAction(
           previousTitle: current.title,
           previousCategory: current.category,
           nextCategory: parsed.data.category,
-          privacyAcknowledged: true
+          privacyAcknowledged: true,
+          imageAction: preparedImage ? "replaced" : removeImage ? "removed" : "unchanged",
+          imageAttachmentId: preparedImage?.attachmentId ?? null
         }
       });
     });
   } catch {
+    await preparedImage?.cleanup();
+
     return {
       status: "error",
       message: "ไม่พบโพสต์ที่คุณมีสิทธิ์แก้ไข หรือยังบันทึกไม่ได้"
     };
   }
+
+  await Promise.all(previousImages.map((image) => deleteCommunityImage(image.storageKey)));
 
   revalidatePath("/community");
   revalidatePath("/community/search");

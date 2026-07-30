@@ -95,6 +95,11 @@ test.describe("customer mobile smoke", () => {
 
     await expect(page.getByRole("textbox", { name: "หัวข้อกระทู้" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "เนื้อหากระทู้" })).toBeVisible();
+    await expect(page.locator('input[type="file"][name="coverImage"]')).toHaveAttribute(
+      "accept",
+      "image/jpeg,image/png,image/webp"
+    );
+    await expect(page.getByText("ระบบจะย่อไม่เกิน 1600px", { exact: false })).toBeVisible();
     await expect(page.getByText("ยืนยันว่าโพสต์นี้ไม่มีชื่อผู้ป่วย", { exact: false })).toBeVisible();
     await expect(page.getByRole("button", { name: "โพสต์", exact: true })).toBeVisible();
   });

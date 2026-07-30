@@ -31,6 +31,7 @@ export const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_PUBLIC_BASE_URL: z.string().optional(),
   STAFF_UPLOAD_DIR: z.string().optional(),
+  COMMUNITY_UPLOAD_DIR: z.string().optional(),
   SENTRY_DSN: optionalUrl,
   NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
   SENTRY_TRACES_SAMPLE_RATE: z.string().optional(),

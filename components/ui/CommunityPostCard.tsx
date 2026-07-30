@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { Heart, MessageSquare, MoreHorizontal } from "lucide-react";
 import { ShareButton } from "@/components/ui/ShareButton";
@@ -14,6 +15,7 @@ type CommunityPostCardProps = {
   portrait: "ananya" | "somchai";
   href?: string;
   editHref?: string;
+  imageSrc?: string | null;
 };
 
 export function CommunityPostCard({
@@ -26,7 +28,8 @@ export function CommunityPostCard({
   liked,
   portrait,
   href,
-  editHref
+  editHref,
+  imageSrc
 }: CommunityPostCardProps) {
   const detailHref = href as Route | undefined;
 
@@ -62,6 +65,19 @@ export function CommunityPostCard({
           <p className="mb-5 text-sm leading-7 text-[#3e494a]">{body}</p>
         </>
       )}
+
+      {imageSrc ? (
+        <div className="relative mb-5 aspect-video overflow-hidden rounded-[18px] bg-[#e6e8ea]">
+          <Image
+            src={imageSrc}
+            alt=""
+            fill
+            unoptimized
+            sizes="(max-width: 430px) calc(100vw - 104px), 326px"
+            className="object-cover"
+          />
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-7 border-t border-[#eceef0] pt-4">
         <div className={liked ? "flex items-center gap-2 text-primary" : "flex items-center gap-2 text-slate-400"}>

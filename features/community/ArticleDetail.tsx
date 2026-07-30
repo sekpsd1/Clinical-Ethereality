@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { ArrowLeft, Bookmark, CheckCircle2, Flag, Heart, MessageSquare, Pencil } from "lucide-react";
 import { CommentComposer } from "@/components/ui/CommentComposer";
@@ -44,7 +45,21 @@ export function ArticleDetail({
           <>
             <section className="relative z-0 mb-[-40px] mt-4">
               <div className="aspect-video w-full overflow-hidden rounded-[24px] shadow-xl">
-                <OrangeHero />
+                {article.coverImageUrl ? (
+                  <div className="relative h-full w-full bg-[#e6e8ea]">
+                    <Image
+                      src={article.coverImageUrl}
+                      alt=""
+                      fill
+                      priority
+                      unoptimized
+                      sizes="(max-width: 430px) calc(100vw - 40px), 390px"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <OrangeHero />
+                )}
               </div>
             </section>
 
