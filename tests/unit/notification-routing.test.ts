@@ -54,4 +54,24 @@ describe("customer notification routing", () => {
       })
     ).toBe("/profile/rewards");
   });
+
+  it("allows only internal dynamic community destinations", () => {
+    expect(
+      resolveCustomerNotificationHref({
+        type: "community",
+        metadataJson: {
+          href: "/community/member-wellness-post"
+        }
+      })
+    ).toBe("/community/member-wellness-post");
+
+    expect(
+      resolveCustomerNotificationHref({
+        type: "community",
+        metadataJson: {
+          href: "https://malicious.example/community/post"
+        }
+      })
+    ).toBe("/community");
+  });
 });

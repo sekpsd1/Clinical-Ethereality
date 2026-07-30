@@ -3,6 +3,7 @@ import { updateUserRoleSchema } from "@/features/admin/users/schema";
 import { upsertProductSchema } from "@/features/admin/products/schema";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
+import { communityPostSchema } from "@/features/community/schema";
 import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
@@ -146,8 +147,36 @@ describe("feature validation schemas", () => {
     expect(articleIdSchema.safeParse("").success).toBe(false);
     expect(commentSchema.parse({ articleId: "article-1", body: "  Helpful note  " }).body).toBe("Helpful note");
     expect(commentSchema.safeParse({ articleId: "article-1", body: "" }).success).toBe(false);
-    expect(reportContentSchema.parse({ itemId: "comment-1", reason: "  Needs review  " }).reason).toBe("Needs review");
-    expect(reportContentSchema.safeParse({ itemId: "comment-1", reason: "x".repeat(241) }).success).toBe(false);
+    expect(
+      reportContentSchema.parse({
+        itemId: "comment-1",
+        itemType: "comment",
+        articleSlug: "vitamin-c-tips",
+        reason: "privacy",
+        details: "  Needs review  "
+      }).details
+    ).toBe("Needs review");
+    expect(
+      reportContentSchema.safeParse({
+        itemId: "comment-1",
+        itemType: "comment",
+        articleSlug: "vitamin-c-tips",
+        reason: "unknown"
+      }).success
+    ).toBe(false);
+  });
+
+  it("requires privacy acknowledgement for community posts", () => {
+    const validPost = {
+      title: "กิจวัตรดูแลตัวเอง",
+      body: "แบ่งปันข้อมูลทั่วไปโดยไม่ระบุชื่อหรือข้อมูลสุขภาพที่ระบุตัวบุคคลได้",
+      category: "การดูแลผิว",
+      privacyAccepted: "on"
+    };
+
+    expect(communityPostSchema.safeParse(validPost).success).toBe(true);
+    expect(communityPostSchema.safeParse({ ...validPost, privacyAccepted: undefined }).success).toBe(false);
+    expect(communityPostSchema.safeParse({ ...validPost, body: "สั้นเกินไป" }).success).toBe(false);
   });
 
   it("validates versioned legal consent acceptance payloads", () => {

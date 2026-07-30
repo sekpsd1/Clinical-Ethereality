@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { NotificationItem } from "@/components/ui/NotificationItem";
-import { markCustomerNotificationsReadAction } from "@/features/notifications/actions";
+import { markCustomerNotificationsReadAction, openCustomerNotificationAction } from "@/features/notifications/actions";
 import type { CustomerNotificationsData } from "@/features/notifications/types";
 
 export function NotificationCenter({ data }: { data: CustomerNotificationsData }) {
@@ -36,7 +36,7 @@ export function NotificationCenter({ data }: { data: CustomerNotificationsData }
           ) : null}
 
           {data.notifications.map((notification) => (
-            <NotificationItem key={notification.id} {...notification} />
+            <NotificationItem key={notification.id} {...notification} action={openCustomerNotificationAction} />
           ))}
         </section>
       </main>

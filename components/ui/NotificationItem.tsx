@@ -4,24 +4,22 @@ import type { NotificationType } from "@prisma/client";
 import { CheckCircle2, Clock, Stethoscope, Tag } from "lucide-react";
 
 type NotificationItemProps = {
+  id?: string;
   title: string;
   body: string;
   time: string;
   kind: NotificationType | "promo";
   unread: boolean;
   href: string;
+  action?: (formData: FormData) => void | Promise<void>;
 };
 
-export function NotificationItem({ title, body, time, kind, unread, href }: NotificationItemProps) {
-  return (
-    <Link
-      href={href as Route}
-      className={
-        unread
-          ? "relative block rounded-[24px] border border-primary/20 bg-white/65 p-5 shadow-[0_10px_30px_-10px_rgba(0,96,103,0.15)] backdrop-blur-[12px] transition-transform hover:-translate-y-0.5"
-          : "block rounded-[24px] border border-white/40 bg-white/65 p-5 shadow-sm backdrop-blur-[12px] transition-colors hover:bg-white/80"
-      }
-    >
+export function NotificationItem({ id, title, body, time, kind, unread, href, action }: NotificationItemProps) {
+  const className = unread
+    ? "relative block w-full rounded-[24px] border border-primary/20 bg-white/65 p-5 text-left shadow-[0_10px_30px_-10px_rgba(0,96,103,0.15)] backdrop-blur-[12px] transition-transform hover:-translate-y-0.5"
+    : "block w-full rounded-[24px] border border-white/40 bg-white/65 p-5 text-left shadow-sm backdrop-blur-[12px] transition-colors hover:bg-white/80";
+  const content = (
+    <>
       {unread ? (
         <span aria-hidden="true" className="absolute -inset-px -z-10 rounded-[24px] bg-gradient-to-r from-primary/30 to-transparent blur-[2px]" />
       ) : null}
@@ -36,9 +34,7 @@ export function NotificationItem({ title, body, time, kind, unread, href }: Noti
 
         <div className="min-w-0 flex-1 space-y-2">
           <p className={unread ? "text-sm leading-7 text-[#191c1e]" : "text-sm leading-7 text-[#3e494a]"}>
-            <span className={unread ? "font-bold text-primary" : "font-bold text-[#191c1e]"}>
-              {title}
-            </span>{" "}
+            <span className={unread ? "font-bold text-primary" : "font-bold text-[#191c1e]"}>{title}</span>{" "}
             {body}
           </p>
           <div className="flex items-center gap-1.5 text-[#3e494a]/70">
@@ -47,6 +43,23 @@ export function NotificationItem({ title, body, time, kind, unread, href }: Noti
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (action && id) {
+    return (
+      <form action={action}>
+        <input type="hidden" name="notificationId" value={id} />
+        <button type="submit" className={className}>
+          {content}
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <Link href={href as Route} className={className}>
+      {content}
     </Link>
   );
 }

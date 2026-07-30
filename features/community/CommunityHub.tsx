@@ -1,56 +1,29 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { PenLine, Search } from "lucide-react";
 import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { communityCategories } from "@/features/community/policy";
+import type { CommunityHubData } from "@/features/community/types";
 
-type Category = {
-  label: string;
-};
-
-type FeedPost = {
-  author: string;
-  time: string;
-  body: string;
-  likes: string;
-  comments: string;
-  liked?: boolean;
-  portrait: "ananya" | "somchai";
-  href?: "/community/vitamin-c-tips";
-};
-
-const categories: Category[] = [
-  { label: "โรคทั่วไป" },
-  { label: "วิตามิน & อาหารเสริม" },
-  { label: "การดูแลผิว" },
-  { label: "ปรึกษาหมอ" }
-];
-
-const feedPosts: FeedPost[] = [
-  {
-    author: "K. Ananya",
-    time: "2 hours ago",
-    body: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด แนะนำให้ทานพร้อมมื้ออาหารเช้าเพื่อการดูดซึมที่ดียิ่งขึ้นนะคะทุกคน 🍊✨",
-    likes: "342",
-    comments: "56",
-    liked: true,
-    portrait: "ananya",
-    href: "/community/vitamin-c-tips"
-  },
-  {
-    author: "K. Somchai",
-    time: "5 hours ago",
-    body: "เพิ่งลองปรึกษาคุณหมอผ่านแอปนี้ครั้งแรก สะดวกมากครับ ไม่ต้องรอนานเลย แนะนำสำหรับคนงานยุ่งครับ 👍",
-    likes: "128",
-    comments: "12",
-    portrait: "somchai"
-  }
-];
-
-export function CommunityHub() {
+export function CommunityHub({
+  data,
+  reported
+}: {
+  data: CommunityHubData;
+  reported?: string;
+}) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[linear-gradient(180deg,#e0f2f1_0%,#f7f9fb_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <CommunityHeader />
 
       <main className="mx-auto w-full max-w-mobile">
+        {reported ? (
+          <p className="mx-7 mt-5 rounded-[18px] border border-primary/15 bg-white/70 px-4 py-3 text-sm font-semibold text-primary">
+            รับรายงานแล้ว เนื้อหาจะยังแสดงอยู่จนกว่าผู้ดูแลจะตรวจสอบ
+          </p>
+        ) : null}
+
         <section className="px-7 pt-5">
           <Link href="/community/search" className="relative block">
             <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-primary/60">
@@ -62,47 +35,88 @@ export function CommunityHub() {
           </Link>
         </section>
 
-        <section className="mt-8 px-7">
-          <article className="overflow-hidden rounded-[24px] border border-white/20 bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
-            <div className="aspect-[16/10] w-full overflow-hidden bg-[linear-gradient(135deg,#53cfc2_0%,#0a9287_100%)]">
-              <DoctorIllustration />
-            </div>
-            <div className="p-6">
-              <span className="mb-4 inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                Verified Content
-              </span>
-              <h1 className="mb-4 text-[21px] font-extrabold leading-8 text-[#191c1e]">
-                5 วิธีดูแลตัวเองเมื่อเป็นภูมิแพ้อากาศ
-              </h1>
-              <div className="flex items-center gap-3">
-                <span className="size-7 overflow-hidden rounded-full bg-slate-200">
-                  <MiniDoctorPortrait />
-                </span>
-                <p className="text-sm font-medium text-[#3e494a]">By Dr. Arisara</p>
-              </div>
-            </div>
-          </article>
-        </section>
+        {data.featured ? (
+          <section className="mt-8 px-7">
+            <Link href={`/community/${data.featured.slug}` as Route}>
+              <article className="overflow-hidden rounded-[24px] border border-white/20 bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
+                <div className="aspect-[16/10] w-full overflow-hidden bg-[linear-gradient(135deg,#53cfc2_0%,#0a9287_100%)]">
+                  <DoctorIllustration />
+                </div>
+                <div className="p-6">
+                  <span className="mb-4 inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                    {data.featured.authorRole === "customer" ? "Community Post" : "Verified Content"}
+                  </span>
+                  <h1 className="mb-4 text-[21px] font-extrabold leading-8 text-[#191c1e]">
+                    {data.featured.title}
+                  </h1>
+                  <div className="flex items-center gap-3">
+                    <span className="size-7 overflow-hidden rounded-full bg-slate-200">
+                      <MiniDoctorPortrait />
+                    </span>
+                    <p className="text-sm font-medium text-[#3e494a]">By {data.featured.author}</p>
+                  </div>
+                </div>
+              </article>
+            </Link>
+          </section>
+        ) : null}
 
         <section className="mt-10 overflow-hidden">
           <div className="flex gap-4 overflow-x-auto px-7 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category) => (
-              <button
-                key={category.label}
-                type="button"
-                className="shrink-0 rounded-full border border-white/40 bg-white/80 px-6 py-3 text-sm font-semibold text-primary shadow-sm backdrop-blur-[24px]"
+            <Link
+              href="/community"
+              aria-current={!data.selectedCategory ? "page" : undefined}
+              className={
+                !data.selectedCategory
+                  ? "shrink-0 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm"
+                  : "shrink-0 rounded-full border border-white/40 bg-white/80 px-6 py-3 text-sm font-semibold text-primary shadow-sm backdrop-blur-[24px]"
+              }
+            >
+              ทั้งหมด
+            </Link>
+            {communityCategories.map((category) => (
+              <Link
+                key={category}
+                href={`/community?category=${encodeURIComponent(category)}` as Route}
+                aria-current={data.selectedCategory === category ? "page" : undefined}
+                className={
+                  data.selectedCategory === category
+                    ? "shrink-0 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm"
+                    : "shrink-0 rounded-full border border-white/40 bg-white/80 px-6 py-3 text-sm font-semibold text-primary shadow-sm backdrop-blur-[24px]"
+                }
               >
-                {category.label}
-              </button>
+                {category}
+              </Link>
             ))}
           </div>
         </section>
 
         <section className="mt-6 space-y-6 px-7">
           <h2 className="px-1 text-[24px] font-extrabold leading-8 text-[#191c1e]">Community Feed</h2>
-          {feedPosts.map((post) => (
-            <CommunityPostCard key={post.author} {...post} />
-          ))}
+          {data.unavailable ? (
+            <EmptyState title="ยังโหลด Community ไม่ได้" body="กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูลแล้วลองใหม่" />
+          ) : data.posts.length === 0 ? (
+            <EmptyState
+              title="ยังไม่มีโพสต์ในหมวดนี้"
+              body="เริ่มแบ่งปันข้อมูลทั่วไปโดยไม่ระบุข้อมูลส่วนตัวหรือข้อมูลสุขภาพของบุคคล"
+            />
+          ) : (
+            data.posts.map((post) => (
+              <CommunityPostCard
+                key={post.id}
+                title={post.title}
+                author={post.author}
+                time={post.time}
+                body={post.excerpt}
+                likes={String(post.likesCount)}
+                comments={String(post.commentsCount)}
+                liked={post.likedByViewer}
+                portrait={post.authorRole === "customer" ? "ananya" : "somchai"}
+                href={`/community/${post.slug}`}
+                editHref={post.ownedByViewer ? `/community/${post.slug}/edit` : undefined}
+              />
+            ))
+          )}
         </section>
       </main>
     </div>
@@ -131,7 +145,7 @@ function DoctorIllustration() {
   return (
     <div
       role="img"
-      aria-label="Female doctor in lab coat"
+      aria-label="Clinical community feature"
       className="relative flex h-full w-full items-end justify-center overflow-hidden"
     >
       <div className="absolute bottom-0 h-[76%] w-[46%] rounded-t-[48px] bg-white shadow-[0_12px_35px_rgba(0,0,0,0.1)]" />

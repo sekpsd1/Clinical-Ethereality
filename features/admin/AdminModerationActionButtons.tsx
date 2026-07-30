@@ -9,7 +9,7 @@ import type { AdminModerationActionState } from "@/features/admin/moderation/act
 import type { AdminModerationQueueItem } from "@/features/admin/moderation/types";
 
 type AdminModerationActionButtonsProps = {
-  item: Pick<AdminModerationQueueItem, "id" | "status" | "type">;
+  item: Pick<AdminModerationQueueItem, "id" | "reportId" | "status" | "type">;
 };
 
 const initialActionState: AdminModerationActionState = {
@@ -29,6 +29,16 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
   return (
     <div className="flex shrink-0 flex-col items-end gap-2">
       <div className="flex gap-2">
+        {item.reportId && !isHidden && !isArchived ? (
+          <ModerationActionForm
+            action={restoreAction}
+            actionName="restore"
+            className="bg-success text-white"
+            icon="restore"
+            item={item}
+            label={`คง${itemTypeLabel}ไว้`}
+          />
+        ) : null}
         {isHidden || isArchived ? (
           <ModerationActionForm
             action={restoreAction}
@@ -87,12 +97,13 @@ function ModerationActionForm({
   actionName: "restore" | "hide" | "archive";
   className: string;
   icon: "restore" | "hide" | "archive";
-  item: Pick<AdminModerationQueueItem, "id" | "type">;
+  item: Pick<AdminModerationQueueItem, "id" | "reportId" | "type">;
   label: string;
 }) {
   return (
     <form action={action}>
       <input type="hidden" name="itemId" value={item.id} />
+      {"reportId" in item && item.reportId ? <input type="hidden" name="reportId" value={item.reportId} /> : null}
       <input type="hidden" name="itemType" value={item.type} />
       <input type="hidden" name="action" value={actionName} />
       <ActionIconButton ariaLabel={label} className={className} icon={icon} title={label} />

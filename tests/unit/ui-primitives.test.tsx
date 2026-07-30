@@ -528,6 +528,17 @@ describe("Stitch UI primitives", () => {
     expect(html).toContain("text-primary");
   });
 
+  it("keeps saved community content under the Community footer context", () => {
+    mockedPathname.value = "/profile/saved-articles";
+
+    const html = render(createElement(FooterNav));
+    const communityLink = html.match(/<a[^>]*href="\/community"[^>]*>/)?.[0] ?? "";
+    const profileLink = html.match(/<a[^>]*href="\/profile"[^>]*>/)?.[0] ?? "";
+
+    expect(communityLink).toContain('aria-current="page"');
+    expect(profileLink).not.toContain('aria-current="page"');
+  });
+
   it("keeps live consultation focused by hiding footer navigation", () => {
     mockedPathname.value = "/consult/live";
 

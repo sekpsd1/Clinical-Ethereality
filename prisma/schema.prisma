@@ -105,6 +105,12 @@ enum CommentStatus {
   archived
 }
 
+enum CommunityReportStatus {
+  pending
+  dismissed
+  actioned
+}
+
 enum NotificationChannel {
   in_app
   line
@@ -186,6 +192,9 @@ model User {
   articles            Article[]             @relation("ArticleAuthor")
   comments            Comment[]
   likes               Like[]
+  savedArticles       SavedArticle[]
+  communityReports    CommunityReport[]     @relation("CommunityReportReporter")
+  reviewedReports     CommunityReport[]     @relation("CommunityReportReviewer")
   notifications       Notification[]
   rewardPoints        RewardPoint[]
   consentRecords      ConsentRecord[]
@@ -575,6 +584,7 @@ model Article {
   authorId      String
   title         String
   slug          String        @unique
+  category      String?       @db.VarChar(80)
   coverImageUrl String?       @db.Text
   body          String        @db.Text
   status        ArticleStatus @default(draft)
@@ -582,12 +592,15 @@ model Article {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  author   User      @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  author   User              @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Restrict)
   comments Comment[]
   likes    Like[]
+  savedBy  SavedArticle[]
+  reports  CommunityReport[]
 
   @@index([authorId])
   @@index([status])
+  @@index([category])
   @@index([publishedAt])
 }
 
@@ -601,11 +614,12 @@ model Comment {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  article Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user    User      @relation(fields: [userId], references: [id], onDelete: Restrict)
-  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies Comment[] @relation("CommentReplies")
+  article Article           @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  parent  Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies Comment[]         @relation("CommentReplies")
   likes   Like[]
+  reports CommunityReport[]
 
   @@index([articleId])
   @@index([userId])
@@ -628,6 +642,48 @@ model Like {
   @@unique([userId, commentId])
   @@index([articleId])
   @@index([commentId])
+}
+
+model SavedArticle {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@index([articleId])
+  @@index([createdAt])
+}
+
+model CommunityReport {
+  id               String                @id @default(cuid())
+  reporterId       String
+  reviewerId       String?
+  articleId        String?
+  commentId        String?
+  reason           String                @db.VarChar(80)
+  details          String?               @db.Text
+  status           CommunityReportStatus @default(pending)
+  resolutionAction String?               @db.VarChar(40)
+  reviewedAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  reporter User     @relation("CommunityReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reviewer User?    @relation("CommunityReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  article  Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  comment  Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, articleId])
+  @@unique([reporterId, commentId])
+  @@index([status])
+  @@index([articleId])
+  @@index([commentId])
+  @@index([createdAt])
 }
 
 model Notification {

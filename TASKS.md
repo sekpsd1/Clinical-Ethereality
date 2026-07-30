@@ -49,7 +49,7 @@
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup
-- [ ] Defer article content, article categories, community rules, and moderation policy until after MVP unless Community returns to MVP scope
+- [ ] Approve final Community rules, article categories, report reasons, and moderation policy before production launch
 - [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
@@ -311,11 +311,14 @@
 ## Phase 11: Articles, Community, And Notifications
 
 - [x] Build articles
-- [x] Keep the reviewed community article detail reachable with Stitch fallback content when a local Plesk copy has no published article, while retaining moderation 404 behavior for hidden or archived content
+- [x] Read Community hub, search, saved articles, and article detail from published Prisma records without public fallback content
+- [x] Build customer-owned post creation and editing with privacy acknowledgement, ownership checks, rate limiting, and audit logs
 - [x] Build article comments
 - [x] Build likes
+- [x] Build customer-scoped saved articles
 - [x] Build content reporting for articles and comments
-- [x] Build admin moderation workflow
+- [x] Build persistent report records and connect them to the admin moderation queue without automatically hiding reported content
+- [x] Build admin moderation workflow with keep, hide, archive, audit, and customer notification outcomes
 - [x] Minimize admin moderation steps
 - [x] Build notifications
 - [x] Back customer notification center with Prisma notifications

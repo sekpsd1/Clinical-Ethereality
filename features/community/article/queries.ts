@@ -1,39 +1,32 @@
 import { unstable_noStore as noStore } from "next/cache";
-import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
+import { formatCommunityRelativeTime, getPublicCommunityAuthor } from "@/features/community/policy";
 import type { CommunityArticleDetailData, CommunityCommentItem } from "@/features/community/article/types";
 
 type ArticleRecord = NonNullable<Awaited<ReturnType<typeof getArticleBySlug>>>;
 
-function getFallbackCommunityArticle(): CommunityArticleDetailData {
+function getUnavailableCommunityArticle(
+  slug: string,
+  state: "missing" | "unavailable"
+): CommunityArticleDetailData {
   return {
     id: "",
-    title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
-    body: "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายจะสามารถดูดซึมไปใช้ได้ทันทีตลอดทั้งวัน และควรแบ่งทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่...",
-    author: "Clinical Ethereality",
-    likesCount: 342,
-    commentsCount: 56,
+    slug,
+    title: state === "missing" ? "ไม่พบบทความนี้" : "ยังโหลดบทความไม่ได้",
+    body:
+      state === "missing"
+        ? "บทความอาจถูกลบ ซ่อน หรือยังไม่ได้เผยแพร่"
+        : "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง",
+    author: "",
+    category: "",
+    likesCount: 0,
+    commentsCount: 0,
     likedByViewer: false,
-    comments: [
-      {
-        id: "fallback-somchai",
-        author: "K. Somchai",
-        time: "2 ชม. ที่แล้ว",
-        body: "ขอบคุณสำหรับข้อมูลครับ มีประโยชน์มากเลย",
-        verified: false,
-        avatar: "somchai"
-      },
-      {
-        id: "fallback-pharmacist",
-        author: "เภสัชกร อริสรา (Arisara)",
-        time: "45 นาที ที่แล้ว",
-        body: "ยินดีค่ะ หากมีข้อสงสัยเรื่องปริมาณที่ควรทาน สอบถามทิ้งไว้ได้เลยนะคะ",
-        verified: true,
-        avatar: "pharmacist"
-      }
-    ],
-    unavailable: true
+    savedByViewer: false,
+    ownedByViewer: false,
+    comments: [],
+    state
   };
 }
 
@@ -45,6 +38,7 @@ function getArticleBySlug(slug: string) {
     include: {
       author: {
         select: {
+          id: true,
           displayName: true,
           role: true
         }
@@ -60,6 +54,7 @@ function getArticleBySlug(slug: string) {
         include: {
           user: {
             select: {
+              id: true,
               displayName: true,
               role: true
             }
@@ -70,43 +65,26 @@ function getArticleBySlug(slug: string) {
         select: {
           userId: true
         }
+      },
+      savedBy: {
+        select: {
+          userId: true
+        }
       }
     }
   });
 }
 
-function formatRelativeTime(date: Date): string {
-  const deltaSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
-  const formatter = new Intl.RelativeTimeFormat("th-TH", {
-    numeric: "auto"
-  });
-
-  if (deltaSeconds < 60) {
-    return formatter.format(-deltaSeconds, "second");
-  }
-
-  const deltaMinutes = Math.round(deltaSeconds / 60);
-  if (deltaMinutes < 60) {
-    return formatter.format(-deltaMinutes, "minute");
-  }
-
-  const deltaHours = Math.round(deltaMinutes / 60);
-  if (deltaHours < 24) {
-    return formatter.format(-deltaHours, "hour");
-  }
-
-  return formatter.format(-Math.round(deltaHours / 24), "day");
-}
-
-function mapComment(comment: ArticleRecord["comments"][number]): CommunityCommentItem {
+function mapComment(comment: ArticleRecord["comments"][number], viewerId: string): CommunityCommentItem {
   const isStaff = comment.user.role === "doctor" || comment.user.role === "pharmacist" || comment.user.role === "admin";
 
   return {
     id: comment.id,
-    author: comment.user.displayName ?? "LINE user",
-    time: formatRelativeTime(comment.createdAt),
+    author: getPublicCommunityAuthor(comment.user),
+    time: formatCommunityRelativeTime(comment.createdAt),
     body: comment.body,
     verified: isStaff,
+    ownedByViewer: comment.userId === viewerId,
     avatar: isStaff ? "pharmacist" : "somchai"
   };
 }
@@ -118,28 +96,29 @@ export async function getCommunityArticleDetail(slug: string, session: PublicSes
     const article = await getArticleBySlug(slug);
 
     if (!article) {
-      return getFallbackCommunityArticle();
+      return getUnavailableCommunityArticle(slug, "missing");
     }
 
     if (article.status !== "published") {
-      notFound();
+      return getUnavailableCommunityArticle(slug, "missing");
     }
 
     return {
       id: article.id,
+      slug: article.slug,
       title: article.title,
       body: article.body,
-      author: article.author.displayName ?? "Clinical Ethereality",
+      author: getPublicCommunityAuthor(article.author),
+      category: article.category ?? "โรคทั่วไป",
       likesCount: article.likes.length,
       commentsCount: article.comments.length,
       likedByViewer: article.likes.some((like) => like.userId === session.userId),
-      comments: article.comments.map(mapComment)
+      savedByViewer: article.savedBy.some((saved) => saved.userId === session.userId),
+      ownedByViewer: article.authorId === session.userId,
+      comments: article.comments.map((comment) => mapComment(comment, session.userId)),
+      state: "ready"
     };
-  } catch (error) {
-    if ((error as Error & { digest?: string }).digest?.startsWith("NEXT_HTTP_ERROR_FALLBACK;404")) {
-      throw error;
-    }
-
-    return getFallbackCommunityArticle();
+  } catch {
+    return getUnavailableCommunityArticle(slug, "unavailable");
   }
 }

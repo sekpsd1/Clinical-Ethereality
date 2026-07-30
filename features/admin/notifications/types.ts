@@ -10,7 +10,7 @@ export type AdminNotificationRecipient = {
 export type AdminNotificationItem = {
   id: string;
   userName: string;
-  userLineId: string;
+  userReference: string;
   type: NotificationType;
   channel: NotificationChannel;
   title: string;
