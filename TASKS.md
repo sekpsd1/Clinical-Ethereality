@@ -277,6 +277,7 @@
 - [x] Require an active customer assessment before allowing direct access to `/consult`
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
+- [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
 - [ ] Build Zoom SDK video consultation room integration
 - [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Build prescription writing workflow

@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { CalendarPlus } from "lucide-react";
+import Link from "next/link";
 import { upsertDoctorAvailabilityAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
-import type { AdminDoctorOption } from "@/features/admin/schedules/types";
+import type { AdminDoctorAvailabilitySlot, AdminDoctorOption } from "@/features/admin/schedules/types";
 
 const initialState: AdminScheduleActionState = {
   status: "idle",
@@ -31,19 +32,36 @@ const timeOptions = Array.from({ length: 24 * 4 }, (_, index) => {
   };
 });
 
-export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] }) {
+export function AdminScheduleForm({
+  doctors,
+  editSlot
+}: {
+  doctors: AdminDoctorOption[];
+  editSlot?: AdminDoctorAvailabilitySlot;
+}) {
   const [state, action, isPending] = useActionState(upsertDoctorAvailabilityAction, initialState);
   const isDisabled = doctors.length === 0 || isPending;
 
   return (
-    <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+    <form
+      id="schedule-form"
+      action={action}
+      className="scroll-mt-4 rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card"
+    >
+      {editSlot ? <input type="hidden" name="availabilityId" value={editSlot.id} /> : null}
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
           <CalendarPlus aria-hidden="true" className="size-5" />
         </span>
         <div>
-          <h2 className="font-headline text-lg font-bold text-text">เพิ่มเวลาว่างแพทย์</h2>
-          <p className="mt-1 text-xs leading-5 text-muted">ใช้สำหรับกำหนดช่วงเวลาที่ทีมผู้ดูแลสามารถเปิดรับนัดหมายได้</p>
+          <h2 className="font-headline text-lg font-bold text-text">
+            {editSlot ? "แก้ไขเวลาว่างแพทย์" : "เพิ่มเวลาว่างแพทย์"}
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            {editSlot
+              ? "แก้ไขวัน เวลา และระยะเวลาต่อรอบของรายการเดิม โดยนัดหมายที่ยืนยันแล้วจะไม่ถูกลบ"
+              : "ใช้สำหรับกำหนดช่วงเวลาที่ทีมผู้ดูแลสามารถเปิดรับนัดหมายได้"}
+          </p>
         </div>
       </div>
 
@@ -53,6 +71,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
           <select
             name="doctorId"
             disabled={isDisabled}
+            defaultValue={editSlot?.doctorId}
             className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
             required
           >
@@ -71,6 +90,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
             <select
               name="weekday"
               disabled={isDisabled}
+              defaultValue={editSlot?.weekday ?? 0}
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
             >
               {weekdays.map((day) => (
@@ -87,7 +107,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
               name="slotMinutes"
               disabled={isDisabled}
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
-              defaultValue="30"
+              defaultValue={editSlot?.slotMinutes ?? 30}
             >
               <option value="15">15 นาที</option>
               <option value="30">30 นาที</option>
@@ -103,7 +123,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
             <select
               name="startTime"
               disabled={isDisabled}
-              defaultValue="09:00"
+              defaultValue={editSlot?.startTime ?? "09:00"}
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
               required
             >
@@ -120,7 +140,7 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
             <select
               name="endTime"
               disabled={isDisabled}
-              defaultValue="12:00"
+              defaultValue={editSlot?.endTime ?? "12:00"}
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
               required
             >
@@ -138,13 +158,20 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
           <input
             name="notes"
             disabled={isDisabled}
+            defaultValue={editSlot?.notes === "-" ? "" : editSlot?.notes}
             placeholder="เช่น รับเฉพาะติดตามอาการ หรือปรึกษาออนไลน์"
             className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
           />
         </label>
 
         <label className="flex items-center gap-2 text-sm font-semibold text-text">
-          <input name="isActive" type="checkbox" defaultChecked disabled={isDisabled} className="size-4 accent-primary" />
+          <input
+            name="isActive"
+            type="checkbox"
+            defaultChecked={editSlot?.isActive ?? true}
+            disabled={isDisabled}
+            className="size-4 accent-primary"
+          />
           เปิดใช้งานทันที
         </label>
       </div>
@@ -155,13 +182,23 @@ export function AdminScheduleForm({ doctors }: { doctors: AdminDoctorOption[] })
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={isDisabled}
-        className="mt-4 h-11 w-full rounded-full bg-primary-gradient text-sm font-bold text-white shadow-payment-active disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isPending ? "กำลังบันทึก..." : "บันทึกเวลาว่าง"}
-      </button>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <button
+          type="submit"
+          disabled={isDisabled}
+          className="h-11 flex-1 rounded-full bg-primary-gradient text-sm font-bold text-white shadow-payment-active disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isPending ? "กำลังบันทึก..." : editSlot ? "บันทึกการแก้ไข" : "บันทึกเวลาว่าง"}
+        </button>
+        {editSlot ? (
+          <Link
+            href="/admin/schedules#schedule-form"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-border bg-white px-5 text-sm font-bold text-primary"
+          >
+            ยกเลิกการแก้ไข
+          </Link>
+        ) : null}
+      </div>
     </form>
   );
 }

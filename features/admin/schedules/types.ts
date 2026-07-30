@@ -7,10 +7,13 @@ export type AdminDoctorOption = {
 
 export type AdminDoctorAvailabilitySlot = {
   id: string;
+  doctorId: string;
   doctorName: string;
   doctorSpecialty: string;
   weekday: number;
   weekdayLabel: string;
+  startTime: string;
+  endTime: string;
   timeRange: string;
   slotMinutes: number;
   isActive: boolean;

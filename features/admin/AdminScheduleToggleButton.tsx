@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { Power } from "lucide-react";
 import { toggleDoctorAvailabilityAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 
 const initialState: AdminScheduleActionState = {
@@ -20,9 +19,9 @@ export function AdminScheduleToggleButton({ availabilityId, isActive }: { availa
         type="submit"
         disabled={isPending}
         aria-label={isActive ? "ปิดเวลาว่างนี้" : "เปิดเวลาว่างนี้"}
-        className="inline-flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary disabled:opacity-50"
+        className="inline-flex min-h-9 items-center justify-center rounded-[8px] bg-primary/10 px-3 text-xs font-bold text-primary disabled:opacity-50"
       >
-        <Power aria-hidden="true" className="size-4" />
+        {isPending ? "กำลังบันทึก" : isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
       </button>
       {state.status === "error" ? <span className="text-[11px] font-semibold text-[#93000a]">{state.message}</span> : null}
     </form>

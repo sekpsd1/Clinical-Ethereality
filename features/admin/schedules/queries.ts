@@ -74,10 +74,13 @@ function mapDoctor(doctor: DoctorRecord): AdminDoctorOption {
 function mapSlot(slot: AvailabilityRecord): AdminDoctorAvailabilitySlot {
   return {
     id: slot.id,
+    doctorId: slot.doctorId,
     doctorName: getDoctorName(slot.doctor),
     doctorSpecialty: slot.doctor.specialty ?? "ยังไม่ระบุสาขา",
     weekday: slot.weekday,
     weekdayLabel: weekdayLabels[slot.weekday] ?? String(slot.weekday),
+    startTime: slot.startTime,
+    endTime: slot.endTime,
     timeRange: `${slot.startTime}-${slot.endTime}`,
     slotMinutes: slot.slotMinutes,
     isActive: slot.isActive,

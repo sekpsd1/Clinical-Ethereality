@@ -1,11 +1,15 @@
+import type { Route } from "next";
 import { CalendarClock, Clock3, Stethoscope, ToggleRight } from "lucide-react";
+import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
 import { AdminScheduleToggleButton } from "@/features/admin/AdminScheduleToggleButton";
 import type { AdminDoctorAvailabilitySlot, AdminSchedulesData } from "@/features/admin/schedules/types";
 
-export function AdminSchedules({ data }: { data: AdminSchedulesData }) {
+export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData; editSlotId?: string }) {
+  const editSlot = data.slots.find((slot) => slot.id === editSlotId);
+
   return (
     <div className="space-y-5">
       <section className="rounded-[8px] bg-primary-gradient p-5 text-white shadow-card">
@@ -28,7 +32,7 @@ export function AdminSchedules({ data }: { data: AdminSchedulesData }) {
         </section>
       ) : null}
 
-      <AdminScheduleForm doctors={data.doctors} />
+      <AdminScheduleForm key={editSlot?.id ?? "new"} doctors={data.doctors} editSlot={editSlot} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -115,7 +119,15 @@ function ScheduleSlotCard({ slot }: { slot: AdminDoctorAvailabilitySlot }) {
           </p>
           <p className="mt-1 truncate text-xs font-semibold text-text">{slot.notes}</p>
         </div>
-        <AdminScheduleToggleButton availabilityId={slot.id} isActive={slot.isActive} />
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/admin/schedules?edit=${encodeURIComponent(slot.id)}#schedule-form` as Route}
+            className="inline-flex min-h-9 items-center justify-center rounded-[8px] border border-border bg-white px-3 text-xs font-bold text-primary"
+          >
+            แก้ไข
+          </Link>
+          <AdminScheduleToggleButton availabilityId={slot.id} isActive={slot.isActive} />
+        </div>
       </div>
     </article>
   );
