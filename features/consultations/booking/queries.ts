@@ -12,11 +12,19 @@ const weekdayLabels = ["อาทิตย์", "จันทร์", "อัง
 function getPrimaryBookingDoctor() {
   return prisma.doctor.findFirst({
     where: {
+      status: "approved",
       user: {
-        lineUserId: "seed-line-doctor-approved"
-      },
-      status: "approved"
+        status: "active"
+      }
     },
+    orderBy: [
+      {
+        approvedAt: "desc"
+      },
+      {
+        createdAt: "asc"
+      }
+    ],
     include: {
       user: {
         select: {

@@ -71,8 +71,9 @@ test.describe("customer mobile smoke", () => {
 
   for (const route of customerRoutes) {
     test(`${route.path} loads with the shared mobile shell`, async ({ page }) => {
-      await page.goto(route.path);
+      const response = await page.goto(route.path);
 
+      expect(response?.ok()).toBe(true);
       await expectNoAppError(page);
       await expectCustomerFooter(page, route.activeLabel);
     });
@@ -87,6 +88,22 @@ test.describe("customer mobile smoke", () => {
 
     await page.getByRole("button", { name: "ยกเลิก" }).click();
     await expect(page.getByRole("button", { name: "แก้ไขข้อมูลติดต่อ" })).toBeVisible();
+  });
+
+  test("customer dev session resolves a database-backed customer", async ({ page }) => {
+    const response = await page.request.get("/api/auth/session");
+    const body = (await response.json()) as {
+      ok: boolean;
+      session?: {
+        userId?: string;
+        role?: string;
+      };
+    };
+
+    expect(response.ok()).toBe(true);
+    expect(body.ok).toBe(true);
+    expect(body.session?.role).toBe("customer");
+    expect(body.session?.userId).not.toMatch(/^dev:/);
   });
 
   test("/consult/assessment loads as a focused assessment intro", async ({ page }) => {
@@ -159,6 +176,17 @@ test.describe("customer mobile smoke", () => {
     await page.goto("/consult/booking/somchai");
 
     await expectNoAppError(page);
+    await expect
+      .poll(() =>
+        page
+          .locator("article img")
+          .first()
+          .evaluate((image) => {
+            const doctorImage = image as HTMLImageElement;
+            return doctorImage.complete && doctorImage.naturalWidth > 0;
+          })
+      )
+      .toBe(true);
     const selectedAvailability = page.locator('input[name="availabilityId"]');
     const initialValue = await selectedAvailability.getAttribute("value");
     const selectableButtons = page.locator('[data-testid="booking-slot-button"]:not([disabled])');
@@ -195,6 +223,11 @@ test.describe("customer mobile smoke", () => {
     await page.goto("/store/orders");
 
     await expectNoAppError(page);
+    if ((await page.getByText("Hosted slip image URL").count()) === 0) {
+      await expect(page.locator("main article")).toHaveCount(0);
+      await expect(page.locator('main a[href="/store"]').last()).toBeVisible();
+      return;
+    }
     await expect(page.getByText("ตรวจสอบสลิป PromptPay").first()).toBeVisible();
     await expect(page.getByText("อัปโหลดสลิปโอนเงิน").first()).toBeVisible();
     await expect(page.getByText("ไฟล์ที่เลือกยังไม่ถูกอัปโหลดขึ้น cloud", { exact: false }).first()).toBeVisible();

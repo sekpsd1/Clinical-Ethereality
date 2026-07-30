@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Search, Star } from "lucide-react";
+import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/consultations/doctor-list/types";
 
 const filterChips = ["ตรวจ HPV", "สูตินรีเวช", "Telemedicine", "ปรึกษาทั่วไป"];
@@ -57,7 +57,7 @@ function DoctorCard({ doctor }: { doctor: ConsultDoctorListDoctor }) {
   return (
     <article className="flex min-h-[106px] gap-3 overflow-hidden rounded-[12px] border border-white/40 bg-white/70 p-[13px] shadow-doctor backdrop-blur-card">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-lg">
-        <Image src={doctor.imageSrc} alt={doctor.name} fill sizes="80px" className="object-cover" />
+        <DoctorAvatar src={doctor.imageSrc} alt={doctor.name} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

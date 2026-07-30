@@ -275,6 +275,7 @@
 - [x] Let admins request a fresh customer assessment by expiring active assessments non-destructively with audit logging
 - [x] Add a guarded operator script and back up/reset the localhost assessment, appointment, consultation-message, prescription, slot-lock, and related-notification test data while preserving users, products, inventory, orders, and audit history
 - [x] Require an active customer assessment before allowing direct access to `/consult`
+- [x] Make localhost Customer QA use an active database customer from the Plesk copy, remove seed-ID coupling from approved-doctor booking, and fall back safely when host-only doctor photo bytes are unavailable
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
 - [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
@@ -292,6 +293,7 @@
 ## Phase 11: Articles, Community, And Notifications
 
 - [x] Build articles
+- [x] Keep the reviewed community article detail reachable with Stitch fallback content when a local Plesk copy has no published article, while retaining moderation 404 behavior for hidden or archived content
 - [x] Build article comments
 - [x] Build likes
 - [x] Build content reporting for articles and comments
