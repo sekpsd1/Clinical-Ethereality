@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Bell, HeartPulse, Star } from "lucide-react";
 import { BookingTimeSlotForm } from "@/features/consultations/booking/BookingTimeSlotForm";
+import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { DoctorBookingData } from "@/features/consultations/booking/types";
 
 export function DoctorBooking({ data, bookingStatus }: { data: DoctorBookingData; bookingStatus?: string }) {
@@ -48,7 +48,7 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
       <div className="absolute left-1/2 top-6 -translate-x-1/2">
         <div className="relative size-24 rounded-full border-4 border-white p-1 shadow-avatar">
           <div className="relative size-full overflow-hidden rounded-full">
-            <Image src={doctor?.avatarUrl ?? "/images/doctors/kamonpat.jpg"} alt={doctorName} fill sizes="96px" className="object-cover" />
+            <DoctorAvatar src={doctor?.avatarUrl} alt={doctorName} />
           </div>
           <div className="absolute bottom-0 right-0 flex size-7 items-center justify-center rounded-full border-2 border-white bg-[#007b83] text-white">
             <HeartPulse aria-hidden="true" className="size-3.5" strokeWidth={2.4} />

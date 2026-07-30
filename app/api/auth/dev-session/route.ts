@@ -15,6 +15,15 @@ function isDevBypassAllowed(): boolean {
   return process.env.NODE_ENV !== "production" && env.ENABLE_DEV_AUTH_BYPASS;
 }
 
+function usesLocalDatabase(): boolean {
+  try {
+    const databaseUrl = new URL(process.env.DATABASE_URL ?? "");
+    return databaseUrl.hostname === "127.0.0.1" || databaseUrl.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
 const devLineUserIds = {
   customer: "seed-line-customer",
   doctor: "seed-line-doctor-approved",
@@ -24,7 +33,7 @@ const devLineUserIds = {
 
 async function getDevSession(role: keyof typeof devLineUserIds): Promise<AuthSession> {
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: {
         lineUserId: devLineUserIds[role]
       },
@@ -37,6 +46,31 @@ async function getDevSession(role: keyof typeof devLineUserIds): Promise<AuthSes
         status: true
       }
     });
+
+    if ((!user || user.status !== "active" || user.role !== role) && role === "customer" && usesLocalDatabase()) {
+      user = await prisma.user.findFirst({
+        where: {
+          role: "customer",
+          status: "active"
+        },
+        orderBy: [
+          {
+            lastLoginAt: "desc"
+          },
+          {
+            createdAt: "asc"
+          }
+        ],
+        select: {
+          id: true,
+          lineUserId: true,
+          role: true,
+          displayName: true,
+          avatarUrl: true,
+          status: true
+        }
+      });
+    }
 
     if (user?.status === "active" && user.role === role) {
       return {

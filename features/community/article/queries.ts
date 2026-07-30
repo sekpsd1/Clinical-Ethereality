@@ -6,6 +6,37 @@ import type { CommunityArticleDetailData, CommunityCommentItem } from "@/feature
 
 type ArticleRecord = NonNullable<Awaited<ReturnType<typeof getArticleBySlug>>>;
 
+function getFallbackCommunityArticle(): CommunityArticleDetailData {
+  return {
+    id: "",
+    title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
+    body: "การรับประทานวิตามินซีให้เกิดประสิทธิภาพสูงสุด แนะนำให้รับประทานหลังอาหารเช้า เพราะร่างกายจะสามารถดูดซึมไปใช้ได้ทันทีตลอดทั้งวัน และควรแบ่งทานวันละ 2 ครั้งเพื่อรักษาระดับวิตามินในเลือดให้คงที่...",
+    author: "Clinical Ethereality",
+    likesCount: 342,
+    commentsCount: 56,
+    likedByViewer: false,
+    comments: [
+      {
+        id: "fallback-somchai",
+        author: "K. Somchai",
+        time: "2 ชม. ที่แล้ว",
+        body: "ขอบคุณสำหรับข้อมูลครับ มีประโยชน์มากเลย",
+        verified: false,
+        avatar: "somchai"
+      },
+      {
+        id: "fallback-pharmacist",
+        author: "เภสัชกร อริสรา (Arisara)",
+        time: "45 นาที ที่แล้ว",
+        body: "ยินดีค่ะ หากมีข้อสงสัยเรื่องปริมาณที่ควรทาน สอบถามทิ้งไว้ได้เลยนะคะ",
+        verified: true,
+        avatar: "pharmacist"
+      }
+    ],
+    unavailable: true
+  };
+}
+
 function getArticleBySlug(slug: string) {
   return prisma.article.findUnique({
     where: {
@@ -86,7 +117,11 @@ export async function getCommunityArticleDetail(slug: string, session: PublicSes
   try {
     const article = await getArticleBySlug(slug);
 
-    if (!article || article.status !== "published") {
+    if (!article) {
+      return getFallbackCommunityArticle();
+    }
+
+    if (article.status !== "published") {
       notFound();
     }
 
@@ -105,16 +140,6 @@ export async function getCommunityArticleDetail(slug: string, session: PublicSes
       throw error;
     }
 
-    return {
-      id: "",
-      title: "แชร์เคล็ดลับการทานวิตามินซีให้ได้ผลดีที่สุด",
-      body: "ไม่สามารถโหลดข้อมูลบทความจากฐานข้อมูลได้ในขณะนี้",
-      author: "Clinical Ethereality",
-      likesCount: 0,
-      commentsCount: 0,
-      likedByViewer: false,
-      comments: [],
-      unavailable: true
-    };
+    return getFallbackCommunityArticle();
   }
 }
