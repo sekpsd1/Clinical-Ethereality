@@ -313,6 +313,7 @@
 - [x] Build articles
 - [x] Read Community hub, search, saved articles, and article detail from published Prisma records without public fallback content
 - [x] Build customer-owned post creation and editing with privacy acknowledgement, ownership checks, rate limiting, and audit logs
+- [x] Add one-image Community post upload with browser compression, server-side WebP reprocessing, EXIF removal, private host storage, and owner-controlled replacement/removal
 - [x] Build article comments
 - [x] Build likes
 - [x] Build customer-scoped saved articles

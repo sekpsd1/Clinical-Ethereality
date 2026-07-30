@@ -15,6 +15,7 @@ export type CommunityArticleDetailData = {
   body: string;
   author: string;
   category: string;
+  coverImageUrl: string | null;
   likesCount: number;
   commentsCount: number;
   likedByViewer: boolean;

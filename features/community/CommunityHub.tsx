@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { PenLine, Search } from "lucide-react";
 import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
@@ -40,7 +41,20 @@ export function CommunityHub({
             <Link href={`/community/${data.featured.slug}` as Route}>
               <article className="overflow-hidden rounded-[24px] border border-white/20 bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
                 <div className="aspect-[16/10] w-full overflow-hidden bg-[linear-gradient(135deg,#53cfc2_0%,#0a9287_100%)]">
-                  <DoctorIllustration />
+                  {data.featured.coverImageUrl ? (
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={data.featured.coverImageUrl}
+                        alt=""
+                        fill
+                        unoptimized
+                        sizes="(max-width: 430px) calc(100vw - 56px), 374px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <DoctorIllustration />
+                  )}
                 </div>
                 <div className="p-6">
                   <span className="mb-4 inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
@@ -114,6 +128,7 @@ export function CommunityHub({
                 portrait={post.authorRole === "customer" ? "ananya" : "somchai"}
                 href={`/community/${post.slug}`}
                 editHref={post.ownedByViewer ? `/community/${post.slug}/edit` : undefined}
+                imageSrc={post.coverImageUrl}
               />
             ))
           )}

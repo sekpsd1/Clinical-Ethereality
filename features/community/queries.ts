@@ -94,6 +94,7 @@ function mapArticleSummary(article: ArticleSummaryRecord, session: PublicSession
     time: formatCommunityRelativeTime(article.publishedAt ?? article.createdAt),
     likesCount: article.likes.length,
     commentsCount: article.comments.length,
+    coverImageUrl: article.coverImageUrl,
     likedByViewer: article.likes.some((like) => like.userId === session.userId),
     savedByViewer: article.savedBy.some((saved) => saved.userId === session.userId),
     ownedByViewer: article.authorId === session.userId
@@ -238,7 +239,8 @@ export async function getOwnCommunityPostForEdit(
       slug: true,
       title: true,
       body: true,
-      category: true
+      category: true,
+      coverImageUrl: true
     }
   });
 

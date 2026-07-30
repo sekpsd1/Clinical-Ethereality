@@ -83,11 +83,12 @@ export function CommunitySearchResults({ data }: { data: CommunitySearchData }) 
                 likes={String(result.likesCount)}
                 date={result.time}
                 imageSrc={
-                  index % 3 === 0
+                  result.coverImageUrl ??
+                  (index % 3 === 0
                     ? "/images/community/vitamin-bottles.png"
                     : index % 3 === 1
                       ? "/images/community/vitamin-review.png"
-                      : "/images/community/morning-forest.png"
+                      : "/images/community/morning-forest.png")
                 }
                 imageAlt=""
                 badge={result.savedByViewer ? "บันทึกแล้ว" : result.authorRole === "customer" ? "โพสต์สมาชิก" : "ตรวจสอบแล้ว"}

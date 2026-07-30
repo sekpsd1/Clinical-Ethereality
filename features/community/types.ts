@@ -16,6 +16,7 @@ export type CommunityPostSummary = {
   time: string;
   likesCount: number;
   commentsCount: number;
+  coverImageUrl: string | null;
   likedByViewer: boolean;
   savedByViewer: boolean;
   ownedByViewer: boolean;
@@ -46,4 +47,5 @@ export type CommunityPostEditorData = {
   title: string;
   body: string;
   category: string;
+  coverImageUrl: string | null;
 };
