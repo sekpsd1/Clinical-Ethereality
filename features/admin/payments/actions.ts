@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { reviewPaymentSchema } from "@/features/admin/payments/schema";
@@ -30,13 +31,18 @@ export async function reviewPaymentAction(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await applyManualPaymentReview(tx, {
-        paymentId: parsed.data.paymentId,
-        status: parsed.data.status,
-        actorId: session.userId,
-      });
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await applyManualPaymentReview(tx, {
+          paymentId: parsed.data.paymentId,
+          status: parsed.data.status,
+          actorId: session.userId
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      }
+    );
   } catch {
     return {
       status: "error",

@@ -54,12 +54,17 @@ function getStockLabel(product: ProductWithInventory): string {
 
 function mapCartItem(product: ProductWithInventory, quantity: number): CartItem {
   const lineTotal = product.price.mul(quantity);
+  const availableQuantity = Math.max(
+    (product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0),
+    0
+  );
 
   return {
     slug: product.slug,
     name: product.name,
     price: formatMoney(product.price),
     quantity,
+    availableQuantity,
     lineTotal: formatMoney(lineTotal),
     requiresPrescription: product.requiresPrescription,
     media: getProductMedia(product),
@@ -75,6 +80,7 @@ export async function getCustomerCart(): Promise<CartData> {
   if (cookieItems.length === 0) {
     return {
       items: [],
+      staleItems: [],
       itemCount: 0,
       subtotalAmount: 0,
       subtotal: formatMoney(0)
@@ -83,6 +89,8 @@ export async function getCustomerCart(): Promise<CartData> {
 
   try {
     const products = await getCartProducts(cookieItems.map((item) => item.slug));
+    const activeProductSlugs = new Set(products.map((product) => product.slug));
+    const staleItems = cookieItems.filter((item) => !activeProductSlugs.has(item.slug));
     const items = cookieItems
       .map((cookieItem) => {
         const product = products.find((candidate) => candidate.slug === cookieItem.slug);
@@ -98,6 +106,7 @@ export async function getCustomerCart(): Promise<CartData> {
 
     return {
       items,
+      staleItems,
       itemCount: items.reduce((total, item) => total + item.quantity, 0),
       subtotalAmount: Number(subtotal),
       subtotal: formatMoney(subtotal)
@@ -105,6 +114,7 @@ export async function getCustomerCart(): Promise<CartData> {
   } catch {
     return {
       items: [],
+      staleItems: [],
       itemCount: 0,
       subtotalAmount: 0,
       subtotal: formatMoney(0),

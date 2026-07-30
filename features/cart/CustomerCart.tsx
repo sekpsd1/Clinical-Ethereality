@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { clearCartAction, updateCartItemAction } from "@/features/cart/actions";
-import type { CartData, CartItem } from "@/features/cart/types";
+import type { CartData, CartItem, StaleCartItem } from "@/features/cart/types";
 
 export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?: string }) {
   const statusMessage =
@@ -36,6 +36,8 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
           </p>
         ) : null}
 
+        {data.staleItems.length > 0 ? <StaleCartNotice items={data.staleItems} /> : null}
+
         {data.unavailable ? (
           <EmptyCart title="ไม่สามารถโหลดตะกร้าได้" body="กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูลและลองใหม่" />
         ) : data.items.length === 0 ? (
@@ -53,12 +55,21 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
                 <span className="font-bold text-[#3e494a]">Subtotal</span>
                 <span className="text-xl font-extrabold text-primary">{data.subtotal}</span>
               </div>
-              <Link
-                href="/store/checkout"
-                className="mt-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
-              >
-                ไปชำระเงิน
-              </Link>
+              {data.staleItems.length > 0 ? (
+                <span
+                  aria-disabled="true"
+                  className="mt-5 flex h-14 w-full cursor-not-allowed items-center justify-center rounded-full bg-[#bdc9ca] px-5 text-center text-sm font-extrabold text-white"
+                >
+                  ล้างรายการที่ไม่พร้อมก่อน Checkout
+                </span>
+              ) : (
+                <Link
+                  href="/store/checkout"
+                  className="mt-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
+                >
+                  ไปชำระเงิน
+                </Link>
+              )}
               <form action={clearCartAction}>
                 <button type="submit" className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-bold text-[#93000a]">
                   <Trash2 aria-hidden="true" className="size-4" />
@@ -70,6 +81,38 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
         )}
       </main>
     </div>
+  );
+}
+
+function StaleCartNotice({ items }: { items: StaleCartItem[] }) {
+  return (
+    <section className="rounded-[24px] border border-[#ba1a1a]/20 bg-white/80 p-5 text-[#93000a] shadow-[0_8px_24px_rgba(0,96,103,0.04)]">
+      <div className="flex items-start gap-3">
+        <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+        <div>
+          <h2 className="text-sm font-extrabold">มีสินค้าที่ถูกปิดขายหรือไม่พบแล้ว</h2>
+          <p className="mt-1 text-xs leading-5">
+            รายการต่อไปนี้ยังอยู่ใน cookie ตะกร้า แต่ไม่สามารถใช้สร้างคำสั่งซื้อได้
+          </p>
+          <ul className="mt-2 space-y-1 text-xs font-semibold leading-5">
+            {items.map((item) => (
+              <li key={item.slug}>
+                {item.slug} × {item.quantity}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <form action={clearCartAction}>
+        <button
+          type="submit"
+          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#ba1a1a]/25 bg-white text-sm font-bold"
+        >
+          <Trash2 aria-hidden="true" className="size-4" />
+          ล้างตะกร้าและเริ่มใหม่
+        </button>
+      </form>
+    </section>
   );
 }
 

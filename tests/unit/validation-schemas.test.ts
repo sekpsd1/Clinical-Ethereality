@@ -131,11 +131,14 @@ describe("feature validation schemas", () => {
     expect(cartMutationSchema.safeParse({ slug: "", quantity: 1 }).success).toBe(false);
   });
 
-  it("validates checkout product slug payloads for customer order creation", () => {
-    expect(checkoutSchema.parse({ productSlugs: "vitamin-c-complex" }).productSlugs).toEqual(["vitamin-c-complex"]);
-    expect(checkoutSchema.parse({ productSlugs: ["a", "b"] }).productSlugs).toEqual(["a", "b"]);
-    expect(checkoutSchema.safeParse({ productSlugs: [] }).success).toBe(false);
-    expect(checkoutSchema.safeParse({ productSlugs: Array.from({ length: 11 }, (_, index) => `product-${index}`) }).success).toBe(false);
+  it("requires a per-render checkout request id for customer order creation", () => {
+    expect(
+      checkoutSchema.parse({
+        checkoutRequestId: "f75c16fe-0f6a-4ce8-8a1a-2048fb1272da"
+      }).checkoutRequestId
+    ).toBe("f75c16fe-0f6a-4ce8-8a1a-2048fb1272da");
+    expect(checkoutSchema.safeParse({ checkoutRequestId: "" }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ checkoutRequestId: "not-a-uuid" }).success).toBe(false);
   });
 
   it("validates community article interactions without accepting empty sensitive context", () => {

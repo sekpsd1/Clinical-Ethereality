@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload, Loader2, ScanLine } from "lucide-react";
+import { hasExactlyOnePaymentEvidence } from "@/features/payments/evidence";
 
 type CustomerSlipVerificationProps = {
   paymentId: string;
@@ -86,6 +87,7 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
       }
 
       setQrPayload(nextPayload);
+      setImageUrl("");
       setStatus("idle");
       setMessage("อ่าน QR จากไฟล์ในเครื่องได้แล้ว กดส่งสลิปเพื่อตรวจสอบกับ provider");
     } catch {
@@ -100,9 +102,9 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
     const trimmedPayload = qrPayload.trim();
     const trimmedImageUrl = imageUrl.trim();
 
-    if (!trimmedPayload && !trimmedImageUrl) {
+    if (!hasExactlyOnePaymentEvidence({ qrPayload: trimmedPayload, imageUrl: trimmedImageUrl })) {
       setStatus("error");
-      setMessage("กรุณาเลือกสลิปที่อ่าน QR ได้ วาง QR payload หรือใส่ hosted slip image URL");
+      setMessage("กรุณาส่งหลักฐานเพียงแบบเดียว: QR payload หรือ hosted slip image URL");
       return;
     }
 
@@ -180,7 +182,13 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e797a]">Slip QR payload</span>
           <textarea
             value={qrPayload}
-            onChange={(event) => setQrPayload(event.target.value)}
+            onChange={(event) => {
+              setQrPayload(event.target.value);
+
+              if (event.target.value.trim()) {
+                setImageUrl("");
+              }
+            }}
             rows={3}
             className="mt-2 w-full resize-none rounded-[16px] border border-[#bdc9ca]/30 bg-white px-4 py-3 text-xs leading-5 text-[#191c1e] outline-none focus:border-primary"
             placeholder="ระบบจะเติมให้อัตโนมัติเมื่อรูปสลิปมี QR ที่อ่านได้"
@@ -192,7 +200,13 @@ export function CustomerSlipVerification({ paymentId, orderCode }: CustomerSlipV
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e797a]">Hosted slip image URL</span>
           <input
             value={imageUrl}
-            onChange={(event) => setImageUrl(event.target.value)}
+            onChange={(event) => {
+              setImageUrl(event.target.value);
+
+              if (event.target.value.trim()) {
+                setQrPayload("");
+              }
+            }}
             className="mt-2 h-11 w-full rounded-[16px] border border-[#bdc9ca]/30 bg-white px-4 text-xs text-[#191c1e] outline-none focus:border-primary"
             placeholder="https://..."
             disabled={isBusy}

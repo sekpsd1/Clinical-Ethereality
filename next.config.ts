@@ -1,6 +1,30 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+function getConfiguredStorageImagePattern(): URL | null {
+  const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL?.trim();
+
+  if (!publicBaseUrl) {
+    return null;
+  }
+
+  try {
+    const url = new URL(publicBaseUrl);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    const pathname = url.pathname.endsWith("/") ? `${url.pathname}**` : `${url.pathname}/**`;
+
+    return new URL(`${url.origin}${pathname}`);
+  } catch {
+    return null;
+  }
+}
+
+const configuredStorageImagePattern = getConfiguredStorageImagePattern();
+
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
@@ -11,10 +35,9 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "profile.line-scdn.net"
-      }
+      new URL("https://profile.line-scdn.net/**"),
+      new URL("https://res.cloudinary.com/**"),
+      ...(configuredStorageImagePattern ? [configuredStorageImagePattern] : [])
     ]
   }
 };

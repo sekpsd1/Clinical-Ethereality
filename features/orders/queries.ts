@@ -3,7 +3,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { getQrDataUrlFromPayload } from "@/lib/payments/promptpay";
+import { isPaymentReadyForProviderVerification } from "@/features/payments/service";
 import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
+import { releaseExpiredStoreOrderReservations } from "@/features/orders/reservations";
 
 type CustomerOrderRecord = Awaited<ReturnType<typeof getOrdersForCustomer>>[number];
 type ExternalPrescriptionAttachmentSummary = {
@@ -199,7 +201,7 @@ async function mapOrder(
     paymentLabel: payment ? paymentStatusLabels[payment.status] : "ยังไม่มีข้อมูลชำระเงิน",
     paymentQrPayload: payment?.qrPayload ?? null,
     paymentQrDataUrl,
-    paymentVerificationRequired: payment ? ["pending_slip", "pending_review"].includes(payment.status) : false,
+    paymentVerificationRequired: payment ? isPaymentReadyForProviderVerification(payment.status) : false,
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
     shipmentStatus: shipment?.status ?? null,
@@ -215,6 +217,10 @@ export async function getCustomerOrders(session: PublicSession): Promise<Custome
   noStore();
 
   try {
+    await releaseExpiredStoreOrderReservations({
+      userId: session.userId
+    });
+
     const orders = await getOrdersForCustomer(session.userId);
     const orderIds = orders.map((order) => order.id);
     const attachments = orderIds.length > 0

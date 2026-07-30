@@ -8,6 +8,7 @@ type CustomerNotificationRecord = Pick<
   Notification,
   "id" | "type" | "title" | "body" | "readAt" | "metadataJson" | "createdAt"
 >;
+type CustomerNotificationRouteInput = Pick<CustomerNotificationRecord, "type" | "metadataJson">;
 
 function formatRelativeTime(date: Date): string {
   const deltaSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
@@ -48,14 +49,21 @@ function getMetadataObject(metadata: Prisma.JsonValue): Prisma.JsonObject {
   return metadata;
 }
 
-function mapHref(notification: CustomerNotificationRecord): CustomerNotificationItem["href"] {
+export function resolveCustomerNotificationHref(
+  notification: CustomerNotificationRouteInput
+): CustomerNotificationItem["href"] {
   const metadata = getMetadataObject(notification.metadataJson);
   const href = metadata.href;
 
+  if (href === "/store/payment-success") {
+    return "/store/orders";
+  }
+
   if (
     href === "/community/vitamin-c-tips" ||
-    href === "/store/payment-success" ||
+    href === "/store/orders" ||
     href === "/store" ||
+    href === "/profile/rewards" ||
     href === "/consult/prescriptions" ||
     href === "/consult/advice-log" ||
     (typeof href === "string" && href.startsWith("/consult/appointments/"))
@@ -68,7 +76,7 @@ function mapHref(notification: CustomerNotificationRecord): CustomerNotification
   }
 
   if (notification.type === "order" || notification.type === "payment") {
-    return "/store/payment-success";
+    return "/store/orders";
   }
 
   if (notification.type === "prescription") {
@@ -80,7 +88,7 @@ function mapHref(notification: CustomerNotificationRecord): CustomerNotification
   }
 
   if (notification.type === "reward") {
-    return "/store";
+    return "/profile/rewards";
   }
 
   return "/notifications";
@@ -94,7 +102,7 @@ function mapNotification(notification: CustomerNotificationRecord): CustomerNoti
     time: formatRelativeTime(notification.createdAt),
     kind: notification.type === "system" ? "promo" : notification.type,
     unread: !notification.readAt,
-    href: mapHref(notification)
+    href: resolveCustomerNotificationHref(notification)
   };
 }
 

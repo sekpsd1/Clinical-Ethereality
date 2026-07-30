@@ -3,43 +3,16 @@ import Image from "next/image";
 import {
   ArrowLeft,
   AlertTriangle,
-  Check,
-  CheckCircle2,
-  Edit3,
+  PackageX,
   ShieldCheck,
-  Share2,
   ShoppingCart,
-  UserRound
+  WifiOff
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { addToCartAction } from "@/features/cart/actions";
 import { ExternalPrescriptionOrderForm } from "@/features/products/ExternalPrescriptionOrderForm";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 import type { StorageReadiness } from "@/lib/storage/provider";
-
-const fallbackProduct: StoreProductDetailItem = {
-  id: "fallback-paracetamol",
-  name: "Paracetamol 500mg",
-  slug: "paracetamol-500mg",
-  category: "medicine",
-  categoryLabel: "ยาและเวชภัณฑ์",
-  price: "฿1,200",
-  description: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
-  imageAlt: "Premium medical bottle of Paracetamol 500mg",
-  imageUrl: null,
-  media: "kit",
-  href: "/store/paracetamol-500mg",
-  cta: "สั่งซื้อทันที",
-  requiresPrescription: false,
-  stockLabel: "พร้อมจัดส่ง",
-  featured: false,
-  longDescription: "ยาสามัญประจำบ้านสำหรับข้อมูลทดสอบร้านค้า",
-  usageInstructions: null,
-  fdaNumber: null,
-  warnings: null,
-  storageInstructions: null,
-  controlledOrRestricted: false,
-  specialFulfillmentNotes: null
-};
 
 export function ProductDetail({
   data,
@@ -50,7 +23,13 @@ export function ProductDetail({
   externalPrescriptionStatus?: string;
   storageReadiness: StorageReadiness;
 }) {
-  const product = data.product ?? fallbackProduct;
+  const product = data.product;
+
+  if (!product) {
+    return <ProductDetailState unavailable={Boolean(data.unavailable)} />;
+  }
+
+  const isOutOfStock = product.availableQuantity <= 0;
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-[#3e494a]">
@@ -58,12 +37,6 @@ export function ProductDetail({
       <ProductHero product={product} />
 
       <main className="relative z-10 -mt-10 flex flex-col gap-6 px-7">
-        {data.unavailable || !data.product ? (
-          <section className="rounded-[24px] border border-[#ba1a1a]/20 bg-white/80 p-4 text-sm font-semibold leading-6 text-[#93000a] shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
-            {data.unavailable ? "ไม่สามารถโหลดรายละเอียดสินค้าจากฐานข้อมูลได้ กำลังแสดงข้อมูลสำรอง" : "ไม่พบสินค้านี้ในแคตตาล็อกที่เปิดใช้งาน กำลังแสดงข้อมูลสำรอง"}
-          </section>
-        ) : null}
-
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <div className="mb-5 flex flex-col gap-2">
             <p className="text-[11px] font-bold text-primary">{product.categoryLabel}</p>
@@ -94,58 +67,6 @@ export function ProductDetail({
           <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} storageReadiness={storageReadiness} />
         ) : null}
 
-        <section className="flex flex-col gap-4">
-          <h2 className="pl-1 text-lg font-extrabold leading-7 text-primary">
-            เลือกจากประวัติการปรึกษา (Advice Log)
-          </h2>
-
-          <div className="rounded-[24px] border border-primary/20 bg-white/70 p-5 shadow-[0_8px_32px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <UserRound aria-hidden="true" className="size-5" />
-                </span>
-                <p className="truncate text-sm font-extrabold leading-5 text-[#191c1e]">
-                  นพ. ธีรภัทร รัตนวานิช | 10 พ.ค. 2567
-                </p>
-              </div>
-              <CheckCircle2 aria-hidden="true" className="size-5 shrink-0 fill-primary text-white" />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-[18px] border-2 border-primary bg-primary/5 p-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                  <Check aria-hidden="true" className="size-5" strokeWidth={3} />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-primary">Amoxicillin 500mg</p>
-                  <p className="text-[10px] font-bold uppercase leading-4 text-primary/70">
-                    รายการที่ใช้ยืนยันการซื้อนี้
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-[18px] bg-white p-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#e6e8ea]">
-                  <span className="size-4 rounded-full border-2 border-[#6e797a]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[#3e494a]">Paracetamol 500mg</p>
-                  <p className="text-[10px] font-medium leading-4 text-[#616363]">รายการอื่นๆ ในใบสั่งนี้</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-[16px] py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/5"
-            >
-              เปลี่ยนการเลือกใบสั่งยา
-              <Edit3 aria-hidden="true" className="size-3.5" />
-            </button>
-          </div>
-        </section>
-
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <h2 className="mb-4 text-base font-extrabold leading-6 text-primary">รายละเอียดสินค้า</h2>
           <div className="space-y-4 text-sm leading-7 text-[#3e494a]">
@@ -175,7 +96,16 @@ export function ProductDetail({
 
       <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[45] px-7">
         <div className="mx-auto w-full max-w-mobile">
-          {product.requiresPrescription ? (
+          {isOutOfStock ? (
+            <button
+              type="button"
+              disabled
+              className="flex h-14 w-full cursor-not-allowed items-center justify-center gap-3 rounded-[24px] bg-[#bdc9ca] text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.12)]"
+            >
+              <PackageX aria-hidden="true" className="size-5" />
+              สินค้าหมดชั่วคราว
+            </button>
+          ) : product.requiresPrescription ? (
             <Link
               href="/consult/prescriptions"
               className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
@@ -183,18 +113,19 @@ export function ProductDetail({
               <ShoppingCart aria-hidden="true" className="size-5" />
               ใช้ใบสั่งยาในระบบ
             </Link>
-          ) : null}
-          <form action={addToCartAction} className={product.requiresPrescription ? "hidden" : undefined}>
-            <input type="hidden" name="slug" value={product.slug} />
-            <input type="hidden" name="quantity" value="1" />
-            <button
-              type="submit"
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
-            >
-              <ShoppingCart aria-hidden="true" className="size-5" />
-              เพิ่มลงตะกร้า
-            </button>
-          </form>
+          ) : (
+            <form action={addToCartAction}>
+              <input type="hidden" name="slug" value={product.slug} />
+              <input type="hidden" name="quantity" value="1" />
+              <button
+                type="submit"
+                className="flex h-14 w-full items-center justify-center gap-3 rounded-[24px] bg-primary-gradient text-base font-bold text-white shadow-[0_10px_25px_rgba(0,96,103,0.32)] active:scale-[0.98]"
+              >
+                <ShoppingCart aria-hidden="true" className="size-5" />
+                เพิ่มลงตะกร้า
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
@@ -206,6 +137,37 @@ function ProductInformation({ label, value }: { label: string; value: string }) 
     <div>
       <p className="font-bold text-[#191c1e]">{label}</p>
       <p className="mt-1 whitespace-pre-line">{value}</p>
+    </div>
+  );
+}
+
+function ProductDetailState({ unavailable }: { unavailable: boolean }) {
+  return (
+    <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#3e494a]">
+      <ProductDetailHeader />
+      <main className="px-7 pt-28">
+        <EmptyState
+          className={unavailable ? "border-[#ba1a1a]/20 bg-white/80" : "bg-white/80"}
+          title={unavailable ? "ไม่สามารถโหลดรายละเอียดสินค้าได้" : "ไม่พบสินค้านี้"}
+          body={
+            unavailable
+              ? "ระบบไม่สามารถเชื่อมต่อแคตตาล็อกสินค้าได้ในขณะนี้ จึงยังไม่สามารถสั่งซื้อสินค้าได้"
+              : "สินค้านี้อาจถูกปิดการขายหรือไม่มีอยู่ในแคตตาล็อกที่เปิดใช้งาน"
+          }
+          icon={
+            unavailable ? (
+              <WifiOff aria-hidden="true" className="size-5 text-[#93000a]" />
+            ) : (
+              <PackageX aria-hidden="true" className="size-5" />
+            )
+          }
+          action={
+            <Link href="/store" className="text-sm font-bold text-primary underline-offset-4 hover:underline">
+              กลับไปหน้าร้านค้า
+            </Link>
+          }
+        />
+      </main>
     </div>
   );
 }
@@ -234,13 +196,21 @@ function ExternalPrescriptionOrderCard({
           : "ยังไม่ได้ตั้งค่า Cloudinary/S3 สำหรับอัปโหลดจริง ตอนนี้รับ hosted URL จาก storage ที่ owner จัดเตรียมและบันทึก metadata ก่อน"}
       </p>
 
-      {status === "failed" || status === "invalid" ? (
+      {status === "failed" || status === "invalid" || status === "limit" ? (
         <p className="mb-4 rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">
-          ไม่สามารถสร้างคำสั่งซื้อจากใบสั่งยาภายนอกได้ กรุณาตรวจสอบ URL และชื่อไฟล์อีกครั้ง
+          {status === "limit"
+            ? "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่"
+            : "ไม่สามารถสร้างคำสั่งซื้อจากใบสั่งยาภายนอกได้ กรุณาตรวจสอบ URL และชื่อไฟล์อีกครั้ง"}
         </p>
       ) : null}
 
-      <ExternalPrescriptionOrderForm productSlug={product.slug} />
+      {product.availableQuantity > 0 ? (
+        <ExternalPrescriptionOrderForm productSlug={product.slug} />
+      ) : (
+        <p className="rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">
+          สินค้าหมดชั่วคราว จึงยังไม่สามารถสร้างคำสั่งซื้อพร้อมใบสั่งยาได้
+        </p>
+      )}
     </section>
   );
 }
@@ -255,9 +225,7 @@ function ProductDetailHeader() {
           </Link>
           <p className="text-lg font-bold leading-6 text-[#191c1e]">Medication Details</p>
         </div>
-        <button type="button" aria-label="Share product" className="flex size-10 items-center justify-center rounded-full text-primary">
-          <Share2 aria-hidden="true" className="size-5" strokeWidth={2.4} />
-        </button>
+        <span aria-hidden="true" className="size-10 shrink-0" />
       </div>
     </header>
   );
@@ -298,9 +266,9 @@ function ProductHero({ product }: { product: StoreProductDetailItem }) {
           <div className="absolute left-1/2 top-[23%] flex size-12 -translate-x-1/2 items-center justify-center rounded-full bg-[#0b90b0]">
             <div className="h-3 w-8 rounded-full bg-white" />
           </div>
-          <div className="absolute left-1/2 top-[39%] -translate-x-1/2 text-center">
-            <p className="text-[24px] font-extrabold leading-none text-white">Paraceemol</p>
-            <p className="mt-1 text-[8px] font-bold uppercase tracking-wide text-[#d7faff]">SAFE OIRC WORK</p>
+          <div className="absolute left-1/2 top-[39%] w-[90%] -translate-x-1/2 text-center">
+            <p className="line-clamp-2 text-[10px] font-extrabold leading-tight text-white">{product.name}</p>
+            <p className="mt-1 text-[6px] font-bold uppercase tracking-wide text-[#d7faff]">Clinical Ethereality</p>
           </div>
           <div className="absolute left-[16%] top-[12%] h-[70%] w-[13%] rounded-full bg-white/20 blur-sm" />
         </div>

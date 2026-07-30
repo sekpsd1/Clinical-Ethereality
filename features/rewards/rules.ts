@@ -1,4 +1,4 @@
-import type { Prisma, RewardPointSource } from "@prisma/client";
+import { Prisma, type RewardPointSource } from "@prisma/client";
 
 export const rewardRules = {
   orderEarnRate: {
@@ -35,6 +35,10 @@ export async function awardRewardPoints(
     expiresAt?: Date | null;
   }
 ): Promise<boolean> {
+  await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT \`id\` FROM \`User\` WHERE \`id\` = ${input.userId} FOR UPDATE`
+  );
+
   const existingReward = await tx.rewardPoint.findFirst({
     where: {
       userId: input.userId,

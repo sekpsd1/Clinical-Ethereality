@@ -7,28 +7,43 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
-import { buildPromptPayPayload } from "@/lib/payments/promptpay";
-import { getAppEnv } from "@/lib/env/schema";
 import { buildAttachmentMetadata, normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
-import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
+import {
+  createStorePromptPayPayload,
+  isStorePromptPayReady
+} from "@/features/products/checkout/payment";
+import { canReserveInventory } from "@/features/products/checkout/safety";
 import {
   createExternalPrescriptionOrderSchema,
   createPrescriptionOrderSchema
 } from "@/features/products/prescriptions/schema";
 import { isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
+import {
+  assertStorePendingOrderCapacity,
+  releaseExpiredStoreOrderReservations,
+  StorePendingOrderLimitError
+} from "@/features/orders/reservations";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
 
-function getThaiQrPayload(amount: Prisma.Decimal): string | null {
-  const promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID;
+async function lockPrescriptionForOrder(
+  tx: Prisma.TransactionClient,
+  prescriptionId: string,
+  patientId: string
+): Promise<boolean> {
+  const lockedRows = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`
+      SELECT \`id\`
+      FROM \`Prescription\`
+      WHERE \`id\` = ${prescriptionId}
+        AND \`patientId\` = ${patientId}
+      FOR UPDATE
+    `
+  );
 
-  if (!promptPayId) {
-    return null;
-  }
-
-  return buildPromptPayPayload(promptPayId, Number(amount));
+  return lockedRows.length === 1;
 }
 
 export async function createPrescriptionOrderAction(formData: FormData): Promise<void> {
@@ -42,10 +57,30 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
     redirect("/consult/prescriptions?order=invalid");
   }
 
+  if (!isStorePromptPayReady()) {
+    redirect(`/store/prescriptions/${parsed.data.prescriptionId}?order=failed`);
+  }
+
   let orderId: string | null = null;
 
   try {
+    await releaseExpiredStoreOrderReservations({
+      userId: session.userId
+    });
+
     const result = await prisma.$transaction(async (tx) => {
+      await assertStorePendingOrderCapacity(tx, session.userId);
+
+      const prescriptionLocked = await lockPrescriptionForOrder(
+        tx,
+        parsed.data.prescriptionId,
+        session.userId
+      );
+
+      if (!prescriptionLocked) {
+        throw new Error("Prescription was not found for this patient.");
+      }
+
       const prescription = await tx.prescription.findFirst({
         where: {
           id: parsed.data.prescriptionId,
@@ -56,6 +91,13 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           patientId: true,
           status: true,
           orderItems: {
+            where: {
+              order: {
+                status: {
+                  notIn: ["cancelled", "refunded"]
+                }
+              }
+            },
             select: {
               orderId: true
             },
@@ -87,15 +129,36 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         throw new Error("Prescription product was not found.");
       }
 
-      const availableQuantity = Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
+      const quantity = 1;
 
-      if (availableQuantity <= 0) {
+      if (!canReserveInventory(product.inventory, quantity)) {
         throw new Error("Prescription product is out of stock.");
       }
 
-      const quantity = 1;
       const subtotal = product.price.mul(quantity);
-      const qrPayload = getThaiQrPayload(subtotal);
+      const qrPayload = createStorePromptPayPayload(Number(subtotal));
+
+      if (!qrPayload) {
+        throw new Error("PromptPay is not configured or a payment QR payload could not be generated.");
+      }
+
+      const reservation = await tx.inventory.updateMany({
+        where: {
+          id: product.inventory!.id,
+          quantity: product.inventory!.quantity,
+          reservedQuantity: product.inventory!.reservedQuantity
+        },
+        data: {
+          reservedQuantity: {
+            increment: quantity
+          }
+        }
+      });
+
+      if (reservation.count !== 1) {
+        throw new Error("Prescription product stock changed during checkout.");
+      }
+
       const order = await tx.order.create({
         data: {
           userId: session.userId,
@@ -123,9 +186,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
                 source: "prescription_order",
                 prescriptionId: prescription.id,
                 prescriptionStatus: prescription.status,
-                note: qrPayload
-                  ? "Dynamic Thai QR PromptPay payload generated for this prescription order."
-                  : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
+                note: "Dynamic Thai QR PromptPay payload generated for this prescription order."
               }
             }
           },
@@ -145,19 +206,6 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           id: true
         }
       });
-
-      if (product.inventory) {
-        await tx.inventory.update({
-          where: {
-            productId: product.id
-          },
-          data: {
-            reservedQuantity: {
-              increment: quantity
-            }
-          }
-        });
-      }
 
       await tx.notification.create({
         data: {
@@ -185,41 +233,19 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           productId: product.id,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
-          hasPromptPayPayload: Boolean(qrPayload)
+          hasPromptPayPayload: true
         }
       });
 
-      const rewardPoints = calculateOrderRewardPoints(subtotal);
-      const didAwardReward = await awardRewardPoints(tx, {
-        userId: session.userId,
-        sourceType: "order",
-        sourceId: order.id,
-        points: rewardPoints,
-        expiresAt: getRewardExpiryDate()
-      });
-
-      if (didAwardReward) {
-        await tx.notification.create({
-          data: {
-            userId: session.userId,
-            type: "reward",
-            channel: "in_app",
-            title: "ได้รับแต้มสะสม",
-            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อยาตามใบสั่งแพทย์`,
-            metadataJson: {
-              orderId: order.id,
-              href: "/profile/rewards"
-            }
-          }
-        });
-      }
-
       return order;
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     orderId = result.id;
-  } catch {
-    redirect(`/store/prescriptions/${parsed.data.prescriptionId}?order=failed`);
+  } catch (error) {
+    const status = error instanceof StorePendingOrderLimitError ? "limit" : "failed";
+    redirect(`/store/prescriptions/${parsed.data.prescriptionId}?order=${status}`);
   }
 
   revalidatePath("/admin");
@@ -246,6 +272,10 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
     redirect("/store?prescription=invalid");
   }
 
+  if (!isStorePromptPayReady()) {
+    redirect(`/store/${parsed.data.productSlug}?prescription=failed`);
+  }
+
   let normalizedAttachment: ReturnType<typeof normalizeHostedAttachmentInput>;
 
   try {
@@ -262,7 +292,13 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
   let orderId: string | null = null;
 
   try {
+    await releaseExpiredStoreOrderReservations({
+      userId: session.userId
+    });
+
     const result = await prisma.$transaction(async (tx) => {
+      await assertStorePendingOrderCapacity(tx, session.userId);
+
       const product = await tx.product.findFirst({
         where: {
           slug: parsed.data.productSlug,
@@ -278,15 +314,36 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
         throw new Error("Prescription-required product was not found.");
       }
 
-      const availableQuantity = Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
+      const quantity = 1;
 
-      if (availableQuantity <= 0) {
+      if (!canReserveInventory(product.inventory, quantity)) {
         throw new Error("Prescription-required product is out of stock.");
       }
 
-      const quantity = 1;
       const subtotal = product.price.mul(quantity);
-      const qrPayload = getThaiQrPayload(subtotal);
+      const qrPayload = createStorePromptPayPayload(Number(subtotal));
+
+      if (!qrPayload) {
+        throw new Error("PromptPay is not configured or a payment QR payload could not be generated.");
+      }
+
+      const reservation = await tx.inventory.updateMany({
+        where: {
+          id: product.inventory!.id,
+          quantity: product.inventory!.quantity,
+          reservedQuantity: product.inventory!.reservedQuantity
+        },
+        data: {
+          reservedQuantity: {
+            increment: quantity
+          }
+        }
+      });
+
+      if (reservation.count !== 1) {
+        throw new Error("Prescription-required product stock changed during checkout.");
+      }
+
       const order = await tx.order.create({
         data: {
           userId: session.userId,
@@ -311,9 +368,7 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
               qrPayload,
               verificationPayload: {
                 source: "external_prescription_order",
-                note: qrPayload
-                  ? "Dynamic Thai QR PromptPay payload generated for this external prescription order."
-                  : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
+                note: "Dynamic Thai QR PromptPay payload generated for this external prescription order."
               }
             }
           },
@@ -354,19 +409,6 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
         }
       });
 
-      if (product.inventory) {
-        await tx.inventory.update({
-          where: {
-            productId: product.id
-          },
-          data: {
-            reservedQuantity: {
-              increment: quantity
-            }
-          }
-        });
-      }
-
       await tx.notification.create({
         data: {
           userId: session.userId,
@@ -392,42 +434,20 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
           attachmentId: attachment.id,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
-          hasPromptPayPayload: Boolean(qrPayload),
+          hasPromptPayPayload: true,
           noAdditionalDocumentReview: true
         }
       });
 
-      const rewardPoints = calculateOrderRewardPoints(subtotal);
-      const didAwardReward = await awardRewardPoints(tx, {
-        userId: session.userId,
-        sourceType: "order",
-        sourceId: order.id,
-        points: rewardPoints,
-        expiresAt: getRewardExpiryDate()
-      });
-
-      if (didAwardReward) {
-        await tx.notification.create({
-          data: {
-            userId: session.userId,
-            type: "reward",
-            channel: "in_app",
-            title: "ได้รับแต้มสะสม",
-            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อพร้อมใบสั่งยา`,
-            metadataJson: {
-              orderId: order.id,
-              href: "/profile/rewards"
-            }
-          }
-        });
-      }
-
       return order;
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     orderId = result.id;
-  } catch {
-    redirect(`/store/${parsed.data.productSlug}?prescription=failed`);
+  } catch (error) {
+    const status = error instanceof StorePendingOrderLimitError ? "limit" : "failed";
+    redirect(`/store/${parsed.data.productSlug}?prescription=${status}`);
   }
 
   revalidatePath("/admin");
