@@ -19,11 +19,13 @@ export type SlipVerificationResult = {
 };
 
 function assertConfigured(value: string | undefined, name: string): string {
-  if (!value) {
+  const normalizedValue = value?.trim();
+
+  if (!normalizedValue) {
     throw new Error(`${name} is required for slip verification.`);
   }
 
-  return value;
+  return normalizedValue;
 }
 
 function getProvider(): SlipVerificationProvider {
@@ -56,14 +58,30 @@ function getInputPayload(input: SlipVerificationInput): { payload?: string; url?
   throw new Error("Either qrPayload or imageUrl is required for slip verification.");
 }
 
-function isReceiverMatch(receiverName: string | null): boolean {
-  const expectedReceiver = getAppEnv().SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME;
+function normalizeReceiverName(value: string): string {
+  return value.normalize("NFKC").trim().toLocaleLowerCase("th-TH");
+}
 
-  if (!expectedReceiver || !receiverName) {
-    return true;
+function isReceiverMatch(receiverName: string | null, expectedReceiver: string): boolean {
+  if (!receiverName?.trim()) {
+    return false;
   }
 
-  return receiverName.toLowerCase().includes(expectedReceiver.toLowerCase());
+  return normalizeReceiverName(receiverName) === normalizeReceiverName(expectedReceiver);
+}
+
+function isAmountMatch(actualAmount: number | null, expectedAmount: number | undefined): boolean {
+  if (
+    typeof actualAmount !== "number" ||
+    !Number.isFinite(actualAmount) ||
+    typeof expectedAmount !== "number" ||
+    !Number.isFinite(expectedAmount) ||
+    expectedAmount <= 0
+  ) {
+    return false;
+  }
+
+  return Math.round(actualAmount * 100) === Math.round(expectedAmount * 100);
 }
 
 export async function verifyPaymentSlip(input: SlipVerificationInput): Promise<SlipVerificationResult> {
@@ -79,6 +97,10 @@ export async function verifyPaymentSlip(input: SlipVerificationInput): Promise<S
 async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVerificationResult> {
   const env = getAppEnv();
   const apiKey = assertConfigured(env.SLIP_VERIFICATION_API_KEY, "SLIP_VERIFICATION_API_KEY");
+  const expectedReceiver = assertConfigured(
+    env.SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME,
+    "SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME"
+  );
   const apiUrl = env.SLIP_VERIFICATION_API_URL ?? getDefaultApiUrl("easyslip");
   const payload = getInputPayload(input);
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/verify/bank`, {
@@ -92,14 +114,25 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
   const raw = (await response.json().catch(() => null)) as EasySlipResponse | null;
   const data = raw?.data ?? null;
   const receiverName = data?.receiver?.account?.name?.th ?? data?.receiver?.account?.name?.en ?? null;
-  const amount = data?.amount?.amount ?? null;
-  const isAmountMatch = typeof input.amount !== "number" || Number(amount) === input.amount;
-  const verified = Boolean(response.ok && raw?.success && data?.transRef && isAmountMatch && isReceiverMatch(receiverName));
+  const amount = typeof data?.amount?.amount === "number" ? data.amount.amount : null;
+  const providerAccepted = Boolean(response.ok && raw?.success);
+  const hasRequiredVerificationData = Boolean(data?.transRef && amount !== null && receiverName?.trim());
+  const verified = Boolean(
+    providerAccepted &&
+      hasRequiredVerificationData &&
+      isAmountMatch(amount, input.amount) &&
+      isReceiverMatch(receiverName, expectedReceiver)
+  );
 
   return {
     ok: verified,
     provider: "easyslip",
-    status: verified ? "verified" : response.ok ? "rejected" : "provider_error",
+    status:
+      verified
+        ? "verified"
+        : !response.ok || (providerAccepted && !hasRequiredVerificationData)
+          ? "provider_error"
+          : "rejected",
     transRef: data?.transRef ?? null,
     amount: typeof amount === "number" ? amount : null,
     receiverName,
@@ -111,6 +144,10 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
   const env = getAppEnv();
   const apiKey = assertConfigured(env.SLIP_VERIFICATION_API_KEY, "SLIP_VERIFICATION_API_KEY");
   const branchId = assertConfigured(env.SLIPOK_BRANCH_ID, "SLIPOK_BRANCH_ID");
+  const expectedReceiver = assertConfigured(
+    env.SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME,
+    "SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME"
+  );
   const apiUrl = env.SLIP_VERIFICATION_API_URL ?? getDefaultApiUrl("slipok");
   const payload = getInputPayload(input);
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/api/line/apikey/${branchId}`, {
@@ -130,12 +167,24 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
   const data = raw?.data ?? null;
   const receiverName = data?.receiver?.displayName ?? data?.receiver?.name ?? null;
   const amount = typeof data?.amount === "number" ? data.amount : null;
-  const verified = Boolean(response.ok && raw?.success && data?.success && data?.transRef && isReceiverMatch(receiverName));
+  const providerAccepted = Boolean(response.ok && raw?.success && data?.success);
+  const hasRequiredVerificationData = Boolean(data?.transRef && amount !== null && receiverName?.trim());
+  const verified = Boolean(
+    providerAccepted &&
+      hasRequiredVerificationData &&
+      isAmountMatch(amount, input.amount) &&
+      isReceiverMatch(receiverName, expectedReceiver)
+  );
 
   return {
     ok: verified,
     provider: "slipok",
-    status: verified ? "verified" : response.ok ? "rejected" : "provider_error",
+    status:
+      verified
+        ? "verified"
+        : !response.ok || (providerAccepted && !hasRequiredVerificationData)
+          ? "provider_error"
+          : "rejected",
     transRef: data?.transRef ?? null,
     amount,
     receiverName,

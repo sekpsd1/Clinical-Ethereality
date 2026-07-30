@@ -47,9 +47,11 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
               </div>
             </section>
 
-            {orderStatus === "failed" ? (
+            {orderStatus === "failed" || orderStatus === "limit" ? (
               <div className="rounded-[18px] border border-[#ba1a1a]/20 bg-white/80 p-4 text-sm font-bold leading-6 text-[#93000a] shadow-payment-card">
-                ไม่สามารถสร้างคำสั่งซื้อได้ อาจมีคำสั่งซื้อที่เชื่อมกับใบสั่งยานี้แล้ว หรือสินค้าไม่พร้อมจัดส่ง
+                {orderStatus === "limit"
+                  ? "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่"
+                  : "ไม่สามารถสร้างคำสั่งซื้อได้ อาจมีคำสั่งซื้อที่เชื่อมกับใบสั่งยานี้แล้ว หรือสินค้าไม่พร้อมจัดส่ง"}
               </div>
             ) : null}
 

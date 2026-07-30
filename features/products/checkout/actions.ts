@@ -8,15 +8,41 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
-import { buildPromptPayPayload } from "@/lib/payments/promptpay";
-import { getAppEnv } from "@/lib/env/schema";
-import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
-import { CART_COOKIE_NAME } from "@/features/cart/cookies";
+import { CART_COOKIE_NAME, parseCartCookie } from "@/features/cart/cookies";
+import {
+  canReuseCheckoutOrder,
+  createCartFingerprint,
+  findExistingCheckoutOrder
+} from "@/features/products/checkout/idempotency";
+import { createStorePromptPayPayload } from "@/features/products/checkout/payment";
 import { checkoutSchema } from "@/features/products/checkout/schema";
+import { canReserveInventory } from "@/features/products/checkout/safety";
+import {
+  assertStorePendingOrderCapacity,
+  releaseExpiredStoreOrderReservations,
+  StorePendingOrderLimitError
+} from "@/features/orders/reservations";
+
+type CheckoutFailureStatus =
+  | "empty"
+  | "failed"
+  | "stale"
+  | "prescription"
+  | "stock"
+  | "payment"
+  | "limit"
+  | "conflict";
+
+class CheckoutActionError extends Error {
+  constructor(readonly status: CheckoutFailureStatus, message: string) {
+    super(message);
+    this.name = "CheckoutActionError";
+  }
+}
 
 function formDataToObject(formData: FormData) {
   return {
-    productSlugs: formData.getAll("productSlugs")
+    checkoutRequestId: formData.get("checkoutRequestId")
   };
 }
 
@@ -24,22 +50,12 @@ function getLineTotal(price: Prisma.Decimal, quantity: number): Prisma.Decimal {
   return price.mul(quantity);
 }
 
-function getQuantities(productSlugs: string[]): Map<string, number> {
-  return productSlugs.reduce((quantities, slug) => {
-    quantities.set(slug, (quantities.get(slug) ?? 0) + 1);
+function getQuantities(items: Array<{ slug: string; quantity: number }>): Map<string, number> {
+  return items.reduce((quantities, item) => {
+    quantities.set(item.slug, (quantities.get(item.slug) ?? 0) + item.quantity);
 
     return quantities;
   }, new Map<string, number>());
-}
-
-function getThaiQrPayload(amount: Prisma.Decimal): string | null {
-  const promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID;
-
-  if (!promptPayId) {
-    return null;
-  }
-
-  return buildPromptPayPayload(promptPayId, Number(amount));
 }
 
 export async function createStoreCheckoutOrderAction(formData: FormData): Promise<void> {
@@ -52,11 +68,43 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
     redirect("/store/checkout?checkout=invalid");
   }
 
+  const cookieStore = await cookies();
+  const cartItems = parseCartCookie(cookieStore);
+  const cartFingerprint = createCartFingerprint(cartItems);
   let orderId: string | null = null;
 
   try {
+    await releaseExpiredStoreOrderReservations({
+      userId: session.userId
+    });
+
     const result = await prisma.$transaction(async (tx) => {
-      const quantities = getQuantities(parsed.data.productSlugs);
+      const existingOrder = await findExistingCheckoutOrder(
+        tx,
+        session.userId,
+        parsed.data.checkoutRequestId
+      );
+
+      if (existingOrder) {
+        if (!canReuseCheckoutOrder(existingOrder, cartFingerprint)) {
+          throw new CheckoutActionError(
+            "conflict",
+            "This checkout request was already used with a different cart."
+          );
+        }
+
+        return {
+          id: existingOrder.orderId
+        };
+      }
+
+      if (cartItems.length === 0) {
+        throw new CheckoutActionError("empty", "Cart is empty.");
+      }
+
+      await assertStorePendingOrderCapacity(tx, session.userId);
+
+      const quantities = getQuantities(cartItems);
       const uniqueSlugs = Array.from(quantities.keys());
       const products = await tx.product.findMany({
         where: {
@@ -71,15 +119,59 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
       });
 
       if (products.length !== uniqueSlugs.length) {
-        throw new Error("Some products are unavailable.");
+        throw new CheckoutActionError("stale", "Some cart products are unavailable.");
       }
 
       if (products.some((product) => product.requiresPrescription)) {
-        throw new Error("Prescription-required products must be ordered from a verified prescription.");
+        throw new CheckoutActionError(
+          "prescription",
+          "Prescription-required products must be ordered from a verified prescription."
+        );
       }
 
-      const subtotal = products.reduce((total, product) => total.add(getLineTotal(product.price, quantities.get(product.slug) ?? 1)), new Prisma.Decimal(0));
-      const qrPayload = getThaiQrPayload(subtotal);
+      for (const product of products) {
+        const requestedQuantity = quantities.get(product.slug) ?? 0;
+
+        if (!canReserveInventory(product.inventory, requestedQuantity)) {
+          throw new CheckoutActionError("stock", "Product stock is insufficient.");
+        }
+      }
+
+      const subtotal = products.reduce(
+        (total, product) =>
+          total.add(getLineTotal(product.price, quantities.get(product.slug) ?? 1)),
+        new Prisma.Decimal(0)
+      );
+      const qrPayload = createStorePromptPayPayload(Number(subtotal));
+
+      if (!qrPayload) {
+        throw new CheckoutActionError(
+          "payment",
+          "PromptPay is not configured or a payment QR payload could not be generated."
+        );
+      }
+
+      for (const product of products) {
+        const requestedQuantity = quantities.get(product.slug) ?? 0;
+
+        const reservation = await tx.inventory.updateMany({
+          where: {
+            id: product.inventory!.id,
+            quantity: product.inventory!.quantity,
+            reservedQuantity: product.inventory!.reservedQuantity
+          },
+          data: {
+            reservedQuantity: {
+              increment: requestedQuantity
+            }
+          }
+        });
+
+        if (reservation.count !== 1) {
+          throw new CheckoutActionError("stock", "Product stock changed during checkout.");
+        }
+      }
+
       const order = await tx.order.create({
         data: {
           userId: session.userId,
@@ -103,10 +195,10 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
               status: "pending_slip",
               qrPayload,
               verificationPayload: {
+                checkoutRequestId: parsed.data.checkoutRequestId,
+                cartFingerprint,
                 source: "customer_checkout_foundation",
-                note: qrPayload
-                  ? "Dynamic Thai QR PromptPay payload generated for this order amount."
-                  : "Set THAI_QR_PROMPTPAY_ID to generate dynamic Thai QR PromptPay payloads."
+                note: "Dynamic Thai QR PromptPay payload generated for this order amount."
               }
             }
           },
@@ -124,21 +216,6 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           id: true
         }
       });
-
-      for (const product of products) {
-        if (product.inventory) {
-          await tx.inventory.update({
-            where: {
-              productId: product.id
-            },
-            data: {
-              reservedQuantity: {
-                increment: quantities.get(product.slug) ?? 1
-              }
-            }
-          });
-        }
-      }
 
       await tx.notification.create({
         data: {
@@ -164,42 +241,29 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
           itemCount: products.reduce((total, product) => total + (quantities.get(product.slug) ?? 1), 0),
-          hasPromptPayPayload: Boolean(qrPayload)
+          checkoutRequestId: parsed.data.checkoutRequestId,
+          cartFingerprint,
+          hasPromptPayPayload: true
         }
       });
 
-      const rewardPoints = calculateOrderRewardPoints(subtotal);
-      const didAwardReward = await awardRewardPoints(tx, {
-        userId: session.userId,
-        sourceType: "order",
-        sourceId: order.id,
-        points: rewardPoints,
-        expiresAt: getRewardExpiryDate()
-      });
-
-      if (didAwardReward) {
-        await tx.notification.create({
-          data: {
-            userId: session.userId,
-            type: "reward",
-            channel: "in_app",
-            title: "ได้รับแต้มสะสม",
-            body: `คุณได้รับ ${rewardPoints} แต้มจากคำสั่งซื้อนี้`,
-            metadataJson: {
-              orderId: order.id,
-              href: "/profile/rewards"
-            }
-          }
-        });
-      }
-
-      return order;
+      return {
+        id: order.id
+      };
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     orderId = result.id;
-    (await cookies()).delete(CART_COOKIE_NAME);
-  } catch {
-    redirect("/store/checkout?checkout=failed");
+    cookieStore.delete(CART_COOKIE_NAME);
+  } catch (error) {
+    const status =
+      error instanceof CheckoutActionError
+        ? error.status
+        : error instanceof StorePendingOrderLimitError
+          ? "limit"
+          : "failed";
+    redirect(`/store/checkout?checkout=${status}`);
   }
 
   revalidatePath("/admin");

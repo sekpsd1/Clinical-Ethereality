@@ -1,23 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { canReadOwnRecord, hasPermission } from "@/lib/permissions";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 import { normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
-import { applyProviderPaymentVerification } from "@/features/payments/service";
+import { hasExactlyOnePaymentEvidence } from "@/features/payments/evidence";
+import {
+  isStorePaymentReviewExpired,
+  isStoreReservationExpired,
+  releaseExpiredStoreOrderReservations
+} from "@/features/orders/reservations";
+import {
+  applyProviderPaymentVerification,
+  claimProviderPaymentVerification,
+  DuplicatePaymentTransactionError,
+  PaymentVerificationConflictError,
+  PaymentVerificationRateLimitError
+} from "@/features/payments/service";
 
 export const dynamic = "force-dynamic";
 
 const verifySlipRequestSchema = z
   .object({
-    paymentId: z.string().min(1),
-    qrPayload: z.string().min(1).optional(),
-    imageUrl: z.string().url().optional()
+    paymentId: z.string().trim().min(1).max(191),
+    qrPayload: z.string().trim().min(1).max(4096).optional(),
+    imageUrl: z.string().trim().max(2048).url().optional()
   })
-  .refine((value) => value.qrPayload || value.imageUrl, {
-    message: "qrPayload or imageUrl is required."
+  .refine(hasExactlyOnePaymentEvidence, {
+    message: "Exactly one of qrPayload or imageUrl is required."
   });
+
+function isPrismaWriteConflict(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2034"
+  );
+}
+
+function getPaymentVerificationErrorResponse(error: unknown): NextResponse | null {
+  if (error instanceof PaymentVerificationRateLimitError) {
+    return NextResponse.json(
+      { ok: false, error: `กรุณารอ ${error.retryAfterSeconds} วินาทีก่อนส่งสลิปเพื่อตรวจสอบอีกครั้ง` },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(error.retryAfterSeconds)
+        }
+      }
+    );
+  }
+
+  if (error instanceof PaymentVerificationConflictError || isPrismaWriteConflict(error)) {
+    return NextResponse.json(
+      { ok: false, error: "สถานะการชำระเงินเปลี่ยนแล้ว กรุณารีเฟรชและตรวจสอบอีกครั้ง" },
+      { status: 409 }
+    );
+  }
+
+  return null;
+}
 
 export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
@@ -40,7 +85,9 @@ export async function POST(request: NextRequest) {
       order: {
         select: {
           id: true,
-          userId: true
+          userId: true,
+          status: true,
+          createdAt: true
         }
       }
     }
@@ -62,8 +109,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "ผู้ใช้ปัจจุบันไม่มีสิทธิ์ตรวจสอบรายการชำระเงินนี้" }, { status: 403 });
   }
 
-  if (payment.status !== "pending_review" && payment.status !== "pending_slip") {
-    return NextResponse.json({ ok: false, error: "รายการชำระเงินนี้ยังไม่พร้อมสำหรับตรวจสอบสลิป" }, { status: 409 });
+  const verificationRequestedAt = new Date();
+  const reservationExpired =
+    order.status === "pending_payment"
+      ? isStoreReservationExpired(order.createdAt, verificationRequestedAt)
+      : order.status === "payment_review"
+        ? isStorePaymentReviewExpired(order.createdAt, verificationRequestedAt)
+        : false;
+
+  try {
+    await releaseExpiredStoreOrderReservations({
+      now: verificationRequestedAt,
+      userId: order.userId
+    });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "ไม่สามารถตรวจสอบอายุการจองสินค้าได้ กรุณาลองใหม่อีกครั้ง" },
+      { status: 503 }
+    );
+  }
+
+  if (reservationExpired) {
+    return NextResponse.json(
+      { ok: false, error: "คำสั่งซื้อนี้หมดเวลาชำระเงินและคืนสต็อกแล้ว กรุณาสร้างคำสั่งซื้อใหม่" },
+      { status: 409 }
+    );
   }
 
   let hostedSlipAttachment: ReturnType<typeof normalizeHostedAttachmentInput> | null = null;
@@ -79,34 +149,82 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let claimedPayment: Awaited<ReturnType<typeof claimProviderPaymentVerification>>;
+
+  try {
+    claimedPayment = await prisma.$transaction(
+      async (tx) =>
+        claimProviderPaymentVerification(tx, {
+          actorId: session.userId,
+          expectedOrderId: order.id,
+          expectedOrderUserId: order.userId,
+          hostedSlipAttachment,
+          paymentId: payment.id,
+          qrPayload: parsed.data.qrPayload ?? null,
+          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
+        }),
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      }
+    );
+  } catch (error) {
+    const errorResponse = getPaymentVerificationErrorResponse(error);
+
+    return (
+      errorResponse ??
+      NextResponse.json(
+        { ok: false, error: "ไม่สามารถบันทึกหลักฐานการชำระเงินเพื่อเริ่มตรวจสอบได้" },
+        { status: 503 }
+      )
+    );
+  }
+
   try {
     const result = await verifyPaymentSlip({
       qrPayload: parsed.data.qrPayload,
       imageUrl: parsed.data.imageUrl,
-      amount: Number(payment.amount)
+      amount: Number(claimedPayment.amount)
     });
 
-    await prisma.$transaction(async (tx) => {
-      await applyProviderPaymentVerification(tx, {
-        actorId: session.userId,
-        hostedSlipAttachment,
-        payment: {
-          id: payment.id,
-          orderId: order.id,
-          orderUserId: order.userId,
-          status: payment.status,
-          slipImageUrl: payment.slipImageUrl
-        },
-        result,
-        source: parsed.data.qrPayload ? "qr_payload" : "image_url"
-      });
-    });
+    if (result.status === "provider_error") {
+      return NextResponse.json(
+        { ok: false, error: "บันทึกหลักฐานแล้ว แต่ผู้ให้บริการยังไม่พร้อม รายการจะคงอยู่ในสถานะรอตรวจสอบโดยแอดมิน" },
+        { status: 503 }
+      );
+    }
+
+    await prisma.$transaction(
+      async (tx) => {
+        await applyProviderPaymentVerification(tx, {
+          actorId: session.userId,
+          payment: claimedPayment,
+          result,
+          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      }
+    );
 
     return NextResponse.json({
       ok: result.ok,
-      result
+      status: result.status
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DuplicatePaymentTransactionError) {
+      return NextResponse.json(
+        { ok: false, error: "สลิปนี้ถูกใช้ยืนยันรายการชำระเงินอื่นแล้ว กรุณาใช้สลิปของคำสั่งซื้อนี้" },
+        { status: 409 }
+      );
+    }
+
+    const errorResponse = getPaymentVerificationErrorResponse(error);
+
+    if (errorResponse) {
+      return errorResponse;
+    }
+
     return NextResponse.json({ ok: false, error: "Slip verification provider ยังไม่พร้อมใช้งานหรือยังไม่ได้ตั้งค่า" }, { status: 503 });
   }
 }

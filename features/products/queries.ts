@@ -63,7 +63,7 @@ function getProductMedia(product: Pick<ProductWithInventory, "slug" | "requiresP
 }
 
 function getStockLabel(product: ProductWithInventory): string {
-  const available = Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
+  const available = getAvailableQuantity(product);
 
   if (available === 0) {
     return "สินค้าหมด";
@@ -74,6 +74,10 @@ function getStockLabel(product: ProductWithInventory): string {
   }
 
   return "พร้อมจัดส่ง";
+}
+
+function getAvailableQuantity(product: ProductWithInventory): number {
+  return Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
 }
 
 function getProductCta(product: ProductWithInventory): string {
@@ -95,6 +99,7 @@ function mapProduct(product: ProductWithInventory, index: number): StoreProductL
     href: `/store/${product.slug}`,
     cta: getProductCta(product),
     requiresPrescription: product.requiresPrescription,
+    availableQuantity: getAvailableQuantity(product),
     stockLabel: getStockLabel(product),
     featured: index === 0 || product.requiresPrescription
   };

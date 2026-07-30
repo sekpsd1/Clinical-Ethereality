@@ -20,6 +20,7 @@ export type StoreProductListItem = {
   href: `/store/${string}`;
   cta: string;
   requiresPrescription: boolean;
+  availableQuantity: number;
   stockLabel: string;
   featured: boolean;
 };

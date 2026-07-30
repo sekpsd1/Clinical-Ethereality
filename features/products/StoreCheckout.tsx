@@ -1,9 +1,12 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CloudUpload, Edit3, MapPin } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { createStoreCheckoutOrderAction } from "@/features/products/checkout/actions";
-import type { CartData, CartItem } from "@/features/cart/types";
-import type { PromptPayInstruction } from "@/lib/payments/promptpay";
+import { StoreCheckoutSubmit } from "@/features/products/checkout/StoreCheckoutSubmit";
+import {
+  getStoreCheckoutBlockReason,
+  type StoreCheckoutBlockReason
+} from "@/features/products/checkout/safety";
+import type { CartData, CartItem, StaleCartItem } from "@/features/cart/types";
 
 type CheckoutItem = {
   slug: string;
@@ -12,164 +15,120 @@ type CheckoutItem = {
   price: string;
   quantity: string;
   media: "paracetamol" | "amoxicillin";
-  requiresPrescription?: boolean;
+  requiresPrescription: boolean;
 };
 
-const checkoutItems: CheckoutItem[] = [
-  {
-    slug: "paracetamol-500mg",
-    name: "Paracetamol 500mg",
-    pack: "1 แผง (10 เม็ด)",
-    price: "1,200.-",
-    quantity: "x 1",
-    media: "paracetamol",
-    requiresPrescription: true
+const checkoutStatusMessages: Record<string, string> = {
+  empty: "ตะกร้าว่าง กรุณาเลือกสินค้าก่อนสร้างคำสั่งซื้อ",
+  failed: "ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาตรวจสอบสินค้าและลองอีกครั้ง",
+  invalid: "ข้อมูลคำสั่งซื้อไม่ถูกต้อง กรุณากลับไปที่ตะกร้าแล้วลองอีกครั้ง",
+  stale: "มีสินค้าในตะกร้าที่ถูกปิดขายหรือไม่มีอยู่แล้ว ระบบยังไม่ได้สร้างคำสั่งซื้อ กรุณาตรวจสอบตะกร้า",
+  prescription: "สินค้าที่ต้องใช้ใบสั่งยา ต้องสั่งซื้อผ่านใบสั่งยาของแพทย์",
+  stock: "สต็อกสินค้าเปลี่ยนแปลงและไม่เพียงพอ กรุณากลับไปตรวจสอบตะกร้า",
+  payment: "ระบบชำระเงิน PromptPay ยังไม่พร้อม ระบบยังไม่ได้จองสต็อกหรือสร้างคำสั่งซื้อ",
+  limit: "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่",
+  conflict: "คำขอ Checkout นี้เคยใช้กับตะกร้าอื่นแล้ว ระบบไม่ได้เปลี่ยนตะกร้าปัจจุบัน กรุณาตรวจสอบและกดสร้างคำสั่งซื้ออีกครั้ง"
+};
+
+const blockReasonCopy: Record<StoreCheckoutBlockReason, { title: string; body: string }> = {
+  unavailable: {
+    title: "ไม่สามารถโหลดตะกร้าได้",
+    body: "ระบบยังตรวจสอบราคาและสต็อกจริงไม่ได้ กรุณาลองใหม่ก่อนสร้างคำสั่งซื้อ"
   },
-  {
-    slug: "vitamin-c-complex",
-    name: "Amoxicillin 500mg",
-    pack: "1 แผง (10 เม็ด)",
-    price: "600.-",
-    quantity: "x 1",
-    media: "amoxicillin"
+  stale: {
+    title: "มีสินค้าที่ไม่พร้อมจำหน่ายในตะกร้า",
+    body: "สินค้าบางรายการถูกปิดขายหรือไม่มีอยู่ในแคตตาล็อกแล้ว กรุณากลับไปล้างรายการที่ไม่พร้อมก่อนสร้างคำสั่งซื้อ"
+  },
+  empty: {
+    title: "ยังไม่มีสินค้าในตะกร้า",
+    body: "เลือกสินค้าจากร้านค้าก่อนเข้าสู่ขั้นตอนสร้างคำสั่งซื้อ"
+  },
+  prescription: {
+    title: "มีสินค้าที่ต้องใช้ใบสั่งยา",
+    body: "นำสินค้านี้ออกจากตะกร้า แล้วเลือกสั่งซื้อผ่านใบสั่งยาของแพทย์ในระบบ"
+  },
+  stock: {
+    title: "สินค้าไม่เพียงพอ",
+    body: "จำนวนสินค้าในตะกร้ามากกว่าสต็อกที่พร้อมขาย กรุณาปรับจำนวนก่อนสร้างคำสั่งซื้อ"
+  },
+  payment: {
+    title: "ระบบชำระเงินยังไม่พร้อม",
+    body: "ยังไม่สามารถสร้าง QR PromptPay ที่ถูกต้องได้ ระบบจึงยังไม่จองสต็อกหรือสร้างคำสั่งซื้อ กรุณาลองใหม่เมื่อระบบชำระเงินพร้อม"
   }
-];
+};
 
 export function StoreCheckout({
   checkoutStatus,
+  checkoutRequestId,
   cart,
-  promptPayInstruction
+  paymentAvailable
 }: {
   checkoutStatus?: string;
+  checkoutRequestId: string;
   cart: CartData;
-  promptPayInstruction: PromptPayInstruction;
+  paymentAvailable: boolean;
 }) {
-  const items = cart.items.length > 0 ? cart.items.map(mapCartItemToCheckoutItem) : checkoutItems;
-  const total = cart.items.length > 0 ? cart.subtotal : "฿1,800.00";
+  const items = cart.items.map(mapCartItemToCheckoutItem);
+  const blockReason = getStoreCheckoutBlockReason(cart, {
+    paymentAvailable: paymentAvailable && checkoutStatus !== "payment"
+  });
   const checkoutError =
-    checkoutStatus === "failed"
-      ? "ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาตรวจสอบสินค้าและลองอีกครั้ง"
-      : checkoutStatus === "invalid"
-        ? "ข้อมูลคำสั่งซื้อไม่ถูกต้อง กรุณาลองอีกครั้ง"
-        : null;
+    checkoutStatus && checkoutStatus !== blockReason
+      ? checkoutStatusMessages[checkoutStatus] ?? null
+      : null;
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[radial-gradient(circle_at_top_right,#e0f2f1_0%,#f7f9fb_100%)] pb-8 text-[#191c1e]">
       <CheckoutHeader />
 
-      <main className="mx-auto flex w-full max-w-mobile flex-col gap-10 px-6 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8">
-        <section className="space-y-6">
-          <h1 className="px-1 text-xl font-extrabold tracking-tight text-primary">รายการสั่งซื้อ</h1>
-          <div className="space-y-4">
-            {items.map((item) => (
-              <CheckoutItemCard key={item.name} item={item} />
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_20px_50px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
-          <div className="mb-7 flex items-start justify-between gap-4">
-            <h2 className="text-lg font-bold leading-7 text-[#191c1e]">ชำระเงิน (Payment)</h2>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[#3e494a]">Total Amount</p>
-              <p className="mt-1 text-2xl font-extrabold leading-7 text-primary">{total}</p>
+      <main className="mx-auto flex w-full max-w-mobile flex-col gap-8 px-6 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8">
+        {items.length > 0 ? (
+          <section className="space-y-6">
+            <h1 className="px-1 text-xl font-extrabold tracking-tight text-primary">ตรวจสอบรายการสั่งซื้อ</h1>
+            <div className="space-y-4">
+              {items.map((item) => (
+                <CheckoutItemCard key={item.slug} item={item} />
+              ))}
             </div>
-          </div>
+          </section>
+        ) : null}
 
-          <div className="rounded-[24px] bg-white p-6 shadow-[inset_0_2px_12px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
-            <div className="mx-auto mb-5 flex w-full max-w-[252px] items-center justify-center rounded-[18px] border-2 border-slate-50 bg-white p-4">
-              {promptPayInstruction.qrDataUrl ? (
-                <Image
-                  src={promptPayInstruction.qrDataUrl}
-                  alt="Dynamic PromptPay QR code for store checkout payment"
-                  width={224}
-                  height={224}
-                  className="h-auto w-full"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex aspect-square w-full items-center justify-center rounded-[14px] bg-slate-50 p-4 text-center text-xs font-bold leading-5 text-[#3e494a]">
-                  Configure THAI_QR_PROMPTPAY_ID to show the dynamic QR code.
-                </div>
-              )}
+        {items.length > 0 ? (
+          <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_20px_50px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">Order total</p>
+                <h2 className="mt-2 text-lg font-bold leading-7 text-[#191c1e]">ยอดรวมสินค้า</h2>
+              </div>
+              <p className="text-2xl font-extrabold leading-7 text-primary">{cart.subtotal}</p>
             </div>
-            <p className="text-center text-sm leading-6 text-[#3e494a]">
-              กรุณาสแกน QR Code เพื่อชำระเงิน
-              <br />
-              <span className="text-[10px] text-slate-400">PromptPay {promptPayInstruction.promptPayIdLabel}</span>
+            <p className="mt-5 border-t border-slate-200/50 pt-5 text-xs leading-5 text-[#3e494a]">
+              ระบบจะสร้างคำสั่งซื้อและจองสต็อกก่อน จากนั้นจึงแสดง QR และช่องส่งสลิปในหน้าคำสั่งซื้อ
             </p>
-            {promptPayInstruction.payload ? (
-              <p className="mt-4 break-all rounded-[14px] bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-500">
-                {promptPayInstruction.payload}
-              </p>
-            ) : null}
-          </div>
+          </section>
+        ) : null}
 
-          <div className="mt-6 space-y-3 border-t border-slate-200/50 pt-5">
-            <div className="flex justify-between text-sm">
-              <span className="text-[#3e494a]">Subtotal</span>
-              <span className="font-medium">{total}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-[#3e494a]">Shipping</span>
-              <span className="font-semibold text-primary">Free</span>
-            </div>
-          </div>
-        </section>
+        {cart.staleItems.length > 0 ? <StaleCheckoutItems items={cart.staleItems} /> : null}
 
-        <label className="flex min-h-[152px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-teal-200/70 bg-white/70 p-6 shadow-[0_15px_35px_rgba(0,0,0,0.03)] backdrop-blur-[24px]">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-teal-50 text-primary">
-            <CloudUpload aria-hidden="true" className="size-6" />
-          </span>
-          <span className="block text-center text-sm font-bold text-primary">แนบหลักฐานการโอนเงิน</span>
-          <span className="mt-1 block text-center text-[10px] uppercase tracking-tight text-[#3e494a]">
-            Upload transaction slip
-          </span>
-          <input type="file" className="hidden" />
-        </label>
+        {blockReason ? <CheckoutBlockedState reason={blockReason} /> : null}
 
-        <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_15px_35px_rgba(0,0,0,0.03)] backdrop-blur-[24px]">
-          <div className="flex items-start gap-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-teal-50 text-primary">
-              <MapPin aria-hidden="true" className="size-5" fill="#006067" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="mb-1 text-sm font-bold text-[#191c1e]">ที่อยู่จัดส่ง (Delivery)</h2>
-              <p className="text-xs leading-5 text-[#3e494a]">
-                123/45 หมู่บ้านอีธีเรียล แขวงลุมพินี เขตปทุมวัน กรุงเทพมหานคร 10330
-              </p>
-            </div>
-            <button type="button" aria-label="Edit delivery address" className="shrink-0 rounded-full p-1 text-primary">
-              <Edit3 aria-hidden="true" className="size-5" />
-            </button>
-          </div>
-        </section>
-
-        <section className="pb-12 pt-1 text-center">
-          {checkoutError ? (
-            <p className="mb-4 rounded-[18px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-sm font-semibold leading-6 text-[#93000a]">
-              {checkoutError}
-            </p>
-          ) : null}
-          <form action={createStoreCheckoutOrderAction}>
-            {items.flatMap((item) =>
-              Array.from({ length: getCheckoutQuantity(item) }, (_, index) => (
-                <input key={`${item.slug}-${index}`} type="hidden" name="productSlugs" value={item.slug} />
-              ))
-            )}
-            <button
-              type="submit"
-              className="mb-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
-            >
-              แจ้งชำระเงินแล้ว
-            </button>
-          </form>
-          <p className="px-4 text-[10px] leading-4 text-[#3e494a]">
-            By completing this transaction, you agree to our{" "}
-            <span className="text-primary underline">Terms of Service</span> and{" "}
-            <span className="text-primary underline">Clinical Care Privacy Policy</span>.
+        {checkoutError ? (
+          <p className="rounded-[18px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-sm font-semibold leading-6 text-[#93000a]">
+            {checkoutError}
           </p>
-        </section>
+        ) : null}
+
+        {!blockReason ? (
+          <section className="pb-12 pt-1 text-center">
+            <form action={createStoreCheckoutOrderAction}>
+              <input type="hidden" name="checkoutRequestId" value={checkoutRequestId} />
+              <StoreCheckoutSubmit />
+            </form>
+            <p className="px-4 text-[11px] leading-5 text-[#3e494a]">
+              ราคากับสต็อกจะถูกตรวจสอบอีกครั้งบนเซิร์ฟเวอร์ก่อนสร้างคำสั่งซื้อ
+            </p>
+          </section>
+        ) : null}
       </main>
     </div>
   );
@@ -187,16 +146,12 @@ function mapCartItemToCheckoutItem(item: CartItem): CheckoutItem {
   };
 }
 
-function getCheckoutQuantity(item: CheckoutItem): number {
-  return Number(item.quantity.replace(/\D/g, "")) || 1;
-}
-
 function CheckoutHeader() {
   return (
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_40px_40px_-15px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
       <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between px-7">
         <div className="flex items-center gap-4">
-          <Link href="/store/paracetamol-500mg" aria-label="Back to product detail" className="text-primary">
+          <Link href="/store/cart" aria-label="กลับไปที่ตะกร้า" className="text-primary">
             <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.4} />
           </Link>
           <p className="text-lg font-bold tracking-wide text-primary">Checkout</p>
@@ -204,6 +159,49 @@ function CheckoutHeader() {
         <div className="size-6" />
       </div>
     </header>
+  );
+}
+
+function CheckoutBlockedState({ reason }: { reason: StoreCheckoutBlockReason }) {
+  const copy = blockReasonCopy[reason];
+  const href =
+    reason === "empty" || reason === "unavailable" || reason === "payment"
+      ? "/store"
+      : "/store/cart";
+  const cta =
+    reason === "empty" || reason === "unavailable"
+      ? "กลับไปเลือกสินค้า"
+      : reason === "payment"
+        ? "กลับไปหน้าร้านค้า"
+        : "กลับไปตรวจสอบตะกร้า";
+
+  return (
+    <section className="rounded-[24px] border border-[#ba1a1a]/15 bg-white/75 p-6 text-center shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
+      <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#fff1f0] text-[#93000a]">
+        <AlertTriangle aria-hidden="true" className="size-5" />
+      </span>
+      <h2 className="mt-4 text-base font-extrabold text-primary">{copy.title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[#3e494a]">{copy.body}</p>
+      <Link href={href} className="mt-5 inline-flex text-sm font-bold text-primary underline-offset-4 hover:underline">
+        {cta}
+      </Link>
+    </section>
+  );
+}
+
+function StaleCheckoutItems({ items }: { items: StaleCartItem[] }) {
+  return (
+    <section className="rounded-[20px] border border-[#ba1a1a]/20 bg-white/75 px-5 py-4 text-[#93000a]">
+      <p className="text-sm font-extrabold">รายการที่ถูกปิดขายหรือไม่พบในแคตตาล็อก</p>
+      <ul className="mt-2 space-y-1 text-xs font-semibold leading-5">
+        {items.map((item) => (
+          <li key={item.slug}>
+            {item.slug} × {item.quantity}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs leading-5">กลับไปที่ตะกร้าเพื่อล้างรายการเหล่านี้ก่อน Checkout</p>
+    </section>
   );
 }
 
@@ -238,7 +236,7 @@ function CheckoutItemMedia({ item }: { item: CheckoutItem }) {
     return (
       <div
         role="img"
-        aria-label="Amoxicillin medicine bottle"
+        aria-label={item.name}
         className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#5ecce1_0%,#006a7b_78%)]"
       >
         <div className="h-[58%] w-[44%] rounded-b-[8px] rounded-t-[6px] bg-[#d8e5e7] shadow-[0_8px_14px_rgba(0,0,0,0.24)]">
@@ -252,7 +250,7 @@ function CheckoutItemMedia({ item }: { item: CheckoutItem }) {
   return (
     <div
       role="img"
-      aria-label="Paracetamol medicine bottle"
+      aria-label={item.name}
       className="relative flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#ffffff_0%,#eff4f4_100%)]"
     >
       <div className="absolute bottom-7 left-3 h-3 w-10 rounded-full bg-white shadow">

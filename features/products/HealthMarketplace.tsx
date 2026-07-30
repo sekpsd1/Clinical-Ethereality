@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ClipboardPlus, Leaf, Lock, Pill, Search, ShoppingCart, Sparkles, Syringe } from "lucide-react";
+import { ClipboardPlus, Leaf, Lock, PackageSearch, Pill, Search, ShoppingCart, Sparkles, Syringe, WifiOff } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { StoreMarketplaceData, StoreProductListItem } from "@/features/products/types";
 
 type Category = {
@@ -18,64 +19,12 @@ const categories: Category[] = [
   { label: "จองวัคซีน", icon: Syringe }
 ];
 
-const products: Product[] = [
-  {
-    id: "fallback-antiviral-gel",
-    name: "Antiviral Gel",
-    slug: "clinical-retinoid-cream",
-    category: "medicine",
-    categoryLabel: "ยาและเวชภัณฑ์",
-    price: "฿1,200",
-    imageAlt: "Antiviral gel tube in clinical packaging",
-    imageUrl: null,
-    media: "gel",
-    href: "/store/clinical-retinoid-cream",
-    cta: "ดูรายละเอียด",
-    requiresPrescription: true,
-    description: null,
-    stockLabel: "พร้อมจัดส่ง",
-    featured: false
-  },
-  {
-    id: "fallback-vitamin",
-    name: "Multi-Vitamin 30 Tabs",
-    slug: "vitamin-c-complex",
-    category: "supplement",
-    categoryLabel: "วิตามินและอาหารเสริม",
-    price: "฿450",
-    imageAlt: "Multi-vitamin bottle on a studio background",
-    imageUrl: null,
-    media: "vitamin",
-    href: "/store/vitamin-c-complex",
-    cta: "ดูสินค้า",
-    requiresPrescription: false,
-    description: null,
-    stockLabel: "พร้อมจัดส่ง",
-    featured: false
-  },
-  {
-    id: "fallback-kit",
-    name: "แพ็กเกจตรวจ HPV (Home Kit)",
-    slug: "paracetamol-500mg",
-    category: "health-equipment",
-    categoryLabel: "อุปกรณ์สุขภาพ",
-    price: "฿2,500",
-    imageAlt: "HPV home testing kit with clinical packaging",
-    imageUrl: null,
-    media: "kit",
-    href: "/store/paracetamol-500mg",
-    cta: "สั่งซื้อชุดตรวจ",
-    description: "ชุดตรวจหาเชื้อ HPV ด้วยตนเองที่บ้าน แม่นยำ และเป็นส่วนตัว",
-    requiresPrescription: false,
-    stockLabel: "พร้อมจัดส่ง",
-    featured: true
-  }
-];
-
 export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
-  const marketplaceProducts = data.products.length > 0 ? data.products : products;
-  const standardProducts = marketplaceProducts.filter((product) => !product.featured);
+  const marketplaceProducts = data.products;
   const featuredProduct = marketplaceProducts.find((product) => product.featured) ?? marketplaceProducts[0];
+  const standardProducts = featuredProduct
+    ? marketplaceProducts.filter((product) => product.id !== featuredProduct.id)
+    : [];
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-6 pb-8 text-[#3e494a]">
@@ -107,18 +56,35 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
         </div>
 
         {data.unavailable ? (
-          <p className="mt-4 rounded-[18px] bg-white/70 px-4 py-3 text-xs font-semibold leading-5 text-[#93000a] shadow-[0_8px_24px_rgba(0,96,103,0.04)]">
-            ไม่สามารถโหลดสินค้าแบบสดจากฐานข้อมูลได้ กำลังแสดงรายการสำรอง
-          </p>
-        ) : null}
+          <EmptyState
+            className="mt-8 border-[#ba1a1a]/20 bg-white/80"
+            title="ไม่สามารถโหลดสินค้าได้"
+            body="ระบบไม่สามารถเชื่อมต่อแคตตาล็อกสินค้าได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง"
+            icon={<WifiOff aria-hidden="true" className="size-5 text-[#93000a]" />}
+            action={
+              <Link href="/store" className="text-sm font-bold text-primary underline-offset-4 hover:underline">
+                ลองใหม่
+              </Link>
+            }
+          />
+        ) : marketplaceProducts.length === 0 ? (
+          <EmptyState
+            className="mt-8 bg-white/80"
+            title="ยังไม่มีสินค้าในแคตตาล็อก"
+            body="สินค้าที่เปิดจำหน่ายจะแสดงที่นี่เมื่อข้อมูลพร้อม"
+            icon={<PackageSearch aria-hidden="true" className="size-5" />}
+          />
+        ) : (
+          <>
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              {standardProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          {standardProducts.map((product) => (
-            <ProductCard key={product.name} product={product} />
-          ))}
-        </div>
-
-        {featuredProduct ? <FeaturedProductCard product={featuredProduct} /> : null}
+            {featuredProduct ? <FeaturedProductCard product={featuredProduct} /> : null}
+          </>
+        )}
       </section>
     </div>
   );

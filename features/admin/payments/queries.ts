@@ -162,7 +162,8 @@ function getResultLabel(status: AdminPaymentQueueItem["status"], resultStatus: s
 function getPaymentEvidence(payment: PaymentWithContext) {
   const payload = asRecord(payment.verificationPayload);
   const result = asRecord(payload.result as Prisma.JsonValue | null | undefined);
-  const source = getString(payload.source);
+  const submittedEvidence = asRecord(payload.submittedEvidence as Prisma.JsonValue | null | undefined);
+  const source = getString(payload.verificationSource) ?? getString(payload.source);
   const resultStatus = getString(result.status);
   const transRef = getString(result.transRef);
   const receiverName = getString(result.receiverName);
@@ -172,13 +173,19 @@ function getPaymentEvidence(payment: PaymentWithContext) {
   const resultLabel = getResultLabel(payment.status, resultStatus);
   const qrPayloadStatus = payment.qrPayload ? "มีข้อมูล QR" : "ยังไม่มีข้อมูล QR";
   const slipStatus = payment.slipImageUrl ? "มี URL/ไฟล์สลิป" : "ยังไม่มี URL/ไฟล์สลิป";
+  const submittedEvidenceLabel =
+    getString(submittedEvidence.type) === "qr_payload" && getString(submittedEvidence.qrPayload)
+      ? "มี QR จากสลิปที่ลูกค้าส่ง"
+      : getString(submittedEvidence.type) === "image_url" && getString(submittedEvidence.imageUrl)
+        ? "มี URL สลิปที่ลูกค้าส่ง"
+        : null;
 
   return {
     qrPayloadStatus,
     providerLabel,
     reviewSourceLabel,
     resultLabel,
-    evidenceSummary: [slipStatus, qrPayloadStatus, transRef ? `เลขอ้างอิง ${transRef}` : null, receiverName ? `ผู้รับ ${receiverName}` : null]
+    evidenceSummary: [slipStatus, qrPayloadStatus, submittedEvidenceLabel, transRef ? `เลขอ้างอิง ${transRef}` : null, receiverName ? `ผู้รับ ${receiverName}` : null]
       .filter(Boolean)
       .join(" • "),
     transRef,

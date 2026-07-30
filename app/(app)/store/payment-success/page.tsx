@@ -1,5 +1,5 @@
-import { PaymentSuccessTracking } from "@/features/products/PaymentSuccessTracking";
+import { redirect } from "next/navigation";
 
 export default function StorePaymentSuccessPage() {
-  return <PaymentSuccessTracking />;
+  redirect("/store/orders");
 }
