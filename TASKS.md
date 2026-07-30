@@ -232,6 +232,7 @@
 - [x] Connect admin user and role approval screen to Prisma query structure
 - [x] Add admin role approval and user suspension Server Action boundaries
 - [x] Add inline success/error feedback for admin role approval actions
+- [x] Filter the Admin personnel screen to staff only and add pending/approved/inactive tabs, name/LINE ID search, database-wide counts, and 20-record server-side pagination
 - [x] Add guarded customer/admin role editing for active accounts with self-role, last-admin, and audit safeguards
 - [x] Add seed data for admin user approval queue
 - [x] Add Thai admin/staff compliance, integration readiness, DB-offline, notification, and payment evidence copy polish
