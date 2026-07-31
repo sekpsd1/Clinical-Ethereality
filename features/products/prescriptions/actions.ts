@@ -13,6 +13,7 @@ import {
   isStorePromptPayReady
 } from "@/features/products/checkout/payment";
 import { canReserveInventory } from "@/features/products/checkout/safety";
+import { getOrderShippingAddressSnapshot, ShippingAddressNotFoundError } from "@/features/profile/shipping-addresses/service";
 import {
   createExternalPrescriptionOrderSchema,
   createPrescriptionOrderSchema
@@ -70,6 +71,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
 
     const result = await prisma.$transaction(async (tx) => {
       await assertStorePendingOrderCapacity(tx, session.userId);
+      const shippingAddress = await getOrderShippingAddressSnapshot(tx, session.userId, parsed.data.shippingAddressId);
 
       const prescriptionLocked = await lockPrescriptionForOrder(
         tx,
@@ -167,6 +169,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           discountTotal: new Prisma.Decimal(0),
           shippingTotal: new Prisma.Decimal(0),
           grandTotal: subtotal,
+          shippingAddress: { create: shippingAddress },
           items: {
             create: {
               productId: product.id,
@@ -231,6 +234,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           prescriptionId: prescription.id,
           prescriptionStatus: prescription.status,
           productId: product.id,
+          shippingAddressId: shippingAddress.sourceAddressId,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
           hasPromptPayPayload: true
@@ -244,7 +248,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
 
     orderId = result.id;
   } catch (error) {
-    const status = error instanceof StorePendingOrderLimitError ? "limit" : "failed";
+    const status = error instanceof StorePendingOrderLimitError ? "limit" : error instanceof ShippingAddressNotFoundError ? "address" : "failed";
     redirect(`/store/prescriptions/${parsed.data.prescriptionId}?order=${status}`);
   }
 
@@ -298,6 +302,7 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
 
     const result = await prisma.$transaction(async (tx) => {
       await assertStorePendingOrderCapacity(tx, session.userId);
+      const shippingAddress = await getOrderShippingAddressSnapshot(tx, session.userId, parsed.data.shippingAddressId);
 
       const product = await tx.product.findFirst({
         where: {
@@ -352,6 +357,7 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
           discountTotal: new Prisma.Decimal(0),
           shippingTotal: new Prisma.Decimal(0),
           grandTotal: subtotal,
+          shippingAddress: { create: shippingAddress },
           items: {
             create: {
               productId: product.id,
@@ -432,6 +438,7 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
         metadata: {
           productId: product.id,
           attachmentId: attachment.id,
+          shippingAddressId: shippingAddress.sourceAddressId,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",
           hasPromptPayPayload: true,
@@ -446,7 +453,7 @@ export async function createExternalPrescriptionOrderAction(formData: FormData):
 
     orderId = result.id;
   } catch (error) {
-    const status = error instanceof StorePendingOrderLimitError ? "limit" : "failed";
+    const status = error instanceof StorePendingOrderLimitError ? "limit" : error instanceof ShippingAddressNotFoundError ? "address" : "failed";
     redirect(`/store/${parsed.data.productSlug}?prescription=${status}`);
   }
 

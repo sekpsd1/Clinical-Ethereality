@@ -3,9 +3,12 @@
 import { ChangeEvent, useState } from "react";
 import { FileUp, ShoppingCart } from "lucide-react";
 import { createExternalPrescriptionOrderAction } from "@/features/products/prescriptions/actions";
+import { ShippingAddressSelector } from "@/features/profile/shipping-addresses/ShippingAddressSelector";
+import type { ShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
 type ExternalPrescriptionOrderFormProps = {
   productSlug: string;
+  addresses: ShippingAddressView[];
 };
 
 function formatFileSize(byteSize: number): string {
@@ -16,7 +19,7 @@ function formatFileSize(byteSize: number): string {
   return `${(byteSize / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function ExternalPrescriptionOrderForm({ productSlug }: ExternalPrescriptionOrderFormProps) {
+export function ExternalPrescriptionOrderForm({ productSlug, addresses }: ExternalPrescriptionOrderFormProps) {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [selectedFileSize, setSelectedFileSize] = useState("");
   const [mimeType, setMimeType] = useState("");
@@ -102,9 +105,12 @@ export function ExternalPrescriptionOrderForm({ productSlug }: ExternalPrescript
         />
       </label>
 
+      <ShippingAddressSelector addresses={addresses} returnTo={`/store/${productSlug}`} />
+
       <button
         type="submit"
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking active:scale-[0.98]"
+        disabled={addresses.length === 0}
+        className="flex h-12 w-full disabled:cursor-not-allowed disabled:opacity-50 items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking active:scale-[0.98]"
       >
         <ShoppingCart aria-hidden="true" className="size-5" />
         สั่งซื้อพร้อมใบสั่งยา

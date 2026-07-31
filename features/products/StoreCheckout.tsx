@@ -7,6 +7,8 @@ import {
   type StoreCheckoutBlockReason
 } from "@/features/products/checkout/safety";
 import type { CartData, CartItem, StaleCartItem } from "@/features/cart/types";
+import { ShippingAddressSelector } from "@/features/profile/shipping-addresses/ShippingAddressSelector";
+import type { ShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
 type CheckoutItem = {
   slug: string;
@@ -27,7 +29,8 @@ const checkoutStatusMessages: Record<string, string> = {
   stock: "สต็อกสินค้าเปลี่ยนแปลงและไม่เพียงพอ กรุณากลับไปตรวจสอบตะกร้า",
   payment: "ระบบชำระเงิน PromptPay ยังไม่พร้อม ระบบยังไม่ได้จองสต็อกหรือสร้างคำสั่งซื้อ",
   limit: "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่",
-  conflict: "คำขอ Checkout นี้เคยใช้กับตะกร้าอื่นแล้ว ระบบไม่ได้เปลี่ยนตะกร้าปัจจุบัน กรุณาตรวจสอบและกดสร้างคำสั่งซื้ออีกครั้ง"
+  conflict: "คำขอ Checkout นี้เคยใช้กับตะกร้าอื่นแล้ว ระบบไม่ได้เปลี่ยนตะกร้าปัจจุบัน กรุณาตรวจสอบและกดสร้างคำสั่งซื้ออีกครั้ง",
+  address: "ไม่พบที่อยู่จัดส่งในบัญชีนี้ กรุณาเลือกหรือเพิ่มที่อยู่แล้วลองอีกครั้ง"
 };
 
 const blockReasonCopy: Record<StoreCheckoutBlockReason, { title: string; body: string }> = {
@@ -61,12 +64,14 @@ export function StoreCheckout({
   checkoutStatus,
   checkoutRequestId,
   cart,
-  paymentAvailable
+  paymentAvailable,
+  addresses = []
 }: {
   checkoutStatus?: string;
   checkoutRequestId: string;
   cart: CartData;
   paymentAvailable: boolean;
+  addresses?: ShippingAddressView[];
 }) {
   const items = cart.items.map(mapCartItemToCheckoutItem);
   const blockReason = getStoreCheckoutBlockReason(cart, {
@@ -122,7 +127,8 @@ export function StoreCheckout({
           <section className="pb-12 pt-1 text-center">
             <form action={createStoreCheckoutOrderAction}>
               <input type="hidden" name="checkoutRequestId" value={checkoutRequestId} />
-              <StoreCheckoutSubmit />
+              <ShippingAddressSelector addresses={addresses} returnTo="/store/checkout" />
+              {addresses.length > 0 ? <div className="mt-6"><StoreCheckoutSubmit /></div> : null}
             </form>
             <p className="px-4 text-[11px] leading-5 text-[#3e494a]">
               ราคากับสต็อกจะถูกตรวจสอบอีกครั้งบนเซิร์ฟเวอร์ก่อนสร้างคำสั่งซื้อ

@@ -270,7 +270,7 @@
 - [x] Claim submitted payment evidence before provider verification, preserve provider outages for Admin manual review, fail closed on missing/mismatched amount or receiver, and enforce fixed reservation cutoffs during payment finalization
 - [x] Harden doctor-issued prescription ordering with PromptPay readiness, prescription row locking, Serializable transactions, and compare-and-swap stock reservation
 - [x] Add Store reservation expiry and stock release for `pending_payment` after 30 minutes and `payment_review` after 24 hours, with Serializable/CAS cleanup, audit logs, notifications, and a three-active-order customer cap
-- [ ] Persist customer shipping addresses and an immutable order shipping-address snapshot before production fulfillment
+- [x] Persist customer shipping addresses and an immutable order shipping-address snapshot before production fulfillment
 - [ ] Add explicit prescription-item-to-product mapping and a database uniqueness constraint for one order per doctor-issued prescription
 - [ ] Add an authenticated scheduled/global reservation cleanup worker so abandoned orders are reclaimed without waiting for the same customer to return
 - [ ] Add customer cancellation and refund stock-release rules

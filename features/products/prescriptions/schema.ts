@@ -2,11 +2,13 @@ import { z } from "zod";
 
 export const createPrescriptionOrderSchema = z.object({
   prescriptionId: z.string().min(1),
-  productId: z.string().min(1)
+  productId: z.string().min(1),
+  shippingAddressId: z.string().trim().min(1).max(191)
 });
 
 export const createExternalPrescriptionOrderSchema = z.object({
   productSlug: z.string().trim().min(1),
+  shippingAddressId: z.string().trim().min(1).max(191),
   attachmentUrl: z.string().trim().url(),
   fileName: z.string().trim().min(1).max(255),
   mimeType: z.string().trim().max(120).optional(),

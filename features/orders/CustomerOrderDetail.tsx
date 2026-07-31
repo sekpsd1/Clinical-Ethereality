@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, PackageCheck, ReceiptText, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, MapPin, PackageCheck, ReceiptText, ShieldCheck, Truck } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { CustomerOrderItem } from "@/features/orders/types";
+import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
 
 type CustomerOrderDetailProps = {
   order: CustomerOrderItem | null;
@@ -80,6 +81,13 @@ function OrderDetailContent({ order }: { order: CustomerOrderItem }) {
         <DetailTile label="การชำระเงิน" value={order.paymentLabel} />
         <DetailTile label="การจัดส่ง" value={order.shipmentLabel} />
         <DetailTile label="เลขพัสดุ" value={order.trackingNumber ?? "-"} />
+      </section>
+
+      <section className="rounded-[24px] border border-white/40 bg-white/75 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
+        <div className="flex items-start gap-3">
+          <MapPin aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
+          <div><h2 className="text-base font-extrabold text-[#191c1e]">ที่อยู่จัดส่งของคำสั่งซื้อ</h2>{order.shippingAddress ? <><p className="mt-2 text-sm font-bold text-[#3e494a]">{order.shippingAddress.recipientName} · {order.shippingAddress.phone}</p><p className="mt-1 text-sm leading-6 text-[#6e797a]">{formatShippingAddress(order.shippingAddress)}</p></> : <p className="mt-2 text-sm leading-6 text-[#93000a]">คำสั่งซื้อเดิมนี้ไม่มี snapshot ที่อยู่จัดส่ง</p>}</div>
+        </div>
       </section>
 
       <section className="rounded-[24px] border border-white/40 bg-white/75 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">

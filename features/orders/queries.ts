@@ -72,7 +72,8 @@ function getOrdersForCustomer(userId: string) {
           updatedAt: "desc"
         },
         take: 1
-      }
+      },
+      shippingAddress: true
     }
   });
 }
@@ -204,6 +205,17 @@ async function mapOrder(
     paymentVerificationRequired: payment ? isPaymentReadyForProviderVerification(payment.status) : false,
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
+    shippingAddress: order.shippingAddress ? {
+      label: order.shippingAddress.label,
+      recipientName: order.shippingAddress.recipientName,
+      phone: order.shippingAddress.phone,
+      addressLine1: order.shippingAddress.addressLine1,
+      addressLine2: order.shippingAddress.addressLine2,
+      subdistrict: order.shippingAddress.subdistrict,
+      district: order.shippingAddress.district,
+      province: order.shippingAddress.province,
+      postalCode: order.shippingAddress.postalCode
+    } : null,
     shipmentStatus: shipment?.status ?? null,
     shipmentLabel: shipment ? shipmentStatusLabels[shipment.status] : "ยังไม่มีข้อมูลจัดส่ง",
     trackingNumber: shipment?.trackingNumber ?? null,

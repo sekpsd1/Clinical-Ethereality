@@ -13,15 +13,18 @@ import { addToCartAction } from "@/features/cart/actions";
 import { ExternalPrescriptionOrderForm } from "@/features/products/ExternalPrescriptionOrderForm";
 import type { StoreProductDetailData, StoreProductDetailItem } from "@/features/products/types";
 import type { StorageReadiness } from "@/lib/storage/provider";
+import type { ShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
 export function ProductDetail({
   data,
   externalPrescriptionStatus,
-  storageReadiness
+  storageReadiness,
+  addresses = []
 }: {
   data: StoreProductDetailData;
   externalPrescriptionStatus?: string;
   storageReadiness: StorageReadiness;
+  addresses?: ShippingAddressView[];
 }) {
   const product = data.product;
 
@@ -64,7 +67,7 @@ export function ProductDetail({
         </section>
 
         {product.requiresPrescription ? (
-          <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} storageReadiness={storageReadiness} />
+          <ExternalPrescriptionOrderCard product={product} status={externalPrescriptionStatus} storageReadiness={storageReadiness} addresses={addresses} />
         ) : null}
 
         <section className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
@@ -175,11 +178,13 @@ function ProductDetailState({ unavailable }: { unavailable: boolean }) {
 function ExternalPrescriptionOrderCard({
   product,
   status,
-  storageReadiness
+  storageReadiness,
+  addresses
 }: {
   product: StoreProductDetailItem;
   status?: string;
   storageReadiness: StorageReadiness;
+  addresses: ShippingAddressView[];
 }) {
   return (
     <section className="rounded-[24px] border border-primary/20 bg-white/70 p-6 shadow-[0_8px_32px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
@@ -196,16 +201,16 @@ function ExternalPrescriptionOrderCard({
           : "ยังไม่ได้ตั้งค่า Cloudinary/S3 สำหรับอัปโหลดจริง ตอนนี้รับ hosted URL จาก storage ที่ owner จัดเตรียมและบันทึก metadata ก่อน"}
       </p>
 
-      {status === "failed" || status === "invalid" || status === "limit" ? (
+      {status === "failed" || status === "invalid" || status === "limit" || status === "address" ? (
         <p className="mb-4 rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">
           {status === "limit"
             ? "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่"
-            : "ไม่สามารถสร้างคำสั่งซื้อจากใบสั่งยาภายนอกได้ กรุณาตรวจสอบ URL และชื่อไฟล์อีกครั้ง"}
+            : status === "address" ? "กรุณาเลือกที่อยู่จัดส่งที่อยู่ในบัญชีนี้" : "ไม่สามารถสร้างคำสั่งซื้อจากใบสั่งยาภายนอกได้ กรุณาตรวจสอบ URL และชื่อไฟล์อีกครั้ง"}
         </p>
       ) : null}
 
       {product.availableQuantity > 0 ? (
-        <ExternalPrescriptionOrderForm productSlug={product.slug} />
+        <ExternalPrescriptionOrderForm productSlug={product.slug} addresses={addresses} />
       ) : (
         <p className="rounded-[16px] border border-[#ba1a1a]/20 bg-white/70 px-4 py-3 text-xs font-bold leading-5 text-[#93000a]">
           สินค้าหมดชั่วคราว จึงยังไม่สามารถสร้างคำสั่งซื้อพร้อมใบสั่งยาได้
