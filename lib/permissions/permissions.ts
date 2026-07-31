@@ -44,7 +44,7 @@ export const rolePermissions: Record<Role, readonly Permission[]> = {
     "prescription:create:assigned",
     "prescription:read:assigned"
   ],
-  pharmacist: ["profile:read:self", "profile:update:self", "prescription:verify", "order:fulfill"],
+  pharmacist: ["profile:read:self", "profile:update:self"],
   admin: permissions
 };
 

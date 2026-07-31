@@ -34,7 +34,11 @@ export async function updateOrderFulfillmentAction(
       await applyOrderFulfillmentTransition(tx, {
         orderId: parsed.data.orderId,
         action: parsed.data.action,
-        actorId: session.userId
+        actorId: session.userId,
+        auditMetadata: {
+          actorRole: session.role,
+          surface: "admin"
+        }
       });
     });
   } catch {

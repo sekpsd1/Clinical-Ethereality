@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requirePharmacistSession } from "@/lib/auth/guards";
+import { requireAdminSession } from "@/lib/auth/guards";
 import { updatePharmacistOrderSchema } from "@/features/pharmacist/orders/schema";
 import { applyOrderFulfillmentTransition } from "@/features/orders/service";
 
@@ -19,7 +19,7 @@ export async function updatePharmacistOrderAction(
   _previousState: PharmacistOrderActionState,
   formData: FormData
 ): Promise<PharmacistOrderActionState> {
-  const session = await requirePharmacistSession();
+  const session = await requireAdminSession();
   const parsed = updatePharmacistOrderSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
@@ -36,7 +36,8 @@ export async function updatePharmacistOrderAction(
         action: parsed.data.action,
         actorId: session.userId,
         auditMetadata: {
-          surface: "pharmacist"
+          actorRole: session.role,
+          surface: "legacy_pharmacist"
         }
       });
     });

@@ -1,4 +1,4 @@
-import { ClipboardList, CreditCard, PackageCheck, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, CreditCard, History, PackageCheck, Truck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
@@ -32,6 +32,12 @@ const paymentStatusLabels: Record<string, string> = {
   rejected: "สลิปไม่ผ่าน",
   verified: "ชำระแล้ว"
 };
+
+const fulfillmentActionLabels = {
+  "order.mark_delivered": "ยืนยันส่งมอบ",
+  "order.mark_preparing": "เริ่มจัดยา",
+  "order.mark_shipped": "จัดส่งแล้ว"
+} as const;
 
 function getStatusTone(status: AdminOrderQueueItem["status"]): "neutral" | "success" | "warning" | "danger" {
   if (status === "delivered") {
@@ -127,6 +133,17 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                       แนบใบสั่งยา: {order.externalPrescriptionFileName ?? `${order.externalPrescriptionAttachmentCount} ไฟล์`}
                     </p>
                   ) : null}
+                  {order.prescriptionDoctorName ? (
+                    <div className="mt-2 rounded-[8px] bg-primary/5 px-3 py-2">
+                      <p className="flex items-center gap-2 text-[11px] font-bold leading-4 text-primary">
+                        <ClipboardCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
+                        ใบสั่งยาโดย {order.prescriptionDoctorName ?? "แพทย์"}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-text">
+                        {order.prescriptionSummary ?? "ใบสั่งยานี้เชื่อมกับคำสั่งซื้อแล้ว"}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -144,6 +161,22 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                   </span>
                 </div>
               </div>
+
+              {order.fulfillmentHistory.length > 0 ? (
+                <div className="mt-3 rounded-[8px] border border-border/70 bg-white/70 p-3">
+                  <p className="flex items-center gap-2 text-[11px] font-bold text-text">
+                    <History aria-hidden="true" className="size-3.5 text-primary" strokeWidth={2.1} />
+                    ประวัติผู้ดำเนินการ
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {order.fulfillmentHistory.map((event) => (
+                      <p key={`${event.action}-${event.occurredAt}`} className="text-[11px] leading-4 text-muted">
+                        {fulfillmentActionLabels[event.action]} · {event.actorName} · {event.occurredAt}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
                 <p className="min-w-0 truncate text-[11px] font-semibold text-muted">

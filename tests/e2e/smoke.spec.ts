@@ -426,5 +426,28 @@ test.describe("role route smoke", () => {
     await expect(page).toHaveURL(/\/pharmacist\/prescriptions$/);
     await expect(page.locator('nav a[href="/pharmacist/prescriptions"]')).toHaveAttribute("aria-current", "page");
     await expect(page.locator('nav a[href="/pharmacist/orders"]')).toBeVisible();
+    await expect(page.getByText("ใช้สำหรับติดตามใบสั่งยาเท่านั้น", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: /ยืนยันใบสั่งยา|ปฏิเสธใบสั่งยา/ })).toHaveCount(0);
+  });
+
+  test("pharmacist order queue is read-only while Admin owns fulfillment", async ({ page }) => {
+    await signInAs(page, "pharmacist");
+    await page.goto("/pharmacist/orders");
+
+    await expectNoAppError(page);
+    await expect(page).toHaveURL(/\/pharmacist\/orders$/);
+    await expect(page.getByRole("heading", { name: "สถานะการจัดยาและจัดส่ง" })).toBeVisible();
+    await expect(page.getByText("แอดมินเป็นผู้จัดยา แพ็ก จัดส่ง", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: /เริ่มจัดเตรียมยา|จัดส่งแล้ว|ส่งสำเร็จ/ })).toHaveCount(0);
+  });
+
+  test("Admin order queue is the fulfillment control surface", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/orders");
+
+    await expectNoAppError(page);
+    await expect(page).toHaveURL(/\/admin\/orders$/);
+    await expect(page.getByRole("heading", { name: "คำสั่งซื้อและจัดส่ง" })).toBeVisible();
+    await expect(page.getByText("เตรียมยา และอัปเดตสถานะจัดส่ง", { exact: false })).toBeVisible();
   });
 });

@@ -84,7 +84,7 @@ export class ProviderVerificationUnavailableError extends Error {
 const manualPaymentReviewTransitions: Record<ManualPaymentReviewStatus, ManualPaymentReviewTransition> = {
   verified: {
     paymentStatus: "verified",
-    orderStatus: "preparing",
+    orderStatus: "paid",
     notificationTitle: "ยืนยันการชำระเงินแล้ว",
     notificationBody: "แอดมินตรวจสอบสลิปและยืนยันการชำระเงินของคุณแล้ว"
   },
@@ -462,7 +462,12 @@ export async function applyManualPaymentReview(
   });
 
   if (transition.paymentStatus === "verified") {
-    await finalizeReservedOrderInventory(tx, payment.orderId);
+    await finalizeReservedOrderInventory(tx, {
+      actorId: input.actorId,
+      orderId: payment.orderId,
+      paymentId: payment.id,
+      source: "admin_manual_review"
+    });
   }
 
   await tx.notification.create({
@@ -560,7 +565,12 @@ export async function applyProviderPaymentVerification(
   });
 
   if (transition.paymentStatus === "verified") {
-    await finalizeReservedOrderInventory(tx, input.payment.orderId);
+    await finalizeReservedOrderInventory(tx, {
+      actorId: input.actorId,
+      orderId: input.payment.orderId,
+      paymentId: input.payment.id,
+      source: "provider_verification"
+    });
   }
 
   await tx.notification.create({
@@ -659,10 +669,18 @@ async function applyPaymentReadyOrderTransition(
   }
 }
 
-async function finalizeReservedOrderInventory(tx: Prisma.TransactionClient, orderId: string) {
+async function finalizeReservedOrderInventory(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorId: string;
+    orderId: string;
+    paymentId: string;
+    source: "admin_manual_review" | "provider_verification";
+  }
+) {
   const orderItems = await tx.orderItem.findMany({
     where: {
-      orderId
+      orderId: input.orderId
     },
     select: {
       productId: true,
@@ -699,6 +717,19 @@ async function finalizeReservedOrderInventory(tx: Prisma.TransactionClient, orde
     if (inventoryUpdate.count !== 1) {
       throw new InventoryFinalizationConflictError();
     }
+
+    await writeAuditLog(tx, {
+      actorId: input.actorId,
+      action: "inventory.consume_reservation",
+      entityType: "product",
+      entityId: productId,
+      metadata: {
+        orderId: input.orderId,
+        paymentId: input.paymentId,
+        quantity,
+        source: input.source
+      }
+    });
   }
 }
 
