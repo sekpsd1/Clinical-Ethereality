@@ -38,10 +38,10 @@ const verifiedProviderResult: SlipVerificationResult = {
 const claimedAt = new Date("2026-07-30T12:00:00.000Z");
 
 describe("payment review service", () => {
-  it("maps verified manual reviews to order preparation", () => {
+  it("keeps manually verified orders paid until an admin starts preparation", () => {
     expect(getManualPaymentReviewTransition("verified")).toMatchObject({
       paymentStatus: "verified",
-      orderStatus: "preparing",
+      orderStatus: "paid",
       notificationTitle: "ยืนยันการชำระเงินแล้ว"
     });
   });
@@ -666,6 +666,20 @@ describe("payment review service", () => {
           decrement: 3
         }
       }
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorId: "customer-1",
+        action: "inventory.consume_reservation",
+        entityType: "product",
+        entityId: "product-1",
+        metadataJson: expect.objectContaining({
+          orderId: "order-1",
+          paymentId: "payment-1",
+          quantity: 3,
+          source: "provider_verification"
+        })
+      })
     });
   });
 

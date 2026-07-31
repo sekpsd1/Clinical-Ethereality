@@ -46,8 +46,8 @@ describe("role permissions", () => {
     ["customer", "community:create:self"],
     ["doctor", "consultation:read:assigned"],
     ["doctor", "prescription:create:assigned"],
-    ["pharmacist", "prescription:verify"],
-    ["pharmacist", "order:fulfill"],
+    ["pharmacist", "profile:read:self"],
+    ["pharmacist", "profile:update:self"],
     ["admin", "admin:access"],
     ["admin", "payment:review"]
   ] satisfies Array<[Role, Permission]>)("allows %s to use %s", (role, permission) => {
@@ -59,6 +59,8 @@ describe("role permissions", () => {
     ["customer", "prescription:verify"],
     ["doctor", "order:fulfill"],
     ["doctor", "admin:access"],
+    ["pharmacist", "prescription:verify"],
+    ["pharmacist", "order:fulfill"],
     ["pharmacist", "consultation:update:assigned"],
     ["pharmacist", "community:moderate"]
   ] satisfies Array<[Role, Permission]>)("denies %s from using %s", (role, permission) => {

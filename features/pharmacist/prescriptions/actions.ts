@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requirePharmacistSession } from "@/lib/auth/guards";
+import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { reviewPrescriptionSchema } from "@/features/pharmacist/prescriptions/schema";
 
@@ -19,7 +19,7 @@ export async function reviewPrescriptionAction(
   _previousState: PharmacistPrescriptionActionState,
   formData: FormData
 ): Promise<PharmacistPrescriptionActionState> {
-  const session = await requirePharmacistSession();
+  const session = await requireAdminSession();
   const parsed = reviewPrescriptionSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
@@ -51,22 +51,6 @@ export async function reviewPrescriptionAction(
         throw new Error("Prescription has already been reviewed.");
       }
 
-      const pharmacist =
-        session.role === "pharmacist"
-          ? await tx.pharmacist.findUnique({
-              where: {
-                userId: session.userId
-              },
-              select: {
-                id: true
-              }
-            })
-          : null;
-
-      if (session.role === "pharmacist" && !pharmacist) {
-        throw new Error("Pharmacist profile is required.");
-      }
-
       await tx.prescription.update({
         where: {
           id: prescription.id
@@ -74,7 +58,7 @@ export async function reviewPrescriptionAction(
         data: {
           status: parsed.data.status,
           verifiedAt: parsed.data.status === "verified" ? new Date() : null,
-          pharmacistId: pharmacist?.id ?? prescription.pharmacistId
+          pharmacistId: prescription.pharmacistId
         }
       });
 
@@ -86,7 +70,9 @@ export async function reviewPrescriptionAction(
         metadata: {
           previousStatus: prescription.status,
           nextStatus: parsed.data.status,
-          pharmacistId: pharmacist?.id ?? prescription.pharmacistId
+          pharmacistId: prescription.pharmacistId,
+          actorRole: session.role,
+          surface: "legacy_pharmacist"
         }
       });
 

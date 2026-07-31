@@ -1,7 +1,6 @@
 import { ClipboardCheck, FileText, Stethoscope } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { PharmacistPrescriptionActions } from "@/features/pharmacist/PharmacistPrescriptionActions";
 import type {
   PharmacistPrescriptionItem,
   PharmacistPrescriptionsData
@@ -55,9 +54,9 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
         <p className="text-label font-bold uppercase text-white/75">คิวใบสั่งยา</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">คิวตรวจใบสั่งยา</h2>
+        <h2 className="mt-1 font-headline text-2xl font-bold">รายการใบสั่งยา</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          ตรวจใบสั่งยาจากแพทย์ก่อนส่งต่อคำสั่งซื้อเข้าสู่การจัดเตรียมยา
+          ใช้สำหรับติดตามใบสั่งยาเท่านั้น ใบสั่งยาจากแพทย์สั่งซื้อได้ทันที และแอดมินเป็นผู้จัดยาและจัดส่ง
         </p>
       </section>
 
@@ -127,11 +126,6 @@ export function PharmacistPrescriptions({ data }: { data: PharmacistPrescription
                 </div>
               ) : null}
 
-              {prescription.status === "pending_verification" ? (
-                <div className="mt-4 flex justify-end border-t border-border/70 pt-3">
-                  <PharmacistPrescriptionActions prescription={prescription} />
-                </div>
-              ) : null}
             </article>
           );
         })}

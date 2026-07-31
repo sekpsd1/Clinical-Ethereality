@@ -1,7 +1,6 @@
 import { ClipboardList, CreditCard, PackageCheck, Truck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { PharmacistOrderActionButtons } from "@/features/pharmacist/PharmacistOrderActionButtons";
 import type { PharmacistOrderQueueItem, PharmacistOrdersData } from "@/features/pharmacist/orders/types";
 
 const orderStatusLabels: Record<string, string> = {
@@ -71,10 +70,10 @@ export function PharmacistOrders({ data }: { data: PharmacistOrdersData }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
-        <p className="text-label font-bold uppercase text-white/75">จัดเตรียมยา</p>
-        <h2 className="mt-1 font-headline text-2xl font-bold">คิวจัดเตรียมยา</h2>
+        <p className="text-label font-bold uppercase text-white/75">ติดตามการจัดยา</p>
+        <h2 className="mt-1 font-headline text-2xl font-bold">สถานะการจัดยาและจัดส่ง</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          ติดตามออเดอร์ที่ชำระแล้วจากขั้นตอนจัดเตรียมยา ส่งออก และส่งสำเร็จ โดยไม่เพิ่มขั้นตอนตรวจเอกสารหลังแนบใบสั่งยา
+          หน้านี้ใช้ติดตามสถานะเท่านั้น แอดมินเป็นผู้จัดยา แพ็ก จัดส่ง และบันทึกสถานะทุกขั้นตอน
         </p>
       </section>
 
@@ -153,7 +152,6 @@ export function PharmacistOrders({ data }: { data: PharmacistOrdersData }) {
                 <p className="min-w-0 truncate text-[11px] font-semibold text-muted">
                   สร้างเมื่อ {order.createdAt} / ชำระเงิน {paymentStatusLabels[order.paymentStatus]}
                 </p>
-                <PharmacistOrderActionButtons order={order} />
               </div>
             </article>
           );

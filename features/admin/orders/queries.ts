@@ -1,12 +1,24 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
+import type {
+  AdminOrderFulfillmentHistoryItem,
+  AdminOrderQueueItem,
+  AdminOrdersData
+} from "@/features/admin/orders/types";
+import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
 
 type OrderWithDetails = Awaited<ReturnType<typeof getOrdersForAdmin>>[number];
 type ExternalPrescriptionAttachmentSummary = {
   count: number;
   fileName: string | null;
 };
+type FulfillmentHistoryByOrder = Map<string, AdminOrderFulfillmentHistoryItem[]>;
+
+const fulfillmentAuditActions = [
+  "order.mark_preparing",
+  "order.mark_shipped",
+  "order.mark_delivered"
+] as const;
 
 function getOrdersForAdmin() {
   return prisma.order.findMany({
@@ -18,7 +30,16 @@ function getOrdersForAdmin() {
       user: true,
       items: {
         include: {
-          product: true
+          product: true,
+          prescription: {
+            include: {
+              doctor: {
+                include: {
+                  user: true
+                }
+              }
+            }
+          }
         }
       },
       payments: {
@@ -63,6 +84,37 @@ function getItemSummary(order: OrderWithDetails): string {
   return order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
 }
 
+function getPrescriptionSummary(order: OrderWithDetails): {
+  doctorName: string | null;
+  summary: string | null;
+} {
+  const prescriptions = Array.from(
+    new Map(
+      order.items.flatMap((item) =>
+        item.prescription ? [[item.prescription.id, item.prescription] as const] : []
+      )
+    ).values()
+  );
+
+  if (prescriptions.length === 0) {
+    return {
+      doctorName: null,
+      summary: null
+    };
+  }
+
+  return {
+    doctorName: prescriptions
+      .map((prescription) => prescription.doctor.user.displayName ?? "แพทย์")
+      .join(", "),
+    summary:
+      prescriptions
+        .flatMap((prescription) => parsePrescriptionItems(prescription.itemsJson))
+        .map(formatPrescriptionItem)
+        .join("\n") || null
+  };
+}
+
 function mapExternalPrescriptionAttachments(
   attachments: Array<{ entityId: string; fileName: string }>
 ): Map<string, ExternalPrescriptionAttachmentSummary> {
@@ -80,11 +132,13 @@ function mapExternalPrescriptionAttachments(
 
 function mapOrder(
   order: OrderWithDetails,
-  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>
+  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>,
+  fulfillmentHistory: FulfillmentHistoryByOrder
 ): AdminOrderQueueItem {
   const shipment = order.shipments[0] ?? null;
   const payment = order.payments[0] ?? null;
   const externalPrescription = attachmentSummary.get(order.id) ?? { count: 0, fileName: null };
+  const prescription = getPrescriptionSummary(order);
 
   return {
     id: order.id,
@@ -94,14 +148,48 @@ function mapOrder(
     status: order.status,
     total: formatMoney(order.grandTotal),
     itemSummary: getItemSummary(order),
+    prescriptionDoctorName: prescription.doctorName,
+    prescriptionSummary: prescription.summary,
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
     paymentStatus: payment?.status ?? "ไม่มีข้อมูลชำระเงิน",
     shipmentId: shipment?.id ?? null,
     shipmentStatus: shipment?.status ?? null,
     trackingNumber: shipment?.trackingNumber ?? null,
-    createdAt: formatDate(order.createdAt)
+    createdAt: formatDate(order.createdAt),
+    fulfillmentHistory: fulfillmentHistory.get(order.id) ?? []
   };
+}
+
+function mapFulfillmentHistory(
+  auditLogs: Array<{
+    action: string;
+    entityId: string | null;
+    createdAt: Date;
+    actor: {
+      displayName: string | null;
+      role: string;
+    } | null;
+  }>
+): FulfillmentHistoryByOrder {
+  return auditLogs.reduce((history, auditLog) => {
+    if (!auditLog.entityId || !fulfillmentAuditActions.includes(auditLog.action as (typeof fulfillmentAuditActions)[number])) {
+      return history;
+    }
+
+    const items = history.get(auditLog.entityId) ?? [];
+    items.push({
+      action: auditLog.action as AdminOrderFulfillmentHistoryItem["action"],
+      actorName:
+        auditLog.actor?.displayName ??
+        (auditLog.actor?.role === "admin" ? "แอดมิน" : "บัญชีระบบ"),
+      actorRole: auditLog.actor?.role ?? null,
+      occurredAt: formatDate(auditLog.createdAt)
+    });
+    history.set(auditLog.entityId, items);
+
+    return history;
+  }, new Map<string, AdminOrderFulfillmentHistoryItem[]>());
 }
 
 export async function getAdminOrders(): Promise<AdminOrdersData> {
@@ -110,24 +198,52 @@ export async function getAdminOrders(): Promise<AdminOrdersData> {
   try {
     const orders = await getOrdersForAdmin();
     const orderIds = orders.map((order) => order.id);
-    const attachments = orderIds.length > 0
-      ? await prisma.fileAttachment.findMany({
-          where: {
-            entityType: "order",
-            entityId: {
-              in: orderIds
+    const [attachments, fulfillmentAuditLogs] = orderIds.length > 0
+      ? await Promise.all([
+          prisma.fileAttachment.findMany({
+            where: {
+              entityType: "order",
+              entityId: {
+                in: orderIds
+              },
+              purpose: "external_prescription",
+              status: "attached"
             },
-            purpose: "external_prescription",
-            status: "attached"
-          },
-          select: {
-            entityId: true,
-            fileName: true
-          }
-        })
-      : [];
+            select: {
+              entityId: true,
+              fileName: true
+            }
+          }),
+          prisma.auditLog.findMany({
+            where: {
+              action: {
+                in: [...fulfillmentAuditActions]
+              },
+              entityType: "order",
+              entityId: {
+                in: orderIds
+              }
+            },
+            orderBy: {
+              createdAt: "asc"
+            },
+            select: {
+              action: true,
+              entityId: true,
+              createdAt: true,
+              actor: {
+                select: {
+                  displayName: true,
+                  role: true
+                }
+              }
+            }
+          })
+        ])
+      : [[], []];
     const attachmentSummary = mapExternalPrescriptionAttachments(attachments);
-    const orderItems = orders.map((order) => mapOrder(order, attachmentSummary));
+    const fulfillmentHistory = mapFulfillmentHistory(fulfillmentAuditLogs);
+    const orderItems = orders.map((order) => mapOrder(order, attachmentSummary, fulfillmentHistory));
 
     return {
       orders: orderItems,

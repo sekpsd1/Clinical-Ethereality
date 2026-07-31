@@ -40,7 +40,7 @@
 - [x] Receive doctor bio, education, specialty, license number, consultation fee, schedule, supported consult modes, and official profile photo; exact license values and documents stay outside git
 - [x] Finalize pre-doctor assessment recommendation mapping with the received real doctor profile; 4 Stitch export pages, persistence, 7-day reuse, booking attachment, doctor-visible summary, and recommended doctor handoff are implemented
 - [ ] Receive the completed structured product catalog using `PRODUCT_CATALOG_TEMPLATE.csv`, including category, short/full descriptions, prices, images, stock, prescription-required flags, warnings, storage rules, and FDA status/numbers; the client-ready request guide is in `CLIENT_PRODUCT_DATA_REQUEST.md`
-- [ ] Receive clinic-as-pharmacy license direction and facility license document; client says prescription-required products can be purchased by attaching a prescription without an additional document-review step, but pharmacist-specific data is not provided, so confirm whether pharmacist role remains needed for MVP fulfillment operations only
+- [x] Confirm clinic-as-pharmacy MVP operations: a doctor-issued prescription can be ordered immediately without a pharmacist approval gate; Admin staff prepare medicine, pack, ship, and record fulfillment statuses, while the Pharmacist role remains available as read-only operational context
 - [x] Update in-app doctor-issued prescription ordering so customers can buy prescription-required products without an additional pharmacist/document verification gate while preserving prescription, order, payment, shipment, reward, inventory, and audit linkage
 - [x] Add external prescription attachment metadata foundation and upload UX stub for prescription-required purchases using owner-managed storage URLs, order linkage, attachment visibility, and audit logs without storing file bytes in the database
 - [x] Add in-app consultation chat foundation that is not LINE chat, with persisted Prisma/MySQL messages, consultation access checks, audit logs, notifications, live consult UI binding, and latest-message visibility in the doctor queue
@@ -301,11 +301,11 @@
 - [x] Add doctor-owned in-app notification screen and read actions
 - [x] Build structured prescription writing workflow with medicine, dosage, quantity, instructions, and warnings
 - [x] Extract doctor-issued prescription writing rules into a tested domain service
-- [x] Build pharmacist prescription queue
-- [x] Build prescription verification workflow
-- [x] Build medicine preparation workflow
-- [x] Build pharmacist order status updates
-- [x] Add Thai pharmacist order language and fulfillment status polish
+- [x] Keep the pharmacist prescription queue as read-only reference without making it an approval gate
+- [x] Make doctor-issued prescriptions immediately order-ready without pharmacist verification
+- [x] Build Admin-owned medicine preparation and shipment workflow
+- [x] Restrict fulfillment status updates to Admin while retaining read-only Pharmacist screens and role boundaries
+- [x] Mark linked prescriptions dispensed on Admin shipment, preserve actor-aware audit history, and show the fulfillment operator timeline in Admin orders
 - [x] Add Thai admin inventory, payment, order, schedule, and pharmacist prescription queue copy polish
 
 ## Phase 11: Articles, Community, And Notifications
