@@ -13,9 +13,15 @@ afterEach(() => {
 
 describe("LINE OAuth URL helpers", () => {
   it("accepts only local absolute next paths", () => {
-    expect(normalizeLineAuthNextPath("/admin")).toBe("/admin");
+    expect(normalizeLineAuthNextPath("/admin/payments?status=pending&from=line")).toBe(
+      "/admin/payments?status=pending&from=line"
+    );
     expect(normalizeLineAuthNextPath("//attacker.example")).toBe("/auth/role-home");
+    expect(normalizeLineAuthNextPath("/\\attacker.example")).toBe("/auth/role-home");
     expect(normalizeLineAuthNextPath("https://attacker.example")).toBe("/auth/role-home");
+    expect(normalizeLineAuthNextPath("/auth/line?next=%2Fadmin")).toBe("/auth/role-home");
+    expect(normalizeLineAuthNextPath("/api/auth/refresh")).toBe("/auth/role-home");
+    expect(normalizeLineAuthNextPath("/api/auth/line/login")).toBe("/auth/role-home");
   });
 
   it("uses the configured public origin behind a reverse proxy", () => {

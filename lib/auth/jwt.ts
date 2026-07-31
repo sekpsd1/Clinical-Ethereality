@@ -9,6 +9,13 @@ type JwtHeader = {
 
 const encoder = new TextEncoder();
 
+export class InvalidSessionTokenError extends Error {
+  constructor() {
+    super("Session token is invalid or expired.");
+    this.name = "InvalidSessionTokenError";
+  }
+}
+
 function encodeBase64Url(value: string | Uint8Array): string {
   const buffer = typeof value === "string" ? Buffer.from(value, "utf8") : Buffer.from(value);
 
@@ -69,6 +76,7 @@ function assertClaims(value: unknown): SessionClaims {
     typeof claims.iss !== "string" ||
     typeof claims.iat !== "number" ||
     typeof claims.exp !== "number" ||
+    (claims.jti !== undefined && typeof claims.jti !== "string") ||
     (claims.sessionId !== undefined && typeof claims.sessionId !== "string") ||
     (claims.tokenType !== "access" && claims.tokenType !== "refresh") ||
     !isRole(claims.role)
@@ -95,7 +103,8 @@ export async function issueSessionToken(session: AuthSession, tokenType: Session
     iss: env.JWT_ISSUER,
     sub: session.userId,
     iat: now,
-    exp: now + getSessionTtlSeconds(tokenType)
+    exp: now + getSessionTtlSeconds(tokenType),
+    ...(tokenType === "refresh" ? { jti: crypto.randomUUID() } : {})
   };
   const header: JwtHeader = {
     alg: "HS256",
@@ -111,20 +120,28 @@ export async function issueSessionToken(session: AuthSession, tokenType: Session
 }
 
 export async function verifySessionToken(token: string, tokenType: SessionTokenType): Promise<SessionClaims> {
+  const env = getAppEnv();
+  const jwtSecret = getJwtSecret();
   const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
 
   if (!encodedHeader || !encodedPayload || !encodedSignature) {
-    throw new Error("Invalid session token format.");
+    throw new InvalidSessionTokenError();
   }
 
-  const header = JSON.parse(decodeBase64Url(encodedHeader)) as Partial<JwtHeader>;
+  let header: Partial<JwtHeader>;
+
+  try {
+    header = JSON.parse(decodeBase64Url(encodedHeader)) as Partial<JwtHeader>;
+  } catch {
+    throw new InvalidSessionTokenError();
+  }
 
   if (header.alg !== "HS256" || header.typ !== "JWT") {
-    throw new Error("Invalid session token header.");
+    throw new InvalidSessionTokenError();
   }
 
   const signingInput = `${encodedHeader}.${encodedPayload}`;
-  const key = await importSigningKey(getJwtSecret());
+  const key = await importSigningKey(jwtSecret);
   const validSignature = await crypto.subtle.verify(
     "HMAC",
     key,
@@ -133,15 +150,21 @@ export async function verifySessionToken(token: string, tokenType: SessionTokenT
   );
 
   if (!validSignature) {
-    throw new Error("Invalid session token signature.");
+    throw new InvalidSessionTokenError();
   }
 
-  const claims = assertClaims(JSON.parse(decodeBase64Url(encodedPayload)));
-  const env = getAppEnv();
+  let claims: SessionClaims;
+
+  try {
+    claims = assertClaims(JSON.parse(decodeBase64Url(encodedPayload)));
+  } catch {
+    throw new InvalidSessionTokenError();
+  }
+
   const now = Math.floor(Date.now() / 1000);
 
   if (claims.iss !== env.JWT_ISSUER || claims.tokenType !== tokenType || claims.exp <= now) {
-    throw new Error("Session token is expired or not valid for this app.");
+    throw new InvalidSessionTokenError();
   }
 
   return claims;
