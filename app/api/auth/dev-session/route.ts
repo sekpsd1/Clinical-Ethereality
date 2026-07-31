@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { setSessionCookies } from "@/lib/auth/session";
+import { createAuthSessionRecord, setSessionCookies } from "@/lib/auth/session";
 import type { AuthSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 
 const devSessionRequestSchema = z.object({
-  role: z.enum(["customer", "doctor", "pharmacist", "admin"]).default("customer")
+  role: z.enum(["customer", "doctor", "pharmacist", "admin"]).default("customer"),
+  persistRefreshSession: z.boolean().default(false)
 });
 
 function isDevBypassAllowed(): boolean {
@@ -19,6 +20,20 @@ function usesLocalDatabase(): boolean {
   try {
     const databaseUrl = new URL(process.env.DATABASE_URL ?? "");
     return databaseUrl.hostname === "127.0.0.1" || databaseUrl.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
+function usesApprovedLocalRefreshDatabase(): boolean {
+  try {
+    const databaseUrl = new URL(process.env.DATABASE_URL ?? "");
+    const databaseName = decodeURIComponent(databaseUrl.pathname).replace(/^\/+/, "");
+
+    return (
+      (databaseUrl.hostname === "127.0.0.1" || databaseUrl.hostname === "localhost") &&
+      (databaseName === "clinical_ethereality" || databaseName === "clinical_ethereality_host_copy")
+    );
   } catch {
     return false;
   }
@@ -119,7 +134,21 @@ export async function POST(request: NextRequest) {
   }
 
   const role = parsed.data.role;
-  const session = await getDevSession(role);
+  const baseSession = await getDevSession(role);
+
+  if (parsed.data.persistRefreshSession && (!usesApprovedLocalRefreshDatabase() || baseSession.userId.startsWith("dev:"))) {
+    return NextResponse.json(
+      { ok: false, error: "Persistent refresh testing requires the seeded local database." },
+      { status: 503 }
+    );
+  }
+
+  const session = parsed.data.persistRefreshSession
+    ? await createAuthSessionRecord(baseSession, {
+        userAgent: request.headers.get("user-agent"),
+        ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
+      })
+    : baseSession;
   const response = NextResponse.json({
     ok: true,
     session

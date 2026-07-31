@@ -15,6 +15,13 @@ type EdgeSessionClaims = {
 const encoder = new TextEncoder();
 const roles = ["customer", "doctor", "pharmacist", "admin"] as const;
 
+export class InvalidAccessTokenError extends Error {
+  constructor() {
+    super("Access token is invalid or expired.");
+    this.name = "InvalidAccessTokenError";
+  }
+}
+
 function decodeBase64Url(value: string): Uint8Array {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
@@ -80,32 +87,53 @@ export async function verifyAccessTokenAtEdge(token: string): Promise<EdgeSessio
   const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
 
   if (!encodedHeader || !encodedPayload || !encodedSignature) {
-    throw new Error("Invalid session token format.");
+    throw new InvalidAccessTokenError();
   }
 
-  const header = decodeJson<{ alg?: string; typ?: string }>(encodedHeader);
+  let header: { alg?: string; typ?: string };
+
+  try {
+    header = decodeJson<{ alg?: string; typ?: string }>(encodedHeader);
+  } catch {
+    throw new InvalidAccessTokenError();
+  }
 
   if (header.alg !== "HS256" || header.typ !== "JWT") {
-    throw new Error("Invalid session token header.");
+    throw new InvalidAccessTokenError();
   }
 
   const signingInput = `${encodedHeader}.${encodedPayload}`;
+  let signature: ArrayBuffer;
+
+  try {
+    signature = toArrayBuffer(decodeBase64Url(encodedSignature));
+  } catch {
+    throw new InvalidAccessTokenError();
+  }
+
   const valid = await crypto.subtle.verify(
     "HMAC",
     await importSigningKey(jwtSecret),
-    toArrayBuffer(decodeBase64Url(encodedSignature)),
+    signature,
     encoder.encode(signingInput)
   );
 
   if (!valid) {
-    throw new Error("Invalid session token signature.");
+    throw new InvalidAccessTokenError();
   }
 
-  const claims = assertEdgeClaims(decodeJson(encodedPayload));
+  let claims: EdgeSessionClaims;
+
+  try {
+    claims = assertEdgeClaims(decodeJson(encodedPayload));
+  } catch {
+    throw new InvalidAccessTokenError();
+  }
+
   const now = Math.floor(Date.now() / 1000);
 
   if (claims.iss !== jwtIssuer || claims.exp <= now) {
-    throw new Error("Session token is expired or not valid for this app.");
+    throw new InvalidAccessTokenError();
   }
 
   return claims;

@@ -73,6 +73,30 @@ function loadLiffSdk(): Promise<LiffClient> {
   });
 }
 
+async function requestSessionRefresh(): Promise<Response | null> {
+  const requestRefresh = () =>
+    fetch("/api/auth/refresh", {
+      method: "POST"
+    }).catch(() => null);
+  let response: Response | null = null;
+
+  for (let attempt = 0; attempt <= 3; attempt += 1) {
+    response = await requestRefresh();
+
+    if (response?.status !== 409) {
+      return response;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** attempt));
+  }
+
+  return response;
+}
+
+export function shouldStartLineLoginAfterRefresh(status: number | null): boolean {
+  return status === 401;
+}
+
 export function LineLiffLogin({
   allowDevBypass,
   authError,
@@ -141,12 +165,16 @@ export function LineLiffLogin({
         return;
       }
 
-      const refreshResponse = await fetch("/api/auth/refresh", {
-        method: "POST"
-      }).catch(() => null);
+      const refreshResponse = await requestSessionRefresh();
 
       if (!cancelled && refreshResponse?.ok) {
         window.location.replace(await getResponsePostLoginPath(refreshResponse, safeNextPath));
+        return;
+      }
+
+      if (!cancelled && !shouldStartLineLoginAfterRefresh(refreshResponse?.status ?? null)) {
+        setState("error");
+        setMessage("Unable to verify your current session. Please try again.");
         return;
       }
 

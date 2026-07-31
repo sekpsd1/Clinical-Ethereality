@@ -22,12 +22,32 @@ describe("role-aware authentication routing", () => {
   });
 
   it("keeps explicit internal destinations", () => {
-    expect(resolvePostLoginPath("doctor", "/doctor/patients")).toBe("/doctor/patients");
+    expect(resolvePostLoginPath("doctor", "/doctor/patients?tab=history&from=login")).toBe(
+      "/doctor/patients?tab=history&from=login"
+    );
     expect(resolvePostLoginPath("customer", "/profile")).toBe("/profile");
   });
 
-  it("rejects external and protocol-relative destinations", () => {
+  it.each([
+    ["customer", "/admin/users", "/consult/assessment"],
+    ["doctor", "/pharmacist/prescriptions", "/doctor/consultations"],
+    ["pharmacist", "/doctor/consultations", "/pharmacist/prescriptions"]
+  ] as const)("keeps %s out of mismatched staff next routes", (role, requestedPath, expectedPath) => {
+    expect(resolvePostLoginPath(role, requestedPath)).toBe(expectedPath);
+  });
+
+  it("allows Admin support access to every staff next route", () => {
+    expect(resolvePostLoginPath("admin", "/admin/payments")).toBe("/admin/payments");
+    expect(resolvePostLoginPath("admin", "/doctor/notifications")).toBe("/doctor/notifications");
+    expect(resolvePostLoginPath("admin", "/pharmacist/prescriptions")).toBe("/pharmacist/prescriptions");
+  });
+
+  it("rejects external, protocol-relative, backslash, and auth-loop destinations", () => {
     expect(normalizePostLoginPath("https://example.com")).toBe("/auth/role-home");
     expect(normalizePostLoginPath("//example.com")).toBe("/auth/role-home");
+    expect(normalizePostLoginPath("/\\example.com")).toBe("/auth/role-home");
+    expect(normalizePostLoginPath("/auth/line?next=%2Fdoctor%2Fnotifications")).toBe("/auth/role-home");
+    expect(normalizePostLoginPath("/api/auth/refresh")).toBe("/auth/role-home");
+    expect(normalizePostLoginPath("/api/auth/line/login")).toBe("/auth/role-home");
   });
 });

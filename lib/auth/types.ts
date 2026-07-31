@@ -17,6 +17,7 @@ export type SessionClaims = AuthSession & {
   sub: string;
   iat: number;
   exp: number;
+  jti?: string;
 };
 
 export type PublicSession = AuthSession & {
