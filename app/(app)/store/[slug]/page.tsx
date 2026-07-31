@@ -1,6 +1,8 @@
 import { ProductDetail } from "@/features/products/ProductDetail";
 import { getStoreProductDetail } from "@/features/products/queries";
 import { getStorageReadiness } from "@/lib/storage/provider";
+import { requireCurrentSession } from "@/lib/auth/session";
+import { getCustomerShippingAddresses } from "@/features/profile/shipping-addresses/queries";
 
 export default async function StoreProductDetailPage({
   params,
@@ -15,8 +17,9 @@ export default async function StoreProductDetailPage({
 }) {
   const { slug } = await params;
   const query = await searchParams;
-  const data = await getStoreProductDetail(slug);
+  const session = await requireCurrentSession();
+  const [data, addresses] = await Promise.all([getStoreProductDetail(slug), getCustomerShippingAddresses(session)]);
   const storageReadiness = getStorageReadiness();
 
-  return <ProductDetail data={data} externalPrescriptionStatus={query.prescription} storageReadiness={storageReadiness} />;
+  return <ProductDetail data={data} externalPrescriptionStatus={query.prescription} storageReadiness={storageReadiness} addresses={addresses} />;
 }

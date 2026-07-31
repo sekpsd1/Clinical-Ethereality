@@ -1,4 +1,5 @@
 import type { OrderStatus, ShipmentStatus } from "@prisma/client";
+import type { OrderShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
 export type AdminOrderFulfillmentHistoryItem = {
   action: "order.mark_preparing" | "order.mark_shipped" | "order.mark_delivered";
@@ -20,6 +21,7 @@ export type AdminOrderQueueItem = {
   externalPrescriptionFileName: string | null;
   externalPrescriptionAttachmentCount: number;
   paymentStatus: string;
+  shippingAddress: OrderShippingAddressView | null;
   shipmentId: string | null;
   shipmentStatus: ShipmentStatus | null;
   trackingNumber: string | null;

@@ -135,7 +135,8 @@ describe("feature validation schemas", () => {
   it("requires a per-render checkout request id for customer order creation", () => {
     expect(
       checkoutSchema.parse({
-        checkoutRequestId: "f75c16fe-0f6a-4ce8-8a1a-2048fb1272da"
+        checkoutRequestId: "f75c16fe-0f6a-4ce8-8a1a-2048fb1272da",
+        shippingAddressId: "address-1"
       }).checkoutRequestId
     ).toBe("f75c16fe-0f6a-4ce8-8a1a-2048fb1272da");
     expect(checkoutSchema.safeParse({ checkoutRequestId: "" }).success).toBe(false);
@@ -255,6 +256,7 @@ describe("feature validation schemas", () => {
     expect(
       createExternalPrescriptionOrderSchema.safeParse({
         productSlug: "rx-product",
+        shippingAddressId: "address-1",
         attachmentUrl: "https://storage.example/prescriptions/rx-1.pdf",
         fileName: "rx-1.pdf",
         mimeType: "application/pdf"
@@ -263,6 +265,7 @@ describe("feature validation schemas", () => {
     expect(
       createExternalPrescriptionOrderSchema.safeParse({
         productSlug: "rx-product",
+        shippingAddressId: "address-1",
         attachmentUrl: "not-a-url",
         fileName: "rx-1.pdf"
       }).success
@@ -270,6 +273,7 @@ describe("feature validation schemas", () => {
     expect(
       createExternalPrescriptionOrderSchema.safeParse({
         productSlug: "rx-product",
+        shippingAddressId: "address-1",
         attachmentUrl: "https://storage.example/prescriptions/rx-1.pdf",
         fileName: ""
       }).success

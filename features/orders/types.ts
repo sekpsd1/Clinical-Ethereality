@@ -1,4 +1,5 @@
 import type { OrderStatus, PaymentStatus, ShipmentStatus } from "@prisma/client";
+import type { OrderShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
 export type CustomerOrderTrackingStep = {
   title: string;
@@ -23,6 +24,7 @@ export type CustomerOrderItem = {
   paymentVerificationRequired: boolean;
   externalPrescriptionFileName: string | null;
   externalPrescriptionAttachmentCount: number;
+  shippingAddress: OrderShippingAddressView | null;
   shipmentStatus: ShipmentStatus | null;
   shipmentLabel: string;
   trackingNumber: string | null;

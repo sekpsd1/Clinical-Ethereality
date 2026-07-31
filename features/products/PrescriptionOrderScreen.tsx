@@ -4,8 +4,10 @@ import { ArrowLeft, ClipboardCheck, PackageCheck, Pill, ShieldCheck, ShoppingCar
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { createPrescriptionOrderAction } from "@/features/products/prescriptions/actions";
 import type { PrescriptionOrderData, PrescriptionOrderProduct } from "@/features/products/prescriptions/types";
+import { ShippingAddressSelector } from "@/features/profile/shipping-addresses/ShippingAddressSelector";
+import type { ShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
-export function PrescriptionOrderScreen({ data, orderStatus }: { data: PrescriptionOrderData; orderStatus?: string }) {
+export function PrescriptionOrderScreen({ data, orderStatus, addresses = [] }: { data: PrescriptionOrderData; orderStatus?: string; addresses?: ShippingAddressView[] }) {
   const prescription = data.prescription;
 
   return (
@@ -47,11 +49,13 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
               </div>
             </section>
 
-            {orderStatus === "failed" || orderStatus === "limit" ? (
+            {orderStatus === "failed" || orderStatus === "limit" || orderStatus === "address" ? (
               <div className="rounded-[18px] border border-[#ba1a1a]/20 bg-white/80 p-4 text-sm font-bold leading-6 text-[#93000a] shadow-payment-card">
                 {orderStatus === "limit"
                   ? "คุณมีคำสั่งซื้อที่รอชำระเงินหรือตรวจสอบการชำระครบ 3 รายการแล้ว กรุณาจัดการหรือรอให้รายการเดิมหมดเวลาก่อนสร้างคำสั่งซื้อใหม่"
-                  : "ไม่สามารถสร้างคำสั่งซื้อได้ อาจมีคำสั่งซื้อที่เชื่อมกับใบสั่งยานี้แล้ว หรือสินค้าไม่พร้อมจัดส่ง"}
+                  : orderStatus === "address"
+                    ? "กรุณาเลือกที่อยู่จัดส่งที่อยู่ในบัญชีนี้"
+                    : "ไม่สามารถสร้างคำสั่งซื้อได้ อาจมีคำสั่งซื้อที่เชื่อมกับใบสั่งยานี้แล้ว หรือสินค้าไม่พร้อมจัดส่ง"}
               </div>
             ) : null}
 
@@ -65,7 +69,7 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
             ) : prescription.products.length > 0 ? (
               <section className="space-y-4">
                 {prescription.products.map((product) => (
-                  <PrescriptionProductCard key={product.id} prescriptionId={prescription.id} product={product} />
+                  <PrescriptionProductCard key={product.id} prescriptionId={prescription.id} product={product} addresses={addresses} />
                 ))}
               </section>
             ) : (
@@ -82,10 +86,12 @@ export function PrescriptionOrderScreen({ data, orderStatus }: { data: Prescript
 
 function PrescriptionProductCard({
   prescriptionId,
-  product
+  product,
+  addresses
 }: {
   prescriptionId: string;
   product: PrescriptionOrderProduct;
+  addresses: ShippingAddressView[];
 }) {
   return (
     <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/75 p-5 shadow-payment-card backdrop-blur-payment">
@@ -106,10 +112,11 @@ function PrescriptionProductCard({
       <form action={createPrescriptionOrderAction} className="mt-5">
         <input type="hidden" name="prescriptionId" value={prescriptionId} />
         <input type="hidden" name="productId" value={product.id} />
+        <ShippingAddressSelector addresses={addresses} returnTo={`/store/prescriptions/${prescriptionId}`} />
         <button
           type="submit"
-          disabled={product.availableQuantity <= 0}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={product.availableQuantity <= 0 || addresses.length === 0}
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ShoppingCart aria-hidden="true" className="size-5" strokeWidth={2.2} />
           สร้างคำสั่งซื้อ

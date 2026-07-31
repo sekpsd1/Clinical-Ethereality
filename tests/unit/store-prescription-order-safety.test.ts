@@ -6,6 +6,7 @@ const actionMocks = vi.hoisted(() => ({
   assertPermission: vi.fn(),
   createStorePromptPayPayload: vi.fn(),
   isStorePromptPayReady: vi.fn(),
+  getOrderShippingAddressSnapshot: vi.fn(),
   normalizeHostedAttachmentInput: vi.fn(),
   prismaTransaction: vi.fn(),
   releaseExpiredStoreOrderReservations: vi.fn(),
@@ -51,6 +52,11 @@ vi.mock("@/lib/storage/attachments", () => ({
 vi.mock("@/features/products/checkout/payment", () => ({
   createStorePromptPayPayload: actionMocks.createStorePromptPayPayload,
   isStorePromptPayReady: actionMocks.isStorePromptPayReady
+}));
+
+vi.mock("@/features/profile/shipping-addresses/service", () => ({
+  getOrderShippingAddressSnapshot: actionMocks.getOrderShippingAddressSnapshot,
+  ShippingAddressNotFoundError: class ShippingAddressNotFoundError extends Error {}
 }));
 
 vi.mock("@/features/orders/reservations", () => ({
@@ -144,12 +150,14 @@ function internalOrderFormData(): FormData {
   const formData = new FormData();
   formData.set("prescriptionId", "prescription-1");
   formData.set("productId", "product-1");
+  formData.set("shippingAddressId", "address-1");
   return formData;
 }
 
 function externalOrderFormData(): FormData {
   const formData = new FormData();
   formData.set("productSlug", "rx-product");
+  formData.set("shippingAddressId", "address-1");
   formData.set("attachmentUrl", "https://storage.example/prescriptions/rx-1.pdf");
   formData.set("fileName", "rx-1.pdf");
   formData.set("mimeType", "application/pdf");
@@ -173,6 +181,7 @@ describe("store prescription order safety", () => {
     });
     actionMocks.isStorePromptPayReady.mockReturnValue(true);
     actionMocks.createStorePromptPayPayload.mockReturnValue("000201-valid-promptpay-payload");
+    actionMocks.getOrderShippingAddressSnapshot.mockResolvedValue({ sourceAddressId: "address-1", label: "บ้าน", recipientName: "Customer", phone: "0812345678", addressLine1: "1 Main Road", addressLine2: null, subdistrict: "คลองเตย", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110" });
     actionMocks.normalizeHostedAttachmentInput.mockReturnValue({
       storageUrl: "https://storage.example/prescriptions/rx-1.pdf",
       storageKey: "prescriptions/rx-1.pdf",
@@ -206,6 +215,8 @@ describe("store prescription order safety", () => {
     };
     expect(lockQuery.strings.join(" ")).toContain("FOR UPDATE");
     expect(lockQuery.values).toEqual(["prescription-1", "customer-1"]);
+    expect(actionMocks.getOrderShippingAddressSnapshot).toHaveBeenCalledWith(tx, "customer-1", "address-1");
+    expect(tx.order.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ shippingAddress: { create: expect.objectContaining({ sourceAddressId: "address-1", postalCode: "10110" }) } }) }));
     expect(tx.inventory.updateMany).toHaveBeenCalledWith({
       where: {
         id: "inventory-1",

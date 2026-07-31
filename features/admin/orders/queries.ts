@@ -53,7 +53,8 @@ function getOrdersForAdmin() {
           updatedAt: "desc"
         },
         take: 1
-      }
+      },
+      shippingAddress: true
     }
   });
 }
@@ -153,6 +154,17 @@ function mapOrder(
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
     paymentStatus: payment?.status ?? "ไม่มีข้อมูลชำระเงิน",
+    shippingAddress: order.shippingAddress ? {
+      label: order.shippingAddress.label,
+      recipientName: order.shippingAddress.recipientName,
+      phone: order.shippingAddress.phone,
+      addressLine1: order.shippingAddress.addressLine1,
+      addressLine2: order.shippingAddress.addressLine2,
+      subdistrict: order.shippingAddress.subdistrict,
+      district: order.shippingAddress.district,
+      province: order.shippingAddress.province,
+      postalCode: order.shippingAddress.postalCode
+    } : null,
     shipmentId: shipment?.id ?? null,
     shipmentStatus: shipment?.status ?? null,
     trackingNumber: shipment?.trackingNumber ?? null,

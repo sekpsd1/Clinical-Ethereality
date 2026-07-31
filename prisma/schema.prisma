@@ -189,6 +189,7 @@ model User {
   consultAssessments  ConsultAssessment[]
   prescriptions       Prescription[]        @relation("PatientPrescriptions")
   orders              Order[]
+  shippingAddresses   ShippingAddress[]
   articles            Article[]             @relation("ArticleAuthor")
   comments            Comment[]
   likes               Like[]
@@ -479,14 +480,56 @@ model Order {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  user      User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items     OrderItem[]
-  payments  Payment[]
-  shipments ShipmentTracking[]
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+  payments        Payment[]
+  shipments       ShipmentTracking[]
+  shippingAddress OrderShippingAddress?
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model ShippingAddress {
+  id            String   @id @default(cuid())
+  userId        String
+  label         String   @db.VarChar(60)
+  recipientName String   @db.VarChar(191)
+  phone         String   @db.VarChar(30)
+  addressLine1  String   @db.VarChar(255)
+  addressLine2  String?  @db.VarChar(255)
+  subdistrict   String   @db.VarChar(120)
+  district      String   @db.VarChar(120)
+  province      String   @db.VarChar(120)
+  postalCode    String   @db.VarChar(5)
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isDefault])
+  @@index([userId, createdAt])
+}
+
+model OrderShippingAddress {
+  orderId         String   @id
+  sourceAddressId String?
+  label           String   @db.VarChar(60)
+  recipientName   String   @db.VarChar(191)
+  phone           String   @db.VarChar(30)
+  addressLine1    String   @db.VarChar(255)
+  addressLine2    String?  @db.VarChar(255)
+  subdistrict     String   @db.VarChar(120)
+  district        String   @db.VarChar(120)
+  province        String   @db.VarChar(120)
+  postalCode      String   @db.VarChar(5)
+  createdAt       DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([sourceAddressId])
 }
 
 model OrderItem {

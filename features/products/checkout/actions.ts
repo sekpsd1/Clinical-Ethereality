@@ -17,6 +17,7 @@ import {
 import { createStorePromptPayPayload } from "@/features/products/checkout/payment";
 import { checkoutSchema } from "@/features/products/checkout/schema";
 import { canReserveInventory } from "@/features/products/checkout/safety";
+import { getOrderShippingAddressSnapshot, ShippingAddressNotFoundError } from "@/features/profile/shipping-addresses/service";
 import {
   assertStorePendingOrderCapacity,
   releaseExpiredStoreOrderReservations,
@@ -30,6 +31,7 @@ type CheckoutFailureStatus =
   | "prescription"
   | "stock"
   | "payment"
+  | "address"
   | "limit"
   | "conflict";
 
@@ -42,7 +44,8 @@ class CheckoutActionError extends Error {
 
 function formDataToObject(formData: FormData) {
   return {
-    checkoutRequestId: formData.get("checkoutRequestId")
+    checkoutRequestId: formData.get("checkoutRequestId"),
+    shippingAddressId: formData.get("shippingAddressId")
   };
 }
 
@@ -103,6 +106,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
       }
 
       await assertStorePendingOrderCapacity(tx, session.userId);
+      const shippingAddress = await getOrderShippingAddressSnapshot(tx, session.userId, parsed.data.shippingAddressId);
 
       const quantities = getQuantities(cartItems);
       const uniqueSlugs = Array.from(quantities.keys());
@@ -180,6 +184,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           discountTotal: new Prisma.Decimal(0),
           shippingTotal: new Prisma.Decimal(0),
           grandTotal: subtotal,
+          shippingAddress: { create: shippingAddress },
           items: {
             create: products.map((product) => ({
               productId: product.id,
@@ -243,6 +248,7 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
           itemCount: products.reduce((total, product) => total + (quantities.get(product.slug) ?? 1), 0),
           checkoutRequestId: parsed.data.checkoutRequestId,
           cartFingerprint,
+          shippingAddressId: shippingAddress.sourceAddressId,
           hasPromptPayPayload: true
         }
       });
@@ -262,7 +268,9 @@ export async function createStoreCheckoutOrderAction(formData: FormData): Promis
         ? error.status
         : error instanceof StorePendingOrderLimitError
           ? "limit"
-          : "failed";
+          : error instanceof ShippingAddressNotFoundError
+            ? "address"
+            : "failed";
     redirect(`/store/checkout?checkout=${status}`);
   }
 

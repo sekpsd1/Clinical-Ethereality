@@ -1,8 +1,9 @@
-import { ClipboardCheck, ClipboardList, CreditCard, History, PackageCheck, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, PackageCheck, Truck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
 import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
+import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
 
 const orderStatusLabels: Record<string, string> = {
   cancelled: "ยกเลิก",
@@ -160,6 +161,11 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                     {order.trackingNumber ? ` · ${order.trackingNumber}` : ""}
                   </span>
                 </div>
+              </div>
+
+              <div className={`mt-3 rounded-[8px] p-3 ${order.shippingAddress ? "bg-primary/5" : "border border-danger/20 bg-danger/5"}`}>
+                <p className="flex items-center gap-2 text-[11px] font-bold text-text"><MapPin aria-hidden="true" className="size-3.5 text-primary" />ที่อยู่จัดส่งของคำสั่งซื้อ</p>
+                {order.shippingAddress ? <><p className="mt-2 text-xs font-bold text-text">{order.shippingAddress.recipientName} · {order.shippingAddress.phone}</p><p className="mt-1 text-xs leading-5 text-muted">{formatShippingAddress(order.shippingAddress)}</p></> : <p className="mt-2 text-xs font-bold leading-5 text-danger">คำสั่งซื้อเดิมไม่มี snapshot กรุณาตรวจสอบก่อนจัดส่ง</p>}
               </div>
 
               {order.fulfillmentHistory.length > 0 ? (
