@@ -275,7 +275,7 @@
 - [x] Persist customer shipping addresses and an immutable order shipping-address snapshot before production fulfillment; Production deploy, health check, additive migration, and Shipping Address UAT passed 7/7
 - [ ] Complete Production Checkout and Order Snapshot UAT after the client provides product and stock data
 - [x] Remove only the UTF-8 BOM (`EF BB BF`) from `20260513120000_init/migration.sql`; a fresh Local Docker database replayed all 12 repository migrations successfully, `prisma migrate status` and schema diff passed, and table/index/foreign-key/enum metadata matched the prior sanitized verification database. The checksum changed, existing Local migration records were left untouched, and Production was not connected.
-- [ ] Establish a Prisma migration baseline for the existing Production schema before the next migration; `_prisma_migrations` is currently absent
+- [x] Establish a Prisma migration baseline for the existing Production schema: Production MariaDB 11.8.6 now has all 12 migrations recorded, `prisma migrate status` is up to date, and schema diff is clean
 - [ ] Add explicit prescription-item-to-product mapping and a database uniqueness constraint for one order per doctor-issued prescription
 - [ ] Add an authenticated scheduled/global reservation cleanup worker so abandoned orders are reclaimed without waiting for the same customer to return
 - [ ] Add customer cancellation and refund stock-release rules
@@ -314,7 +314,7 @@
 - [x] Add Thai admin inventory, payment, order, schedule, and pharmacist prescription queue copy polish
 - [x] Deploy Transparent Session Refresh to Production at `e6334d6`, pass health check, and pass Doctor route smoke UAT for notifications, consultations, and patients without LINE Login after access-cookie removal
 - [x] Preserve Doctor queue appointment duration through the `consultation.book_slot` AuditLog snapshot after slot-lock cleanup; this is an interim no-migration solution with safe legacy recovery/fallback. Production UAT after deploy `7ed3076` passed for `sekmon`'s 3 August 2026 09:00 booking (60 minutes), including expiry/cancellation after lock deletion and mobile layout.
-- [ ] After the Production Prisma baseline is approved, move the immutable booked-duration snapshot from AuditLog metadata into `Consultation`
+- [ ] Move the immutable booked-duration snapshot from AuditLog metadata into `Consultation` now that the Production Prisma baseline is complete
 - [ ] Configure a non-monetary Payment Integration/Sandbox for consultation payments, including PromptPay, consultation verification provider, webhook, and complete SlipOK/EasySlip setup; then complete Full Doctor Flow Production UAT
 
 ## Phase 11: Articles, Community, And Notifications
