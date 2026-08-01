@@ -311,6 +311,8 @@
 - [x] Restrict fulfillment status updates to Admin while retaining read-only Pharmacist screens and role boundaries
 - [x] Mark linked prescriptions dispensed on Admin shipment, preserve actor-aware audit history, and show the fulfillment operator timeline in Admin orders
 - [x] Add Thai admin inventory, payment, order, schedule, and pharmacist prescription queue copy polish
+- [x] Deploy Transparent Session Refresh to Production at `e6334d6`, pass health check, and pass Doctor route smoke UAT for notifications, consultations, and patients without LINE Login after access-cookie removal
+- [ ] Complete Full Doctor Flow Production UAT when test consultation-queue and patient data are available
 
 ## Phase 11: Articles, Community, And Notifications
 
