@@ -19,6 +19,11 @@ export type ConsultationDurationAvailability = {
   updatedAt: Date;
 };
 
+export type ConsultationDurationSnapshot = {
+  id: string;
+  bookedDurationMinutes: number | null;
+};
+
 function isValidSlotMinutes(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
@@ -85,6 +90,30 @@ export function resolveDoctorConsultationDurationSnapshots(
 
     if (legacyAvailability && legacyAvailability.updatedAt.getTime() <= audit.createdAt.getTime() && isValidSlotMinutes(legacyAvailability.slotMinutes)) {
       durationByConsultationId.set(audit.entityId, legacyAvailability.slotMinutes);
+    }
+  }
+
+  return durationByConsultationId;
+}
+
+export function resolveDoctorConsultationDurations(
+  consultations: ConsultationDurationSnapshot[],
+  audits: ConsultationBookingDurationAudit[],
+  availability: ConsultationDurationAvailability[]
+): Map<string, number> {
+  const durationByConsultationId = new Map<string, number>();
+
+  for (const consultation of consultations) {
+    if (isValidSlotMinutes(consultation.bookedDurationMinutes)) {
+      durationByConsultationId.set(consultation.id, consultation.bookedDurationMinutes);
+    }
+  }
+
+  const legacyDurations = resolveDoctorConsultationDurationSnapshots(audits, availability);
+
+  for (const [consultationId, duration] of legacyDurations) {
+    if (!durationByConsultationId.has(consultationId)) {
+      durationByConsultationId.set(consultationId, duration);
     }
   }
 

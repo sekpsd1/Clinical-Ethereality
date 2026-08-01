@@ -75,6 +75,14 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       "redirected",
     );
 
+    expect(tx.consultation.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        bookedDurationMinutes: 60,
+        doctorId: "doctor-1",
+        slotLockId: "slot-lock-1",
+      }),
+      select: { id: true },
+    });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: "consultation.book_slot",
