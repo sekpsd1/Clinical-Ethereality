@@ -107,6 +107,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           doctorId: availability.doctorId,
           assessmentId: activeAssessment?.id,
           slotLockId: slotLock.id,
+          bookedDurationMinutes: availability.slotMinutes,
           status: "pending_payment",
           scheduledAt,
           summary: activeAssessment

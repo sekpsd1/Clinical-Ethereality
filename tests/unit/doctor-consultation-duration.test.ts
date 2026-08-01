@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatDoctorConsultationDuration,
   getLegacyDurationAvailabilityIds,
+  resolveDoctorConsultationDurations,
   resolveDoctorConsultationDurationSnapshots,
   type ConsultationBookingDurationAudit,
   type ConsultationDurationAvailability
@@ -46,6 +47,16 @@ describe("doctor consultation duration", () => {
     expect(durations.get("consultation-1")).toBe(60);
   });
 
+  it("uses the normalized consultation snapshot before legacy AuditLog fallback", () => {
+    const durations = resolveDoctorConsultationDurations(
+      [{ id: "consultation-1", bookedDurationMinutes: 45 }],
+      [audit({ metadataJson: { availabilityId: "availability-1", slotMinutes: 30 } })],
+      []
+    );
+
+    expect(durations.get("consultation-1")).toBe(45);
+  });
+
   it("recovers legacy duration only when the availability record was unchanged since booking", () => {
     const durations = resolveDoctorConsultationDurationSnapshots([audit()], [availability({ slotMinutes: 45 })]);
 
@@ -57,6 +68,16 @@ describe("doctor consultation duration", () => {
 
     expect(resolveDoctorConsultationDurationSnapshots([audit()], [changedAvailability]).has("consultation-1")).toBe(false);
     expect(resolveDoctorConsultationDurationSnapshots([audit()], []).has("consultation-1")).toBe(false);
+  });
+
+  it("keeps a normalized-null legacy duration unknown when no safe recovery exists", () => {
+    const durations = resolveDoctorConsultationDurations(
+      [{ id: "consultation-1", bookedDurationMinutes: null }],
+      [audit()],
+      [availability({ updatedAt: new Date("2026-08-01T03:00:00.000Z") })]
+    );
+
+    expect(durations.has("consultation-1")).toBe(false);
   });
 
   it("handles malformed metadata and resolves multiple booking audits deterministically", () => {

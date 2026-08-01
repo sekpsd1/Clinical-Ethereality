@@ -8,7 +8,7 @@ import { parsePrescriptionItems } from "@/features/prescriptions/items";
 import {
   formatDoctorConsultationDuration,
   getLegacyDurationAvailabilityIds,
-  resolveDoctorConsultationDurationSnapshots,
+  resolveDoctorConsultationDurations,
   type ConsultationBookingDurationAudit
 } from "@/features/doctor/consultations/duration";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
@@ -243,10 +243,13 @@ function getPaymentEvidenceSummary(payment: ConsultationWithDetails["payment"]):
 }
 
 async function getBookedDurationSnapshots(consultations: ConsultationWithDetails[]): Promise<Map<string, number>> {
-  const consultationIds = consultations.map((consultation) => consultation.id);
+  const consultationsWithoutNormalizedDuration = consultations.filter(
+    (consultation) => consultation.bookedDurationMinutes === null
+  );
+  const consultationIds = consultationsWithoutNormalizedDuration.map((consultation) => consultation.id);
 
   if (consultationIds.length === 0) {
-    return new Map();
+    return resolveDoctorConsultationDurations(consultations, [], []);
   }
 
   const audits: ConsultationBookingDurationAudit[] = await prisma.auditLog.findMany({
@@ -275,7 +278,7 @@ async function getBookedDurationSnapshots(consultations: ConsultationWithDetails
   const availabilityIds = getLegacyDurationAvailabilityIds(audits);
 
   if (availabilityIds.length === 0) {
-    return resolveDoctorConsultationDurationSnapshots(audits, []);
+    return resolveDoctorConsultationDurations(consultations, audits, []);
   }
 
   const availability = await prisma.doctorAvailability.findMany({
@@ -291,7 +294,7 @@ async function getBookedDurationSnapshots(consultations: ConsultationWithDetails
     }
   });
 
-  return resolveDoctorConsultationDurationSnapshots(audits, availability);
+  return resolveDoctorConsultationDurations(consultations, audits, availability);
 }
 
 function mapConsultation(consultation: ConsultationWithDetails, durationByConsultationId: Map<string, number>): DoctorConsultationItem {

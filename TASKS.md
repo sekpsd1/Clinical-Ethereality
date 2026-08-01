@@ -314,7 +314,8 @@
 - [x] Add Thai admin inventory, payment, order, schedule, and pharmacist prescription queue copy polish
 - [x] Deploy Transparent Session Refresh to Production at `e6334d6`, pass health check, and pass Doctor route smoke UAT for notifications, consultations, and patients without LINE Login after access-cookie removal
 - [x] Preserve Doctor queue appointment duration through the `consultation.book_slot` AuditLog snapshot after slot-lock cleanup; this is an interim no-migration solution with safe legacy recovery/fallback. Production UAT after deploy `7ed3076` passed for `sekmon`'s 3 August 2026 09:00 booking (60 minutes), including expiry/cancellation after lock deletion and mobile layout.
-- [ ] Move the immutable booked-duration snapshot from AuditLog metadata into `Consultation` now that the Production Prisma baseline is complete
+- [x] Move the immutable booked-duration snapshot from AuditLog metadata into nullable `Consultation.bookedDurationMinutes`; keep AuditLog/availability recovery only for normalized-null legacy records, with safe local MariaDB 11.8.6 backup-clone rehearsal
+- [ ] Deploy the additive booked-duration snapshot migration and its safe backfill only through an approved Production backup/maintenance plan; ambiguous historic records must remain null and display `ยังไม่ระบุ`
 - [ ] Configure a non-monetary Payment Integration/Sandbox for consultation payments, including PromptPay, consultation verification provider, webhook, and complete SlipOK/EasySlip setup; then complete Full Doctor Flow Production UAT
 
 ## Phase 11: Articles, Community, And Notifications

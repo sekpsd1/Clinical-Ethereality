@@ -13,11 +13,11 @@ const { releaseExpiredConsultationSlotLocks } = await import(
 );
 const {
   formatDoctorConsultationDuration,
-  resolveDoctorConsultationDurationSnapshots,
+  resolveDoctorConsultationDurations,
 } = await import("@/features/doctor/consultations/duration");
 
 describe("Doctor consultation duration after slot-lock expiry", () => {
-  it("clears the consultation lock and deletes it while the queue retains the audited duration", async () => {
+  it("clears the consultation lock and deletes it while the queue retains the stored duration", async () => {
     const now = new Date("2026-08-03T03:00:00.000Z");
     const tx = {
       auditLog: { create: vi.fn().mockResolvedValue({}) },
@@ -62,18 +62,14 @@ describe("Doctor consultation duration after slot-lock expiry", () => {
       where: { id: { in: ["slot-lock-1"] } },
     });
 
-    const durations = resolveDoctorConsultationDurationSnapshots(
+    const durations = resolveDoctorConsultationDurations(
       [
         {
-          createdAt: new Date("2026-08-03T01:00:00.000Z"),
-          entityId: "consultation-1",
-          id: "booking-audit-1",
-          metadataJson: {
-            availabilityId: "availability-1",
-            slotMinutes: 60,
-          },
+          bookedDurationMinutes: 60,
+          id: "consultation-1",
         },
       ],
+      [],
       [],
     );
 
@@ -83,7 +79,8 @@ describe("Doctor consultation duration after slot-lock expiry", () => {
   });
 
   it("recovers the Production legacy duration when no lock remains and availability was not changed after booking", () => {
-    const durations = resolveDoctorConsultationDurationSnapshots(
+    const durations = resolveDoctorConsultationDurations(
+      [{ bookedDurationMinutes: null, id: "consultation-legacy-1" }],
       [
         {
           createdAt: new Date("2026-08-03T01:00:00.000Z"),

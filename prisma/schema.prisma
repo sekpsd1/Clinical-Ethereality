@@ -308,19 +308,20 @@ model Pharmacist {
 }
 
 model Consultation {
-  id            String             @id @default(cuid())
-  patientId     String
-  doctorId      String
-  assessmentId  String?
-  slotLockId    String?            @unique
-  status        ConsultationStatus @default(requested)
-  scheduledAt   DateTime?
-  zoomMeetingId String?
-  zoomPassword  String?            @db.VarChar(120)
-  zoomJoinUrl   String?            @db.Text
-  summary       String?            @db.Text
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                    String             @id @default(cuid())
+  patientId             String
+  doctorId              String
+  assessmentId          String?
+  slotLockId            String?            @unique
+  bookedDurationMinutes Int?
+  status                ConsultationStatus @default(requested)
+  scheduledAt           DateTime?
+  zoomMeetingId         String?
+  zoomPassword          String?            @db.VarChar(120)
+  zoomJoinUrl           String?            @db.Text
+  summary               String?            @db.Text
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   patient       User                  @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
   doctor        Doctor                @relation(fields: [doctorId], references: [id], onDelete: Restrict)
