@@ -5,7 +5,12 @@ import { requireDoctorSession } from "@/lib/auth/guards";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { getDoctorPatientReference } from "@/features/doctor/patient-reference";
 import { parsePrescriptionItems } from "@/features/prescriptions/items";
-import { formatDoctorConsultationDuration } from "@/features/doctor/consultations/duration";
+import {
+  formatDoctorConsultationDuration,
+  getLegacyDurationAvailabilityIds,
+  resolveDoctorConsultationDurationSnapshots,
+  type ConsultationBookingDurationAudit
+} from "@/features/doctor/consultations/duration";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 type ConsultationWithDetails = Awaited<ReturnType<typeof getConsultationsForDoctor>>[number];
@@ -64,12 +69,7 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
           sender: true
         }
       },
-      payment: true,
-      slotLock: {
-        select: {
-          availabilityId: true
-        }
-      }
+      payment: true
     }
   });
 }
@@ -242,17 +242,40 @@ function getPaymentEvidenceSummary(payment: ConsultationWithDetails["payment"]):
   return parts.length > 0 ? parts.join(" • ") : null;
 }
 
-async function getAvailabilitySlotMinutes(consultations: ConsultationWithDetails[]): Promise<Map<string, number>> {
-  const availabilityIds = [
-    ...new Set(
-      consultations
-        .map((consultation) => consultation.slotLock?.availabilityId)
-        .filter((availabilityId): availabilityId is string => Boolean(availabilityId))
-    )
-  ];
+async function getBookedDurationSnapshots(consultations: ConsultationWithDetails[]): Promise<Map<string, number>> {
+  const consultationIds = consultations.map((consultation) => consultation.id);
+
+  if (consultationIds.length === 0) {
+    return new Map();
+  }
+
+  const audits: ConsultationBookingDurationAudit[] = await prisma.auditLog.findMany({
+    where: {
+      action: "consultation.book_slot",
+      entityType: "consultation",
+      entityId: {
+        in: consultationIds
+      }
+    },
+    orderBy: [
+      {
+        createdAt: "asc"
+      },
+      {
+        id: "asc"
+      }
+    ],
+    select: {
+      id: true,
+      entityId: true,
+      createdAt: true,
+      metadataJson: true
+    }
+  });
+  const availabilityIds = getLegacyDurationAvailabilityIds(audits);
 
   if (availabilityIds.length === 0) {
-    return new Map();
+    return resolveDoctorConsultationDurationSnapshots(audits, []);
   }
 
   const availability = await prisma.doctorAvailability.findMany({
@@ -263,14 +286,15 @@ async function getAvailabilitySlotMinutes(consultations: ConsultationWithDetails
     },
     select: {
       id: true,
-      slotMinutes: true
+      slotMinutes: true,
+      updatedAt: true
     }
   });
 
-  return new Map(availability.map((slot) => [slot.id, slot.slotMinutes]));
+  return resolveDoctorConsultationDurationSnapshots(audits, availability);
 }
 
-function mapConsultation(consultation: ConsultationWithDetails, slotMinutesByAvailabilityId: Map<string, number>): DoctorConsultationItem {
+function mapConsultation(consultation: ConsultationWithDetails, durationByConsultationId: Map<string, number>): DoctorConsultationItem {
   const latestPrescription = consultation.prescriptions[0] ?? null;
   const latestMessage = consultation.messages[0] ?? null;
   const workflow = getWorkflowStatus(consultation.status, consultation.payment);
@@ -292,9 +316,7 @@ function mapConsultation(consultation: ConsultationWithDetails, slotMinutesByAva
     canOpenConsultRoom: workflow.canOpenConsultRoom,
     consultRoomHref: workflow.canOpenConsultRoom ? `/consult/live?consultation=${consultation.id}` : null,
     scheduledAt: formatDate(consultation.scheduledAt),
-    durationLabel: formatDoctorConsultationDuration(
-      consultation.slotLock?.availabilityId ? slotMinutesByAvailabilityId.get(consultation.slotLock.availabilityId) : null
-    ),
+    durationLabel: formatDoctorConsultationDuration(durationByConsultationId.get(consultation.id)),
     summary: consultation.summary,
     prescriptionCount: consultation.prescriptions.length,
     latestPrescriptionId: latestPrescription?.id ?? null,
@@ -344,8 +366,8 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
     }
 
     const consultations = await getConsultationsForDoctor(doctorId);
-    const slotMinutesByAvailabilityId = await getAvailabilitySlotMinutes(consultations);
-    const consultationItems = consultations.map((consultation) => mapConsultation(consultation, slotMinutesByAvailabilityId));
+    const durationByConsultationId = await getBookedDurationSnapshots(consultations);
+    const consultationItems = consultations.map((consultation) => mapConsultation(consultation, durationByConsultationId));
 
     return {
       consultations: consultationItems,

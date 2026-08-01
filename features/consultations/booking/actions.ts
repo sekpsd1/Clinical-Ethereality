@@ -140,6 +140,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         metadata: {
           doctorId: availability.doctorId,
           availabilityId: availability.id,
+          slotMinutes: availability.slotMinutes,
           slotLockId: slotLock.id,
           assessmentId: activeAssessment?.id ?? null,
           recommendationTopic: activeAssessment?.recommendationTopic ?? null,
