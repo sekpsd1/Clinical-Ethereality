@@ -274,6 +274,7 @@
 - [x] Add Store reservation expiry and stock release for `pending_payment` after 30 minutes and `payment_review` after 24 hours, with Serializable/CAS cleanup, audit logs, notifications, and a three-active-order customer cap
 - [x] Persist customer shipping addresses and an immutable order shipping-address snapshot before production fulfillment; Production deploy, health check, additive migration, and Shipping Address UAT passed 7/7
 - [ ] Complete Production Checkout and Order Snapshot UAT after the client provides product and stock data
+- [x] Remove only the UTF-8 BOM (`EF BB BF`) from `20260513120000_init/migration.sql`; a fresh Local Docker database replayed all 12 repository migrations successfully, `prisma migrate status` and schema diff passed, and table/index/foreign-key/enum metadata matched the prior sanitized verification database. The checksum changed, existing Local migration records were left untouched, and Production was not connected.
 - [ ] Establish a Prisma migration baseline for the existing Production schema before the next migration; `_prisma_migrations` is currently absent
 - [ ] Add explicit prescription-item-to-product mapping and a database uniqueness constraint for one order per doctor-issued prescription
 - [ ] Add an authenticated scheduled/global reservation cleanup worker so abandoned orders are reclaimed without waiting for the same customer to return
