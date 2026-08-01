@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ClipboardList, FileText, MessageCircle, Pill, Stethoscope } from "lucide-react";
+import { ClipboardList, Clock3, FileText, MessageCircle, Pill, Stethoscope } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
@@ -146,7 +146,13 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <InfoTile label="เวลานัด" value={consultation.scheduledAt ?? "ยังไม่กำหนด"} icon={<ClipboardList aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile
+                  label="เวลานัด"
+                  value={consultation.scheduledAt ?? "ยังไม่กำหนด"}
+                  icon={<ClipboardList aria-hidden="true" className="size-3.5" strokeWidth={2.1} />}
+                  className="col-span-2"
+                />
+                <InfoTile label="ระยะเวลานัด" value={consultation.durationLabel} icon={<Clock3 aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
                 <InfoTile
                   label="ใบสั่งยา"
                   value={
