@@ -273,7 +273,9 @@
 - [x] Harden doctor-issued prescription ordering with PromptPay readiness, prescription row locking, Serializable transactions, and compare-and-swap stock reservation
 - [x] Add Store reservation expiry and stock release for `pending_payment` after 30 minutes and `payment_review` after 24 hours, with Serializable/CAS cleanup, audit logs, notifications, and a three-active-order customer cap
 - [x] Persist customer shipping addresses and an immutable order shipping-address snapshot before production fulfillment; Production deploy, health check, additive migration, and Shipping Address UAT passed 7/7
-- [ ] Complete Production Checkout and Order Snapshot UAT after the client provides product and stock data
+- [x] Pass Controlled Test Product Checkout + Reservation Cleanup Production UAT: Customer `sekmon` completed Product, Cart, Checkout, and Order `CE-8JYOBW` for one ฿199 test product; shipping snapshot, stock reservation/release, cancelled-history visibility, Notification, and Audit were verified after owner-triggered expiry cleanup
+- [ ] Complete Production Checkout and Order Snapshot UAT with the client's real product and stock data imported from Excel
+- [ ] Configure EasySlip/Payment Verification for Production and complete a non-monetary provider UAT; no real payment or slip upload was performed in the controlled Store test
 - [x] Remove only the UTF-8 BOM (`EF BB BF`) from `20260513120000_init/migration.sql`; a fresh Local Docker database replayed all 12 repository migrations successfully, `prisma migrate status` and schema diff passed, and table/index/foreign-key/enum metadata matched the prior sanitized verification database. The checksum changed, existing Local migration records were left untouched, and Production was not connected.
 - [x] Establish a Prisma migration baseline for the existing Production schema: Production MariaDB 11.8.6 now has all 12 migrations recorded, `prisma migrate status` is up to date, and schema diff is clean
 - [ ] Add explicit prescription-item-to-product mapping and a database uniqueness constraint for one order per doctor-issued prescription
