@@ -45,6 +45,11 @@ enum ConsultationStatus {
   cancelled
 }
 
+enum DoctorAvailabilityDateOverrideType {
+  available
+  closed
+}
+
 enum PrescriptionStatus {
   draft
   pending_verification
@@ -263,10 +268,11 @@ model Doctor {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
   consultations Consultation[]
   prescriptions Prescription[]
   availability  DoctorAvailability[]
+  dateOverrides DoctorAvailabilityDateOverride[]
   slotLocks     ConsultationSlotLock[]
 
   @@index([status])
@@ -289,6 +295,25 @@ model DoctorAvailability {
   @@index([doctorId])
   @@index([weekday])
   @@index([isActive])
+}
+
+model DoctorAvailabilityDateOverride {
+  id           String                             @id @default(cuid())
+  doctorId     String
+  scheduleDate DateTime                           @db.Date
+  type         DoctorAvailabilityDateOverrideType
+  startTime    String?                            @db.VarChar(5)
+  endTime      String?                            @db.VarChar(5)
+  slotMinutes  Int?
+  isActive     Boolean                            @default(true)
+  notes        String?                            @db.Text
+  createdAt    DateTime                           @default(now())
+  updatedAt    DateTime                           @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, scheduleDate, isActive], map: "DoctorAvailDate_doc_date_active_idx")
+  @@index([scheduleDate, isActive], map: "DoctorAvailDate_date_active_idx")
 }
 
 model Pharmacist {

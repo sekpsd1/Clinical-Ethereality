@@ -1,11 +1,13 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
-import { getActiveConsultationSlotWhere, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getPrimaryBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
+type DateOverrideRecord = DoctorRecord["dateOverrides"][number];
+type BookingSource = { id: string; scheduledAt: Date; startTime: string; endTime: string; slotMinutes: number; notes: string | null; weekdayLabel: string };
 
 const weekdayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
@@ -44,6 +46,10 @@ function getPrimaryBookingDoctor() {
             startTime: "asc"
           }
         ]
+      },
+      dateOverrides: {
+        where: { isActive: true },
+        orderBy: [{ scheduleDate: "asc" }, { startTime: "asc" }]
       }
     }
   });
@@ -59,26 +65,76 @@ function formatMoney(value: number | null): string {
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: CLINIC_TIME_ZONE,
     day: "numeric",
     month: "short"
   }).format(date);
 }
 
-function mapSlot(slot: AvailabilityRecord, lockedSlotTimes: Set<number>): BookingSlot {
-  const scheduledAt = getUpcomingDateForWeekday(slot.weekday, slot.startTime);
-  const isBooked = lockedSlotTimes.has(getSlotTimestamp(scheduledAt));
+function mapSlot(slot: BookingSource, lockedSlotTimes: Set<number>): BookingSlot {
+  const isBooked = lockedSlotTimes.has(getSlotTimestamp(slot.scheduledAt));
 
   return {
     id: slot.id,
-    weekdayLabel: weekdayLabels[slot.weekday] ?? String(slot.weekday),
-    dateLabel: formatDate(scheduledAt),
+    slotKey: `${slot.id}:${slot.scheduledAt.toISOString()}`,
+    weekdayLabel: slot.weekdayLabel,
+    dateLabel: formatDate(slot.scheduledAt),
     timeLabel: `${slot.startTime}-${slot.endTime}`,
     slotMinutes: slot.slotMinutes,
-    scheduledAt: scheduledAt.toISOString(),
+    scheduledAt: slot.scheduledAt.toISOString(),
     status: isBooked ? "booked" : "available",
     statusLabel: isBooked ? "จองแล้ว" : "ว่าง",
     notes: slot.notes ?? "รับปรึกษาออนไลน์"
   };
+}
+
+export function getBookingSources(availability: AvailabilityRecord[], dateOverrides: DateOverrideRecord[], now: Date): BookingSource[] {
+  const closedDates = new Set(
+    dateOverrides
+      .filter((override) => override.type === "closed")
+      .map((override) => override.scheduleDate.toISOString().slice(0, 10))
+  );
+  const recurring = availability
+    .map((slot) => ({
+      id: slot.id,
+      scheduledAt: getUpcomingDateForWeekday(slot.weekday, slot.startTime, now),
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      slotMinutes: slot.slotMinutes,
+      notes: slot.notes,
+      weekdayLabel: weekdayLabels[slot.weekday] ?? String(slot.weekday)
+    }))
+    .filter((slot) => !closedDates.has(getBangkokCalendarDateKey(slot.scheduledAt)));
+  const special = dateOverrides
+    .filter((override) => override.type === "available" && override.startTime && override.endTime && override.slotMinutes)
+    .map((override) => ({
+      id: override.id,
+      scheduledAt: getScheduledAtForDate(override.scheduleDate, override.startTime!),
+      startTime: override.startTime!,
+      endTime: override.endTime!,
+      slotMinutes: override.slotMinutes!,
+      notes: override.notes,
+      weekdayLabel: weekdayLabels[override.scheduleDate.getUTCDay()] ?? "วันที่เลือก"
+    }))
+    .filter((slot) => slot.scheduledAt > now);
+
+  const expanded = [...recurring, ...special].flatMap((source) =>
+    getScheduledSlotTimes(source.scheduledAt, source.startTime, source.endTime, source.slotMinutes).map((scheduledAt) => ({
+      ...source,
+      scheduledAt,
+      startTime: formatBangkokTime(scheduledAt),
+      endTime: formatBangkokTime(new Date(scheduledAt.getTime() + source.slotMinutes * 60 * 1000))
+    }))
+  );
+  const seen = new Set<number>();
+  return expanded
+    .sort((left, right) => left.scheduledAt.getTime() - right.scheduledAt.getTime())
+    .filter((slot) => {
+      const timestamp = slot.scheduledAt.getTime();
+      if (seen.has(timestamp)) return false;
+      seen.add(timestamp);
+      return true;
+    });
 }
 
 export async function getDoctorBookingData(): Promise<DoctorBookingData> {
@@ -97,7 +153,8 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
       };
     }
 
-    const candidateDates = doctor.availability.map((slot) => getUpcomingDateForWeekday(slot.weekday, slot.startTime));
+    const bookingSources = getBookingSources(doctor.availability, doctor.dateOverrides, now);
+    const candidateDates = bookingSources.map((slot) => slot.scheduledAt);
     const [slotLocks, activeConsultations] =
       candidateDates.length > 0
         ? await Promise.all([
@@ -151,7 +208,7 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
         fee: formatMoney(doctor.consultationFee),
         avatarUrl: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg"
       },
-      slots: doctor.availability.map((slot) => mapSlot(slot, lockedSlotTimes))
+      slots: bookingSources.map((slot) => mapSlot(slot, lockedSlotTimes))
     };
   } catch {
     return {

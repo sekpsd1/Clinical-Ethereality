@@ -14,6 +14,7 @@ function getDayNumber(dateLabel: string): string {
 function getStaticSlot(slot: string): BookingSlot {
   return {
     id: `static-${slot}`,
+    slotKey: `static-${slot}`,
     weekdayLabel: "ตัวอย่าง",
     dateLabel: "10 มิ.ย.",
     timeLabel: slot,
@@ -31,7 +32,8 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
   const firstAvailableSlot = slots.find((slot) => slot.status === "available");
   const hasBookableSlots = hasRealSlots && Boolean(firstAvailableSlot);
   const [selectedDate, setSelectedDate] = useState(firstAvailableSlot?.dateLabel ?? slots[0]?.dateLabel ?? "");
-  const [selectedSlotId, setSelectedSlotId] = useState(firstAvailableSlot?.id ?? "");
+  const [selectedSlotKey, setSelectedSlotKey] = useState(firstAvailableSlot?.slotKey ?? "");
+  const selectedSlot = slots.find((slot) => slot.slotKey === selectedSlotKey);
 
   const availableDates = useMemo(() => Array.from(new Set(slots.map((slot) => slot.dateLabel))), [slots]);
   const filteredSlots = slots.filter((slot) => slot.dateLabel === selectedDate);
@@ -39,7 +41,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
   function selectDate(dateLabel: string) {
     const firstSlot = slots.find((slot) => slot.dateLabel === dateLabel && slot.status === "available");
     setSelectedDate(dateLabel);
-    setSelectedSlotId(firstSlot?.id ?? "");
+    setSelectedSlotKey(firstSlot?.slotKey ?? "");
   }
 
   return (
@@ -75,20 +77,21 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
           </p>
         ) : null}
 
-        <input type="hidden" name="availabilityId" value={hasRealSlots ? selectedSlotId : ""} />
+        <input type="hidden" name="availabilityId" value={hasRealSlots ? selectedSlot?.id ?? "" : ""} />
+        <input type="hidden" name="scheduledAt" value={hasRealSlots ? selectedSlot?.scheduledAt ?? "" : ""} />
 
         <div className="grid grid-cols-2 gap-3">
           {filteredSlots.map((slot) => {
-            const isSelected = selectedSlotId === slot.id && hasRealSlots;
+            const isSelected = selectedSlotKey === slot.slotKey && hasRealSlots;
             const isBooked = slot.status === "booked";
 
             return (
               <button
-                key={slot.id}
+                key={slot.slotKey}
                 data-testid="booking-slot-button"
                 type="button"
                 disabled={!hasRealSlots || isBooked}
-                onClick={() => setSelectedSlotId(slot.id)}
+                onClick={() => setSelectedSlotKey(slot.slotKey)}
                 aria-pressed={isSelected}
                 className={
                   isSelected
@@ -112,7 +115,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
         <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-7">
           <button
             type="submit"
-            disabled={!hasBookableSlots || !selectedSlotId}
+            disabled={!hasBookableSlots || !selectedSlot}
             className="flex h-16 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-lg font-bold leading-7 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />

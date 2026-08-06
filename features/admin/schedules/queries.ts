@@ -1,9 +1,10 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import type { AdminDoctorAvailabilitySlot, AdminDoctorOption, AdminSchedulesData } from "@/features/admin/schedules/types";
+import type { AdminDoctorAvailabilityDateOverride, AdminDoctorAvailabilitySlot, AdminDoctorOption, AdminSchedulesData } from "@/features/admin/schedules/types";
 
 type DoctorRecord = Awaited<ReturnType<typeof getApprovedDoctors>>[number];
 type AvailabilityRecord = Awaited<ReturnType<typeof getAvailabilitySlots>>[number];
+type DateOverrideRecord = Awaited<ReturnType<typeof getDateOverrides>>[number];
 
 const weekdayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
@@ -36,6 +37,24 @@ function getAvailabilitySlots() {
         startTime: "asc"
       }
     ],
+    include: {
+      doctor: {
+        include: {
+          user: {
+            select: {
+              displayName: true,
+              lineUserId: true
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function getDateOverrides() {
+  return prisma.doctorAvailabilityDateOverride.findMany({
+    orderBy: [{ scheduleDate: "asc" }, { startTime: "asc" }],
     include: {
       doctor: {
         include: {
@@ -89,16 +108,35 @@ function mapSlot(slot: AvailabilityRecord): AdminDoctorAvailabilitySlot {
   };
 }
 
+function mapDateOverride(override: DateOverrideRecord): AdminDoctorAvailabilityDateOverride {
+  const scheduleDateValue = override.scheduleDate.toISOString().slice(0, 10);
+
+  return {
+    id: override.id,
+    doctorId: override.doctorId,
+    doctorName: getDoctorName(override.doctor),
+    scheduleDate: new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(override.scheduleDate),
+    scheduleDateValue,
+    type: override.type,
+    timeRange: override.type === "closed" ? "ปิดทั้งวัน" : `${override.startTime}-${override.endTime}`,
+    slotMinutes: override.slotMinutes,
+    isActive: override.isActive,
+    notes: override.notes ?? "-",
+    updatedAt: formatDate(override.updatedAt)
+  };
+}
+
 export async function getAdminSchedules(): Promise<AdminSchedulesData> {
   noStore();
 
   try {
-    const [doctors, slots] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots()]);
+    const [doctors, slots, dateOverrides] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots(), getDateOverrides()]);
     const slotItems = slots.map(mapSlot);
 
     return {
       doctors: doctors.map(mapDoctor),
       slots: slotItems,
+      dateOverrides: dateOverrides.map(mapDateOverride),
       summary: {
         activeDoctors: doctors.length,
         activeSlots: slotItems.filter((slot) => slot.isActive).length,
@@ -109,6 +147,7 @@ export async function getAdminSchedules(): Promise<AdminSchedulesData> {
     return {
       doctors: [],
       slots: [],
+      dateOverrides: [],
       summary: {
         activeDoctors: 0,
         activeSlots: 0,
