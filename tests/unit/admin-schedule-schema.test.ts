@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { upsertDoctorAvailabilitySchema } from "@/features/admin/schedules/schema";
+import { createDoctorAvailabilityBatchSchema, upsertDoctorAvailabilitySchema } from "@/features/admin/schedules/schema";
 
 const validSchedule = {
   availabilityId: "availability-1",
@@ -30,6 +30,43 @@ describe("admin schedule schema", () => {
       ...validSchedule,
       startTime: "12:00",
       endTime: "09:00"
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts multiple days with mixed slot durations when every block divides exactly", () => {
+    const result = createDoctorAvailabilityBatchSchema.safeParse({
+      doctorId: "doctor-1",
+      weekdays: ["1", "3"],
+      blocks: [
+        { startTime: "09:00", endTime: "11:00", slotMinutes: "60" },
+        { startTime: "11:00", endTime: "11:30", slotMinutes: "30" }
+      ],
+      isActive: "on"
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      weekdays: [1, 3],
+      blocks: [
+        { startTime: "09:00", endTime: "11:00", slotMinutes: 60 },
+        { startTime: "11:00", endTime: "11:30", slotMinutes: 30 }
+      ],
+      isActive: true
+    });
+  });
+
+  it("rejects non-divisible, overlapping, duplicate, and repeated weekday batch input", () => {
+    const result = createDoctorAvailabilityBatchSchema.safeParse({
+      doctorId: "doctor-1",
+      weekdays: ["1", "1"],
+      blocks: [
+        { startTime: "09:00", endTime: "10:45", slotMinutes: "60" },
+        { startTime: "10:00", endTime: "11:00", slotMinutes: "30" },
+        { startTime: "10:00", endTime: "11:00", slotMinutes: "30" }
+      ],
+      isActive: "true"
     });
 
     expect(result.success).toBe(false);

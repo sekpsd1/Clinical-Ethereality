@@ -3,9 +3,14 @@ import { CalendarClock, Clock3, Stethoscope, ToggleRight } from "lucide-react";
 import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AdminBulkScheduleEditor } from "@/features/admin/AdminBulkScheduleEditor";
+import { AdminDateScheduleEditor } from "@/features/admin/AdminDateScheduleEditor";
+import { AdminDateScheduleCalendar } from "@/features/admin/AdminDateScheduleCalendar";
+import { AdminDateScheduleDeleteButton } from "@/features/admin/AdminDateScheduleDeleteButton";
+import { AdminDateScheduleToggleButton } from "@/features/admin/AdminDateScheduleToggleButton";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
 import { AdminScheduleToggleButton } from "@/features/admin/AdminScheduleToggleButton";
-import type { AdminDoctorAvailabilitySlot, AdminSchedulesData } from "@/features/admin/schedules/types";
+import type { AdminDoctorAvailabilityDateOverride, AdminDoctorAvailabilitySlot, AdminSchedulesData } from "@/features/admin/schedules/types";
 
 export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData; editSlotId?: string }) {
   const editSlot = data.slots.find((slot) => slot.id === editSlotId);
@@ -32,7 +37,13 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
         </section>
       ) : null}
 
-      <AdminScheduleForm key={editSlot?.id ?? "new"} doctors={data.doctors} editSlot={editSlot} />
+      <AdminDateScheduleCalendar overrides={data.dateOverrides} slots={data.slots} />
+
+      <AdminBulkScheduleEditor doctors={data.doctors} />
+
+      <AdminDateScheduleEditor doctors={data.doctors} />
+
+      {editSlot ? <AdminScheduleForm key={editSlot.id} doctors={data.doctors} editSlot={editSlot} /> : null}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -51,7 +62,32 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
           <ScheduleSlotCard key={slot.id} slot={slot} />
         ))}
       </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-headline text-lg font-bold text-text">ตารางพิเศษตามวันที่</h2>
+          <StatusBadge tone={data.dateOverrides.length > 0 ? "success" : "neutral"}>{data.dateOverrides.length} รายการ</StatusBadge>
+        </div>
+        {data.dateOverrides.length === 0 ? <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center text-xs font-semibold text-muted">ยังไม่มีวันหยุดหรือเวลาพิเศษ</div> : null}
+        {data.dateOverrides.map((override) => <DateOverrideCard key={override.id} override={override} />)}
+      </section>
     </div>
+  );
+}
+
+function DateOverrideCard({ override }: { override: AdminDoctorAvailabilityDateOverride }) {
+  return (
+    <article className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0"><p className="truncate text-sm font-bold text-text">{override.doctorName}</p><p className="mt-1 text-xs font-semibold text-muted">{override.scheduleDate}</p></div>
+        <StatusBadge tone={override.isActive ? "success" : "neutral"}>{override.isActive ? "เปิดอยู่" : "ปิดไว้"}</StatusBadge>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <InfoTile label="ประเภท" value={override.type === "closed" ? "วันหยุด" : "เวลาพิเศษ"} density="comfortable" labelClassName="tracking-[0.08em]" valueClassName="mt-1 text-sm text-text" />
+        <InfoTile label="เวลา" value={override.timeRange} density="comfortable" labelClassName="tracking-[0.08em]" valueClassName="mt-1 text-sm text-text" />
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3"><p className="min-w-0 truncate text-xs font-semibold text-text">{override.notes}</p><div className="flex shrink-0 items-center gap-2"><AdminDateScheduleDeleteButton overrideId={override.id} /><AdminDateScheduleToggleButton overrideId={override.id} isActive={override.isActive} /></div></div>
+    </article>
   );
 }
 

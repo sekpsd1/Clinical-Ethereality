@@ -21,9 +21,24 @@ export type AdminDoctorAvailabilitySlot = {
   updatedAt: string;
 };
 
+export type AdminDoctorAvailabilityDateOverride = {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  scheduleDate: string;
+  scheduleDateValue: string;
+  type: "available" | "closed";
+  timeRange: string;
+  slotMinutes: number | null;
+  isActive: boolean;
+  notes: string;
+  updatedAt: string;
+};
+
 export type AdminSchedulesData = {
   doctors: AdminDoctorOption[];
   slots: AdminDoctorAvailabilitySlot[];
+  dateOverrides: AdminDoctorAvailabilityDateOverride[];
   summary: {
     activeDoctors: number;
     activeSlots: number;

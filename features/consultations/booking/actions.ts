@@ -9,7 +9,7 @@ import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
-import { getActiveConsultationSlotWhere, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { getActiveConsultationSlotWhere, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -47,14 +47,57 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         }
       });
 
-      if (!availability?.isActive || availability.doctor.status !== "approved") {
+      const dateOverride = availability
+        ? null
+        : await tx.doctorAvailabilityDateOverride.findUnique({
+            where: { id: parsed.data.availabilityId },
+            include: { doctor: { select: { id: true, status: true, consultationFee: true } } }
+          });
+
+      const scheduleSource = availability ?? dateOverride;
+
+      if (!scheduleSource?.isActive || scheduleSource.doctor.status !== "approved") {
         throw new Error("Availability is not open for booking.");
       }
 
-      const scheduledAt = getUpcomingDateForWeekday(availability.weekday, availability.startTime);
+      const isDateOverride = dateOverride !== null;
+      let sourceScheduledAt: Date;
+      let slotMinutes: number;
+      let startTime: string;
+      let endTime: string;
+
+      if (dateOverride) {
+        if (dateOverride.type !== "available" || !dateOverride.startTime || !dateOverride.endTime || !dateOverride.slotMinutes) {
+          throw new Error("Availability is not open for booking.");
+        }
+
+        sourceScheduledAt = getScheduledAtForDate(dateOverride.scheduleDate, dateOverride.startTime);
+        slotMinutes = dateOverride.slotMinutes;
+        startTime = dateOverride.startTime;
+        endTime = dateOverride.endTime;
+      } else {
+        sourceScheduledAt = getUpcomingDateForWeekday(availability!.weekday, availability!.startTime);
+        slotMinutes = availability!.slotMinutes;
+        startTime = availability!.startTime;
+        endTime = availability!.endTime;
+      }
+
+      const scheduledAt = new Date(parsed.data.scheduledAt);
+      const validSlotTimes = getScheduledSlotTimes(
+        sourceScheduledAt,
+        startTime,
+        endTime,
+        slotMinutes
+      );
+
+      if (scheduledAt <= now || !validSlotTimes.some((slot) => slot.getTime() === scheduledAt.getTime())) {
+        throw new Error("Availability is not open for booking.");
+      }
+
+      const doctorId = scheduleSource.doctorId;
       const existing = await tx.consultation.findFirst({
         where: {
-          doctorId: availability.doctorId,
+          doctorId,
           scheduledAt,
           ...getActiveConsultationSlotWhere(now)
         },
@@ -69,9 +112,9 @@ export async function createConsultationBookingAction(formData: FormData): Promi
 
       const slotLock = await tx.consultationSlotLock.create({
         data: {
-          doctorId: availability.doctorId,
+          doctorId,
           scheduledAt,
-          availabilityId: availability.id,
+          availabilityId: scheduleSource.id,
           patientId: session.userId,
           expiresAt: getSlotLockExpiresAt(now)
         },
@@ -104,15 +147,15 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       const consultation = await tx.consultation.create({
         data: {
           patientId: session.userId,
-          doctorId: availability.doctorId,
+          doctorId,
           assessmentId: activeAssessment?.id,
           slotLockId: slotLock.id,
-          bookedDurationMinutes: availability.slotMinutes,
+          bookedDurationMinutes: slotMinutes,
           status: "pending_payment",
           scheduledAt,
           summary: activeAssessment
             ? `แบบประเมิน: ${activeAssessment.symptomLabel}, ${activeAssessment.durationLabel}. คำแนะนำ: ${activeAssessment.recommendationSpecialty}.`
-            : `Booking requested from availability ${availability.id}`
+            : `Booking requested from availability ${scheduleSource.id}`
         },
         select: {
           id: true
@@ -139,9 +182,10 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         entityType: "consultation",
         entityId: consultation.id,
         metadata: {
-          doctorId: availability.doctorId,
-          availabilityId: availability.id,
-          slotMinutes: availability.slotMinutes,
+          doctorId,
+          availabilityId: scheduleSource.id,
+          scheduleSource: isDateOverride ? "date_override" : "weekly",
+          slotMinutes,
           slotLockId: slotLock.id,
           assessmentId: activeAssessment?.id ?? null,
           recommendationTopic: activeAssessment?.recommendationTopic ?? null,

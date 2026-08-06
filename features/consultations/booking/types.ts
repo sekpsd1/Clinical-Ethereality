@@ -8,6 +8,7 @@ export type BookingDoctor = {
 
 export type BookingSlot = {
   id: string;
+  slotKey: string;
   weekdayLabel: string;
   dateLabel: string;
   timeLabel: string;

@@ -27,6 +27,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 const { createConsultationBookingAction } = await import(
   "@/features/consultations/booking/actions"
 );
+const { getUpcomingDateForWeekday } = await import("@/features/consultations/booking/slots");
 
 describe("createConsultationBookingAction booked-duration audit", () => {
   it("persists the DoctorAvailability slotMinutes in consultation.book_slot within the booking transaction", async () => {
@@ -70,6 +71,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
 
     const formData = new FormData();
     formData.set("availabilityId", "availability-1");
+    formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow(
       "redirected",
