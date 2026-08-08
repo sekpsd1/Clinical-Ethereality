@@ -366,6 +366,64 @@ describe("Store reservation lifecycle", () => {
     expect(tx.payment.updateMany).not.toHaveBeenCalled();
     expect(tx.notification.create).not.toHaveBeenCalled();
   });
+
+  it("is idempotent when the same expired candidate is seen again after it was released", async () => {
+    const tx = createReleaseTransaction();
+    tx.order.findFirst
+      .mockResolvedValueOnce({
+        id: "order-1",
+        userId: "customer-1",
+        status: "pending_payment",
+        createdAt: new Date("2026-07-30T08:00:00.000Z"),
+        updatedAt: new Date("2026-07-30T08:00:00.000Z"),
+        items: [{ productId: "product-1", quantity: 1 }]
+      })
+      .mockResolvedValueOnce(null);
+    useReleaseTransaction(tx);
+
+    await expect(
+      releaseExpiredStoreOrderReservations({
+        now: new Date("2026-07-30T08:30:00.000Z")
+      })
+    ).resolves.toMatchObject({ released: 1, skipped: 0 });
+
+    await expect(
+      releaseExpiredStoreOrderReservations({
+        now: new Date("2026-07-30T08:30:00.000Z")
+      })
+    ).resolves.toMatchObject({ released: 0, skipped: 1 });
+
+    expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
+    expect(reservationMocks.writeAuditLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows concurrent global runs to release stock exactly once through the order-status CAS", async () => {
+    let statusClaimed = false;
+    const tx = createReleaseTransaction();
+    tx.order.updateMany.mockImplementation(async () => {
+      if (statusClaimed) {
+        return { count: 0 };
+      }
+
+      statusClaimed = true;
+      return { count: 1 };
+    });
+    useReleaseTransaction(tx);
+
+    const results = await Promise.all([
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") }),
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") })
+    ]);
+
+    expect(results.reduce((total, result) => total + result.released, 0)).toBe(1);
+    expect(results.reduce((total, result) => total + result.skipped, 0)).toBe(1);
+    expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.payment.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.shipmentTracking.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
+    expect(reservationMocks.writeAuditLog).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Store pending-order cap", () => {
