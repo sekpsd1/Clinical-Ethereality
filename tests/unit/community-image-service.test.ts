@@ -78,4 +78,22 @@ describe("community image server processing", () => {
       code: "FILE_TYPE_NOT_ALLOWED"
     });
   });
+
+  it("rejects an original image above the 5 MB launch limit", async () => {
+    const uploadRoot = await mkdtemp(path.join(os.tmpdir(), "community-image-"));
+    temporaryDirectories.push(uploadRoot);
+    process.env.COMMUNITY_UPLOAD_DIR = uploadRoot;
+
+    await expect(
+      prepareCommunityImage({
+        file: new File([new Uint8Array(5 * 1024 * 1024 + 1)], "too-large.jpg", {
+          type: "image/jpeg"
+        }),
+        ownerId: "customer-1",
+        articleId: "article-1"
+      })
+    ).rejects.toMatchObject({
+      code: "FILE_TOO_LARGE"
+    });
+  });
 });
