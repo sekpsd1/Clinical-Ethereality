@@ -117,11 +117,21 @@ function createTransactionMock(options: {
         id: "prescription-1",
         patientId: "customer-1",
         status: "verified",
+        itemsJson: [
+          {
+            productId: "product-1",
+            medicationName: "Prescription Product",
+            dosage: "500 mg",
+            quantity: "2",
+            instructions: "Take as directed"
+          }
+        ],
         orderItems: options.linkedOrderId ? [{ orderId: options.linkedOrderId }] : []
       })
     },
     product: {
-      findFirst: vi.fn().mockResolvedValue(product)
+      findFirst: vi.fn().mockResolvedValue(product),
+      findMany: vi.fn().mockResolvedValue([product])
     },
     inventory: {
       updateMany: vi.fn().mockResolvedValue({
@@ -149,7 +159,7 @@ function createTransactionMock(options: {
 function internalOrderFormData(): FormData {
   const formData = new FormData();
   formData.set("prescriptionId", "prescription-1");
-  formData.set("productId", "product-1");
+  formData.set("productId", "tampered-product-id");
   formData.set("shippingAddressId", "address-1");
   return formData;
 }
@@ -193,7 +203,7 @@ describe("store prescription order safety", () => {
     });
   });
 
-  it("locks one internal prescription, reserves stock with CAS, and uses a serializable transaction", async () => {
+  it("locks one internal prescription, derives the doctor-selected quantity, reserves stock with CAS, and uses a serializable transaction", async () => {
     const tx = createTransactionMock();
     useTransaction(tx);
 
@@ -216,6 +226,18 @@ describe("store prescription order safety", () => {
     expect(lockQuery.strings.join(" ")).toContain("FOR UPDATE");
     expect(lockQuery.values).toEqual(["prescription-1", "customer-1"]);
     expect(actionMocks.getOrderShippingAddressSnapshot).toHaveBeenCalledWith(tx, "customer-1", "address-1");
+    expect(tx.product.findMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: ["product-1"]
+        },
+        status: "active",
+        requiresPrescription: true
+      },
+      include: {
+        inventory: true
+      }
+    });
     expect(tx.order.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ shippingAddress: { create: expect.objectContaining({ sourceAddressId: "address-1", postalCode: "10110" }) } }) }));
     expect(tx.inventory.updateMany).toHaveBeenCalledWith({
       where: {
@@ -225,10 +247,25 @@ describe("store prescription order safety", () => {
       },
       data: {
         reservedQuantity: {
-          increment: 1
+          increment: 2
         }
       }
     });
+    expect(tx.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          items: {
+            create: [
+              expect.objectContaining({
+                productId: "product-1",
+                prescriptionId: "prescription-1",
+                quantity: 2
+              })
+            ]
+          }
+        })
+      })
+    );
     expect(tx.inventory.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.order.create.mock.invocationCallOrder[0]
     );

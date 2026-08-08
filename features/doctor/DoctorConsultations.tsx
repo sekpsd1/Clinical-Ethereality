@@ -171,7 +171,9 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                 สร้างเมื่อ {consultation.createdAt}
               </p>
 
-              {canWritePrescription(consultation) ? <DoctorPrescriptionForm consultation={consultation} /> : null}
+              {canWritePrescription(consultation) ? (
+                <DoctorPrescriptionForm consultation={consultation} products={data.prescriptionProducts} />
+              ) : null}
             </article>
           );
         })}

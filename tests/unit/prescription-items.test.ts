@@ -10,6 +10,7 @@ describe("structured prescription items", () => {
       parsePrescriptionItems([
         {
           medicationName: "Paracetamol",
+          productId: "product-paracetamol",
           dosage: "500 mg",
           quantity: "10 tablets",
           instructions: "Take one tablet after meals",
@@ -22,6 +23,7 @@ describe("structured prescription items", () => {
     ).toEqual([
       {
         medicationName: "Paracetamol",
+        productId: "product-paracetamol",
         dosage: "500 mg",
         quantity: "10 tablets",
         instructions: "Take one tablet after meals",

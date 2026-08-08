@@ -28,7 +28,7 @@ export function PrescriptionOrderScreen({ data, orderStatus, addresses = [] }: {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">ใบสั่งยา</p>
-                  <h2 className="mt-2 text-2xl font-extrabold leading-8 text-primary">เลือกยาที่ต้องการสั่งซื้อ</h2>
+                  <h2 className="mt-2 text-2xl font-extrabold leading-8 text-primary">สั่งยาตามรายการที่แพทย์กำหนด</h2>
                 </div>
                 <StatusBadge tone={prescription.linkedOrderCode ? "success" : "warning"}>{prescription.statusLabel}</StatusBadge>
               </div>
@@ -66,14 +66,17 @@ export function PrescriptionOrderScreen({ data, orderStatus, addresses = [] }: {
                 href="/store/orders"
                 cta="ติดตามคำสั่งซื้อ"
               />
-            ) : prescription.products.length > 0 ? (
-              <section className="space-y-4">
-                {prescription.products.map((product) => (
-                  <PrescriptionProductCard key={product.id} prescriptionId={prescription.id} product={product} addresses={addresses} />
-                ))}
-              </section>
+            ) : prescription.products.length > 0 && prescription.isProductMappingComplete ? (
+              <PrescriptionProductOrderCard
+                prescriptionId={prescription.id}
+                products={prescription.products}
+                addresses={addresses}
+              />
             ) : (
-              <StateCard title="ยังไม่มีสินค้าที่ต้องใช้ใบสั่งยา" body="เมื่อแอดมินเพิ่มสินค้าที่ต้องใช้ใบสั่งยา รายการจะปรากฏที่นี่" />
+              <StateCard
+                title="ใบสั่งยานี้ยังไม่พร้อมสร้างคำสั่งซื้อ"
+                body="กรุณาติดต่อคลินิกเพื่อให้แพทย์ระบุยาจากสต็อกก่อนสั่งซื้อ"
+              />
             )}
           </>
         ) : (
@@ -84,38 +87,47 @@ export function PrescriptionOrderScreen({ data, orderStatus, addresses = [] }: {
   );
 }
 
-function PrescriptionProductCard({
+function PrescriptionProductOrderCard({
   prescriptionId,
-  product,
+  products,
   addresses
 }: {
   prescriptionId: string;
-  product: PrescriptionOrderProduct;
+  products: PrescriptionOrderProduct[];
   addresses: ShippingAddressView[];
 }) {
+  const canOrder = products.every((product) => product.availableQuantity >= product.prescribedQuantity);
+
   return (
     <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/75 p-5 shadow-payment-card backdrop-blur-payment">
-      <div className="flex items-start gap-4">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Pill aria-hidden="true" className="size-7" strokeWidth={2.2} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-extrabold leading-6 text-[#191c1e]">{product.name}</h3>
-          <p className="mt-1 text-sm leading-6 text-[#3e494a]">{product.description}</p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="text-lg font-extrabold leading-7 text-primary">{product.priceLabel}</p>
-            <p className="text-[11px] font-bold uppercase leading-4 text-[#3e494a]">{product.stockLabel}</p>
+      <p className="text-sm font-extrabold leading-6 text-[#191c1e]">รายการยาที่แพทย์ระบุ</p>
+      <div className="mt-3 space-y-3">
+        {products.map((product) => (
+          <div key={product.id} className="flex items-start gap-3 rounded-2xl bg-primary/5 p-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Pill aria-hidden="true" className="size-5" strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-extrabold leading-5 text-[#191c1e]">{product.name}</h3>
+              <p className="mt-1 text-xs leading-5 text-[#3e494a]">{product.description}</p>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <p className="text-sm font-extrabold leading-5 text-primary">{product.priceLabel}</p>
+                <p className="text-[11px] font-bold uppercase leading-4 text-[#3e494a]">
+                  จำนวน {product.prescribedQuantity} ชิ้น
+                </p>
+              </div>
+              <p className="mt-1 text-[11px] font-bold leading-4 text-[#3e494a]">{product.stockLabel}</p>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
       <form action={createPrescriptionOrderAction} className="mt-5">
         <input type="hidden" name="prescriptionId" value={prescriptionId} />
-        <input type="hidden" name="productId" value={product.id} />
         <ShippingAddressSelector addresses={addresses} returnTo={`/store/prescriptions/${prescriptionId}`} />
         <button
           type="submit"
-          disabled={product.availableQuantity <= 0 || addresses.length === 0}
+          disabled={!canOrder || addresses.length === 0}
           className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ShoppingCart aria-hidden="true" className="size-5" strokeWidth={2.2} />

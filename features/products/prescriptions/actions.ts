@@ -19,6 +19,7 @@ import {
   createPrescriptionOrderSchema
 } from "@/features/products/prescriptions/schema";
 import { isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
+import { parsePrescriptionItems } from "@/features/prescriptions/items";
 import {
   assertStorePendingOrderCapacity,
   releaseExpiredStoreOrderReservations,
@@ -45,6 +46,47 @@ async function lockPrescriptionForOrder(
   );
 
   return lockedRows.length === 1;
+}
+
+function getPrescribedOrderLines(
+  itemsJson: Prisma.JsonValue | null | undefined,
+  products: Array<{
+    id: string;
+    price: Prisma.Decimal;
+    inventory: { id: string; quantity: number; reservedQuantity: number } | null;
+  }>
+) {
+  const quantities = new Map<string, number>();
+
+  for (const item of parsePrescriptionItems(itemsJson)) {
+    const quantity = Number(item.quantity);
+
+    if (!item.productId || !Number.isSafeInteger(quantity) || quantity <= 0) {
+      throw new Error("Prescription has no valid product mapping.");
+    }
+
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + quantity);
+  }
+
+  if (quantities.size === 0 || products.length !== quantities.size) {
+    throw new Error("Prescription product mapping is unavailable.");
+  }
+
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
+  return [...quantities.entries()].map(([productId, quantity]) => {
+    const product = productsById.get(productId);
+
+    if (!product || !canReserveInventory(product.inventory, quantity)) {
+      throw new Error("Prescription product is out of stock.");
+    }
+
+    return {
+      product,
+      quantity,
+      lineTotal: product.price.mul(quantity)
+    };
+  });
 }
 
 export async function createPrescriptionOrderAction(formData: FormData): Promise<void> {
@@ -92,6 +134,7 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           id: true,
           patientId: true,
           status: true,
+          itemsJson: true,
           orderItems: {
             where: {
               order: {
@@ -116,9 +159,18 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         throw new Error("Prescription already has a linked order.");
       }
 
-      const product = await tx.product.findFirst({
+      const prescribedItems = parsePrescriptionItems(prescription.itemsJson);
+      const productIds = [...new Set(prescribedItems.flatMap((item) => (item.productId ? [item.productId] : [])))];
+
+      if (productIds.length === 0) {
+        throw new Error("Prescription has no valid product mapping.");
+      }
+
+      const products = await tx.product.findMany({
         where: {
-          id: parsed.data.productId,
+          id: {
+            in: productIds
+          },
           status: "active",
           requiresPrescription: true
         },
@@ -127,38 +179,31 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         }
       });
 
-      if (!product) {
-        throw new Error("Prescription product was not found.");
-      }
-
-      const quantity = 1;
-
-      if (!canReserveInventory(product.inventory, quantity)) {
-        throw new Error("Prescription product is out of stock.");
-      }
-
-      const subtotal = product.price.mul(quantity);
+      const orderLines = getPrescribedOrderLines(prescription.itemsJson, products);
+      const subtotal = orderLines.reduce((total, line) => total.add(line.lineTotal), new Prisma.Decimal(0));
       const qrPayload = createStorePromptPayPayload(Number(subtotal));
 
       if (!qrPayload) {
         throw new Error("PromptPay is not configured or a payment QR payload could not be generated.");
       }
 
-      const reservation = await tx.inventory.updateMany({
-        where: {
-          id: product.inventory!.id,
-          quantity: product.inventory!.quantity,
-          reservedQuantity: product.inventory!.reservedQuantity
-        },
-        data: {
-          reservedQuantity: {
-            increment: quantity
+      for (const line of orderLines) {
+        const reservation = await tx.inventory.updateMany({
+          where: {
+            id: line.product.inventory!.id,
+            quantity: line.product.inventory!.quantity,
+            reservedQuantity: line.product.inventory!.reservedQuantity
+          },
+          data: {
+            reservedQuantity: {
+              increment: line.quantity
+            }
           }
-        }
-      });
+        });
 
-      if (reservation.count !== 1) {
-        throw new Error("Prescription product stock changed during checkout.");
+        if (reservation.count !== 1) {
+          throw new Error("Prescription product stock changed during checkout.");
+        }
       }
 
       const order = await tx.order.create({
@@ -171,13 +216,13 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
           grandTotal: subtotal,
           shippingAddress: { create: shippingAddress },
           items: {
-            create: {
-              productId: product.id,
+            create: orderLines.map((line) => ({
+              productId: line.product.id,
               prescriptionId: prescription.id,
-              quantity,
-              unitPrice: product.price,
-              lineTotal: subtotal
-            }
+              quantity: line.quantity,
+              unitPrice: line.product.price,
+              lineTotal: line.lineTotal
+            }))
           },
           payments: {
             create: {
@@ -233,7 +278,8 @@ export async function createPrescriptionOrderAction(formData: FormData): Promise
         metadata: {
           prescriptionId: prescription.id,
           prescriptionStatus: prescription.status,
-          productId: product.id,
+          productIds: orderLines.map((line) => line.product.id),
+          itemCount: orderLines.length,
           shippingAddressId: shippingAddress.sourceAddressId,
           paymentStatus: "pending_slip",
           orderStatus: "pending_payment",

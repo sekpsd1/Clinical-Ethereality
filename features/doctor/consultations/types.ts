@@ -1,6 +1,12 @@
 import type { ConsultationStatus, PaymentStatus, PrescriptionStatus } from "@prisma/client";
 import type { PrescriptionMedicationItem } from "@/features/prescriptions/items";
 
+export type DoctorPrescriptionProduct = {
+  id: string;
+  name: string;
+  availableQuantity: number;
+};
+
 export type DoctorConsultationItem = {
   id: string;
   patientName: string;
@@ -48,6 +54,7 @@ export type DoctorConsultationItem = {
 
 export type DoctorConsultationsData = {
   consultations: DoctorConsultationItem[];
+  prescriptionProducts: DoctorPrescriptionProduct[];
   summary: {
     scheduled: number;
     live: number;
