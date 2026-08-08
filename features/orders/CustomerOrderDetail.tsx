@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { CustomerOrderCancellation } from "@/features/orders/CustomerOrderCancellation";
 import type { CustomerOrderItem } from "@/features/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
 
@@ -111,6 +112,10 @@ function OrderDetailContent({ order }: { order: CustomerOrderItem }) {
           </p>
           <BackToOrdersLink className="mt-4 inline-flex" />
         </section>
+      ) : null}
+
+      {order.canCancel ? (
+        <CustomerOrderCancellation orderId={order.id} orderCode={order.orderCode} />
       ) : null}
     </div>
   );

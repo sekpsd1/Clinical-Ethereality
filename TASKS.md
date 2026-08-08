@@ -280,7 +280,8 @@
 - [x] Establish a Prisma migration baseline for the existing Production schema: Production MariaDB 11.8.6 now has all 12 migrations recorded, `prisma migrate status` is up to date, and schema diff is clean
 - [ ] Add explicit prescription-item-to-product mapping and a database uniqueness constraint for one order per doctor-issued prescription
 - [x] Add an authenticated scheduled/global reservation cleanup worker so abandoned orders are reclaimed without waiting for the same customer to return; GitHub Actions now provides the reviewed five-minute scheduler definition, while owner-managed `STORE_RESERVATION_CLEANUP_SECRET` setup, GitHub Actions enablement, and Production UAT remain pending. Plesk Scheduled Task execution was blocked and is not the production scheduler.
-- [ ] Add customer cancellation and refund stock-release rules
+- [x] Add customer cancellation for owned unpaid Store orders in `pending_payment`, reusing the existing Serializable/CAS reservation release path for exactly-once stock release, pending payment/shipment closure, audit logging, notification, idempotency, and cleanup-worker concurrency safety
+- [ ] Add refund stock-release and real refund handling after Payment Integration/EasySlip is ready; do not treat customer cancellation of an unpaid order as a refund
 - [ ] Persist a normalized bank transaction reference for Admin manual reviews and enforce database uniqueness across verified/refunded payments
 - [ ] Replace hosted-URL prescription/slip inputs with real Cloudinary/S3 upload and approved external-prescription review handling
 - [ ] Connect Store category/search controls and carrier tracking to real data/integrations
