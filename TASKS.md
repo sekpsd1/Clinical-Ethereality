@@ -49,7 +49,8 @@
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup
-- [ ] Approve final Community rules, article categories, report reasons, and moderation policy before production launch
+- [x] Approve and document the Community rules, four existing article categories, five existing report reasons, post-moderation policy, Before/After prohibition, review SLA, support-channel appeals, and 2,555-day audit target in `COMMUNITY_LAUNCH_POLICY.md`
+- [ ] Complete Community Production operational readiness: verify `COMMUNITY_UPLOAD_DIR` is an absolute private path outside the deployment directory with Node write access and backup/restore; assign an Admin moderation rota and support channel; then complete controlled `[UAT]` Community Production UAT without deleting Audit/Report history
 - [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
@@ -342,6 +343,7 @@
 - [x] Back customer notification center with Prisma notifications
 - [x] Build reward points earning and spending rules
 - [x] Add audit metadata for sensitive actions
+- [x] Complete Community launch-readiness documentation and Local verification: approved Thai policy, post/comment/report/moderation/notification/image-access UAT at 390×844 with non-sensitive `[UAT]` content, retained Audit/Report history, focused Community tests, full unit suite, lint, typecheck, and production build
 
 ## Phase 12: Quality And Deployment
 

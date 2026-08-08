@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
+  communityCategories,
+  communityReportReasons,
   formatCommunityRelativeTime,
   getCommunityReportReasonLabel,
   getPublicCommunityAuthor
 } from "@/features/community/policy";
 
 describe("community privacy policy helpers", () => {
+  it("keeps the approved four launch categories and five report reasons", () => {
+    expect(communityCategories).toHaveLength(4);
+    expect(communityReportReasons.map((reason) => reason.value)).toEqual([
+      "privacy",
+      "medical_misinformation",
+      "harassment",
+      "spam",
+      "other"
+    ]);
+  });
+
   it("replaces customer display names with a stable member alias", () => {
     expect(
       getPublicCommunityAuthor({
