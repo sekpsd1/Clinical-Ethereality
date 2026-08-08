@@ -64,8 +64,7 @@ function getOrdersForCustomer(userId: string) {
       payments: {
         orderBy: {
           updatedAt: "desc"
-        },
-        take: 1
+        }
       },
       shipments: {
         orderBy: {
@@ -203,6 +202,9 @@ async function mapOrder(
     paymentQrPayload: payment?.qrPayload ?? null,
     paymentQrDataUrl,
     paymentVerificationRequired: payment ? isPaymentReadyForProviderVerification(payment.status) : false,
+    canCancel:
+      order.status === "pending_payment" &&
+      !order.payments.some((orderPayment) => ["verified", "refunded"].includes(orderPayment.status)),
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
     shippingAddress: order.shippingAddress ? {

@@ -22,6 +22,7 @@ export type CustomerOrderItem = {
   paymentQrPayload: string | null;
   paymentQrDataUrl: string | null;
   paymentVerificationRequired: boolean;
+  canCancel: boolean;
   externalPrescriptionFileName: string | null;
   externalPrescriptionAttachmentCount: number;
   shippingAddress: OrderShippingAddressView | null;

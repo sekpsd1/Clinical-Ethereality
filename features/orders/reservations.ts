@@ -28,6 +28,22 @@ type StoreReservationReleaseCandidate = {
   status: ReleasableStoreOrderStatus;
 };
 
+type StoreReservationReleaseSource = "expiration" | "customer_cancellation";
+
+type ReleaseStoreOrderReservationInput = {
+  candidate: StoreReservationReleaseCandidate;
+  cutoff?: Date;
+  userId?: string;
+  actorId?: string | null;
+  source: StoreReservationReleaseSource;
+};
+
+export type CancelCustomerPendingStoreOrderResult =
+  | "cancelled"
+  | "already_cancelled"
+  | "blocked"
+  | "not_found";
+
 export type StoreReservationReleaseResult = {
   candidates: number;
   released: number;
@@ -111,6 +127,10 @@ function isExpectedReleaseConflict(error: unknown): boolean {
     return true;
   }
 
+  return isPrismaTransactionConflict(error);
+}
+
+function isPrismaTransactionConflict(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
@@ -119,29 +139,27 @@ function isExpectedReleaseConflict(error: unknown): boolean {
   );
 }
 
-async function releaseExpiredStoreOrderReservation(
-  candidate: StoreReservationReleaseCandidate,
-  cutoff: Date
+async function releaseStoreOrderReservation(
+  input: ReleaseStoreOrderReservationInput
 ): Promise<boolean> {
-  const expiryWhere =
-    candidate.status === "pending_payment"
+  const { actorId, candidate, cutoff, source, userId } = input;
+  const eligibilityWhere = {
+    ...(userId ? { userId } : {}),
+    ...(cutoff
       ? {
           createdAt: {
             lte: cutoff
           }
         }
-      : {
-          createdAt: {
-            lte: cutoff
-          }
-        };
+      : {})
+  };
 
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findFirst({
       where: {
         id: candidate.id,
         status: candidate.status,
-        ...expiryWhere
+        ...eligibilityWhere
       },
       select: {
         id: true,
@@ -166,7 +184,7 @@ async function releaseExpiredStoreOrderReservation(
       where: {
         id: order.id,
         status: candidate.status,
-        ...expiryWhere,
+        ...eligibilityWhere,
         payments: {
           none: {
             status: {
@@ -235,18 +253,27 @@ async function releaseExpiredStoreOrderReservation(
         type: "order",
         channel: "in_app",
         title:
-          candidate.status === "pending_payment"
-            ? "คำสั่งซื้อหมดเวลาชำระเงิน"
-            : "คำสั่งซื้อหมดเวลาตรวจสอบการชำระเงิน",
+          source === "customer_cancellation"
+            ? "ยกเลิกคำสั่งซื้อแล้ว"
+            : candidate.status === "pending_payment"
+              ? "คำสั่งซื้อหมดเวลาชำระเงิน"
+              : "คำสั่งซื้อหมดเวลาตรวจสอบการชำระเงิน",
         body:
-          candidate.status === "pending_payment"
-            ? "ระบบยกเลิกคำสั่งซื้อที่ยังไม่ได้ชำระภายใน 30 นาทีและคืนสต็อกแล้ว กรุณาสร้างคำสั่งซื้อใหม่หากยังต้องการสินค้า"
-            : "ระบบยกเลิกคำสั่งซื้อที่ไม่สามารถตรวจสอบการชำระเงินให้เสร็จภายใน 24 ชั่วโมงและคืนสต็อกแล้ว กรุณาติดต่อเจ้าหน้าที่หากได้ชำระเงินแล้ว",
+          source === "customer_cancellation"
+            ? "คำสั่งซื้อที่ยังไม่ได้ชำระเงินถูกยกเลิก และระบบคืนสต็อกที่สำรองไว้แล้ว"
+            : candidate.status === "pending_payment"
+              ? "ระบบยกเลิกคำสั่งซื้อที่ยังไม่ได้ชำระภายใน 30 นาทีและคืนสต็อกแล้ว กรุณาสร้างคำสั่งซื้อใหม่หากยังต้องการสินค้า"
+              : "ระบบยกเลิกคำสั่งซื้อที่ไม่สามารถตรวจสอบการชำระเงินให้เสร็จภายใน 24 ชั่วโมงและคืนสต็อกแล้ว กรุณาติดต่อเจ้าหน้าที่หากได้ชำระเงินแล้ว",
         metadataJson: {
           orderId: order.id,
-          href: "/store/orders",
+          href:
+            source === "customer_cancellation"
+              ? `/store/orders/${order.id}`
+              : "/store/orders",
           reason:
-            candidate.status === "pending_payment"
+            source === "customer_cancellation"
+              ? "customer_cancelled_unpaid_order"
+              : candidate.status === "pending_payment"
               ? "payment_reservation_expired"
               : "payment_review_reservation_expired"
         }
@@ -254,16 +281,20 @@ async function releaseExpiredStoreOrderReservation(
     });
 
     await writeAuditLog(tx, {
-      actorId: null,
-      action: "order.payment_reservation_expired",
+      actorId: source === "customer_cancellation" ? actorId : null,
+      action:
+        source === "customer_cancellation"
+          ? "order.customer_cancel_unpaid"
+          : "order.payment_reservation_expired",
       entityType: "order",
       entityId: order.id,
       metadata: {
+        source,
         previousStatus: candidate.status,
         nextStatus: "cancelled",
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),
-        cutoff: cutoff.toISOString(),
+        cutoff: cutoff?.toISOString() ?? null,
         releasedInventory: Object.fromEntries(quantities),
         cancelledShipments: cancelledShipments.count,
         rejectedPayments: rejectedPayments.count,
@@ -275,6 +306,87 @@ async function releaseExpiredStoreOrderReservation(
   }, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable
   });
+}
+
+async function getCustomerCancellationState(
+  orderId: string,
+  userId: string
+): Promise<CancelCustomerPendingStoreOrderResult | "eligible"> {
+  const order = await prisma.order.findFirst({
+    where: {
+      id: orderId,
+      userId
+    },
+    select: {
+      status: true,
+      payments: {
+        where: {
+          status: {
+            in: [...COMPLETED_PAYMENT_STATUSES]
+          }
+        },
+        select: {
+          id: true
+        },
+        take: 1
+      }
+    }
+  });
+
+  if (!order) {
+    return "not_found";
+  }
+
+  if (order.status === "cancelled") {
+    return "already_cancelled";
+  }
+
+  if (order.status !== "pending_payment" || order.payments.length > 0) {
+    return "blocked";
+  }
+
+  return "eligible";
+}
+
+export async function cancelCustomerPendingStoreOrder(input: {
+  orderId: string;
+  userId: string;
+}): Promise<CancelCustomerPendingStoreOrderResult> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const currentState = await getCustomerCancellationState(input.orderId, input.userId);
+
+    if (currentState !== "eligible") {
+      return currentState;
+    }
+
+    try {
+      const released = await releaseStoreOrderReservation({
+        candidate: {
+          id: input.orderId,
+          status: "pending_payment"
+        },
+        userId: input.userId,
+        actorId: input.userId,
+        source: "customer_cancellation"
+      });
+
+      if (released) {
+        return "cancelled";
+      }
+    } catch (error) {
+      if (!isPrismaTransactionConflict(error)) {
+        throw error;
+      }
+    }
+
+    const latestState = await getCustomerCancellationState(input.orderId, input.userId);
+
+    if (latestState !== "eligible") {
+      return latestState;
+    }
+  }
+
+  throw new StoreReservationReleaseConflictError();
 }
 
 export async function releaseExpiredStoreOrderReservations(
@@ -331,7 +443,11 @@ export async function releaseExpiredStoreOrderReservations(
           ? pendingPaymentCutoff
           : paymentReviewCutoff;
 
-      if (await releaseExpiredStoreOrderReservation(releasableCandidate, cutoff)) {
+      if (await releaseStoreOrderReservation({
+        candidate: releasableCandidate,
+        cutoff,
+        source: "expiration"
+      })) {
         released += 1;
       } else {
         skipped += 1;

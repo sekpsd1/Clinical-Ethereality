@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const reservationMocks = vi.hoisted(() => ({
   candidateFindMany: vi.fn(),
+  customerOrderFindFirst: vi.fn(),
   prismaTransaction: vi.fn(),
   writeAuditLog: vi.fn()
 }));
@@ -10,7 +11,8 @@ const reservationMocks = vi.hoisted(() => ({
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     order: {
-      findMany: reservationMocks.candidateFindMany
+      findMany: reservationMocks.candidateFindMany,
+      findFirst: reservationMocks.customerOrderFindFirst
     },
     $transaction: reservationMocks.prismaTransaction
   }
@@ -23,6 +25,7 @@ vi.mock("@/lib/audit/audit-log", () => ({
 import {
   aggregateOrderItemQuantities,
   assertStorePendingOrderCapacity,
+  cancelCustomerPendingStoreOrder,
   getStorePaymentReviewExpiresAt,
   getStoreReservationExpiresAt,
   isStorePaymentReviewExpired,
@@ -91,6 +94,7 @@ function useReleaseTransaction(tx: ReturnType<typeof createReleaseTransaction>) 
 describe("Store reservation lifecycle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    reservationMocks.customerOrderFindFirst.mockResolvedValue(null);
     reservationMocks.candidateFindMany.mockResolvedValue([
       {
         id: "order-1",
@@ -418,6 +422,233 @@ describe("Store reservation lifecycle", () => {
 
     expect(results.reduce((total, result) => total + result.released, 0)).toBe(1);
     expect(results.reduce((total, result) => total + result.skipped, 0)).toBe(1);
+    expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.payment.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.shipmentTracking.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
+    expect(reservationMocks.writeAuditLog).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Customer cancellation of unpaid Store orders", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    reservationMocks.candidateFindMany.mockResolvedValue([
+      {
+        id: "order-1",
+        status: "pending_payment"
+      }
+    ]);
+  });
+
+  it("does not reveal or mutate an order owned by another customer", async () => {
+    reservationMocks.customerOrderFindFirst.mockResolvedValue(null);
+
+    await expect(
+      cancelCustomerPendingStoreOrder({
+        orderId: "order-1",
+        userId: "customer-2"
+      })
+    ).resolves.toBe("not_found");
+
+    expect(reservationMocks.customerOrderFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: "order-1",
+        userId: "customer-2"
+      },
+      select: expect.any(Object)
+    });
+    expect(reservationMocks.prismaTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each(["payment_review", "paid", "preparing", "shipped", "delivered", "refunded"] as const)(
+    "blocks customer cancellation when the latest order status is %s",
+    async (status) => {
+      reservationMocks.customerOrderFindFirst.mockResolvedValue({
+        status,
+        payments: []
+      });
+
+      await expect(
+        cancelCustomerPendingStoreOrder({
+          orderId: "order-1",
+          userId: "customer-1"
+        })
+      ).resolves.toBe("blocked");
+
+      expect(reservationMocks.prismaTransaction).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["verified", "refunded"] as const)(
+    "blocks a pending-payment order that already has a %s payment",
+    async (paymentStatus) => {
+      reservationMocks.customerOrderFindFirst.mockResolvedValue({
+        status: "pending_payment",
+        payments: [{ id: `payment-${paymentStatus}` }]
+      });
+
+      await expect(
+        cancelCustomerPendingStoreOrder({
+          orderId: "order-1",
+          userId: "customer-1"
+        })
+      ).resolves.toBe("blocked");
+
+      expect(reservationMocks.prismaTransaction).not.toHaveBeenCalled();
+    }
+  );
+
+  it("uses the shared CAS release path for stock, pending payment/shipment, audit, and notification", async () => {
+    reservationMocks.customerOrderFindFirst.mockResolvedValue({
+      status: "pending_payment",
+      payments: []
+    });
+    const tx = createReleaseTransaction();
+    useReleaseTransaction(tx);
+
+    await expect(
+      cancelCustomerPendingStoreOrder({
+        orderId: "order-1",
+        userId: "customer-1"
+      })
+    ).resolves.toBe("cancelled");
+
+    expect(tx.order.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "order-1",
+          status: "pending_payment",
+          userId: "customer-1"
+        }
+      })
+    );
+    expect(tx.order.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "order-1",
+          status: "pending_payment",
+          userId: "customer-1",
+          payments: {
+            none: {
+              status: {
+                in: ["verified", "refunded"]
+              }
+            }
+          }
+        })
+      })
+    );
+    expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.payment.updateMany).toHaveBeenCalledWith({
+      where: {
+        orderId: "order-1",
+        status: {
+          notIn: ["verified", "refunded"]
+        }
+      },
+      data: {
+        status: "rejected"
+      }
+    });
+    expect(tx.shipmentTracking.updateMany).toHaveBeenCalledWith({
+      where: {
+        orderId: "order-1",
+        status: "pending"
+      },
+      data: {
+        status: "cancelled"
+      }
+    });
+    expect(tx.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "customer-1",
+        metadataJson: expect.objectContaining({
+          orderId: "order-1",
+          reason: "customer_cancelled_unpaid_order"
+        })
+      })
+    });
+    expect(reservationMocks.writeAuditLog).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        actorId: "customer-1",
+        action: "order.customer_cancel_unpaid",
+        entityId: "order-1",
+        metadata: expect.objectContaining({
+          releasedInventory: {
+            "product-1": 3
+          },
+          cancelledShipments: 1,
+          rejectedPayments: 1
+        })
+      })
+    );
+  });
+
+  it("is idempotent when the customer repeats cancellation", async () => {
+    reservationMocks.customerOrderFindFirst
+      .mockResolvedValueOnce({
+        status: "pending_payment",
+        payments: []
+      })
+      .mockResolvedValueOnce({
+        status: "cancelled",
+        payments: []
+      });
+    const tx = createReleaseTransaction();
+    useReleaseTransaction(tx);
+
+    await expect(
+      cancelCustomerPendingStoreOrder({ orderId: "order-1", userId: "customer-1" })
+    ).resolves.toBe("cancelled");
+    await expect(
+      cancelCustomerPendingStoreOrder({ orderId: "order-1", userId: "customer-1" })
+    ).resolves.toBe("already_cancelled");
+
+    expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.payment.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.shipmentTracking.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
+    expect(reservationMocks.writeAuditLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases stock once when customer cancellation races the global cleanup worker", async () => {
+    let currentStatus: "pending_payment" | "cancelled" = "pending_payment";
+    reservationMocks.customerOrderFindFirst.mockImplementation(async () => ({
+      status: currentStatus,
+      payments: []
+    }));
+    const tx = createReleaseTransaction();
+    tx.order.findFirst.mockImplementation(async () =>
+      currentStatus === "pending_payment"
+        ? {
+            id: "order-1",
+            userId: "customer-1",
+            status: "pending_payment",
+            createdAt: new Date("2026-07-30T08:00:00.000Z"),
+            updatedAt: new Date("2026-07-30T08:00:00.000Z"),
+            items: [{ productId: "product-1", quantity: 2 }]
+          }
+        : null
+    );
+    tx.order.updateMany.mockImplementation(async () => {
+      if (currentStatus === "cancelled") {
+        return { count: 0 };
+      }
+
+      currentStatus = "cancelled";
+      return { count: 1 };
+    });
+    useReleaseTransaction(tx);
+
+    const [customerResult, cleanupResult] = await Promise.all([
+      cancelCustomerPendingStoreOrder({ orderId: "order-1", userId: "customer-1" }),
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") })
+    ]);
+
+    expect(["cancelled", "already_cancelled"]).toContain(customerResult);
+    expect(cleanupResult.released + cleanupResult.skipped).toBe(1);
     expect(tx.inventory.updateMany).toHaveBeenCalledTimes(1);
     expect(tx.payment.updateMany).toHaveBeenCalledTimes(1);
     expect(tx.shipmentTracking.updateMany).toHaveBeenCalledTimes(1);
