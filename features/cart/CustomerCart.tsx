@@ -20,8 +20,8 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <CartHeader itemCount={data.itemCount} />
 
-      <main className="mx-auto w-full max-w-mobile space-y-6 px-6 py-7">
-        <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
+      <main className="mx-auto w-full max-w-mobile space-y-5 px-4 py-5">
+        <section className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/70">Cart</p>
           <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-primary">ตะกร้าสินค้า</h1>
           <div className="mt-5 flex items-center justify-between rounded-[18px] bg-primary/5 px-4 py-3">
@@ -50,7 +50,7 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
               ))}
             </section>
 
-            <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
+            <section className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-bold text-[#3e494a]">Subtotal</span>
                 <span className="text-xl font-extrabold text-primary">{data.subtotal}</span>
@@ -65,7 +65,7 @@ export function CustomerCart({ data, cartStatus }: { data: CartData; cartStatus?
               ) : (
                 <Link
                   href="/store/checkout"
-                  className="mt-5 flex h-14 w-full items-center justify-center rounded-full bg-primary-gradient text-base font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
+                  className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-primary-gradient text-sm font-extrabold text-white shadow-[0_12px_24px_-8px_rgba(0,96,103,0.4)] active:scale-[0.98]"
                 >
                   ไปชำระเงิน
                 </Link>
@@ -119,7 +119,7 @@ function StaleCartNotice({ items }: { items: StaleCartItem[] }) {
 function CartHeader({ itemCount }: { itemCount: number }) {
   return (
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_40px_40px_-15px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
-      <div className="mx-auto flex h-16 w-full max-w-mobile items-center justify-between px-7">
+      <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <Link href="/store" aria-label="Back to store" className="text-primary">
             <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.4} />
@@ -141,7 +141,7 @@ function CartHeader({ itemCount }: { itemCount: number }) {
 
 function CartItemCard({ item }: { item: CartItem }) {
   return (
-    <article className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
+    <article className="rounded-[24px] border border-white/40 bg-white/70 p-4 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="truncate text-base font-extrabold text-[#191c1e]">{item.name}</h2>
@@ -154,7 +154,7 @@ function CartItemCard({ item }: { item: CartItem }) {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between rounded-[18px] bg-white/80 px-4 py-3">
+      <div className="mt-4 flex items-center justify-between rounded-[18px] bg-white/80 px-4 py-2.5">
         <QuantityForm item={item} quantity={Math.max(item.quantity - 1, 0)} label="ลดจำนวน">
           <Minus aria-hidden="true" className="size-4" />
         </QuantityForm>
@@ -172,7 +172,7 @@ function QuantityForm({ item, quantity, label, children }: { item: CartItem; qua
     <form action={updateCartItemAction}>
       <input type="hidden" name="slug" value={item.slug} />
       <input type="hidden" name="quantity" value={quantity} />
-      <button type="submit" aria-label={label} className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <button type="submit" aria-label={label} className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
         {children}
       </button>
     </form>

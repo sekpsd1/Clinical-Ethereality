@@ -347,6 +347,7 @@
 - [x] Verify footer navigation consistency across screens
 - [x] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [x] Verify mobile-first LINE LIFF viewport behavior
+- [x] Complete Customer mobile UI polish pass 1 for Consult, Store, Cart, Checkout, and Profile while preserving Stitch layout, tokens, FooterNav, and existing flows
 - [x] Add integration tests for protected workflows
 - [x] Add Playwright smoke tests
 - [x] Add readable Thai localhost team testing guide for customer, doctor, pharmacist, and admin flows

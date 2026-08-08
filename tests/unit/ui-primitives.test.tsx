@@ -438,7 +438,7 @@ describe("Stitch UI primitives", () => {
 
     expect(html).toContain('href="/profile/shipping-addresses"');
     expect(html).toContain("Shipping addresses");
-    expect(html).toContain("min-h-[118px]");
+    expect(html).toContain("min-h-24");
     expect(html).toContain("bg-[#e8fbf7]");
     expect(html).toContain('fill="#006067"');
     expect(html).toContain("lucide-chevron-right");

@@ -8,7 +8,7 @@ const filterChips = ["ตรวจ HPV", "สูตินรีเวช", "Tele
 export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
   return (
     <section className="flex flex-col gap-4">
-      <label className="flex h-14 items-center rounded-full bg-[#e6e8ea] px-4 text-[14px] text-[#3e494a]/60">
+      <label className="flex min-h-12 items-center rounded-full bg-[#e6e8ea] px-4 text-sm text-[#3e494a]/60">
         <Search aria-hidden="true" className="mr-3 size-[18px] shrink-0 text-[#7d8a8b]" />
         <span className="truncate">ค้นหาชื่อคุณหมอหรือความเชี่ยวชาญ...</span>
       </label>
@@ -35,8 +35,8 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
             type="button"
             className={
               index === 0
-                ? "h-[30px] shrink-0 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
-                : "h-[30px] shrink-0 rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
+                ? "min-h-8 shrink-0 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
+                : "min-h-8 shrink-0 rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
             }
           >
             {chip}
@@ -55,7 +55,7 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
 
 function DoctorCard({ doctor }: { doctor: ConsultDoctorListDoctor }) {
   return (
-    <article className="flex min-h-[106px] gap-3 overflow-hidden rounded-[12px] border border-white/40 bg-white/70 p-[13px] shadow-doctor backdrop-blur-card">
+    <article className="flex min-h-[112px] gap-3 overflow-hidden rounded-[12px] border border-white/40 bg-white/70 p-3 shadow-doctor backdrop-blur-card">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-lg">
         <DoctorAvatar src={doctor.imageSrc} alt={doctor.name} />
       </div>
@@ -88,7 +88,7 @@ function DoctorCard({ doctor }: { doctor: ConsultDoctorListDoctor }) {
           <p className="text-xs font-bold leading-4 text-primary">{doctor.price}</p>
           <Link
             href={doctor.bookingHref}
-            className="inline-flex h-[27px] min-w-[84px] items-center justify-center rounded-full bg-primary-gradient px-3 text-center text-[10px] font-bold leading-none text-white shadow-chip"
+            className="inline-flex min-h-9 min-w-[88px] items-center justify-center rounded-full bg-primary-gradient px-3 text-center text-[10px] font-bold leading-none text-white shadow-chip"
           >
             จองคำปรึกษา
           </Link>
