@@ -45,7 +45,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
   }
 
   return (
-    <form action={createConsultationBookingAction} className="space-y-8">
+    <form action={createConsultationBookingAction} className="space-y-6">
       <CalendarPicker dates={availableDates} selectedDate={selectedDate} onSelectDate={selectDate} enabled={hasRealSlots} />
 
       <section className="flex flex-col gap-5">
@@ -95,10 +95,10 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
                 aria-pressed={isSelected}
                 className={
                   isSelected
-                    ? "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#007b83] px-3 py-2 text-left text-white shadow-selected-slot ring-2 ring-white"
+                  ? "flex min-h-[72px] flex-col justify-center rounded-lg bg-[#007b83] px-3 py-2 text-left text-white shadow-selected-slot ring-2 ring-white"
                     : isBooked
-                      ? "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#eceff1] px-3 py-2 text-left text-[#7b8586] opacity-75"
-                      : "flex min-h-[78px] flex-col justify-center rounded-lg bg-[#f2f4f6] px-3 py-2 text-left text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
+                      ? "flex min-h-[72px] flex-col justify-center rounded-lg bg-[#eceff1] px-3 py-2 text-left text-[#7b8586] opacity-75"
+                      : "flex min-h-[72px] flex-col justify-center rounded-lg bg-[#f2f4f6] px-3 py-2 text-left text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
                 }
               >
                 <span className="text-xs font-bold">
@@ -112,11 +112,11 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
           })}
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-7">
+        <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-4">
           <button
             type="submit"
             disabled={!hasBookableSlots || !selectedSlot}
-            className="flex h-16 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-lg font-bold leading-7 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-base font-bold leading-6 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />
             ยืนยันการจอง

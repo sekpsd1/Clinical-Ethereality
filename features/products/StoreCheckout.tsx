@@ -86,7 +86,7 @@ export function StoreCheckout({
     <div className="min-h-dvh w-full overflow-x-hidden bg-[radial-gradient(circle_at_top_right,#e0f2f1_0%,#f7f9fb_100%)] pb-8 text-[#191c1e]">
       <CheckoutHeader />
 
-      <main className="mx-auto flex w-full max-w-mobile flex-col gap-8 px-6 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8">
+      <main className="mx-auto flex w-full max-w-mobile flex-col gap-6 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6">
         {items.length > 0 ? (
           <section className="space-y-6">
             <h1 className="px-1 text-xl font-extrabold tracking-tight text-primary">ตรวจสอบรายการสั่งซื้อ</h1>
@@ -99,7 +99,7 @@ export function StoreCheckout({
         ) : null}
 
         {items.length > 0 ? (
-          <section className="rounded-[24px] border border-white/40 bg-white/70 p-6 shadow-[0_20px_50px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
+          <section className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_20px_50px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">Order total</p>
@@ -155,7 +155,7 @@ function mapCartItemToCheckoutItem(item: CartItem): CheckoutItem {
 function CheckoutHeader() {
   return (
     <header className="sticky top-0 z-header bg-white/70 shadow-[0_40px_40px_-15px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
-      <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between px-7">
+      <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <Link href="/store/cart" aria-label="กลับไปที่ตะกร้า" className="text-primary">
             <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={2.4} />
@@ -182,7 +182,7 @@ function CheckoutBlockedState({ reason }: { reason: StoreCheckoutBlockReason }) 
         : "กลับไปตรวจสอบตะกร้า";
 
   return (
-    <section className="rounded-[24px] border border-[#ba1a1a]/15 bg-white/75 p-6 text-center shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
+    <section className="rounded-[24px] border border-[#ba1a1a]/15 bg-white/75 p-5 text-center shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
       <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#fff1f0] text-[#93000a]">
         <AlertTriangle aria-hidden="true" className="size-5" />
       </span>

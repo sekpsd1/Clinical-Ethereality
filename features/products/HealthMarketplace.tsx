@@ -27,27 +27,27 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
     : [];
 
   return (
-    <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-6 pb-8 text-[#3e494a]">
+    <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-4 pb-8 text-[#3e494a]">
       <MarketplaceHeader />
 
-      <section className="pt-36">
-        <h1 className="max-w-[350px] text-[31px] font-extrabold leading-[1.18] tracking-normal text-primary">
+      <section className="pt-28">
+        <h1 className="max-w-[350px] text-[28px] font-extrabold leading-[1.2] tracking-normal text-primary">
           ดูแลสุขภาพคุณ
           <br />
           <span className="text-[#191c1e]">ด้วยความใส่ใจระดับพรีเมียม</span>
         </h1>
-        <p className="mt-5 max-w-[292px] text-[16px] leading-7 text-[#3e494a]">
+        <p className="mt-4 max-w-[292px] text-[15px] leading-6 text-[#3e494a]">
           สัมผัสประสบการณ์การดูแลสุขภาพที่เข้าถึงง่ายและเป็นส่วนตัว
         </p>
       </section>
 
-      <section className="mt-14 grid grid-cols-2 gap-4">
+      <section className="mt-10 grid grid-cols-2 gap-3">
         {categories.map((category) => (
           <CategoryCard key={category.label} category={category} />
         ))}
       </section>
 
-      <section className="mt-14">
+      <section className="mt-10">
         <div className="flex items-end justify-between">
           <h2 className="text-[25px] font-extrabold leading-8 text-primary">สินค้าแนะนำ</h2>
           <Link href="/store" className="pb-1 text-xs font-semibold text-primary/60">
@@ -76,7 +76,7 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
           />
         ) : (
           <>
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-2 gap-3">
               {standardProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -93,20 +93,20 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
 function MarketplaceHeader() {
   return (
     <header className="fixed inset-x-0 top-0 z-header bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
-      <div className="mx-auto flex h-[114px] w-full max-w-mobile items-center justify-between gap-4 px-6">
-        <Link href="/store" className="text-[27px] font-extrabold leading-tight tracking-normal text-primary">
+      <div className="mx-auto flex h-[84px] w-full max-w-mobile items-center justify-between gap-3 px-4">
+        <Link href="/store" className="text-[21px] font-extrabold leading-tight tracking-normal text-primary">
           Clinical
           <br />
           Ethereality
         </Link>
 
-        <label className="flex h-[68px] min-w-0 flex-1 items-center gap-4 rounded-full bg-[#e6e8ea] px-6 text-[#6e797a]">
-          <Search aria-hidden="true" className="size-6 shrink-0 text-primary" strokeWidth={2.25} />
+        <label className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full bg-[#e6e8ea] px-4 text-[#6e797a]">
+          <Search aria-hidden="true" className="size-5 shrink-0 text-primary" strokeWidth={2.25} />
           <span className="truncate text-[16px] leading-6 text-[#9aa3a4]">ค้นหา...</span>
         </label>
 
         <Link href="/store/cart" aria-label="Cart" className="relative shrink-0 text-primary">
-          <ShoppingCart aria-hidden="true" className="size-9" strokeWidth={2.6} />
+          <ShoppingCart aria-hidden="true" className="size-7" strokeWidth={2.6} />
         </Link>
       </div>
     </header>
@@ -119,10 +119,10 @@ function CategoryCard({ category }: { category: Category }) {
   return (
     <button
       type="button"
-      className="flex min-h-[152px] flex-col items-center justify-center gap-5 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-5 text-center shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] transition-colors hover:bg-white"
+      className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 text-center shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] transition-colors hover:bg-white"
     >
-      <span className="relative flex size-[62px] items-center justify-center rounded-full bg-[#d0fbff]/50">
-        <Icon aria-hidden="true" className="size-8 text-primary" fill={category.icon === Leaf ? "#006067" : "none"} />
+      <span className="relative flex size-12 items-center justify-center rounded-full bg-[#d0fbff]/50">
+        <Icon aria-hidden="true" className="size-7 text-primary" fill={category.icon === Leaf ? "#006067" : "none"} />
         {category.locked ? (
           <span className="absolute bottom-1 right-0 flex size-5 items-center justify-center rounded-full bg-white text-[#3e494a] shadow-chip">
             <Lock aria-hidden="true" className="size-3" strokeWidth={3} />
@@ -136,7 +136,7 @@ function CategoryCard({ category }: { category: Category }) {
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <article className="flex min-h-[344px] flex-col rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-5 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+    <article className="flex min-h-[300px] flex-col rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
       <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-[#eceef0]">
         <ProductMedia product={product} />
         {product.requiresPrescription ? (
@@ -146,16 +146,16 @@ function ProductCard({ product }: { product: Product }) {
         ) : null}
       </div>
 
-      <div className="mt-5 min-w-0">
+      <div className="mt-4 min-w-0">
         <p className="truncate text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="truncate text-[18px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
-        <p className="mt-2 text-[23px] font-extrabold leading-7 text-primary">{product.price}</p>
+        <h3 className="truncate text-base font-bold leading-5 text-[#191c1e]">{product.name}</h3>
+        <p className="mt-1.5 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
       </div>
 
       <Link
         href={product.href}
-        className="mt-auto flex h-10 items-center justify-center rounded-full bg-primary-gradient px-4 text-[12px] font-bold text-white shadow-chip"
+        className="mt-auto flex min-h-11 items-center justify-center rounded-full bg-primary-gradient px-4 text-xs font-bold text-white shadow-chip"
       >
         {product.cta}
       </Link>
@@ -165,20 +165,20 @@ function ProductCard({ product }: { product: Product }) {
 
 function FeaturedProductCard({ product }: { product: Product }) {
   return (
-    <article className="mt-6 flex min-h-[246px] gap-8 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-5 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+    <article className="mt-5 flex min-h-[220px] gap-4 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
       <div className="relative aspect-square w-[46%] max-w-[168px] shrink-0 overflow-hidden rounded-[16px] bg-[#eceef0]">
         <ProductMedia product={product} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col py-1">
         <p className="text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="text-[19px] font-bold leading-7 text-[#191c1e]">{product.name}</h3>
-        <p className="mt-3 text-[13px] leading-5 text-[#3e494a]">{product.description}</p>
-        <p className="mt-4 text-[25px] font-extrabold leading-8 text-primary">{product.price}</p>
+        <h3 className="text-[17px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
+        <p className="mt-2 text-xs leading-5 text-[#3e494a]">{product.description}</p>
+        <p className="mt-3 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
         <Link
           href={product.href}
-          className="mt-auto flex h-10 w-[142px] items-center justify-center rounded-full bg-primary-gradient px-4 text-[12px] font-bold text-white shadow-chip"
+          className="mt-auto flex min-h-11 w-[132px] items-center justify-center rounded-full bg-primary-gradient px-4 text-xs font-bold text-white shadow-chip"
         >
           {product.cta}
         </Link>
