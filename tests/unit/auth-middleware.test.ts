@@ -184,6 +184,15 @@ describe("protected-route transparent session refresh", () => {
     }
   });
 
+  it("forwards the exact protected URL to server-side role guards", async () => {
+    const path = "/admin/payments?status=pending&reviewer=me";
+    mocks.verifyAccessTokenAtEdge.mockResolvedValueOnce(validAccessClaims("admin"));
+
+    const response = await middleware(createRequest(path, { access: "valid-access" }));
+
+    expect(response.headers.get("x-middleware-request-x-clinical-auth-return-path")).toBe(path);
+  });
+
   it("refreshes once, then accepts the rotated access token without a redirect loop", async () => {
     const path = "/doctor/notifications?from=loop-check";
     mocks.verifyAccessTokenAtEdge.mockRejectedValueOnce(new mocks.InvalidAccessTokenError());
