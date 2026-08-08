@@ -348,6 +348,7 @@
 - [x] Verify final footer labels: `Consult`, `Store`, `Community`, `Profile`
 - [x] Verify mobile-first LINE LIFF viewport behavior
 - [x] Complete Customer mobile UI polish pass 1 for Consult, Store, Cart, Checkout, and Profile while preserving Stitch layout, tokens, FooterNav, and existing flows
+- [x] Deploy Customer mobile UI polish pass 1 at `43debd4` and pass read-only Production UAT with `sekmon` at `390×844`: Consult, Store, Cart, Checkout, and Profile have no horizontal overflow; Store/Cart/Checkout/Profile retain FooterNav; Consult hides FooterNav behind the assessment gate; no UAT data was created or changed
 - [x] Add integration tests for protected workflows
 - [x] Add Playwright smoke tests
 - [x] Add readable Thai localhost team testing guide for customer, doctor, pharmacist, and admin flows

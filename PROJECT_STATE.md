@@ -434,6 +434,7 @@ Completed in the current frontend pass:
 - The localhost dev server was stopped after validation completed.
 
 - Customer mobile UI polish pass 1 was completed in the isolated local worktree `codex/customer-ui-polish` from `origin/main`. At the 390x844 viewport, the first pass reduces oversized Store and Profile headers, card density, typography, and excess spacing; gives Consult booking/doctor cards and Store primary actions practical mobile sizing; tightens Cart and Checkout gutters; keeps existing safe-area padding and the shared FooterNav intact; and adds wrapping to the Doctor booking specialty row to avoid narrow-screen overflow. No Stitch layout, color/token, route, database, Prisma, payment, business logic, Production setting, or user-owned source change was modified.
+- Customer mobile UI polish pass 1 was deployed to Production at commit `43debd4`. Read-only Production mobile UAT with Customer `sekmon` passed at `390×844` for Consult, Store, Cart, Checkout, and Profile: no horizontal overflow was observed; Store, Cart, Checkout, and Profile retained the shared FooterNav; and Consult correctly hid FooterNav behind the assessment gate. The UAT did not create or modify data.
 
 Known frontend caveats:
 
