@@ -11,7 +11,11 @@ import {
   resolveDoctorConsultationDurations,
   type ConsultationBookingDurationAudit
 } from "@/features/doctor/consultations/duration";
-import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
+import type {
+  DoctorConsultationItem,
+  DoctorConsultationsData,
+  DoctorPrescriptionProduct
+} from "@/features/doctor/consultations/types";
 
 type ConsultationWithDetails = Awaited<ReturnType<typeof getConsultationsForDoctor>>[number];
 
@@ -71,6 +75,39 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
       },
       payment: true
     }
+  });
+}
+
+async function getPrescriptionProductsForDoctor(): Promise<DoctorPrescriptionProduct[]> {
+  const products = await prisma.product.findMany({
+    where: {
+      status: "active",
+      requiresPrescription: true
+    },
+    orderBy: {
+      name: "asc"
+    },
+    select: {
+      id: true,
+      name: true,
+      inventory: {
+        select: {
+          quantity: true,
+          reservedQuantity: true
+        }
+      }
+    }
+  });
+
+  return products.flatMap((product) => {
+    const availableQuantity = Math.max(
+      (product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0),
+      0
+    );
+
+    return availableQuantity > 0
+      ? [{ id: product.id, name: product.name, availableQuantity }]
+      : [];
   });
 }
 
@@ -359,6 +396,7 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
     if (doctorId === null) {
       return {
         consultations: [],
+        prescriptionProducts: [],
         summary: {
           scheduled: 0,
           live: 0,
@@ -368,12 +406,16 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
       };
     }
 
-    const consultations = await getConsultationsForDoctor(doctorId);
+    const [consultations, prescriptionProducts] = await Promise.all([
+      getConsultationsForDoctor(doctorId),
+      getPrescriptionProductsForDoctor()
+    ]);
     const durationByConsultationId = await getBookedDurationSnapshots(consultations);
     const consultationItems = consultations.map((consultation) => mapConsultation(consultation, durationByConsultationId));
 
     return {
       consultations: consultationItems,
+      prescriptionProducts,
       summary: {
         scheduled: consultationItems.filter((consultation) => consultation.status === "scheduled").length,
         live: consultationItems.filter((consultation) => consultation.status === "live").length,
@@ -383,6 +425,7 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
   } catch {
     return {
       consultations: [],
+      prescriptionProducts: [],
       summary: {
         scheduled: 0,
         live: 0,

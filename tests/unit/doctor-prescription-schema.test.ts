@@ -6,9 +6,9 @@ describe("doctor structured prescription schema", () => {
     expect(
       submitPrescriptionSchema.safeParse({
         consultationId: "consultation-1",
-        medicationName: "Paracetamol",
+        productId: "product-paracetamol",
         dosage: "500 mg",
-        quantity: "10 tablets",
+        quantity: "10",
         instructions: "Take one tablet after meals",
         warnings: "",
         notes: "Follow up if fever persists"
@@ -20,9 +20,9 @@ describe("doctor structured prescription schema", () => {
     expect(
       submitPrescriptionSchema.safeParse({
         consultationId: "consultation-1",
-        medicationName: "Paracetamol",
+        productId: "product-paracetamol",
         dosage: "",
-        quantity: "10 tablets",
+        quantity: "10",
         instructions: ""
       }).success
     ).toBe(false);

@@ -54,6 +54,7 @@ describe("Doctor consultation queue duration", () => {
         consultation("completed", "30 นาที"),
         consultation("cancelled", "15 นาที")
       ],
+      prescriptionProducts: [],
       summary: {
         scheduled: 1,
         live: 1,
@@ -74,6 +75,7 @@ describe("Doctor consultation queue duration", () => {
   it("keeps the duration tile explicit when historic slot data is unavailable", () => {
     const data: DoctorConsultationsData = {
       consultations: [consultation("completed", "ยังไม่ระบุ")],
+      prescriptionProducts: [],
       summary: {
         scheduled: 0,
         live: 0,

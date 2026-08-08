@@ -6,6 +6,7 @@ export type PrescriptionOrderProduct = {
   priceLabel: string;
   stockLabel: string;
   availableQuantity: number;
+  prescribedQuantity: number;
 };
 
 export type PrescriptionOrderDetail = {
@@ -18,6 +19,7 @@ export type PrescriptionOrderDetail = {
   medicationSummary: string | null;
   linkedOrderCode: string | null;
   products: PrescriptionOrderProduct[];
+  isProductMappingComplete: boolean;
 };
 
 export type PrescriptionOrderData = {

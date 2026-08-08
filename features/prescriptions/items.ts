@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 export type PrescriptionMedicationItem = {
+  productId?: string;
   medicationName: string;
   dosage: string;
   quantity: string;
@@ -23,6 +24,7 @@ export function parsePrescriptionItems(value: Prisma.JsonValue | null | undefine
     }
 
     const medicationName = typeof item.medicationName === "string" ? item.medicationName.trim() : "";
+    const productId = typeof item.productId === "string" ? item.productId.trim() : "";
     const dosage = typeof item.dosage === "string" ? item.dosage.trim() : "";
     const quantity = typeof item.quantity === "string" ? item.quantity.trim() : "";
     const instructions = typeof item.instructions === "string" ? item.instructions.trim() : "";
@@ -34,6 +36,7 @@ export function parsePrescriptionItems(value: Prisma.JsonValue | null | undefine
 
     return [
       {
+        productId: productId || undefined,
         medicationName,
         dosage,
         quantity,

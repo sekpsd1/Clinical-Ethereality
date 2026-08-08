@@ -31,14 +31,35 @@ export async function submitPrescriptionAction(
 
   try {
     await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findFirst({
+        where: {
+          id: parsed.data.productId,
+          status: "active",
+          requiresPrescription: true
+        },
+        include: {
+          inventory: true
+        }
+      });
+
+      const availableQuantity = Math.max(
+        (product?.inventory?.quantity ?? 0) - (product?.inventory?.reservedQuantity ?? 0),
+        0
+      );
+
+      if (!product || availableQuantity < parsed.data.quantity) {
+        throw new Error("Selected prescription product is unavailable.");
+      }
+
       await issueDoctorPrescription(tx, {
         consultationId: parsed.data.consultationId,
         notes: parsed.data.notes ?? "",
         medications: [
           {
-            medicationName: parsed.data.medicationName,
+            productId: product.id,
+            medicationName: product.name,
             dosage: parsed.data.dosage,
-            quantity: parsed.data.quantity,
+            quantity: String(parsed.data.quantity),
             instructions: parsed.data.instructions,
             warnings: parsed.data.warnings || undefined
           }

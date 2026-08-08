@@ -40,19 +40,18 @@ function getPrescriptionForOrder(prescriptionId: string, patientId: string) {
   });
 }
 
-function getPrescriptionProducts() {
+function getPrescriptionProducts(productIds: string[]) {
   return prisma.product.findMany({
     where: {
+      id: {
+        in: productIds
+      },
       status: "active",
       requiresPrescription: true
     },
-    orderBy: {
-      updatedAt: "desc"
-    },
     include: {
       inventory: true
-    },
-    take: 20
+    }
   });
 }
 
@@ -83,7 +82,7 @@ function getAvailableQuantity(product: ProductRecord): number {
   return Math.max((product.inventory?.quantity ?? 0) - (product.inventory?.reservedQuantity ?? 0), 0);
 }
 
-function mapProduct(product: ProductRecord): PrescriptionOrderProduct {
+function mapProduct(product: ProductRecord, prescribedQuantity: number): PrescriptionOrderProduct {
   const availableQuantity = getAvailableQuantity(product);
 
   return {
@@ -95,13 +94,43 @@ function mapProduct(product: ProductRecord): PrescriptionOrderProduct {
       product.description ??
       "ผลิตภัณฑ์ที่ต้องใช้ใบสั่งยาจากแพทย์ก่อนสั่งซื้อ",
     priceLabel: formatMoney(product.price),
-    stockLabel: availableQuantity > 0 ? `พร้อมจัดส่ง ${availableQuantity} ชิ้น` : "สินค้าหมด",
-    availableQuantity
+    stockLabel:
+      availableQuantity >= prescribedQuantity
+        ? `พร้อมจัดส่ง ${availableQuantity} ชิ้น`
+        : `คงเหลือ ${availableQuantity} ชิ้น`,
+    availableQuantity,
+    prescribedQuantity
   };
 }
 
-function mapPrescription(prescription: PrescriptionRecord, products: ProductRecord[]): PrescriptionOrderDetail {
-  const linkedOrder = prescription.orderItems[0]?.order ?? null;
+function getPrescribedQuantities(itemsJson: PrescriptionRecord["itemsJson"]): Map<string, number> {
+  const quantities = new Map<string, number>();
+
+  for (const item of parsePrescriptionItems(itemsJson)) {
+    const quantity = Number(item.quantity);
+
+    if (!item.productId || !Number.isSafeInteger(quantity) || quantity <= 0) {
+      return new Map();
+    }
+
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + quantity);
+  }
+
+  return quantities;
+}
+
+function mapPrescription(
+  prescription: PrescriptionRecord,
+  products: ProductRecord[],
+  prescribedQuantities: Map<string, number>
+): PrescriptionOrderDetail {
+  const linkedOrder =
+    prescription.orderItems
+      .map((orderItem) => orderItem.order)
+      .find(
+        (order) =>
+          order.status !== "cancelled" && order.status !== "refunded",
+      ) ?? null;
 
   return {
     id: prescription.id,
@@ -113,7 +142,11 @@ function mapPrescription(prescription: PrescriptionRecord, products: ProductReco
     medicationSummary:
       parsePrescriptionItems(prescription.itemsJson).map(formatPrescriptionItem).join("\n") || null,
     linkedOrderCode: linkedOrder ? getOrderCode(linkedOrder.id) : null,
-    products: products.map(mapProduct)
+    isProductMappingComplete: prescribedQuantities.size > 0 && products.length === prescribedQuantities.size,
+    products: products.flatMap((product) => {
+      const prescribedQuantity = prescribedQuantities.get(product.id);
+      return prescribedQuantity ? [mapProduct(product, prescribedQuantity)] : [];
+    })
   };
 }
 
@@ -133,10 +166,14 @@ export async function getPrescriptionOrderData(
       };
     }
 
-    const products = isPrescriptionOrderReady(prescription.status) ? await getPrescriptionProducts() : [];
+    const prescribedQuantities = getPrescribedQuantities(prescription.itemsJson);
+    const products =
+      isPrescriptionOrderReady(prescription.status) && prescribedQuantities.size > 0
+        ? await getPrescriptionProducts([...prescribedQuantities.keys()])
+        : [];
 
     return {
-      prescription: mapPrescription(prescription, products)
+      prescription: mapPrescription(prescription, products, prescribedQuantities)
     };
   } catch {
     return {
