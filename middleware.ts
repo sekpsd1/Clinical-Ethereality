@@ -3,6 +3,7 @@ import { getRoleHomePath } from "@/features/auth/role-routing";
 import { InvalidAccessTokenError, verifyAccessTokenAtEdge } from "@/lib/auth/edge-jwt";
 import { authCookieNames } from "@/lib/auth/cookies";
 import { getPublicAppOrigin } from "@/lib/auth/line-oauth";
+import { authReturnPathHeader } from "@/lib/auth/return-path";
 import {
   InvalidRefreshSessionError,
   RefreshSessionConflictError,
@@ -67,6 +68,17 @@ function createRoleHomeRedirect(request: NextRequest, role: Role): NextResponse 
 function createRefreshedRequestRedirect(request: NextRequest): NextResponse {
   const destination = new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, getPublicAppOrigin(request.nextUrl.origin));
   return NextResponse.redirect(destination);
+}
+
+function createProtectedRequestContinuation(request: NextRequest): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(authReturnPathHeader, `${request.nextUrl.pathname}${request.nextUrl.search}`);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders
+    }
+  });
 }
 
 function getConcurrentRefreshRetryCount(request: NextRequest): number {
@@ -158,7 +170,7 @@ export async function middleware(request: NextRequest) {
       return clearRefreshRetryCookie(request, createRoleHomeRedirect(request, claims.role));
     }
 
-    return clearRefreshRetryCookie(request, NextResponse.next());
+    return clearRefreshRetryCookie(request, createProtectedRequestContinuation(request));
   } catch (error) {
     if (error instanceof InvalidAccessTokenError) {
       return refreshProtectedRequest(request, roleBoundary);

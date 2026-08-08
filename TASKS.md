@@ -91,7 +91,7 @@
 - [x] Implement persisted JWT refresh token revocation or re-authentication strategy
 - [x] Implement initial JWT refresh endpoint
 - [x] Refresh expired protected-route access tokens transparently in middleware, rotate refresh tokens with compare-and-swap and concurrent-request retry protection, preserve the exact path/query, and keep role-safe destinations for customer, doctor, pharmacist, and admin
-- [ ] Make server-side role guards accept a route-specific LINE Login return path instead of hard-coding `next=/admin`; track this separately because protected page navigation now refreshes in middleware before the layout guard runs
+- [x] Make server-side role guards accept a route-specific LINE Login return path instead of hard-coding `next=/admin`; middleware forwards the exact protected path/query to server rendering, while role guards retain safe role-home fallbacks for actions and non-routed calls
 - [x] Implement logout
 - [x] Implement session handling
 - [x] Add versioned legal and consent acceptance records
