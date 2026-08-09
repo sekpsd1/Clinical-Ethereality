@@ -103,24 +103,71 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
   );
   const apiUrl = env.SLIP_VERIFICATION_API_URL ?? getDefaultApiUrl("easyslip");
   const payload = getInputPayload(input);
-  const response = await fetch(`${apiUrl.replace(/\/$/, "")}/verify/bank`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-  const raw = (await response.json().catch(() => null)) as EasySlipResponse | null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.EASYSLIP_REQUEST_TIMEOUT_MS ?? 10_000);
+  let response: Response;
+  let raw: EasySlipResponse | null;
+
+  try {
+    response = await fetch(`${apiUrl.replace(/\/$/, "")}/verify/bank`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...payload,
+        checkDuplicate: true,
+        matchAccount: true,
+        matchAmount: input.amount
+      }),
+      signal: controller.signal
+    });
+    raw = (await response.json().catch(() => null)) as EasySlipResponse | null;
+  } catch {
+    return {
+      ok: false,
+      provider: "easyslip",
+      status: "provider_error",
+      transRef: null,
+      amount: null,
+      receiverName: null,
+      raw: null
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const data = raw?.data ?? null;
-  const receiverName = data?.receiver?.account?.name?.th ?? data?.receiver?.account?.name?.en ?? null;
-  const amount = typeof data?.amount?.amount === "number" ? data.amount.amount : null;
+  const slip = data?.rawSlip ?? null;
+  const receiverName = slip?.receiver?.account?.name?.th ?? slip?.receiver?.account?.name?.en ?? null;
+  const amount = typeof slip?.amount?.amount === "number" ? slip.amount.amount : null;
   const providerAccepted = Boolean(response.ok && raw?.success);
-  const hasRequiredVerificationData = Boolean(data?.transRef && amount !== null && receiverName?.trim());
+  const isProviderUnavailable =
+    response.status === 401 ||
+    response.status === 403 ||
+    response.status === 429 ||
+    response.status >= 500 ||
+    raw?.error?.code === "QUOTA_EXCEEDED" ||
+    raw?.error?.code === "API_SERVER_ERROR";
+  const hasRequiredVerificationData = Boolean(
+    slip?.transRef &&
+      amount !== null &&
+      receiverName?.trim() &&
+      data?.matchedAccount &&
+      typeof data?.isDuplicate === "boolean" &&
+      typeof data?.isAmountMatched === "boolean" &&
+      typeof data.amountInOrder === "number" &&
+      typeof data.amountInSlip === "number"
+  );
   const verified = Boolean(
     providerAccepted &&
       hasRequiredVerificationData &&
+      data?.isDuplicate === false &&
+      data.isAmountMatched === true &&
       isAmountMatch(amount, input.amount) &&
+      isAmountMatch(data?.amountInOrder ?? null, input.amount) &&
+      isAmountMatch(data?.amountInSlip ?? null, input.amount) &&
       isReceiverMatch(receiverName, expectedReceiver)
   );
 
@@ -130,13 +177,15 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
     status:
       verified
         ? "verified"
-        : !response.ok || (providerAccepted && !hasRequiredVerificationData)
+        : isProviderUnavailable || (providerAccepted && !hasRequiredVerificationData)
           ? "provider_error"
           : "rejected",
-    transRef: data?.transRef ?? null,
+    transRef: slip?.transRef ?? null,
     amount: typeof amount === "number" ? amount : null,
     receiverName,
-    raw
+    // Provider responses include QR payload and bank-account details. They are
+    // deliberately never returned to callers or written to application logs.
+    raw: null
   };
 }
 
@@ -194,16 +243,26 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
 
 type EasySlipResponse = {
   success?: boolean;
+  error?: {
+    code?: string;
+  };
   data?: {
-    transRef?: string;
-    amount?: {
-      amount?: number;
-    };
-    receiver?: {
-      account?: {
-        name?: {
-          th?: string;
-          en?: string;
+    isDuplicate?: boolean;
+    matchedAccount?: unknown | null;
+    amountInOrder?: number;
+    amountInSlip?: number;
+    isAmountMatched?: boolean;
+    rawSlip?: {
+      transRef?: string;
+      amount?: {
+        amount?: number;
+      };
+      receiver?: {
+        account?: {
+          name?: {
+            th?: string;
+            en?: string;
+          };
         };
       };
     };
