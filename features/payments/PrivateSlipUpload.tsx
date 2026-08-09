@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { CloudUpload, Loader2, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { paymentSlipMaxBytes, paymentSlipMimeTypes } from "@/features/payments/private-slip-policy";
 
 type PrivateSlipUploadProps =
@@ -15,6 +16,7 @@ function formatFileSize(byteSize: number): string {
 }
 
 export function PrivateSlipUpload({ consultationId, paymentId, referenceLabel }: PrivateSlipUploadProps) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -89,6 +91,7 @@ export function PrivateSlipUpload({ consultationId, paymentId, referenceLabel }:
 
       setStatus("success");
       setMessage("ได้รับสลิปแล้ว และส่งเข้าคิวให้ทีมงานตรวจสอบ");
+      router.refresh();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "ไม่สามารถส่งสลิปได้");
