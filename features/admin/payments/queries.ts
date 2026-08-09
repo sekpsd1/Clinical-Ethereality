@@ -165,7 +165,10 @@ function getPaymentEvidence(payment: PaymentWithContext) {
   const submittedEvidence = asRecord(payload.submittedEvidence as Prisma.JsonValue | null | undefined);
   const source = getString(payload.verificationSource) ?? getString(payload.source);
   const resultStatus = getString(result.status);
-  const transRef = getString(result.transRef);
+  const transRef =
+    payment.normalizedTransactionReference ??
+    getString(result.transRef) ??
+    getString(payload.transactionReference);
   const receiverName = getString(result.receiverName);
   const verifiedAmount = formatOptionalMoney(getNumber(result.amount));
   const providerLabel = getProviderLabel(source);

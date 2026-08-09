@@ -18,27 +18,36 @@ const initialActionState: AdminPaymentActionState = {
 };
 
 export function AdminPaymentReviewButtons({ payment }: AdminPaymentReviewButtonsProps) {
-  const [rejectState, rejectAction] = useActionState(reviewPaymentAction, initialActionState);
-  const [verifyState, verifyAction] = useActionState(reviewPaymentAction, initialActionState);
-  const actionState = verifyState.status !== "idle" ? verifyState : rejectState;
+  const [actionState, formAction] = useActionState(reviewPaymentAction, initialActionState);
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-2">
+    <form action={formAction} className="flex shrink-0 flex-col items-end gap-2">
+      <input type="hidden" name="paymentId" value={payment.id} />
+      <label className="w-full text-[10px] font-bold text-muted" htmlFor={`transaction-reference-${payment.id}`}>
+        เลขอ้างอิงธนาคาร (ต้องระบุเมื่อยืนยัน)
+      </label>
+      <input
+        id={`transaction-reference-${payment.id}`}
+        name="transactionReference"
+        type="text"
+        inputMode="text"
+        autoComplete="off"
+        maxLength={255}
+        className="w-full rounded-[8px] border border-border bg-white px-3 py-2 text-xs font-semibold text-text outline-none focus:border-primary"
+      />
       <div className="flex gap-2">
-        <form action={rejectAction}>
-          <input type="hidden" name="paymentId" value={payment.id} />
-          <input type="hidden" name="status" value="rejected" />
-          <ActionIconButton
-            ariaLabel={`ปฏิเสธสลิป ${payment.orderCode}`}
-            className="border border-danger/20 bg-danger/10 text-danger"
-            icon="reject"
-          />
-        </form>
-        <form action={verifyAction}>
-          <input type="hidden" name="paymentId" value={payment.id} />
-          <input type="hidden" name="status" value="verified" />
-          <ActionIconButton ariaLabel={`ยืนยันสลิป ${payment.orderCode}`} className="bg-primary text-white" icon="verify" />
-        </form>
+        <ActionIconButton
+          ariaLabel={`ปฏิเสธสลิป ${payment.orderCode}`}
+          className="border border-danger/20 bg-danger/10 text-danger"
+          icon="reject"
+          status="rejected"
+        />
+        <ActionIconButton
+          ariaLabel={`ยืนยันสลิป ${payment.orderCode}`}
+          className="bg-primary text-white"
+          icon="verify"
+          status="verified"
+        />
       </div>
       {actionState.status !== "idle" ? (
         <p
@@ -51,18 +60,20 @@ export function AdminPaymentReviewButtons({ payment }: AdminPaymentReviewButtons
           {actionState.message}
         </p>
       ) : null}
-    </div>
+    </form>
   );
 }
 
 function ActionIconButton({
   ariaLabel,
   className,
-  icon
+  icon,
+  status
 }: {
   ariaLabel: string;
   className: string;
   icon: "reject" | "verify";
+  status: "rejected" | "verified";
 }) {
   const { pending } = useFormStatus();
   const Icon = icon === "verify" ? CheckCircle2 : XCircle;
@@ -70,6 +81,8 @@ function ActionIconButton({
   return (
     <button
       type="submit"
+      name="status"
+      value={status}
       className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
       aria-label={ariaLabel}
       disabled={pending}

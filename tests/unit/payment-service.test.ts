@@ -480,10 +480,7 @@ describe("payment review service", () => {
         status: {
           in: ["verified", "refunded"]
         },
-        verificationPayload: {
-          path: "$.result.transRef",
-          equals: "transfer-1"
-        }
+        normalizedTransactionReference: "TRANSFER1"
       },
       select: {
         id: true
@@ -639,6 +636,7 @@ describe("payment review service", () => {
           updatedAt: claimedAt
         },
         data: expect.objectContaining({
+          normalizedTransactionReference: "TRANSFER1",
           verificationPayload: expect.objectContaining({
             checkoutRequestId: "checkout-1",
             cartFingerprint: "cart-1",
@@ -734,6 +732,13 @@ describe("payment review service", () => {
         status: "pending_payment"
       }
     });
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          normalizedTransactionReference: null
+        })
+      })
+    );
   });
 
   it("aborts verified payment finalization when reserved stock cannot be consumed", async () => {
@@ -858,7 +863,8 @@ describe("payment review service", () => {
     await applyManualPaymentReview(tx, {
       actorId: "admin-1",
       paymentId: "payment-1",
-      status
+      status,
+      transactionReference: status === "verified" ? "manual-reference-1" : undefined
     });
 
     expect(rewardPointCreate).toHaveBeenCalledTimes(expectedRewardCreates);
@@ -872,6 +878,13 @@ describe("payment review service", () => {
           createdAt: {
             gt: expect.any(Date)
           }
+        })
+      })
+    );
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          normalizedTransactionReference: status === "verified" ? "MANUALREFERENCE1" : null
         })
       })
     );
