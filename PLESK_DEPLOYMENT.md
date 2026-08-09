@@ -184,6 +184,22 @@ builds on Linux and copies required static/public files into
 Do not add `prisma db push` to deployment actions. Apply production schema
 changes separately with a reviewed backup and migration procedure.
 
+### Shared Plesk Prisma migrations
+
+On a Shared Plesk plan, run Prisma only through the Node.js **Run Node.js
+commands** interface with the `npm` runner:
+
+```bash
+npm run db:migrate:status
+npm run db:migrate:deploy
+```
+
+Run the status command before and after one approved deploy. The Plesk
+application environment must provide `DATABASE_URL`; never paste it into a
+command, command history, temporary `.env` file, Scheduled Task, source file,
+or documentation. If the runner does not receive the application environment,
+stop and resolve that hosting limitation before applying a migration.
+
 ## Plesk Start And Restart
 
 In Plesk:
@@ -249,6 +265,9 @@ If the app fails to start, check these in order:
 - Use production MySQL/MariaDB only for production.
 - Do not seed synthetic demo records into production.
 - Run schema changes only after a backup is confirmed.
+- On Shared Plesk, use `npm run db:migrate:status` and
+  `npm run db:migrate:deploy` through the Node.js command runner; do not invoke
+  Prisma directly from an ad-hoc shell command.
 - Until formal Prisma migrations are finalized, treat `prisma db push` as a controlled release step and do not run it casually against production.
 - Confirm `npx prisma validate` before deployment.
 
