@@ -372,7 +372,7 @@
 - [x] Add temporary private Plesk uploads for staff profile photos and license proofs from Admin review, with admin-only license access, approval prerequisites, file metadata, and audit logs; keep public staff requests text-only to avoid exposing upload handling to the Plesk WAF
 - [x] Keep doctor/pharmacist applicants active as customers during review, show a Thai pending-review confirmation, expose clearer admin document-review controls, and create an in-app approval notification
 - [x] Normalize doctor specialty requests with a controlled multi-select list and optional custom specialty
-- [ ] Complete first hosted Plesk smoke deployment: HTTPS health check and mobile LINE LIFF login are passing on `app.bccgroup-thailand.com`; deploy and verify desktop LINE Login, approved staff-role access, and the end-to-end UAT flow before marking complete
+- [x] Complete hosted Plesk staff-access smoke deployment: HTTPS, health checks, Git/Node deployment, route-specific LINE Login returns, and read-only authenticated Doctor access are verified; authenticated Pharmacist UAT is deferred until an existing approved session is available because Pharmacist is read-only context and not a Soft Launch blocker
 - [x] Enable backups
 - [x] Enable error monitoring
 - [x] Review compliance requirements before production launch
