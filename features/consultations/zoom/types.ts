@@ -5,6 +5,7 @@ export type ZoomMeetingJoinData =
       meetingNumber: string;
       password: string;
       signature: string;
+      zak?: string;
       userName: string;
       leaveUrl: string;
     }

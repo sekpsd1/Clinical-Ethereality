@@ -4,13 +4,14 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
-  writeAuditLog: vi.fn()
+  writeAuditLog: vi.fn(),
+  env: {
+    ZOOM_WEBHOOK_SECRET: "webhook-secret" as string | undefined
+  }
 }));
 
 vi.mock("@/lib/env/schema", () => ({
-  getAppEnv: () => ({
-    ZOOM_WEBHOOK_SECRET: "webhook-secret"
-  })
+  getAppEnv: () => mocks.env
 }));
 
 vi.mock("@/lib/db/prisma", () => ({
@@ -44,6 +45,7 @@ function signedRequest(body: string, timestamp = String(Math.floor(Date.now() / 
 describe("Zoom webhook route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.env.ZOOM_WEBHOOK_SECRET = "webhook-secret";
   });
 
   it("rejects a request with an invalid signature before accessing the database", async () => {
@@ -84,6 +86,26 @@ describe("Zoom webhook route", () => {
       plainToken,
       encryptedToken: createHmac("sha256", "webhook-secret").update(plainToken).digest("hex")
     });
+  });
+
+  it("rejects expired signed requests before accessing the database", async () => {
+    const body = JSON.stringify({ event: "meeting.started" });
+    const timestamp = String(Math.floor(Date.now() / 1000) - 301);
+
+    const response = await POST(signedRequest(body, timestamp));
+
+    expect(response.status).toBe(401);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("fails safely when the webhook secret is missing", async () => {
+    mocks.env.ZOOM_WEBHOOK_SECRET = undefined;
+    const response = await POST(new NextRequest("http://localhost/api/webhooks/zoom", { method: "POST" }));
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(503);
+    expect(body.error).toBe("Zoom webhook is not configured.");
+    expect(JSON.stringify(body)).not.toContain("webhook-secret");
   });
 
   it("does not duplicate notifications or audit logs when Zoom retries an event", async () => {

@@ -3,6 +3,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 import { issueZoomMeetingSdkSignature } from "@/lib/zoom/meeting-sdk";
+import { getZoomHostZakIfConfigured } from "@/lib/zoom/meetings";
 import type { ZoomMeetingJoinData } from "@/features/consultations/zoom/types";
 
 export async function getZoomMeetingJoinData(consultationId?: string): Promise<ZoomMeetingJoinData> {
@@ -17,6 +18,15 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
       available: false,
       consultationId: consultationId ?? null,
       message: "ไม่พบเซสชันหรือห้อง Zoom ที่พร้อมใช้งาน",
+      leaveUrl
+    };
+  }
+
+  if (session.role !== "customer" && session.role !== "doctor" && session.role !== "admin") {
+    return {
+      available: false,
+      consultationId,
+      message: "บัญชีนี้ไม่มีสิทธิ์เข้าห้อง Zoom สำหรับการปรึกษา",
       leaveUrl
     };
   }
@@ -64,7 +74,8 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
       };
     }
 
-    const signature = await issueZoomMeetingSdkSignature(consultation.zoomMeetingId);
+    const isHost = session.role === "doctor" || session.role === "admin";
+    const signature = await issueZoomMeetingSdkSignature(consultation.zoomMeetingId, isHost ? 1 : 0);
 
     if (!signature) {
       return {
@@ -75,12 +86,24 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
       };
     }
 
+    const zak = isHost ? await getZoomHostZakIfConfigured() : null;
+
+    if (isHost && !zak) {
+      return {
+        available: false,
+        consultationId: consultation.id,
+        message: "ยังไม่ได้ตั้งค่า Zoom host สำหรับแพทย์/ผู้ดูแลระบบ",
+        leaveUrl
+      };
+    }
+
     return {
       available: true,
       consultationId: consultation.id,
       meetingNumber: consultation.zoomMeetingId,
       password: consultation.zoomPassword ?? "",
       signature,
+      ...(zak ? { zak } : {}),
       userName: session.displayName || (session.role === "doctor" ? "Doctor" : "Patient"),
       leaveUrl
     };
