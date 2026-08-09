@@ -12,23 +12,40 @@ import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 
 function buildSlipOkResponse(overrides: {
   amount?: number;
+  code?: number;
   receiverName?: string;
+  status?: number;
+  success?: boolean;
+  transDate?: string;
+  transTime?: string;
+  transTimestamp?: string;
 } = {}) {
+  const status = overrides.status ?? 200;
+  const success = overrides.success ?? status === 200;
+
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: vi.fn().mockResolvedValue({
-      success: true,
-      data: {
-        success: true,
-        transRef: "transaction-1",
-        amount: overrides.amount ?? 1200,
-        receiver: overrides.receiverName
-          ? {
-              displayName: overrides.receiverName
+      ...(overrides.code ? { code: overrides.code } : {}),
+      success,
+      ...(success
+        ? {
+            data: {
+              success: true,
+              transRef: "transaction-1",
+              amount: overrides.amount ?? 1200,
+              transDate: overrides.transDate,
+              transTime: overrides.transTime,
+              transTimestamp: overrides.transTimestamp,
+              receiver: overrides.receiverName
+                ? {
+                    displayName: overrides.receiverName
+                  }
+                : undefined
             }
-          : undefined
-      }
+          }
+        : {})
     })
   } as unknown as Response;
 }
@@ -101,8 +118,8 @@ describe("slip verification fail-closed checks", () => {
     });
   });
 
-  it("does not call a provider when the expected receiver is not configured", async () => {
-    const fetchMock = vi.fn();
+  it("uses SlipOK Branch receiver validation without requiring an exact receiver name", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(buildSlipOkResponse({ receiverName: "Clinical R**" }));
     vi.stubGlobal("fetch", fetchMock);
     mocks.getAppEnv.mockReturnValue({
       SLIP_VERIFICATION_PROVIDER: "slipok",
@@ -110,13 +127,12 @@ describe("slip verification fail-closed checks", () => {
       SLIPOK_BRANCH_ID: "test-branch"
     });
 
-    await expect(
-      verifyPaymentSlip({
-        qrPayload: "slip-payload",
-        amount: 1200
-      })
-    ).rejects.toThrow("SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME");
-    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(verifyPaymentSlip({ qrPayload: "slip-payload", amount: 1200 })).resolves.toMatchObject({
+      ok: true,
+      status: "verified",
+      receiverName: "Clinical R**"
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("does not call EasySlip when its API key is not configured", async () => {
@@ -174,7 +190,7 @@ describe("slip verification fail-closed checks", () => {
     });
   });
 
-  it("verifies only when SlipOK returns the expected receiver and amount", async () => {
+  it("verifies a Branch-receiver-validated SlipOK response when amount matches", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -196,12 +212,118 @@ describe("slip verification fail-closed checks", () => {
     });
   });
 
-  it("rejects a receiver that only contains the configured merchant name", async () => {
+  it("sends a private slip as multipart bytes without a hosted URL or private path", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      buildSlipOkResponse({
+        receiverName: "Clinical Ethereality",
+        transDate: "20260809",
+        transTime: "134501"
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await verifyPaymentSlip({
+      privateFile: {
+        bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        fileName: "../../private-slip.png",
+        mimeType: "image/png"
+      },
+      amount: 1200
+    });
+
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = request.body as FormData;
+    const file = body.get("files") as File;
+
+    expect(request.headers).toEqual({ "x-authorization": "test-api-key" });
+    expect(body.get("amount")).toBe("1200");
+    expect(body.get("log")).toBe("true");
+    expect(file.name).toBe(".._.._private-slip.png");
+    expect(file.type).toBe("image/png");
+    expect(JSON.stringify(request)).not.toContain("PAYMENT_UPLOAD_DIR");
+    expect(JSON.stringify(request)).not.toContain("https://");
+    expect(result).toMatchObject({
+      ok: true,
+      status: "verified",
+      transactionTimestamp: "2026-08-09T13:45:01+07:00",
+      raw: null
+    });
+  });
+
+  it("does not send a hosted URL to SlipOK", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      verifyPaymentSlip({ imageUrl: "https://customer.example.invalid/slip.png", amount: 1200 })
+    ).resolves.toMatchObject({ ok: false, status: "provider_error" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses SlipOK's normalized transaction timestamp when present", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         buildSlipOkResponse({
-          receiverName: "Clinical Ethereality Clinic"
+          receiverName: "Clinical Ethereality",
+          transTimestamp: "2026-08-09T06:45:01.000Z"
+        })
+      )
+    );
+
+    await expect(verifyPaymentSlip({ qrPayload: "simulated-payload", amount: 1200 })).resolves.toMatchObject({
+      ok: true,
+      transactionTimestamp: "2026-08-09T06:45:01.000Z"
+    });
+  });
+
+  it.each([
+    ["duplicate", 1012, "rejected"],
+    ["amount mismatch", 1013, "rejected"],
+    ["receiver mismatch", 1014, "rejected"],
+    ["delayed transaction", 1009, "provider_error"],
+    ["provider outage", 1010, "provider_error"]
+  ] as const)("fails closed for SlipOK %s response", async (_label, code, expectedStatus) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(buildSlipOkResponse({ status: 400, success: false, code })));
+
+    await expect(
+      verifyPaymentSlip({
+        privateFile: {
+          bytes: new Uint8Array([0xff, 0xd8, 0xff]),
+          fileName: "simulated.jpg",
+          mimeType: "image/jpeg"
+        },
+        amount: 1200
+      })
+    ).resolves.toMatchObject({ ok: false, status: expectedStatus, raw: null });
+  });
+
+  it.each([
+    ["quota", 429],
+    ["authentication", 401],
+    ["server error", 503]
+  ])("keeps SlipOK %s failures as provider errors", async (_label, status) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(buildSlipOkResponse({ status, success: false })));
+
+    await expect(
+      verifyPaymentSlip({
+        privateFile: {
+          bytes: new Uint8Array([0xff, 0xd8, 0xff]),
+          fileName: "simulated.jpg",
+          mimeType: "image/jpeg"
+        },
+        amount: 1200
+      })
+    ).resolves.toMatchObject({ ok: false, status: "provider_error" });
+  });
+
+  it("accepts a masked SlipOK receiver because Branch validation is authoritative", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        buildSlipOkResponse({
+          receiverName: "Clinical E**"
         })
       )
     );
@@ -212,9 +334,9 @@ describe("slip verification fail-closed checks", () => {
     });
 
     expect(result).toMatchObject({
-      ok: false,
-      status: "rejected",
-      receiverName: "Clinical Ethereality Clinic"
+      ok: true,
+      status: "verified",
+      receiverName: "Clinical E**"
     });
   });
 
@@ -258,6 +380,7 @@ describe("slip verification fail-closed checks", () => {
       transRef: "transaction-2",
       amount: 1200,
       receiverName: "Clinical Ethereality",
+      transactionTimestamp: null,
       raw: null
     });
   });
@@ -334,6 +457,7 @@ describe("slip verification fail-closed checks", () => {
       transRef: null,
       amount: null,
       receiverName: null,
+      transactionTimestamp: null,
       raw: null
     });
     expect(consoleSpy).not.toHaveBeenCalled();

@@ -5,6 +5,11 @@ export type SlipVerificationProvider = "slipok" | "easyslip";
 export type SlipVerificationInput = {
   qrPayload?: string;
   imageUrl?: string;
+  privateFile?: {
+    bytes: Uint8Array;
+    fileName: string;
+    mimeType: string;
+  };
   amount?: number;
 };
 
@@ -15,6 +20,7 @@ export type SlipVerificationResult = {
   transRef: string | null;
   amount: number | null;
   receiverName: string | null;
+  transactionTimestamp?: string | null;
   raw: unknown;
 };
 
@@ -55,7 +61,7 @@ function getInputPayload(input: SlipVerificationInput): { payload?: string; url?
     };
   }
 
-  throw new Error("Either qrPayload or imageUrl is required for slip verification.");
+  throw new Error("Either qrPayload or imageUrl is required for this slip verification provider.");
 }
 
 function normalizeReceiverName(value: string): string {
@@ -102,6 +108,13 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
     "SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME"
   );
   const apiUrl = env.SLIP_VERIFICATION_API_URL ?? getDefaultApiUrl("easyslip");
+
+  // EasySlip's existing v2 adapter is URL/QR based. Keep it fail-closed when
+  // called with private bytes instead of falling back to a hosted URL.
+  if (input.privateFile) {
+    return getProviderErrorResult("easyslip");
+  }
+
   const payload = getInputPayload(input);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), env.EASYSLIP_REQUEST_TIMEOUT_MS ?? 10_000);
@@ -125,15 +138,7 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
     });
     raw = (await response.json().catch(() => null)) as EasySlipResponse | null;
   } catch {
-    return {
-      ok: false,
-      provider: "easyslip",
-      status: "provider_error",
-      transRef: null,
-      amount: null,
-      receiverName: null,
-      raw: null
-    };
+    return getProviderErrorResult("easyslip");
   } finally {
     clearTimeout(timeout);
   }
@@ -183,6 +188,7 @@ async function verifyWithEasySlip(input: SlipVerificationInput): Promise<SlipVer
     transRef: slip?.transRef ?? null,
     amount: typeof amount === "number" ? amount : null,
     receiverName,
+    transactionTimestamp: null,
     // Provider responses include QR payload and bank-account details. They are
     // deliberately never returned to callers or written to application logs.
     raw: null
@@ -193,36 +199,70 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
   const env = getAppEnv();
   const apiKey = assertConfigured(env.SLIP_VERIFICATION_API_KEY, "SLIP_VERIFICATION_API_KEY");
   const branchId = assertConfigured(env.SLIPOK_BRANCH_ID, "SLIPOK_BRANCH_ID");
-  const expectedReceiver = assertConfigured(
-    env.SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME,
-    "SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME"
-  );
   const apiUrl = env.SLIP_VERIFICATION_API_URL ?? getDefaultApiUrl("slipok");
-  const payload = getInputPayload(input);
-  const response = await fetch(`${apiUrl.replace(/\/$/, "")}/api/line/apikey/${branchId}`, {
-    method: "POST",
-    headers: {
-      "x-authorization": apiKey,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      data: payload.payload,
-      url: payload.url,
-      amount: input.amount,
-      log: true
-    })
-  });
-  const raw = (await response.json().catch(() => null)) as SlipOkResponse | null;
+  const formData = new FormData();
+
+  if (input.privateFile) {
+    formData.set(
+      "files",
+      new Blob([new Uint8Array(input.privateFile.bytes)], { type: input.privateFile.mimeType }),
+      safeFileName(input.privateFile.fileName)
+    );
+  } else if (input.qrPayload) {
+    formData.set("data", input.qrPayload);
+  } else {
+    // SlipOK is deliberately limited to QR payloads or server-owned private
+    // bytes. Do not fall back to any customer-hosted URL.
+    return getProviderErrorResult("slipok");
+  }
+
+  if (typeof input.amount !== "number" || !Number.isFinite(input.amount) || input.amount <= 0) {
+    return getProviderErrorResult("slipok");
+  }
+
+  // `log: true` enables SlipOK's registered-receiver and duplicate checks.
+  // It is sent only when this server-side adapter is explicitly activated.
+  formData.set("amount", String(input.amount));
+  formData.set("log", "true");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.SLIPOK_REQUEST_TIMEOUT_MS ?? 10_000);
+  let response: Response;
+  let raw: SlipOkResponse | null;
+
+  try {
+    response = await fetch(`${apiUrl.replace(/\/$/, "")}/api/line/apikey/${encodeURIComponent(branchId)}`, {
+      method: "POST",
+      headers: {
+        "x-authorization": apiKey
+      },
+      body: formData,
+      signal: controller.signal
+    });
+    raw = (await response.json().catch(() => null)) as SlipOkResponse | null;
+  } catch {
+    return getProviderErrorResult("slipok");
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const data = raw?.data ?? null;
   const receiverName = data?.receiver?.displayName ?? data?.receiver?.name ?? null;
-  const amount = typeof data?.amount === "number" ? data.amount : null;
+  const amount = toFiniteNumber(data?.amount);
   const providerAccepted = Boolean(response.ok && raw?.success && data?.success);
   const hasRequiredVerificationData = Boolean(data?.transRef && amount !== null && receiverName?.trim());
+  const errorCode = toFiniteNumber(raw?.code);
+  const isProviderUnavailable =
+    response.status === 401 ||
+    response.status === 403 ||
+    response.status === 429 ||
+    response.status >= 500 ||
+    errorCode === 1009 ||
+    errorCode === 1010;
   const verified = Boolean(
     providerAccepted &&
       hasRequiredVerificationData &&
-      isAmountMatch(amount, input.amount) &&
-      isReceiverMatch(receiverName, expectedReceiver)
+      isAmountMatch(amount, input.amount)
   );
 
   return {
@@ -231,14 +271,71 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
     status:
       verified
         ? "verified"
-        : !response.ok || (providerAccepted && !hasRequiredVerificationData)
+        : isProviderUnavailable || (providerAccepted && !hasRequiredVerificationData) || (!raw && response.ok)
           ? "provider_error"
           : "rejected",
     transRef: data?.transRef ?? null,
     amount,
     receiverName,
-    raw
+    transactionTimestamp: getSlipOkTransactionTimestamp(data),
+    // Do not retain provider raw response data: it can contain full banking and
+    // QR details. The payment services persist only the normalized fields.
+    raw: null
   };
+}
+
+function getProviderErrorResult(provider: SlipVerificationProvider): SlipVerificationResult {
+  return {
+    ok: false,
+    provider,
+    status: "provider_error",
+    transRef: null,
+    amount: null,
+    receiverName: null,
+    transactionTimestamp: null,
+    raw: null
+  };
+}
+
+function safeFileName(fileName: string): string {
+  const normalized = fileName.replace(/[\\/\u0000-\u001f]/g, "_").trim();
+  return (normalized || "payment-slip").slice(0, 255);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function getSlipOkTransactionTimestamp(data: SlipOkResponse["data"] | null): string | null {
+  if (data?.transTimestamp) {
+    const parsed = new Date(data.transTimestamp);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  if (!data?.transDate || !data.transTime) {
+    return null;
+  }
+
+  const date = data.transDate.replace(/\D/g, "");
+  const time = data.transTime.replace(/\D/g, "");
+
+  if (!/^\d{8}$/.test(date) || !/^\d{6}$/.test(time)) {
+    return null;
+  }
+
+  return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}+07:00`;
 }
 
 type EasySlipResponse = {
@@ -271,10 +368,14 @@ type EasySlipResponse = {
 
 type SlipOkResponse = {
   success?: boolean;
+  code?: number | string;
   data?: {
     success?: boolean;
     transRef?: string;
-    amount?: number;
+    amount?: number | string;
+    transDate?: string;
+    transTime?: string;
+    transTimestamp?: string;
     receiver?: {
       displayName?: string;
       name?: string;

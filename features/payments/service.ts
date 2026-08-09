@@ -193,9 +193,10 @@ export function assertProviderVerificationResultPersistable(result: SlipVerifica
 export function getPersistableProviderResult(result: SlipVerificationResult) {
   return {
     status: result.status,
-    transRef: result.transRef,
-    amount: result.amount,
-    receiverName: result.receiverName
+    transRef: result.ok ? result.transRef : null,
+    amount: result.ok ? result.amount : null,
+    receiverName: result.ok ? result.receiverName : null,
+    transactionTimestamp: result.ok ? result.transactionTimestamp ?? null : null
   };
 }
 
@@ -260,18 +261,21 @@ export async function claimProviderPaymentVerification(
     expectedOrderId: string;
     expectedOrderUserId: string;
     hostedSlipAttachment: NormalizedHostedAttachment | null;
+    privateSlipAttachmentId: string | null;
     paymentId: string;
     qrPayload: string | null;
-    source: "qr_payload" | "image_url";
+    source: "qr_payload" | "image_url" | "private_file";
   }
 ): Promise<ProviderPaymentSnapshot> {
   const hasQrPayload = Boolean(input.qrPayload);
   const hasHostedSlip = Boolean(input.hostedSlipAttachment);
+  const hasPrivateSlip = Boolean(input.privateSlipAttachmentId);
 
   if (
-    hasQrPayload === hasHostedSlip ||
+    Number(hasQrPayload) + Number(hasHostedSlip) + Number(hasPrivateSlip) !== 1 ||
     (input.source === "qr_payload" && !hasQrPayload) ||
-    (input.source === "image_url" && !hasHostedSlip)
+    (input.source === "image_url" && !hasHostedSlip) ||
+    (input.source === "private_file" && !hasPrivateSlip)
   ) {
     throw new Error("Exactly one matching payment evidence source is required.");
   }
@@ -333,9 +337,11 @@ export async function claimProviderPaymentVerification(
             qrPayload: input.qrPayload as string
           }
         : {
-            type: "image_url",
+            type: input.source,
             submittedAt: claimedAt.toISOString(),
-            imageUrl: input.hostedSlipAttachment!.storageUrl
+            ...(input.source === "image_url"
+              ? { imageUrl: input.hostedSlipAttachment!.storageUrl }
+              : { attachmentId: input.privateSlipAttachmentId })
           },
     submissionSource: input.source
   });
@@ -545,7 +551,7 @@ export async function applyProviderPaymentVerification(
     actorId: string;
     payment: ProviderPaymentSnapshot;
     result: SlipVerificationResult;
-    source: "qr_payload" | "image_url";
+    source: "qr_payload" | "image_url" | "private_file";
   }
 ) {
   const reviewedAt = new Date();

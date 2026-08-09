@@ -8,6 +8,12 @@ import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 import { normalizeHostedAttachmentInput } from "@/lib/storage/attachments";
 import { hasExactlyOnePaymentEvidence } from "@/features/payments/evidence";
 import {
+  paymentSlipEntityType,
+  readPrivatePaymentSlip,
+  validatePaymentSlipContent
+} from "@/features/payments/private-slips";
+import { paymentSlipMimeTypes, type PaymentSlipMimeType } from "@/features/payments/private-slip-policy";
+import {
   isStorePaymentReviewExpired,
   isStoreReservationExpired,
   releaseExpiredStoreOrderReservations
@@ -26,10 +32,11 @@ const verifySlipRequestSchema = z
   .object({
     paymentId: z.string().trim().min(1).max(191),
     qrPayload: z.string().trim().min(1).max(4096).optional(),
-    imageUrl: z.string().trim().max(2048).url().optional()
+    imageUrl: z.string().trim().max(2048).url().optional(),
+    attachmentId: z.string().trim().min(1).max(191).optional()
   })
   .refine(hasExactlyOnePaymentEvidence, {
-    message: "Exactly one of qrPayload or imageUrl is required."
+    message: "Exactly one of qrPayload, imageUrl, or attachmentId is required."
   });
 
 function isPrismaWriteConflict(error: unknown): boolean {
@@ -137,6 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   let hostedSlipAttachment: ReturnType<typeof normalizeHostedAttachmentInput> | null = null;
+  let privateFile: { bytes: Uint8Array; fileName: string; mimeType: PaymentSlipMimeType } | null = null;
 
   if (parsed.data.imageUrl) {
     try {
@@ -146,6 +154,46 @@ export async function POST(request: NextRequest) {
       });
     } catch {
       return NextResponse.json({ ok: false, error: "URL รูปสลิปอยู่นอก storage base URL ที่ตั้งไว้" }, { status: 400 });
+    }
+  }
+
+  if (parsed.data.attachmentId) {
+    const attachment = await prisma.fileAttachment.findUnique({
+      where: { id: parsed.data.attachmentId },
+      select: {
+        entityId: true,
+        entityType: true,
+        fileName: true,
+        mimeType: true,
+        ownerId: true,
+        purpose: true,
+        status: true,
+        storageKey: true
+      }
+    });
+    const mimeType = attachment?.mimeType as PaymentSlipMimeType | null;
+
+    if (
+      !attachment ||
+      attachment.entityId !== payment.id ||
+      attachment.entityType !== paymentSlipEntityType ||
+      attachment.ownerId !== order.userId ||
+      attachment.purpose !== "payment_slip" ||
+      attachment.status !== "attached" ||
+      !attachment.storageKey ||
+      !mimeType ||
+      !paymentSlipMimeTypes.includes(mimeType)
+    ) {
+      // Do not reveal attachment existence or private storage details.
+      return NextResponse.json({ ok: false, error: "ไม่พบหลักฐานสลิปส่วนตัว" }, { status: 404 });
+    }
+
+    try {
+      const bytes = await readPrivatePaymentSlip(attachment.storageKey);
+      validatePaymentSlipContent(mimeType, bytes);
+      privateFile = { bytes, fileName: attachment.fileName, mimeType };
+    } catch {
+      return NextResponse.json({ ok: false, error: "ไม่พบหลักฐานสลิปส่วนตัว" }, { status: 404 });
     }
   }
 
@@ -159,9 +207,10 @@ export async function POST(request: NextRequest) {
           expectedOrderId: order.id,
           expectedOrderUserId: order.userId,
           hostedSlipAttachment,
+          privateSlipAttachmentId: parsed.data.attachmentId ?? null,
           paymentId: payment.id,
           qrPayload: parsed.data.qrPayload ?? null,
-          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
+          source: parsed.data.qrPayload ? "qr_payload" : parsed.data.imageUrl ? "image_url" : "private_file"
         }),
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable
@@ -183,6 +232,7 @@ export async function POST(request: NextRequest) {
     const result = await verifyPaymentSlip({
       qrPayload: parsed.data.qrPayload,
       imageUrl: parsed.data.imageUrl,
+      privateFile: privateFile ?? undefined,
       amount: Number(claimedPayment.amount)
     });
 
@@ -199,7 +249,7 @@ export async function POST(request: NextRequest) {
           actorId: session.userId,
           payment: claimedPayment,
           result,
-          source: parsed.data.qrPayload ? "qr_payload" : "image_url"
+          source: parsed.data.qrPayload ? "qr_payload" : parsed.data.imageUrl ? "image_url" : "private_file"
         });
       },
       {

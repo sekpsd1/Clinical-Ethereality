@@ -6,11 +6,14 @@ const mocks = vi.hoisted(() => ({
   applyProviderPaymentVerification: vi.fn(),
   canReadOwnRecord: vi.fn(),
   claimProviderPaymentVerification: vi.fn(),
+  findAttachment: vi.fn(),
   findPayment: vi.fn(),
   getCurrentSession: vi.fn(),
   hasPermission: vi.fn(),
   releaseExpiredStoreOrderReservations: vi.fn(),
+  readPrivatePaymentSlip: vi.fn(),
   transaction: vi.fn(),
+  validatePaymentSlipContent: vi.fn(),
   verifyPaymentSlip: vi.fn()
 }));
 
@@ -23,6 +26,9 @@ vi.mock("@/lib/db/prisma", () => ({
     payment: {
       findUnique: mocks.findPayment
     },
+    fileAttachment: {
+      findUnique: mocks.findAttachment
+    },
     $transaction: mocks.transaction
   }
 }));
@@ -34,6 +40,12 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/payments/slip-verification", () => ({
   verifyPaymentSlip: mocks.verifyPaymentSlip
+}));
+
+vi.mock("@/features/payments/private-slips", () => ({
+  paymentSlipEntityType: "payment_slip",
+  readPrivatePaymentSlip: mocks.readPrivatePaymentSlip,
+  validatePaymentSlipContent: mocks.validatePaymentSlipContent
 }));
 
 vi.mock("@/features/orders/reservations", () => ({
@@ -135,6 +147,8 @@ describe("store payment slip verification route", () => {
       released: 0,
       skipped: 0
     });
+    mocks.findAttachment.mockResolvedValue(null);
+    mocks.readPrivatePaymentSlip.mockResolvedValue(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<void>) => callback({}));
   });
 
@@ -250,6 +264,63 @@ describe("store payment slip verification route", () => {
         payment: claimedPayment
       })
     );
+  });
+
+  it("reads an owned private attachment into provider bytes without accepting a hosted URL", async () => {
+    mocks.findAttachment.mockResolvedValue({
+      entityId: payment.id,
+      entityType: "payment_slip",
+      fileName: "private-slip.png",
+      mimeType: "image/png",
+      ownerId: "customer-1",
+      purpose: "payment_slip",
+      status: "attached",
+      storageKey: "payments/private/storage-key.png"
+    });
+    mocks.verifyPaymentSlip.mockResolvedValue({
+      ok: false,
+      provider: "slipok",
+      status: "rejected",
+      transRef: null,
+      amount: 1200,
+      receiverName: "Clinical Ethereality",
+      raw: null
+    });
+
+    const response = await POST(createRequest({ paymentId: payment.id, attachmentId: "attachment-1" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.readPrivatePaymentSlip).toHaveBeenCalledWith("payments/private/storage-key.png");
+    expect(mocks.verifyPaymentSlip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1200,
+        imageUrl: undefined,
+        privateFile: expect.objectContaining({ fileName: "private-slip.png", mimeType: "image/png" })
+      })
+    );
+    expect(mocks.claimProviderPaymentVerification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ privateSlipAttachmentId: "attachment-1", source: "private_file" })
+    );
+  });
+
+  it("does not reveal another private attachment or call the provider", async () => {
+    mocks.findAttachment.mockResolvedValue({
+      entityId: "other-payment",
+      entityType: "payment_slip",
+      fileName: "other.png",
+      mimeType: "image/png",
+      ownerId: "customer-2",
+      purpose: "payment_slip",
+      status: "attached",
+      storageKey: "payments/other.png"
+    });
+
+    const response = await POST(createRequest({ paymentId: payment.id, attachmentId: "attachment-foreign" }));
+
+    expect(response.status).toBe(404);
+    expect(mocks.readPrivatePaymentSlip).not.toHaveBeenCalled();
+    expect(mocks.verifyPaymentSlip).not.toHaveBeenCalled();
   });
 
   it("accepts a new verification attempt after a previous rejection", async () => {
