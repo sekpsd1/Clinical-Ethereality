@@ -4,6 +4,7 @@ import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
 import { buildAttachmentMetadata, type NormalizedHostedAttachment } from "@/lib/storage/attachments";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
 import { STORE_PAYMENT_REVIEW_TTL_MS } from "@/features/orders/reservations";
+import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 
 export type ManualPaymentReviewStatus = "verified" | "rejected";
 
@@ -42,6 +43,17 @@ export class DuplicatePaymentTransactionError extends Error {
     super("This bank transaction has already been used for another verified payment.");
     this.name = "DuplicatePaymentTransactionError";
   }
+}
+
+function isNormalizedTransactionReferenceUniqueConstraint(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("code" in error)) {
+    return false;
+  }
+
+  // The enclosing updates only mutate the payment state and this new field.
+  // MySQL/Prisma reports the unique target inconsistently (column list or index
+  // name), so any P2002 here is the transaction-reference collision.
+  return (error as { code?: unknown }).code === "P2002";
 }
 
 export class PaymentVerificationConflictError extends Error {
@@ -388,6 +400,7 @@ export async function applyManualPaymentReview(
     paymentId: string;
     status: ManualPaymentReviewStatus;
     actorId: string;
+    transactionReference?: string;
   }
 ) {
   const reviewedAt = new Date();
@@ -423,32 +436,52 @@ export async function applyManualPaymentReview(
   assertPaymentReadyForManualReview(payment.status);
 
   const transition = getManualPaymentReviewTransition(input.status);
+  const normalizedTransactionReference =
+    transition.paymentStatus === "verified"
+      ? normalizePaymentTransactionReference(input.transactionReference ?? "")
+      : null;
 
   if (transition.paymentStatus === "verified") {
     await assertOrderHasNoOtherCompletedPayment(tx, {
       orderId: payment.orderId,
       paymentId: payment.id
     });
+    await assertVerifiedTransactionReferenceUnused(tx, {
+      paymentId: payment.id,
+      normalizedTransactionReference: normalizedTransactionReference!
+    });
   }
 
-  const paymentUpdate = await tx.payment.updateMany({
-    where: {
-      id: payment.id,
-      status: payment.status
-    },
-    data: {
-      status: transition.paymentStatus,
-      reviewedById: input.actorId,
-      reviewedAt,
-      verificationPayload: mergePaymentVerificationPayload(payment.verificationPayload, {
-        reviewedAt: reviewedAt.toISOString(),
-        reviewedBy: input.actorId,
-        verificationSource: "admin_manual_review",
-        previousStatus: payment.status,
-        nextStatus: transition.paymentStatus
-      })
+  let paymentUpdate: { count: number };
+
+  try {
+    paymentUpdate = await tx.payment.updateMany({
+      where: {
+        id: payment.id,
+        status: payment.status
+      },
+      data: {
+        status: transition.paymentStatus,
+        normalizedTransactionReference,
+        reviewedById: input.actorId,
+        reviewedAt,
+        verificationPayload: mergePaymentVerificationPayload(payment.verificationPayload, {
+          reviewedAt: reviewedAt.toISOString(),
+          reviewedBy: input.actorId,
+          verificationSource: "admin_manual_review",
+          previousStatus: payment.status,
+          nextStatus: transition.paymentStatus,
+          transactionReference: normalizedTransactionReference
+        })
+      }
+    });
+  } catch (error) {
+    if (isNormalizedTransactionReferenceUniqueConstraint(error)) {
+      throw new DuplicatePaymentTransactionError();
     }
-  });
+
+    throw error;
+  }
 
   if (paymentUpdate.count !== 1) {
     throw new PaymentVerificationConflictError();
@@ -524,11 +557,14 @@ export async function applyProviderPaymentVerification(
   assertProviderVerificationResultPersistable(input.result);
 
   const transition = getProviderPaymentVerificationTransition(input.result.ok);
+  const normalizedTransactionReference = input.result.ok
+    ? normalizePaymentTransactionReference(input.result.transRef ?? "")
+    : null;
 
-  if (input.result.ok && input.result.transRef) {
+  if (input.result.ok) {
     await assertVerifiedTransactionReferenceUnused(tx, {
       paymentId: input.payment.id,
-      transactionReference: input.result.transRef
+      normalizedTransactionReference: normalizedTransactionReference!
     });
     await assertOrderHasNoOtherCompletedPayment(tx, {
       orderId: input.payment.orderId,
@@ -536,22 +572,33 @@ export async function applyProviderPaymentVerification(
     });
   }
 
-  const paymentUpdate = await tx.payment.updateMany({
-    where: {
-      id: input.payment.id,
-      status: input.payment.status,
-      updatedAt: input.payment.updatedAt
-    },
-    data: {
-      status: transition.paymentStatus,
-      reviewedAt,
-      verificationPayload: mergePaymentVerificationPayload(input.payment.verificationPayload, {
-        reviewedAt: reviewedAt.toISOString(),
-        verificationSource: input.result.provider,
-        result: toJsonValue(getPersistableProviderResult(input.result))
-      })
+  let paymentUpdate: { count: number };
+
+  try {
+    paymentUpdate = await tx.payment.updateMany({
+      where: {
+        id: input.payment.id,
+        status: input.payment.status,
+        updatedAt: input.payment.updatedAt
+      },
+      data: {
+        status: transition.paymentStatus,
+        normalizedTransactionReference,
+        reviewedAt,
+        verificationPayload: mergePaymentVerificationPayload(input.payment.verificationPayload, {
+          reviewedAt: reviewedAt.toISOString(),
+          verificationSource: input.result.provider,
+          result: toJsonValue(getPersistableProviderResult(input.result))
+        })
+      }
+    });
+  } catch (error) {
+    if (isNormalizedTransactionReferenceUniqueConstraint(error)) {
+      throw new DuplicatePaymentTransactionError();
     }
-  });
+
+    throw error;
+  }
 
   if (paymentUpdate.count !== 1) {
     throw new PaymentVerificationConflictError();
@@ -737,7 +784,7 @@ async function assertVerifiedTransactionReferenceUnused(
   tx: Prisma.TransactionClient,
   input: {
     paymentId: string;
-    transactionReference: string;
+    normalizedTransactionReference: string;
   }
 ) {
   const duplicatePayment = await tx.payment.findFirst({
@@ -748,10 +795,7 @@ async function assertVerifiedTransactionReferenceUnused(
       status: {
         in: completedPaymentStatuses
       },
-      verificationPayload: {
-        path: "$.result.transRef",
-        equals: input.transactionReference
-      }
+      normalizedTransactionReference: input.normalizedTransactionReference
     },
     select: {
       id: true

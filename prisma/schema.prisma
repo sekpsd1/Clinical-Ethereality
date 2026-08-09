@@ -578,19 +578,20 @@ model OrderItem {
 }
 
 model Payment {
-  id                  String        @id @default(cuid())
-  orderId             String?
-  consultationId      String?       @unique
-  method              PaymentMethod @default(promptpay)
-  amount              Decimal       @db.Decimal(10, 2)
-  status              PaymentStatus @default(pending_slip)
-  qrPayload           String?       @db.Text
-  slipImageUrl        String?       @db.Text
-  verificationPayload Json?
-  reviewedById        String?
-  reviewedAt          DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                             String        @id @default(cuid())
+  orderId                        String?
+  consultationId                 String?       @unique
+  method                         PaymentMethod @default(promptpay)
+  amount                         Decimal       @db.Decimal(10, 2)
+  status                         PaymentStatus @default(pending_slip)
+  qrPayload                      String?       @db.Text
+  slipImageUrl                   String?       @db.Text
+  normalizedTransactionReference String?       @unique @db.VarChar(191)
+  verificationPayload            Json?
+  reviewedById                   String?
+  reviewedAt                     DateTime?
+  createdAt                      DateTime      @default(now())
+  updatedAt                      DateTime      @updatedAt
 
   order        Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
   consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: Restrict)

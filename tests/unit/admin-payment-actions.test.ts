@@ -42,6 +42,7 @@ describe("admin payment review action", () => {
     const formData = new FormData();
     formData.set("paymentId", "payment-1");
     formData.set("status", "verified");
+    formData.set("transactionReference", "manual-reference-1");
 
     const result = await reviewPaymentAction(
       {
@@ -60,8 +61,30 @@ describe("admin payment review action", () => {
       {
         actorId: "admin-1",
         paymentId: "payment-1",
-        status: "verified"
+        status: "verified",
+        transactionReference: "MANUALREFERENCE1"
       }
     );
+  });
+
+  it("does not start a review transaction when the existing admin guard rejects the caller", async () => {
+    mocks.requireAdminSession.mockRejectedValueOnce(new Error("Admin access required."));
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("status", "verified");
+    formData.set("transactionReference", "manual-reference-1");
+
+    await expect(
+      reviewPaymentAction(
+        {
+          status: "idle",
+          message: ""
+        },
+        formData
+      )
+    ).rejects.toThrow("Admin access required.");
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.applyManualPaymentReview).not.toHaveBeenCalled();
   });
 });

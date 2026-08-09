@@ -36,7 +36,8 @@ export async function reviewPaymentAction(
         await applyManualPaymentReview(tx, {
           paymentId: parsed.data.paymentId,
           status: parsed.data.status,
-          actorId: session.userId
+          actorId: session.userId,
+          transactionReference: parsed.data.transactionReference
         });
       },
       {

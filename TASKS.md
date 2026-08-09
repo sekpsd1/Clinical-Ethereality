@@ -285,7 +285,7 @@
 - [x] Add an authenticated scheduled/global reservation cleanup worker so abandoned orders are reclaimed without waiting for the same customer to return; the GitHub Actions five-minute scheduler completed automatic scheduled Run ID `31260602414` successfully and the Production cleanup endpoint responded successfully. Plesk Scheduled Task execution remains disabled and is not the production scheduler.
 - [x] Add customer cancellation for owned unpaid Store orders in `pending_payment`, reusing the existing Serializable/CAS reservation release path for exactly-once stock release, pending payment/shipment closure, audit logging, notification, idempotency, and cleanup-worker concurrency safety; deploy commit `2d272d6` passed health and controlled Production UAT, and regression coverage proves native-confirm rejection blocks dispatch while acceptance dispatches once
 - [ ] Add refund stock-release and real refund handling after Payment Integration/EasySlip is ready; do not treat customer cancellation of an unpaid order as a refund
-- [ ] Persist a normalized bank transaction reference for Admin manual reviews and enforce database uniqueness across verified/refunded payments
+- [x] Persist a normalized bank transaction reference for Provider and Admin manual reviews, enforce additive database uniqueness across verified/refunded payments, preserve null legacy/pending/rejected rows without JSON backfill, and document the rollback/pre-deploy audit plan; Production migration/deployment remains pending
 - [ ] Replace hosted-URL prescription/slip inputs with real Cloudinary/S3 upload and approved external-prescription review handling
 - [ ] Connect Store category/search controls and carrier tracking to real data/integrations
 
