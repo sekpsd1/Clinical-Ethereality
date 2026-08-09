@@ -206,6 +206,7 @@ model User {
   consentRecords      ConsentRecord[]
   auditLogs           AuditLog[]            @relation("ActorAuditLogs")
   reviewedPayments    Payment[]             @relation("PaymentReviewer")
+  refundedPayments    Payment[]             @relation("PaymentRefunder")
   updatedInventory    Inventory[]           @relation("InventoryUpdater")
   updatedShipments    ShipmentTracking[]    @relation("ShipmentUpdater")
   fileAttachments     FileAttachment[]
@@ -587,6 +588,12 @@ model Payment {
   qrPayload                      String?       @db.Text
   slipImageUrl                   String?       @db.Text
   normalizedTransactionReference String?       @unique @db.VarChar(191)
+  refundTransactionReference     String?       @db.VarChar(255)
+  normalizedRefundReference      String?       @unique @db.VarChar(191)
+  refundAmount                   Decimal?      @db.Decimal(10, 2)
+  refundReason                   String?       @db.Text
+  refundedAt                     DateTime?
+  refundedById                   String?
   verificationPayload            Json?
   reviewedById                   String?
   reviewedAt                     DateTime?
@@ -596,12 +603,15 @@ model Payment {
   order        Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
   consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: Restrict)
   reviewedBy   User?         @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  refundedBy   User?         @relation("PaymentRefunder", fields: [refundedById], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([consultationId])
   @@index([status])
   @@index([reviewedById])
   @@index([reviewedAt])
+  @@index([refundedById])
+  @@index([refundedAt])
 }
 
 model ShipmentTracking {

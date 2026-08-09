@@ -213,6 +213,7 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
     customerName: customer?.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     customerLineId: customer?.lineUserId ?? "ไม่พบผู้ใช้",
     amount: formatMoney(payment.amount),
+    refundAmountInput: payment.amount.toString(),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,
     slipImageUrl: payment.slipImageUrl,

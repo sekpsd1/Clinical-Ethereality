@@ -123,3 +123,70 @@ export async function spendRewardPoints(
     }
   });
 }
+
+export async function reverseOrderRewardPoints(
+  tx: Prisma.TransactionClient,
+  input: {
+    userId: string;
+    orderId: string;
+  }
+): Promise<number> {
+  await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT \`id\` FROM \`User\` WHERE \`id\` = ${input.userId} FOR UPDATE`
+  );
+
+  const earnedReward = await tx.rewardPoint.findFirst({
+    where: {
+      userId: input.userId,
+      sourceType: "order",
+      sourceId: input.orderId,
+      direction: "earn"
+    },
+    select: {
+      points: true
+    }
+  });
+
+  if (!earnedReward || earnedReward.points <= 0) {
+    return 0;
+  }
+
+  const existingReversal = await tx.rewardPoint.findFirst({
+    where: {
+      userId: input.userId,
+      sourceType: "order",
+      sourceId: input.orderId,
+      direction: "adjust"
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (existingReversal) {
+    return 0;
+  }
+
+  await tx.rewardPoint.create({
+    data: {
+      userId: input.userId,
+      sourceType: "order",
+      sourceId: input.orderId,
+      direction: "adjust",
+      points: -earnedReward.points
+    }
+  });
+
+  await tx.user.update({
+    where: {
+      id: input.userId
+    },
+    data: {
+      rewardBalance: {
+        decrement: earnedReward.points
+      }
+    }
+  });
+
+  return earnedReward.points;
+}
