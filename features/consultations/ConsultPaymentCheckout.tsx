@@ -6,13 +6,12 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  CloudUpload,
   Info,
   RotateCcw,
   ShieldAlert
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
+import { PrivateSlipUpload } from "@/features/payments/PrivateSlipUpload";
 import type {
   ConsultationPaymentData,
   ConsultationPaymentDetail,
@@ -68,7 +67,7 @@ export function ConsultPaymentCheckout({ data }: { data: ConsultationPaymentData
             ) : (
               <>
                 <PromptPayCard consultation={consultation} />
-                <SlipVerificationSection consultation={consultation} />
+                <PrivateSlipUpload consultationId={consultation.id} referenceLabel="ค่าปรึกษาแพทย์" />
               </>
             )}
           </>
@@ -307,7 +306,11 @@ function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDeta
   );
 }
 
-function SlipVerificationSection({ consultation }: { consultation: ConsultationPaymentDetail }) {
+/*
+ * Legacy hosted-URL/QR provider submission is intentionally disabled while
+ * private server-side payment-slip storage is the checkout entry point.
+ */
+/* function SlipVerificationSection({ consultation }: { consultation: ConsultationPaymentDetail }) {
   return (
     <form action={verifyConsultationSlipAction} className="flex flex-col gap-3 pb-2">
       <input type="hidden" name="consultationId" value={consultation.id} />
@@ -355,6 +358,9 @@ function SlipVerificationSection({ consultation }: { consultation: ConsultationP
     </form>
   );
 }
+
+}
+*/
 
 function PaymentStateCard({
   tone,
