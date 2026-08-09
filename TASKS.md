@@ -50,7 +50,7 @@
 - [x] Confirm PromptPay phone/tax ID intake; secure production payment configuration remains owner-managed through environment secrets
 - [ ] Configure EasySlip API details securely as owner-managed setup
 - [x] Approve and document the Community rules, four existing article categories, five existing report reasons, post-moderation policy, Before/After prohibition, review SLA, support-channel appeals, and 2,555-day audit target in `COMMUNITY_LAUNCH_POLICY.md`
-- [ ] Complete Community Production operational readiness: verify `COMMUNITY_UPLOAD_DIR` is an absolute private path outside the deployment directory with Node write access and backup/restore; assign an Admin moderation rota and support channel; then complete controlled `[UAT]` Community Production UAT without deleting Audit/Report history
+- [x] Complete Community Production operational readiness: verified `COMMUNITY_UPLOAD_DIR` as an absolute private path outside the deployment directory with least-privilege access and Node write access; completed a private Google Drive backup/restore hash drill; assigned Admin Media design moderation ownership (10:00/16:00 ICT business-day checks), the normal Support appeal path, and the approved SLA; and completed controlled `[UAT]` Production Community UAT without deleting Audit/Report history. Plesk-native restore-to-temp remains a future hardening item.
 - [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
