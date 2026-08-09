@@ -23,6 +23,7 @@ export type ConsultationPaymentSnapshot = {
 
 export type ConsultationPaymentEvidence = {
   amount: number;
+  attachmentId?: string;
   qrPayload?: string;
   slipImageUrl?: string;
 };
@@ -147,7 +148,12 @@ export async function applyConsultationPaymentVerification(
   const verificationPayload = {
     reviewedAt: reviewedAt.toISOString(),
     source: input.result.provider,
-    result: toJsonValue(getPersistableProviderResult(input.result))
+    result: toJsonValue(getPersistableProviderResult(input.result)),
+    submittedEvidence: input.evidence.attachmentId
+      ? { type: "private_file", attachmentId: input.evidence.attachmentId }
+      : input.evidence.qrPayload
+        ? { type: "qr_payload" }
+        : { type: "image_url" }
   };
 
   try {

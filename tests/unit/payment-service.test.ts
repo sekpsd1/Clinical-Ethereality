@@ -31,6 +31,7 @@ const verifiedProviderResult: SlipVerificationResult = {
   transRef: "transfer-1",
   amount: 1200,
   receiverName: "Clinical Ethereality",
+  transactionTimestamp: "2026-07-30T12:00:00+07:00",
   raw: {
     privateProviderPayload: "must-not-be-persisted-or-returned"
   }
@@ -102,7 +103,8 @@ describe("payment review service", () => {
       status: "verified",
       transRef: "transfer-1",
       amount: 1200,
-      receiverName: "Clinical Ethereality"
+      receiverName: "Clinical Ethereality",
+      transactionTimestamp: "2026-07-30T12:00:00+07:00"
     });
     expect(getPersistableProviderResult(verifiedProviderResult)).not.toHaveProperty("raw");
   });
@@ -229,6 +231,7 @@ describe("payment review service", () => {
       expectedOrderId: "order-1",
       expectedOrderUserId: "customer-1",
       hostedSlipAttachment: null,
+      privateSlipAttachmentId: null,
       paymentId: "payment-1",
       qrPayload: "submitted-slip-qr",
       source: "qr_payload"
@@ -339,6 +342,7 @@ describe("payment review service", () => {
       expectedOrderId: "order-1",
       expectedOrderUserId: "customer-1",
       hostedSlipAttachment,
+      privateSlipAttachmentId: null,
       paymentId: "payment-1",
       qrPayload: null,
       source: "image_url"
@@ -394,6 +398,7 @@ describe("payment review service", () => {
         expectedOrderId: "order-1",
         expectedOrderUserId: "customer-1",
         hostedSlipAttachment: null,
+        privateSlipAttachmentId: null,
         paymentId: "payment-1",
         qrPayload: "submitted-slip-qr",
         source: "qr_payload"
@@ -435,6 +440,7 @@ describe("payment review service", () => {
         expectedOrderId: "order-1",
         expectedOrderUserId: "customer-1",
         hostedSlipAttachment: null,
+        privateSlipAttachmentId: null,
         paymentId: "payment-1",
         qrPayload: "submitted-slip-qr",
         source: "qr_payload"
