@@ -2,6 +2,7 @@ import { CheckCircle2, CreditCard, ImageOff, QrCode, ReceiptText, ShieldCheck } 
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
+import { AdminPaymentRefundForm } from "@/features/admin/AdminPaymentRefundForm";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 
 const statusLabels: Record<string, string> = {
@@ -156,6 +157,7 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                 </p>
                 {payment.status === "pending_review" && payment.canManualReview ? <AdminPaymentReviewButtons payment={payment} /> : null}
               </div>
+              {payment.status === "verified" && payment.orderId ? <AdminPaymentRefundForm payment={payment} /> : null}
             </article>
           );
         })}

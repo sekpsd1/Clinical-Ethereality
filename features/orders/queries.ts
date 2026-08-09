@@ -140,7 +140,7 @@ function getTrackingSteps(order: CustomerOrderRecord): CustomerOrderTrackingStep
     {
       title: "ตรวจสอบการชำระเงิน",
       description: payment ? paymentStatusLabels[payment.status] : "รอการอัปโหลดสลิป",
-      status: getStepStatus(order.status, ["paid", "preparing", "shipped", "delivered"], ["pending_payment", "payment_review"])
+      status: getStepStatus(order.status, ["paid", "preparing", "shipped", "delivered", "refunded"], ["pending_payment", "payment_review"])
     },
     {
       title: "จัดเตรียมโดยเภสัชกร",

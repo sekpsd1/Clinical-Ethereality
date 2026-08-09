@@ -10,6 +10,7 @@ export type AdminPaymentQueueItem = {
   customerName: string;
   customerLineId: string;
   amount: string;
+  refundAmountInput: string;
   status: PaymentStatus;
   methodLabel: string;
   slipImageUrl: string | null;

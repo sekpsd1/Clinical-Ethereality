@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
   applyManualPaymentReview: vi.fn(),
+  applyManualStoreRefund: vi.fn(),
   requireAdminSession: vi.fn(),
   revalidatePath: vi.fn(),
   transaction: vi.fn()
@@ -26,7 +27,11 @@ vi.mock("@/features/payments/service", () => ({
   applyManualPaymentReview: mocks.applyManualPaymentReview
 }));
 
-import { reviewPaymentAction } from "@/features/admin/payments/actions";
+vi.mock("@/features/payments/refunds", () => ({
+  applyManualStoreRefund: mocks.applyManualStoreRefund
+}));
+
+import { refundStorePaymentAction, reviewPaymentAction } from "@/features/admin/payments/actions";
 
 describe("admin payment review action", () => {
   beforeEach(() => {
@@ -86,5 +91,61 @@ describe("admin payment review action", () => {
 
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.applyManualPaymentReview).not.toHaveBeenCalled();
+  });
+
+  it("requires the existing admin guard and serializable transaction for a manual Store refund", async () => {
+    mocks.applyManualStoreRefund.mockResolvedValueOnce("refunded");
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("refundAmount", "100.00");
+    formData.set("refundReason", "สินค้าไม่พร้อมจัดส่ง");
+    formData.set("refundTransactionReference", "refund-reference-1");
+    formData.set("confirmedExternalTransfer", "true");
+
+    const result = await refundStorePaymentAction({ status: "idle", message: "" }, formData);
+
+    expect(result.status).toBe("success");
+    expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+    });
+    expect(mocks.applyManualStoreRefund).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: "admin-1",
+        paymentId: "payment-1",
+        refundAmount: "100.00"
+      })
+    );
+  });
+
+  it("does not start a refund transaction when the caller is not an admin", async () => {
+    mocks.requireAdminSession.mockRejectedValueOnce(new Error("Admin access required."));
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("refundAmount", "100.00");
+    formData.set("refundReason", "สินค้าจัดส่งไม่ได้");
+    formData.set("refundTransactionReference", "refund-reference-1");
+    formData.set("confirmedExternalTransfer", "true");
+
+    await expect(refundStorePaymentAction({ status: "idle", message: "" }, formData)).rejects.toThrow(
+      "Admin access required."
+    );
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.applyManualStoreRefund).not.toHaveBeenCalled();
+  });
+
+  it("requires the external-transfer confirmation before a refund transaction starts", async () => {
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("refundAmount", "100.00");
+    formData.set("refundReason", "สินค้าจัดส่งไม่ได้");
+    formData.set("refundTransactionReference", "refund-reference-1");
+
+    const result = await refundStorePaymentAction({ status: "idle", message: "" }, formData);
+
+    expect(result.status).toBe("error");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.applyManualStoreRefund).not.toHaveBeenCalled();
   });
 });

@@ -29,3 +29,11 @@ export const reviewPaymentSchema = z
         ? normalizePaymentTransactionReference(data.transactionReference ?? "")
         : undefined
   }));
+
+export const manualStoreRefundSchema = z.object({
+  paymentId: z.string().min(1),
+  refundAmount: z.string().trim().regex(/^\d+(?:\.\d{1,2})?$/),
+  refundReason: z.string().trim().min(3).max(1000),
+  refundTransactionReference: z.string().trim().min(1).max(255),
+  confirmedExternalTransfer: z.literal("true")
+});
