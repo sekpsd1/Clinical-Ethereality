@@ -4,7 +4,9 @@ import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
 import {
   DuplicatePaymentTransactionError,
   getPersistableProviderResult,
+  mergePaymentVerificationPayload,
   PaymentVerificationConflictError,
+  PaymentVerificationRateLimitError,
   ProviderVerificationUnavailableError
 } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
@@ -53,6 +55,100 @@ export function getConsultationPaymentVerificationTransition(
 export function assertConsultationReadyForPaymentVerification(status: ConsultationStatus) {
   if (status !== "pending_payment") {
     throw new Error("Consultation is not ready for payment verification.");
+  }
+}
+
+function getProviderAttemptedAt(verificationPayload: Prisma.JsonValue | null): Date | null {
+  if (!verificationPayload || typeof verificationPayload !== "object" || Array.isArray(verificationPayload)) {
+    return null;
+  }
+
+  const providerAttempt = (verificationPayload as Prisma.JsonObject).providerAttempt;
+
+  if (!providerAttempt || typeof providerAttempt !== "object" || Array.isArray(providerAttempt)) {
+    return null;
+  }
+
+  const claimedAt = (providerAttempt as Prisma.JsonObject).claimedAt;
+
+  if (typeof claimedAt !== "string") {
+    return null;
+  }
+
+  const parsed = new Date(claimedAt);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function getConsultationPaymentVerificationRetryAfterSeconds(
+  payment: { status: string; verificationPayload: Prisma.JsonValue | null },
+  now = new Date()
+): number {
+  if (payment.status !== "pending_review") {
+    return 0;
+  }
+
+  const attemptedAt = getProviderAttemptedAt(payment.verificationPayload);
+
+  if (!attemptedAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((attemptedAt.getTime() + 30_000 - now.getTime()) / 1000));
+}
+
+export async function claimConsultationProviderVerification(
+  tx: Prisma.TransactionClient,
+  input: { actorId: string; consultation: ConsultationPaymentSnapshot }
+): Promise<void> {
+  await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${input.consultation.id} FOR UPDATE`
+  );
+
+  const currentConsultation = await tx.consultation.findUnique({
+    where: { id: input.consultation.id },
+    select: { patientId: true, status: true }
+  });
+
+  if (
+    !currentConsultation ||
+    currentConsultation.patientId !== input.consultation.patientId ||
+    currentConsultation.status !== "pending_payment"
+  ) {
+    throw new PaymentVerificationConflictError();
+  }
+
+  const payment = await tx.payment.findUnique({
+    where: { consultationId: input.consultation.id },
+    select: { id: true, status: true, updatedAt: true, verificationPayload: true }
+  });
+
+  if (!payment || payment.status !== "pending_review") {
+    throw new PaymentVerificationConflictError();
+  }
+
+  const retryAfterSeconds = getConsultationPaymentVerificationRetryAfterSeconds(payment);
+
+  if (retryAfterSeconds > 0) {
+    throw new PaymentVerificationRateLimitError(retryAfterSeconds);
+  }
+
+  const claimedAt = new Date();
+  const paymentUpdate = await tx.payment.updateMany({
+    where: { id: payment.id, status: "pending_review", updatedAt: payment.updatedAt },
+    data: {
+      verificationPayload: mergePaymentVerificationPayload(payment.verificationPayload, {
+        providerAttempt: {
+          claimedAt: claimedAt.toISOString(),
+          claimedBy: input.actorId,
+          status: "pending_review"
+        }
+      }),
+      updatedAt: claimedAt
+    }
+  });
+
+  if (paymentUpdate.count !== 1) {
+    throw new PaymentVerificationConflictError();
   }
 }
 
@@ -116,7 +212,8 @@ export async function applyConsultationPaymentVerification(
     select: {
       id: true,
       status: true,
-      updatedAt: true
+      updatedAt: true,
+      verificationPayload: true
     }
   });
 
@@ -145,7 +242,7 @@ export async function applyConsultationPaymentVerification(
     }
   }
 
-  const verificationPayload = {
+  const verificationPayload = mergePaymentVerificationPayload(existingPayment?.verificationPayload ?? null, {
     reviewedAt: reviewedAt.toISOString(),
     source: input.result.provider,
     result: toJsonValue(getPersistableProviderResult(input.result)),
@@ -154,7 +251,7 @@ export async function applyConsultationPaymentVerification(
       : input.evidence.qrPayload
         ? { type: "qr_payload" }
         : { type: "image_url" }
-  };
+  });
 
   try {
     if (existingPayment) {

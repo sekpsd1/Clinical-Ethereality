@@ -5,6 +5,8 @@ import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import { getPromptPayInstruction } from "@/lib/payments/promptpay";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
+import { paymentSlipEntityType } from "@/features/payments/private-slips";
+import { getConsultationPaymentVerificationRetryAfterSeconds } from "@/features/consultations/payment/service";
 import type {
   ConsultationPaymentData,
   ConsultationPaymentDetail,
@@ -37,6 +39,13 @@ function getConsultationRecord(consultationId: string, patientId: string) {
               avatarUrl: true
             }
           }
+        }
+      },
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          verificationPayload: true
         }
       }
     }
@@ -73,7 +82,7 @@ function formatMoney(value: number): string {
 }
 
 function normalizePaymentStatus(value?: string): ConsultationPaymentStatus {
-  if (value === "rejected" || value === "provider_error" || value === "invalid" || value === "expired" || value === "not_found") {
+  if (value === "rejected" || value === "provider_error" || value === "cooldown" || value === "invalid" || value === "expired" || value === "not_found") {
     return value;
   }
 
@@ -86,6 +95,20 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
   const doctorAvatarUrl = consultation.doctor.user.avatarUrl?.startsWith("/")
     ? consultation.doctor.user.avatarUrl
     : "/images/doctors/somchai-payment.png";
+  const privateSlipAttachment =
+    consultation.payment?.status === "pending_review"
+      ? await prisma.fileAttachment.findFirst({
+          where: {
+            entityId: consultation.payment.id,
+            entityType: paymentSlipEntityType,
+            ownerId: consultation.patientId,
+            purpose: "payment_slip",
+            status: "attached",
+            storageKey: { not: null }
+          },
+          select: { id: true }
+        })
+      : null;
 
   return {
     id: consultation.id,
@@ -100,7 +123,11 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
     feeLabel: formatMoney(feeAmount),
     appointmentHref: `/consult/appointments/${consultation.id}`,
     waitingRoomHref: `/consult/waiting-room?consultation=${consultation.id}`,
-    promptPay
+    privateSlipAttachmentId: privateSlipAttachment?.id ?? null,
+    promptPay,
+    verificationRetryAfterSeconds: consultation.payment
+      ? getConsultationPaymentVerificationRetryAfterSeconds(consultation.payment)
+      : 0
   };
 }
 

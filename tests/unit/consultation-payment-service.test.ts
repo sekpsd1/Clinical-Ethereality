@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyConsultationPaymentVerification,
   assertConsultationReadyForPaymentVerification,
+  claimConsultationProviderVerification,
+  getConsultationPaymentVerificationRetryAfterSeconds,
   getConsultationPaymentVerificationTransition,
   type ConsultationPaymentSnapshot
 } from "@/features/consultations/payment/service";
 import {
   DuplicatePaymentTransactionError,
   PaymentVerificationConflictError,
+  PaymentVerificationRateLimitError,
   ProviderVerificationUnavailableError
 } from "@/features/payments/service";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
@@ -90,6 +93,85 @@ describe("consultation payment verification service", () => {
       );
     }
   );
+
+  it("claims an attached private-slip verification once without creating audit or notification records", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "pending_review",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z"),
+      verificationPayload: null
+    });
+
+    await claimConsultationProviderVerification(tx as never, {
+      actorId: "patient-1",
+      consultation: consultation()
+    });
+
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "payment-1", status: "pending_review" }),
+        data: expect.objectContaining({
+          verificationPayload: expect.objectContaining({
+            providerAttempt: expect.objectContaining({ claimedBy: "patient-1", status: "pending_review" })
+          })
+        })
+      })
+    );
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a claim when the consultation owner or state changed", async () => {
+    const tx = txMock();
+    tx.consultation.findUnique.mockResolvedValueOnce({ patientId: "patient-2", status: "pending_payment" });
+
+    await expect(
+      claimConsultationProviderVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.findUnique).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rate limits a repeat provider attempt without duplicate side effects", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "pending_review",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z"),
+      verificationPayload: { providerAttempt: { claimedAt: new Date().toISOString() } }
+    });
+
+    await expect(
+      claimConsultationProviderVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationRateLimitError);
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("allows the first private-slip attempt immediately and exposes only the later retry cooldown", () => {
+    expect(
+      getConsultationPaymentVerificationRetryAfterSeconds({
+        status: "pending_review",
+        verificationPayload: null
+      })
+    ).toBe(0);
+    expect(
+      getConsultationPaymentVerificationRetryAfterSeconds({
+        status: "pending_review",
+        verificationPayload: { providerAttempt: { claimedAt: new Date().toISOString() } }
+      })
+    ).toBeGreaterThan(0);
+  });
 
   it("serializes, normalizes, schedules, and notifies for verified consultation payments", async () => {
     const tx = txMock();

@@ -1,7 +1,7 @@
 import type { ConsultationStatus } from "@prisma/client";
 import type { PromptPayInstruction } from "@/lib/payments/promptpay";
 
-export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "invalid" | "expired" | "not_found";
+export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "cooldown" | "invalid" | "expired" | "not_found";
 
 export type ConsultationPaymentDetail = {
   id: string;
@@ -16,7 +16,9 @@ export type ConsultationPaymentDetail = {
   feeLabel: string;
   appointmentHref: string;
   waitingRoomHref: string;
+  privateSlipAttachmentId: string | null;
   promptPay: PromptPayInstruction;
+  verificationRetryAfterSeconds: number;
 };
 
 export type ConsultationPaymentData = {

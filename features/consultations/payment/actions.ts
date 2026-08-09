@@ -9,7 +9,11 @@ import { assertPermission } from "@/lib/permissions";
 import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { verifyConsultationSlipSchema } from "@/features/consultations/payment/schema";
-import { applyConsultationPaymentVerification } from "@/features/consultations/payment/service";
+import {
+  applyConsultationPaymentVerification,
+  claimConsultationProviderVerification
+} from "@/features/consultations/payment/service";
+import { PaymentVerificationRateLimitError } from "@/features/payments/service";
 import {
   paymentSlipEntityType,
   readPrivatePaymentSlip,
@@ -69,59 +73,65 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
     redirectToPayment(consultation.id, "invalid");
   }
 
-  let privateFile: { bytes: Uint8Array; fileName: string; mimeType: PaymentSlipMimeType } | undefined;
-  let privateSlipUrl: string | undefined;
+  const payment = await prisma.payment.findUnique({
+    where: { consultationId: consultation.id },
+    select: { id: true }
+  });
+  const attachment = payment
+    ? await prisma.fileAttachment.findUnique({
+        where: { id: parsed.data.attachmentId },
+        select: {
+          entityId: true,
+          entityType: true,
+          fileName: true,
+          mimeType: true,
+          ownerId: true,
+          purpose: true,
+          status: true,
+          storageKey: true
+        }
+      })
+    : null;
+  const mimeType = attachment?.mimeType as PaymentSlipMimeType | null;
 
-  if (parsed.data.attachmentId) {
-    const payment = await prisma.payment.findUnique({
-      where: { consultationId: consultation.id },
-      select: { id: true }
-    });
-    const attachment = payment
-      ? await prisma.fileAttachment.findUnique({
-          where: { id: parsed.data.attachmentId },
-          select: {
-            entityId: true,
-            entityType: true,
-            fileName: true,
-            mimeType: true,
-            ownerId: true,
-            purpose: true,
-            status: true,
-            storageKey: true,
-            storageUrl: true
-          }
-        })
-      : null;
-    const mimeType = attachment?.mimeType as PaymentSlipMimeType | null;
+  if (
+    !attachment ||
+    attachment.entityId !== payment?.id ||
+    attachment.entityType !== paymentSlipEntityType ||
+    attachment.ownerId !== session.userId ||
+    attachment.purpose !== "payment_slip" ||
+    attachment.status !== "attached" ||
+    !attachment.storageKey ||
+    !mimeType ||
+    !paymentSlipMimeTypes.includes(mimeType)
+  ) {
+    redirectToPayment(consultation.id, "invalid");
+  }
 
-    if (
-      !attachment ||
-      attachment.entityId !== payment?.id ||
-      attachment.entityType !== paymentSlipEntityType ||
-      attachment.ownerId !== session.userId ||
-      attachment.purpose !== "payment_slip" ||
-      attachment.status !== "attached" ||
-      !attachment.storageKey ||
-      !mimeType ||
-      !paymentSlipMimeTypes.includes(mimeType)
-    ) {
-      redirectToPayment(consultation.id, "invalid");
+  let privateFile: { bytes: Uint8Array; fileName: string; mimeType: PaymentSlipMimeType };
+
+  try {
+    const bytes = await readPrivatePaymentSlip(attachment.storageKey);
+    validatePaymentSlipContent(mimeType, bytes);
+    privateFile = { bytes, fileName: attachment.fileName, mimeType };
+  } catch {
+    redirectToPayment(consultation.id, "invalid");
+  }
+
+  try {
+    await prisma.$transaction(
+      (tx) => claimConsultationProviderVerification(tx, { actorId: session.userId, consultation }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof PaymentVerificationRateLimitError) {
+      redirectToPayment(consultation.id, "cooldown");
     }
 
-    try {
-      const bytes = await readPrivatePaymentSlip(attachment.storageKey);
-      validatePaymentSlipContent(mimeType, bytes);
-      privateFile = { bytes, fileName: attachment.fileName, mimeType };
-      privateSlipUrl = attachment.storageUrl;
-    } catch {
-      redirectToPayment(consultation.id, "invalid");
-    }
+    redirectToPayment(consultation.id, "provider_error");
   }
 
   const result = await verifyPaymentSlip({
-    qrPayload: parsed.data.qrPayload || undefined,
-    imageUrl: parsed.data.imageUrl || undefined,
     privateFile,
     amount: consultation.doctor.consultationFee ?? 1000
   }).catch(() => null);
@@ -142,9 +152,7 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
           consultation,
           evidence: {
             amount: consultation.doctor.consultationFee ?? 1000,
-            attachmentId: parsed.data.attachmentId,
-            qrPayload: parsed.data.qrPayload || undefined,
-            slipImageUrl: privateSlipUrl ?? (parsed.data.imageUrl || undefined)
+            attachmentId: parsed.data.attachmentId
           },
           result
         });
