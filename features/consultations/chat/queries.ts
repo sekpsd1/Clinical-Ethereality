@@ -130,9 +130,7 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
 
     const sdkConfigured = isZoomMeetingSdkConfigured();
     const videoHref =
-      consultation.zoomMeetingId && sdkConfigured
-        ? `/consult/live/zoom?consultation=${consultation.id}`
-        : consultation.zoomJoinUrl;
+      consultation.zoomMeetingId && sdkConfigured ? `/consult/live/zoom?consultation=${consultation.id}` : null;
 
     return {
       consultationId: consultation.id,
@@ -146,9 +144,7 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
       videoMode:
         consultation.zoomMeetingId && sdkConfigured
           ? "meeting_sdk"
-          : consultation.zoomJoinUrl
-            ? "external"
-            : "unavailable",
+          : "unavailable",
       returnHref:
         session.role === "doctor" || session.role === "admin"
           ? "/doctor/consultations"

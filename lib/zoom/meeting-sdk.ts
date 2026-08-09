@@ -32,8 +32,10 @@ export async function issueZoomMeetingSdkSignature(meetingNumber: string, role: 
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const issuedAt = now - 30;
-  const expiresAt = issuedAt + 2 * 60 * 60;
+  const issuedAt = now;
+  // Zoom requires at least 30 minutes between iat and exp/tokenExp. Keep the
+  // credential at that minimum rather than issuing the previous two-hour token.
+  const expiresAt = issuedAt + 30 * 60;
   const header = {
     alg: "HS256",
     typ: "JWT"

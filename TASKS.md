@@ -305,6 +305,7 @@
 - [x] Build admin schedule editor for doctor availability
 - [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
 - [x] Build Zoom Meeting SDK client-view integration, Server-to-Server meeting creation, signature generation, and signed webhook handling; production owner credentials and hosted end-to-end validation remain pending
+- [x] Complete local Zoom Production Pre-Credential Readiness: server-only S2S/OAuth/ZAK flow, minimum-lifetime SDK signatures, owner/role guards, signed webhook replay handling, mock coverage, and owner setup/UAT/rollback guide; owner credential entry and non-monetary Production UAT remain pending
 - [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Remove live-room demo messages and bind the room to participant-scoped persisted messages with near-real-time refresh
 - [x] Persist consultation payment evidence and status in the shared Payment entity

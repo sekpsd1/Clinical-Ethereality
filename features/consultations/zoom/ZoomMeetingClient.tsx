@@ -31,6 +31,7 @@ export function ZoomMeetingClient({
             userName: data.userName,
             userEmail: "",
             passWord: data.password,
+            ...(data.zak ? { zak: data.zak } : {}),
             success: () => {
               setMessage("เชื่อมต่อ Zoom แล้ว");
             },

@@ -16,30 +16,41 @@ type ZoomMeetingResponse = {
   join_url?: unknown;
 };
 
-export function isZoomMeetingCreationConfigured(): boolean {
+type ZoomZakResponse = {
+  token?: unknown;
+};
+
+type ZoomServerToServerCredentials = {
+  accountId: string;
+  clientId: string;
+  clientSecret: string;
+  hostUserId: string;
+};
+
+function getServerToServerCredentials(): ZoomServerToServerCredentials | null {
   const env = getAppEnv();
 
-  return Boolean(env.ZOOM_ACCOUNT_ID && env.ZOOM_CLIENT_ID && env.ZOOM_CLIENT_SECRET);
-}
-
-export async function createZoomMeetingIfConfigured(input: {
-  consultationId: string;
-  scheduledAt: Date | null;
-}): Promise<CreatedZoomMeeting | null> {
-  const env = getAppEnv();
-
-  if (!env.ZOOM_ACCOUNT_ID || !env.ZOOM_CLIENT_ID || !env.ZOOM_CLIENT_SECRET) {
+  if (!env.ZOOM_ACCOUNT_ID || !env.ZOOM_CLIENT_ID || !env.ZOOM_CLIENT_SECRET || !env.ZOOM_HOST_USER_ID) {
     return null;
   }
 
+  return {
+    accountId: env.ZOOM_ACCOUNT_ID,
+    clientId: env.ZOOM_CLIENT_ID,
+    clientSecret: env.ZOOM_CLIENT_SECRET,
+    hostUserId: env.ZOOM_HOST_USER_ID
+  };
+}
+
+async function requestZoomAccessToken(credentials: ZoomServerToServerCredentials): Promise<string> {
   const tokenUrl = new URL("https://zoom.us/oauth/token");
   tokenUrl.searchParams.set("grant_type", "account_credentials");
-  tokenUrl.searchParams.set("account_id", env.ZOOM_ACCOUNT_ID);
+  tokenUrl.searchParams.set("account_id", credentials.accountId);
 
   const tokenResponse = await fetch(tokenUrl, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${Buffer.from(`${env.ZOOM_CLIENT_ID}:${env.ZOOM_CLIENT_SECRET}`, "utf8").toString("base64")}`,
+      Authorization: `Basic ${Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`, "utf8").toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
     cache: "no-store",
@@ -56,11 +67,31 @@ export async function createZoomMeetingIfConfigured(input: {
     throw new Error("Zoom access token response is invalid.");
   }
 
+  return tokenBody.access_token;
+}
+
+export function isZoomMeetingCreationConfigured(): boolean {
+  return getServerToServerCredentials() !== null;
+}
+
+export async function createZoomMeetingIfConfigured(input: {
+  consultationId: string;
+  scheduledAt: Date | null;
+}): Promise<CreatedZoomMeeting | null> {
+  const credentials = getServerToServerCredentials();
+
+  if (!credentials) {
+    return null;
+  }
+  const accessToken = await requestZoomAccessToken(credentials);
+
   const startTime = input.scheduledAt && input.scheduledAt.getTime() > Date.now() ? input.scheduledAt : new Date();
-  const meetingResponse = await fetch("https://api.zoom.us/v2/users/me/meetings", {
+  const meetingResponse = await fetch(
+    `https://api.zoom.us/v2/users/${encodeURIComponent(credentials.hostUserId)}/meetings`,
+    {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${tokenBody.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -72,14 +103,15 @@ export async function createZoomMeetingIfConfigured(input: {
       settings: {
         host_video: true,
         participant_video: true,
-        join_before_host: true,
+        join_before_host: false,
         mute_upon_entry: true,
-        waiting_room: false
+        waiting_room: true
       }
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000)
-  });
+    }
+  );
 
   if (!meetingResponse.ok) {
     throw new Error("Zoom meeting creation failed.");
@@ -99,4 +131,36 @@ export async function createZoomMeetingIfConfigured(input: {
     password: typeof meetingBody.password === "string" ? meetingBody.password : "",
     joinUrl: meetingBody.join_url
   };
+}
+
+export async function getZoomHostZakIfConfigured(): Promise<string | null> {
+  const credentials = getServerToServerCredentials();
+
+  if (!credentials) {
+    return null;
+  }
+
+  const accessToken = await requestZoomAccessToken(credentials);
+  const response = await fetch(
+    `https://api.zoom.us/v2/users/${encodeURIComponent(credentials.hostUserId)}/token?type=zak`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000)
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Zoom host authorization request failed.");
+  }
+
+  const body = (await response.json()) as ZoomZakResponse;
+
+  if (typeof body.token !== "string" || body.token.length === 0) {
+    throw new Error("Zoom host authorization response is invalid.");
+  }
+
+  return body.token;
 }
