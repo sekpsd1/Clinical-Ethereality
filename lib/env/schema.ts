@@ -25,6 +25,7 @@ export const envSchema = z.object({
   SLIP_VERIFICATION_API_KEY: z.string().optional(),
   SLIPOK_BRANCH_ID: z.string().optional(),
   SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: z.string().optional(),
+  EASYSLIP_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),

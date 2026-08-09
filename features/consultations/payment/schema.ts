@@ -6,6 +6,6 @@ export const verifyConsultationSlipSchema = z
     qrPayload: z.string().trim().optional(),
     imageUrl: z.string().trim().url().optional().or(z.literal(""))
   })
-  .refine((value) => Boolean(value.qrPayload || value.imageUrl), {
-    message: "QR payload or hosted slip image URL is required."
+  .refine((value) => Boolean(value.qrPayload?.trim()) !== Boolean(value.imageUrl), {
+    message: "Exactly one of QR payload or hosted slip image URL is required."
   });

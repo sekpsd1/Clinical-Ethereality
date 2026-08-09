@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
@@ -72,19 +73,28 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
     redirectToPayment(consultationId, "provider_error");
   }
 
+  if (result.status === "provider_error") {
+    redirectToPayment(consultationId, "provider_error");
+  }
+
   try {
-    await prisma.$transaction(async (tx) => {
-      await applyConsultationPaymentVerification(tx, {
-        actorId: session.userId,
-        consultation,
-        evidence: {
-          amount: consultation.doctor.consultationFee ?? 1000,
-          qrPayload: parsed.data.qrPayload || undefined,
-          slipImageUrl: parsed.data.imageUrl || undefined
-        },
-        result
-      });
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await applyConsultationPaymentVerification(tx, {
+          actorId: session.userId,
+          consultation,
+          evidence: {
+            amount: consultation.doctor.consultationFee ?? 1000,
+            qrPayload: parsed.data.qrPayload || undefined,
+            slipImageUrl: parsed.data.imageUrl || undefined
+          },
+          result
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      }
+    );
   } catch {
     redirectToPayment(consultationId, "provider_error");
   }
@@ -101,5 +111,5 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
     redirect(`/consult/waiting-room?consultation=${consultation.id}`);
   }
 
-  redirectToPayment(consultation.id, result.status === "provider_error" ? "provider_error" : "rejected");
+  redirectToPayment(consultation.id, "rejected");
 }

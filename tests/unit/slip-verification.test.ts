@@ -16,6 +16,7 @@ function buildSlipOkResponse(overrides: {
 } = {}) {
   return {
     ok: true,
+    status: 200,
     json: vi.fn().mockResolvedValue({
       success: true,
       data: {
@@ -34,28 +35,57 @@ function buildSlipOkResponse(overrides: {
 
 function buildEasySlipResponse(overrides: {
   amount?: number;
+  isAmountMatched?: boolean;
+  isDuplicate?: boolean;
+  matchedAccount?: unknown | null;
   receiverName?: string;
+  status?: number;
+  success?: boolean;
+  errorCode?: string;
 } = {}) {
+  const amount = overrides.amount ?? 1200;
+  const status = overrides.status ?? 200;
+  const success = overrides.success ?? status === 200;
+
   return {
-    ok: true,
-    json: vi.fn().mockResolvedValue({
-      success: true,
-      data: {
-        transRef: "transaction-2",
-        amount: {
-          amount: overrides.amount ?? 1200
-        },
-        receiver: overrides.receiverName
-          ? {
-              account: {
-                name: {
-                  th: overrides.receiverName
-                }
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(
+      success
+        ? {
+            success: true,
+            data: {
+              isDuplicate: overrides.isDuplicate ?? false,
+              matchedAccount: overrides.matchedAccount === undefined ? { id: "registered-account" } : overrides.matchedAccount,
+              amountInOrder: 1200,
+              amountInSlip: amount,
+              isAmountMatched: overrides.isAmountMatched ?? amount === 1200,
+              rawSlip: {
+                payload: "sensitive-qr-payload",
+                transRef: "transaction-2",
+                amount: {
+                  amount
+                },
+                receiver: overrides.receiverName
+                  ? {
+                      account: {
+                        name: {
+                          th: overrides.receiverName
+                        }
+                      }
+                    }
+                  : undefined
               }
             }
-          : undefined
-      }
-    })
+          }
+        : {
+            success: false,
+            error: {
+              code: overrides.errorCode ?? "SLIP_NOT_FOUND",
+              message: "provider error"
+            }
+          }
+    )
   } as unknown as Response;
 }
 
@@ -66,7 +96,8 @@ describe("slip verification fail-closed checks", () => {
       SLIP_VERIFICATION_PROVIDER: "slipok",
       SLIP_VERIFICATION_API_KEY: "test-api-key",
       SLIPOK_BRANCH_ID: "test-branch",
-      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality"
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality",
+      EASYSLIP_REQUEST_TIMEOUT_MS: 10_000
     });
   });
 
@@ -85,6 +116,23 @@ describe("slip verification fail-closed checks", () => {
         amount: 1200
       })
     ).rejects.toThrow("SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call EasySlip when its API key is not configured", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    mocks.getAppEnv.mockReturnValue({
+      SLIP_VERIFICATION_PROVIDER: "easyslip",
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality"
+    });
+
+    await expect(
+      verifyPaymentSlip({
+        qrPayload: "slip-payload",
+        amount: 1200
+      })
+    ).rejects.toThrow("SLIP_VERIFICATION_API_KEY");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -131,7 +179,6 @@ describe("slip verification fail-closed checks", () => {
       "fetch",
       vi.fn().mockResolvedValue(
         buildSlipOkResponse({
-          amount: 1200,
           receiverName: "Clinical Ethereality"
         })
       )
@@ -154,7 +201,6 @@ describe("slip verification fail-closed checks", () => {
       "fetch",
       vi.fn().mockResolvedValue(
         buildSlipOkResponse({
-          amount: 1200,
           receiverName: "Clinical Ethereality Clinic"
         })
       )
@@ -172,50 +218,124 @@ describe("slip verification fail-closed checks", () => {
     });
   });
 
-  it("fails closed when EasySlip omits required receiver data", async () => {
+  it("uses the documented EasySlip v2 request contract and accepts an exact matched response", async () => {
     mocks.getAppEnv.mockReturnValue({
       SLIP_VERIFICATION_PROVIDER: "easyslip",
       SLIP_VERIFICATION_API_KEY: "test-api-key",
-      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality"
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality",
+      EASYSLIP_REQUEST_TIMEOUT_MS: 10_000
     });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(buildEasySlipResponse()));
+    const fetchMock = vi.fn().mockResolvedValue(
+      buildEasySlipResponse({
+        receiverName: "Clinical Ethereality"
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
 
     const result = await verifyPaymentSlip({
-      imageUrl: "https://storage.example/slip.jpg",
+      qrPayload: "slip-payload",
       amount: 1200
     });
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.easyslip.com/v2/verify/bank",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-api-key"
+        }),
+        body: JSON.stringify({
+          payload: "slip-payload",
+          checkDuplicate: true,
+          matchAccount: true,
+          matchAmount: 1200
+        })
+      })
+    );
     expect(result).toMatchObject({
-      ok: false,
-      status: "provider_error",
-      receiverName: null
+      ok: true,
+      status: "verified",
+      transRef: "transaction-2",
+      amount: 1200,
+      receiverName: "Clinical Ethereality",
+      raw: null
     });
   });
 
-  it("rejects EasySlip when the returned receiver does not match", async () => {
+  it.each([
+    ["receiver mismatch", { receiverName: "Another Merchant" }, "rejected"],
+    ["amount mismatch", { amount: 1199, isAmountMatched: false, receiverName: "Clinical Ethereality" }, "rejected"],
+    ["duplicate response", { isDuplicate: true, receiverName: "Clinical Ethereality" }, "rejected"],
+    ["missing matched account", { matchedAccount: null }, "provider_error"],
+    ["malformed successful response", { receiverName: undefined }, "provider_error"]
+  ] as const)("fails closed for EasySlip %s", async (_label, overrides, expectedStatus) => {
     mocks.getAppEnv.mockReturnValue({
       SLIP_VERIFICATION_PROVIDER: "easyslip",
       SLIP_VERIFICATION_API_KEY: "test-api-key",
-      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality"
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality",
+      EASYSLIP_REQUEST_TIMEOUT_MS: 10_000
     });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        buildEasySlipResponse({
-          receiverName: "Another Merchant"
-        })
-      )
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(buildEasySlipResponse(overrides)));
 
     const result = await verifyPaymentSlip({
-      imageUrl: "https://storage.example/slip.jpg",
+      qrPayload: "slip-payload",
       amount: 1200
     });
 
     expect(result).toMatchObject({
       ok: false,
-      status: "rejected",
-      receiverName: "Another Merchant"
+      status: expectedStatus
     });
+  });
+
+  it.each([
+    ["HTTP 403 quota", buildEasySlipResponse({ status: 403, success: false, errorCode: "QUOTA_EXCEEDED" })],
+    ["HTTP 429", buildEasySlipResponse({ status: 429, success: false, errorCode: "QUOTA_EXCEEDED" })],
+    ["HTTP 5xx", buildEasySlipResponse({ status: 503, success: false, errorCode: "API_SERVER_ERROR" })]
+  ])("keeps %s as pending/manual review provider error", async (_label, response) => {
+    mocks.getAppEnv.mockReturnValue({
+      SLIP_VERIFICATION_PROVIDER: "easyslip",
+      SLIP_VERIFICATION_API_KEY: "test-api-key",
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality",
+      EASYSLIP_REQUEST_TIMEOUT_MS: 10_000
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    await expect(
+      verifyPaymentSlip({
+        qrPayload: "slip-payload",
+        amount: 1200
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "provider_error"
+    });
+  });
+
+  it("turns EasySlip network timeouts into provider errors without logging sensitive evidence", async () => {
+    mocks.getAppEnv.mockReturnValue({
+      SLIP_VERIFICATION_PROVIDER: "easyslip",
+      SLIP_VERIFICATION_API_KEY: "test-api-key",
+      SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME: "Clinical Ethereality",
+      EASYSLIP_REQUEST_TIMEOUT_MS: 1_000
+    });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+
+    const result = await verifyPaymentSlip({
+      qrPayload: "sensitive-qr-payload",
+      amount: 1200
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      provider: "easyslip",
+      status: "provider_error",
+      transRef: null,
+      amount: null,
+      receiverName: null,
+      raw: null
+    });
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 });

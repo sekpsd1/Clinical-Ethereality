@@ -1,6 +1,13 @@
-import type { ConsultationStatus, Prisma } from "@prisma/client";
+import { Prisma, type ConsultationStatus } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
+import {
+  DuplicatePaymentTransactionError,
+  getPersistableProviderResult,
+  PaymentVerificationConflictError,
+  ProviderVerificationUnavailableError
+} from "@/features/payments/service";
+import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 
 export type ConsultationPaymentVerificationTransition = {
   auditAction: "consultation.payment_verified" | "consultation.payment_rejected";
@@ -59,49 +66,148 @@ export async function applyConsultationPaymentVerification(
 ) {
   assertConsultationReadyForPaymentVerification(input.consultation.status);
 
+  if (input.result.status === "provider_error") {
+    throw new ProviderVerificationUnavailableError();
+  }
+
+  if (input.result.ok !== (input.result.status === "verified")) {
+    throw new Error("Provider verification status does not match its success result.");
+  }
+
+  if (input.result.ok && !input.result.transRef) {
+    throw new Error("A verified consultation payment must include a transaction reference.");
+  }
+
   const transition = getConsultationPaymentVerificationTransition(input.result.ok);
   const reviewedAt = new Date();
+  const normalizedTransactionReference = input.result.ok
+    ? normalizePaymentTransactionReference(input.result.transRef ?? "")
+    : null;
 
-  await tx.payment.upsert({
+  // Serialize by consultation so concurrent evidence submissions cannot create
+  // two completed payments or schedule the same consultation twice.
+  await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${input.consultation.id} FOR UPDATE`
+  );
+
+  const currentConsultation = await tx.consultation.findUnique({
     where: {
-      consultationId: input.consultation.id
+      id: input.consultation.id
     },
-    create: {
-      consultationId: input.consultation.id,
-      amount: input.evidence.amount,
-      status: input.result.ok ? "verified" : "rejected",
-      qrPayload: input.evidence.qrPayload,
-      slipImageUrl: input.evidence.slipImageUrl,
-      reviewedAt,
-      verificationPayload: {
-        reviewedAt: reviewedAt.toISOString(),
-        source: input.result.provider,
-        result: toJsonValue(input.result)
-      }
-    },
-    update: {
-      amount: input.evidence.amount,
-      status: input.result.ok ? "verified" : "rejected",
-      qrPayload: input.evidence.qrPayload,
-      slipImageUrl: input.evidence.slipImageUrl,
-      reviewedAt,
-      verificationPayload: {
-        reviewedAt: reviewedAt.toISOString(),
-        source: input.result.provider,
-        result: toJsonValue(input.result)
-      }
+    select: {
+      patientId: true,
+      status: true
     }
   });
 
-  if (transition.nextStatus) {
-    await tx.consultation.update({
+  if (
+    !currentConsultation ||
+    currentConsultation.patientId !== input.consultation.patientId ||
+    currentConsultation.status !== "pending_payment"
+  ) {
+    throw new PaymentVerificationConflictError();
+  }
+
+  const existingPayment = await tx.payment.findUnique({
+    where: {
+      consultationId: input.consultation.id
+    },
+    select: {
+      id: true,
+      status: true,
+      updatedAt: true
+    }
+  });
+
+  if (existingPayment?.status === "verified" || existingPayment?.status === "refunded") {
+    throw new PaymentVerificationConflictError();
+  }
+
+  if (normalizedTransactionReference) {
+    const duplicatePayment = await tx.payment.findFirst({
       where: {
-        id: input.consultation.id
+        id: {
+          not: existingPayment?.id ?? ""
+        },
+        status: {
+          in: ["verified", "refunded"]
+        },
+        normalizedTransactionReference
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (duplicatePayment) {
+      throw new DuplicatePaymentTransactionError();
+    }
+  }
+
+  const verificationPayload = {
+    reviewedAt: reviewedAt.toISOString(),
+    source: input.result.provider,
+    result: toJsonValue(getPersistableProviderResult(input.result))
+  };
+
+  try {
+    if (existingPayment) {
+      const paymentUpdate = await tx.payment.updateMany({
+        where: {
+          id: existingPayment.id,
+          status: existingPayment.status,
+          updatedAt: existingPayment.updatedAt
+        },
+        data: {
+          amount: input.evidence.amount,
+          status: input.result.ok ? "verified" : "rejected",
+          qrPayload: input.evidence.qrPayload,
+          slipImageUrl: input.evidence.slipImageUrl,
+          normalizedTransactionReference,
+          reviewedAt,
+          verificationPayload
+        }
+      });
+
+      if (paymentUpdate.count !== 1) {
+        throw new PaymentVerificationConflictError();
+      }
+    } else {
+      await tx.payment.create({
+        data: {
+          consultationId: input.consultation.id,
+          amount: input.evidence.amount,
+          status: input.result.ok ? "verified" : "rejected",
+          qrPayload: input.evidence.qrPayload,
+          slipImageUrl: input.evidence.slipImageUrl,
+          normalizedTransactionReference,
+          reviewedAt,
+          verificationPayload
+        }
+      });
+    }
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "P2002") {
+      throw new DuplicatePaymentTransactionError();
+    }
+
+    throw error;
+  }
+
+  if (transition.nextStatus) {
+    const consultationUpdate = await tx.consultation.updateMany({
+      where: {
+        id: input.consultation.id,
+        status: "pending_payment"
       },
       data: {
         status: transition.nextStatus
       }
     });
+
+    if (consultationUpdate.count !== 1) {
+      throw new PaymentVerificationConflictError();
+    }
   }
 
   if (transition.shouldNotifyPatient) {
@@ -114,9 +220,7 @@ export async function applyConsultationPaymentVerification(
         body: "นัดหมายของคุณได้รับการยืนยันแล้ว กรุณาเปิดห้องรอก่อนเวลานัด",
         metadataJson: {
           consultationId: input.consultation.id,
-          href: `/consult/appointments/${input.consultation.id}`,
-          provider: input.result.provider,
-          transRef: input.result.transRef
+          href: `/consult/appointments/${input.consultation.id}`
         }
       }
     });
@@ -132,9 +236,9 @@ export async function applyConsultationPaymentVerification(
       nextStatus: transition.nextStatus ?? input.consultation.status,
       provider: input.result.provider,
       status: input.result.status,
-      transRef: input.result.transRef,
-      amount: input.result.amount,
-      receiverName: input.result.receiverName
+      transactionReferenceRecorded: Boolean(normalizedTransactionReference),
+      amountMatched: input.result.ok,
+      receiverMatched: input.result.ok
     }
   });
 }

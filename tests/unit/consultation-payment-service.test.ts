@@ -5,6 +5,11 @@ import {
   getConsultationPaymentVerificationTransition,
   type ConsultationPaymentSnapshot
 } from "@/features/consultations/payment/service";
+import {
+  DuplicatePaymentTransactionError,
+  PaymentVerificationConflictError,
+  ProviderVerificationUnavailableError
+} from "@/features/payments/service";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
 
 function consultation(overrides: Partial<ConsultationPaymentSnapshot> = {}): ConsultationPaymentSnapshot {
@@ -25,7 +30,7 @@ function result(overrides: Partial<SlipVerificationResult> = {}): SlipVerificati
     amount: 900,
     receiverName: "Clinic",
     raw: {
-      ok: true
+      sensitiveQrPayload: "must-not-persist"
     },
     ...overrides
   };
@@ -33,17 +38,25 @@ function result(overrides: Partial<SlipVerificationResult> = {}): SlipVerificati
 
 function txMock() {
   return {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "consultation-1" }]),
     auditLog: {
       create: vi.fn()
     },
     consultation: {
-      update: vi.fn()
+      findUnique: vi.fn().mockResolvedValue({
+        patientId: "patient-1",
+        status: "pending_payment"
+      }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
     notification: {
       create: vi.fn()
     },
     payment: {
-      upsert: vi.fn()
+      create: vi.fn().mockResolvedValue({ id: "payment-1" }),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 })
     }
   };
 }
@@ -78,7 +91,7 @@ describe("consultation payment verification service", () => {
     }
   );
 
-  it("schedules and notifies patients for verified consultation payments", async () => {
+  it("serializes, normalizes, schedules, and notifies for verified consultation payments", async () => {
     const tx = txMock();
 
     await applyConsultationPaymentVerification(tx as never, {
@@ -91,37 +104,40 @@ describe("consultation payment verification service", () => {
       result: result()
     });
 
-    expect(tx.consultation.update).toHaveBeenCalledWith({
+    expect(tx.$queryRaw).toHaveBeenCalledOnce();
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith({
       where: {
-        id: "consultation-1"
+        id: "consultation-1",
+        status: "pending_payment"
       },
       data: {
         status: "scheduled"
       }
     });
-    expect(tx.payment.upsert).toHaveBeenCalledWith(
+    expect(tx.payment.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          consultationId: "consultation-1"
-        },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           consultationId: "consultation-1",
           amount: 900,
           status: "verified",
-          qrPayload: "qr-payload"
+          qrPayload: "qr-payload",
+          normalizedTransactionReference: "TRANSFER1",
+          verificationPayload: expect.objectContaining({
+            result: expect.not.objectContaining({ raw: expect.anything() })
+          })
         })
       })
     );
+    expect(JSON.stringify(tx.payment.create.mock.calls[0][0])).not.toContain("must-not-persist");
     expect(tx.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           userId: "patient-1",
           type: "consultation",
-          metadataJson: expect.objectContaining({
+          metadataJson: {
             consultationId: "consultation-1",
-            provider: "easyslip",
-            transRef: "transfer-1"
-          })
+            href: "/consult/appointments/consultation-1"
+          }
         })
       })
     );
@@ -130,7 +146,12 @@ describe("consultation payment verification service", () => {
         data: expect.objectContaining({
           action: "consultation.payment_verified",
           entityType: "consultation",
-          entityId: "consultation-1"
+          entityId: "consultation-1",
+          metadataJson: expect.objectContaining({
+            transactionReferenceRecorded: true,
+            amountMatched: true,
+            receiverMatched: true
+          })
         })
       })
     );
@@ -153,12 +174,13 @@ describe("consultation payment verification service", () => {
       })
     });
 
-    expect(tx.consultation.update).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
     expect(tx.notification.create).not.toHaveBeenCalled();
-    expect(tx.payment.upsert).toHaveBeenCalledWith(
+    expect(tx.payment.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({
-          status: "rejected"
+        data: expect.objectContaining({
+          status: "rejected",
+          normalizedTransactionReference: null
         })
       })
     );
@@ -171,5 +193,66 @@ describe("consultation payment verification service", () => {
         })
       })
     );
+  });
+
+  it("does not persist payment, consultation, notification, or audit changes for a provider outage", async () => {
+    const tx = txMock();
+
+    await expect(
+      applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation(),
+        evidence: { amount: 900, qrPayload: "qr-payload" },
+        result: result({ ok: false, status: "provider_error", transRef: null })
+      })
+    ).rejects.toBeInstanceOf(ProviderVerificationUnavailableError);
+
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
+    expect(tx.payment.create).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before side effects when another payment already owns the normalized reference", async () => {
+    const tx = txMock();
+    tx.payment.findFirst.mockResolvedValueOnce({ id: "payment-2" });
+
+    await expect(
+      applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation(),
+        evidence: { amount: 900, qrPayload: "qr-payload" },
+        result: result()
+      })
+    ).rejects.toBeInstanceOf(DuplicatePaymentTransactionError);
+
+    expect(tx.payment.create).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks a concurrent completed consultation payment before duplicate scheduling or side effects", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "verified",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z")
+    });
+
+    await expect(
+      applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation(),
+        evidence: { amount: 900, qrPayload: "qr-payload" },
+        result: result()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.create).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 });
