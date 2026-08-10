@@ -54,6 +54,7 @@ Required before production testing:
 - `LINE_CHANNEL_SECRET`
 - `LINE_LOGIN_CALLBACK_URL`
 - `STAFF_UPLOAD_DIR` set to an absolute writable directory outside the application root
+- `PLESK_MIGRATION_TARGET` only for a separately approved, one-time runtime migration; remove it immediately after the verified migration restart
 
 Required only when each integration is enabled:
 
@@ -184,21 +185,33 @@ builds on Linux and copies required static/public files into
 Do not add `prisma db push` to deployment actions. Apply production schema
 changes separately with a reviewed backup and migration procedure.
 
-### Shared Plesk Prisma migrations
+### Guarded Plesk runtime migrations
 
-On a Shared Plesk plan, run Prisma only through the Node.js **Run Node.js
-commands** interface with the `npm` runner:
+The root `server.js` can run an approved Prisma migration only while starting
+inside the Plesk Node.js application runtime. It never exposes an HTTP, API, or
+Admin migration endpoint, and it does not use shell commands or command-line
+secrets. The runner invokes the installed Prisma CLI with the active Node.js
+runtime and its existing environment only.
 
-```bash
-npm run db:migrate:status
-npm run db:migrate:deploy
+For a reviewed migration, first confirm a backup and source commit, then set
+one exact Plesk application environment variable. For the currently approved
+pair of migrations, use:
+
+```text
+PLESK_MIGRATION_TARGET=20260809140000_add_manual_store_refund_fields
 ```
 
-Run the status command before and after one approved deploy. The Plesk
-application environment must provide `DATABASE_URL`; never paste it into a
-command, command history, temporary `.env` file, Scheduled Task, source file,
-or documentation. If the runner does not receive the application environment,
-stop and resolve that hosting limitation before applying a migration.
+On the next **Restart App**, `server.js` compares that value to the latest
+repository migration directory. A missing or non-matching value starts the
+standalone app normally without running Prisma. An exact match runs `prisma
+migrate deploy` before the standalone server; a non-zero result fails closed
+and prevents the new app process from starting. Prisma records successful
+migrations, so a repeated restart while the exact flag remains is idempotent.
+
+After the approved Production migration and verification are complete, remove
+`PLESK_MIGRATION_TARGET` in Plesk and restart once more. Never put
+`DATABASE_URL` in a command, command history, temporary `.env` file, source
+file, or documentation, and do not use `prisma db push`.
 
 ## Plesk Start And Restart
 
@@ -265,9 +278,8 @@ If the app fails to start, check these in order:
 - Use production MySQL/MariaDB only for production.
 - Do not seed synthetic demo records into production.
 - Run schema changes only after a backup is confirmed.
-- On Shared Plesk, use `npm run db:migrate:status` and
-  `npm run db:migrate:deploy` through the Node.js command runner; do not invoke
-  Prisma directly from an ad-hoc shell command.
+- On Shared Plesk, use the reviewed guarded runtime runner only for an approved
+  migration target; do not invoke Prisma directly from an ad-hoc shell command.
 - Until formal Prisma migrations are finalized, treat `prisma db push` as a controlled release step and do not run it casually against production.
 - Confirm `npx prisma validate` before deployment.
 
