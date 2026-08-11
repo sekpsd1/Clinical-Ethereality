@@ -204,6 +204,29 @@ that would weaken CSP for unrelated application paths. After an approved deploy,
 verify `Content-Security-Policy` on `/zoom-sdk/index.html` and confirm that it
 is absent from an unrelated application route.
 
+### Controlled Zoom UAT fixture runner
+
+`npm run uat:zoom-fixture` is a one-off, approval-gated Production runner. It
+is not a deployment action and must never run from startup, build, or migration
+work. It has only `precheck`, `create`, `verify`, and `cleanup` modes. Each
+invocation requires `--confirm-production`, the exact approved Customer and
+Doctor labels, a future UTC slot, a unique fixture key, and (after precheck)
+the returned target fingerprint. It masks internal identifiers and never prints
+environment values, tokens, or Zoom data.
+
+In Plesk's command UI, enter only the portion after its automatically added
+`npm` prefix, confirm the rendered command is `npm run uat:zoom-fixture -- ...`,
+and run one approved mode at a time. `create` is a Serializable transaction that
+creates only a 30-minute scheduled `[UAT]` Consultation and AuditLog. It refuses
+duplicate keys, non-unique or ineligible accounts, occupied slots, and related
+Payment, payment-slip attachment, Order, or Prescription state. `cleanup`
+changes only that exact fixture to `cancelled` and appends AuditLog; it never
+deletes records or modifies Zoom through the database.
+
+Production use requires a separately approved source deployment and separately
+approved controlled UAT. Do not put fixture identifiers, keys, fingerprints, or
+command output in public tickets or chat transcripts.
+
 ### Guarded Plesk runtime migrations
 
 The root `server.js` retains the reviewed migration runner, but the current

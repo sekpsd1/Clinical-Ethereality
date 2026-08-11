@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
+    "uat:zoom-fixture": "node scripts/zoom-uat-fixture-runner.cjs",
     "test:e2e": "playwright test",
     "db:migrate:status": "prisma migrate status",
     "db:migrate:deploy": "prisma migrate deploy",
