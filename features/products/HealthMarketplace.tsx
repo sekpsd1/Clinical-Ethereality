@@ -1,26 +1,36 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ClipboardPlus, Leaf, Lock, PackageSearch, Pill, Search, ShoppingCart, Sparkles, Syringe, WifiOff } from "lucide-react";
+import type { Route } from "next";
+import { ClipboardPlus, Leaf, PackageSearch, Pill, Search, ShoppingCart, Sparkles, Syringe, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { productCategories, type ProductCategory } from "@/features/products/categories";
+import { buildStoreMarketplaceHref } from "@/features/products/search";
 import type { StoreMarketplaceData, StoreProductListItem } from "@/features/products/types";
 
 type Category = {
+  value: ProductCategory;
   label: string;
   icon: typeof ClipboardPlus;
-  locked?: boolean;
 };
 
 type Product = StoreProductListItem;
 
-const categories: Category[] = [
-  { label: "ตรวจเชื้อ HPV/STD", icon: ClipboardPlus },
-  { label: "ยาตามใบสั่งแพทย์", icon: Pill, locked: true },
-  { label: "วิตามิน/สินค้าทั่วไป", icon: Leaf },
-  { label: "จองวัคซีน", icon: Syringe }
-];
+const categoryIcons: Record<ProductCategory, typeof ClipboardPlus> = {
+  medicine: Pill,
+  supplement: Leaf,
+  skincare: Sparkles,
+  "health-equipment": ClipboardPlus,
+  other: Syringe
+};
+
+const categories: Category[] = productCategories.map((category) => ({
+  ...category,
+  icon: categoryIcons[category.value]
+}));
 
 export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
   const marketplaceProducts = data.products;
+  const hasFilters = Boolean(data.query || data.category);
   const featuredProduct = marketplaceProducts.find((product) => product.featured) ?? marketplaceProducts[0];
   const standardProducts = featuredProduct
     ? marketplaceProducts.filter((product) => product.id !== featuredProduct.id)
@@ -28,7 +38,7 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-4 pb-8 text-[#3e494a]">
-      <MarketplaceHeader />
+      <MarketplaceHeader category={data.category} query={data.query} />
 
       <section className="pt-28">
         <h1 className="max-w-[350px] text-[28px] font-extrabold leading-[1.2] tracking-normal text-primary">
@@ -43,13 +53,20 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
 
       <section className="mt-10 grid grid-cols-2 gap-3">
         {categories.map((category) => (
-          <CategoryCard key={category.label} category={category} />
+          <CategoryCard
+            key={category.value}
+            active={data.category === category.value}
+            category={category}
+            query={data.query}
+          />
         ))}
       </section>
 
       <section className="mt-10">
         <div className="flex items-end justify-between">
-          <h2 className="text-[25px] font-extrabold leading-8 text-primary">สินค้าแนะนำ</h2>
+          <h2 className="text-[25px] font-extrabold leading-8 text-primary">
+            {hasFilters ? "ผลการค้นหา" : "สินค้าแนะนำ"}
+          </h2>
           <Link href="/store" className="pb-1 text-xs font-semibold text-primary/60">
             ดูทั้งหมด
           </Link>
@@ -64,6 +81,18 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
             action={
               <Link href="/store" className="text-sm font-bold text-primary underline-offset-4 hover:underline">
                 ลองใหม่
+              </Link>
+            }
+          />
+        ) : marketplaceProducts.length === 0 && hasFilters ? (
+          <EmptyState
+            className="mt-8 bg-white/80"
+            title="ไม่พบสินค้าที่ตรงกับการค้นหา"
+            body="ลองเปลี่ยนคำค้นหรือเลือกหมวดสินค้าอื่น"
+            icon={<PackageSearch aria-hidden="true" className="size-5" />}
+            action={
+              <Link href="/store" className="text-sm font-bold text-primary underline-offset-4 hover:underline">
+                ล้างตัวกรอง
               </Link>
             }
           />
@@ -90,7 +119,9 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
   );
 }
 
-function MarketplaceHeader() {
+function MarketplaceHeader({ category, query }: { category: ProductCategory | ""; query: string }) {
+  const clearSearchHref = buildStoreMarketplaceHref({ category });
+
   return (
     <header className="fixed inset-x-0 top-0 z-header bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
       <div className="mx-auto flex h-[84px] w-full max-w-mobile items-center justify-between gap-3 px-4">
@@ -100,10 +131,34 @@ function MarketplaceHeader() {
           Ethereality
         </Link>
 
-        <label className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full bg-[#e6e8ea] px-4 text-[#6e797a]">
-          <Search aria-hidden="true" className="size-5 shrink-0 text-primary" strokeWidth={2.25} />
-          <span className="truncate text-[16px] leading-6 text-[#9aa3a4]">ค้นหา...</span>
-        </label>
+        <form
+          action="/store"
+          method="get"
+          className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-full bg-[#e6e8ea] px-4 text-[#6e797a] focus-within:ring-2 focus-within:ring-primary/20"
+        >
+          {category ? <input type="hidden" name="category" value={category} /> : null}
+          <button aria-label="ค้นหาสินค้า" type="submit" className="shrink-0 text-primary">
+            <Search aria-hidden="true" className="size-5" strokeWidth={2.25} />
+          </button>
+          <input
+            aria-label="คำค้นสินค้า"
+            className="min-w-0 flex-1 bg-transparent text-[15px] leading-6 text-[#3e494a] outline-none placeholder:text-[#9aa3a4]"
+            defaultValue={query}
+            maxLength={100}
+            name="q"
+            placeholder="ค้นหา..."
+            type="search"
+          />
+          {query ? (
+            <Link
+              aria-label="ล้างคำค้นสินค้า"
+              href={clearSearchHref as Route}
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-[#6e797a]"
+            >
+              <X aria-hidden="true" className="size-4" strokeWidth={2.25} />
+            </Link>
+          ) : null}
+        </form>
 
         <Link href="/store/cart" aria-label="Cart" className="relative shrink-0 text-primary">
           <ShoppingCart aria-hidden="true" className="size-7" strokeWidth={2.6} />
@@ -113,24 +168,36 @@ function MarketplaceHeader() {
   );
 }
 
-function CategoryCard({ category }: { category: Category }) {
+function CategoryCard({
+  active,
+  category,
+  query
+}: {
+  active: boolean;
+  category: Category;
+  query: string;
+}) {
   const Icon = category.icon;
+  const href = buildStoreMarketplaceHref({
+    category: active ? "" : category.value,
+    query
+  });
 
   return (
-    <button
-      type="button"
-      className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 text-center shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] transition-colors hover:bg-white"
+    <Link
+      aria-current={active ? "page" : undefined}
+      href={href as Route}
+      className={
+        active
+          ? "flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-[24px] border border-primary/25 bg-[#d0fbff]/35 p-4 text-center shadow-[0_8px_32px_rgba(0,96,103,0.08)] backdrop-blur-[24px] transition-colors"
+          : "flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 text-center shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] transition-colors hover:bg-white"
+      }
     >
       <span className="relative flex size-12 items-center justify-center rounded-full bg-[#d0fbff]/50">
         <Icon aria-hidden="true" className="size-7 text-primary" fill={category.icon === Leaf ? "#006067" : "none"} />
-        {category.locked ? (
-          <span className="absolute bottom-1 right-0 flex size-5 items-center justify-center rounded-full bg-white text-[#3e494a] shadow-chip">
-            <Lock aria-hidden="true" className="size-3" strokeWidth={3} />
-          </span>
-        ) : null}
       </span>
       <span className="text-[14px] font-bold leading-5 text-[#191c1e]">{category.label}</span>
-    </button>
+    </Link>
   );
 }
 

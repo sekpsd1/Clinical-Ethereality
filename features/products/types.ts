@@ -1,3 +1,5 @@
+import type { ProductCategory } from "@/features/products/categories";
+
 export type StoreScreen =
   | "health-marketplace"
   | "product-detail"
@@ -26,7 +28,9 @@ export type StoreProductListItem = {
 };
 
 export type StoreMarketplaceData = {
+  category: ProductCategory | "";
   products: StoreProductListItem[];
+  query: string;
   unavailable?: boolean;
 };
 

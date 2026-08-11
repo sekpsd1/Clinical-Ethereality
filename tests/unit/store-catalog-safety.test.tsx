@@ -28,6 +28,12 @@ vi.mock("@/features/products/prescriptions/actions", () => ({
 import { HealthMarketplace } from "@/features/products/HealthMarketplace";
 import { ProductDetail } from "@/features/products/ProductDetail";
 import { getStoreMarketplace, getStoreProductDetail } from "@/features/products/queries";
+import { buildStoreMarketplaceHref, parseStoreMarketplaceFilters } from "@/features/products/search";
+
+const emptyMarketplaceFilters = {
+  category: "" as const,
+  query: ""
+};
 
 const storageReadiness = {
   provider: "not_configured" as const,
@@ -96,7 +102,9 @@ describe("store catalog query safety", () => {
   it("returns a true empty catalog instead of fallback products", async () => {
     prismaMock.product.findMany.mockResolvedValue([]);
 
-    await expect(getStoreMarketplace()).resolves.toEqual({
+    await expect(getStoreMarketplace(emptyMarketplaceFilters)).resolves.toEqual({
+      category: "",
+      query: "",
       products: []
     });
   });
@@ -105,7 +113,9 @@ describe("store catalog query safety", () => {
     prismaMock.product.findMany.mockRejectedValue(new Error("database unavailable"));
     prismaMock.product.findFirst.mockRejectedValue(new Error("database unavailable"));
 
-    await expect(getStoreMarketplace()).resolves.toEqual({
+    await expect(getStoreMarketplace(emptyMarketplaceFilters)).resolves.toEqual({
+      category: "",
+      query: "",
       products: [],
       unavailable: true
     });
@@ -144,18 +154,99 @@ describe("store catalog query safety", () => {
     expect(data.product?.availableQuantity).toBe(0);
     expect(data.product?.stockLabel).toBe("สินค้าหมด");
   });
+
+  it("filters active products by category and keyword through Prisma", async () => {
+    prismaMock.product.findMany.mockResolvedValue([]);
+
+    await expect(
+      getStoreMarketplace({
+        category: "health-equipment",
+        query: "HPV test"
+      })
+    ).resolves.toEqual({
+      category: "health-equipment",
+      query: "HPV test",
+      products: []
+    });
+
+    expect(prismaMock.product.findMany).toHaveBeenCalledWith({
+      where: {
+        status: "active",
+        category: "health-equipment",
+        OR: [
+          { name: { contains: "HPV test" } },
+          { shortDescription: { contains: "HPV test" } },
+          { description: { contains: "HPV test" } }
+        ]
+      },
+      orderBy: [{ requiresPrescription: "desc" }, { updatedAt: "desc" }],
+      include: {
+        inventory: true
+      }
+    });
+  });
+});
+
+describe("store marketplace URL filters", () => {
+  it("normalizes keyword input and accepts only canonical categories", () => {
+    expect(
+      parseStoreMarketplaceFilters({
+        category: "health-equipment",
+        q: "  HPV   test  "
+      })
+    ).toEqual({
+      category: "health-equipment",
+      query: "HPV test"
+    });
+
+    expect(
+      parseStoreMarketplaceFilters({
+        category: "not-a-real-category",
+        q: ["vitamin", "ignored"]
+      })
+    ).toEqual({
+      category: "",
+      query: "vitamin"
+    });
+  });
+
+  it("builds stable Store URLs without empty parameters", () => {
+    expect(buildStoreMarketplaceHref({})).toBe("/store");
+    expect(buildStoreMarketplaceHref({ category: "medicine", query: "ยาแก้แพ้" })).toBe(
+      "/store?q=%E0%B8%A2%E0%B8%B2%E0%B9%81%E0%B8%81%E0%B9%89%E0%B9%81%E0%B8%9E%E0%B9%89&category=medicine"
+    );
+  });
 });
 
 describe("store catalog component safety", () => {
   it("renders distinct empty and error states without purchasable fallback products", () => {
-    const emptyHtml = renderToStaticMarkup(<HealthMarketplace data={{ products: [] }} />);
-    const errorHtml = renderToStaticMarkup(<HealthMarketplace data={{ products: [], unavailable: true }} />);
+    const emptyHtml = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "", query: "", products: [] }} />
+    );
+    const errorHtml = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "", query: "", products: [], unavailable: true }} />
+    );
 
     expect(emptyHtml).toContain("ยังไม่มีสินค้าในแคตตาล็อก");
     expect(errorHtml).toContain("ไม่สามารถโหลดสินค้าได้");
     expect(emptyHtml).not.toContain("Antiviral Gel");
     expect(emptyHtml).not.toContain("paracetamol-500mg");
     expect(errorHtml).not.toContain("กำลังแสดงรายการสำรอง");
+  });
+
+  it("preserves search and category state and renders the filtered empty state", () => {
+    const html = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "health-equipment", query: "HPV test", products: [] }} />
+    );
+
+    expect(html).toContain('name="q"');
+    expect(html).toContain('value="HPV test"');
+    expect(html).toContain('name="category"');
+    expect(html).toContain('value="health-equipment"');
+    expect(html).toContain('aria-current="page"');
+    expect(html).toContain("ไม่พบสินค้าที่ตรงกับการค้นหา");
+    expect(html).toContain("ล้างตัวกรอง");
+    expect(html).toContain("/store?q=HPV+test&amp;category=medicine");
   });
 
   it("renders every product even when multiple prescription products are featured", () => {
@@ -165,7 +256,9 @@ describe("store catalog component safety", () => {
       toListItem(createProduct({ id: "general-1", name: "สินค้าทั่วไป", slug: "general", href: "/store/general" }))
     ];
 
-    const html = renderToStaticMarkup(<HealthMarketplace data={{ products }} />);
+    const html = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "", query: "", products }} />
+    );
 
     expect(html).toContain("ยาตามใบสั่งแพทย์หนึ่ง");
     expect(html).toContain("ยาตามใบสั่งแพทย์สอง");
