@@ -4,7 +4,89 @@ import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 import { issueZoomMeetingSdkSignature } from "@/lib/zoom/meeting-sdk";
 import { getZoomHostZakIfConfigured } from "@/lib/zoom/meetings";
-import type { ZoomMeetingJoinData } from "@/features/consultations/zoom/types";
+import type { ZoomMeetingFrameAccess, ZoomMeetingJoinData } from "@/features/consultations/zoom/types";
+
+export async function getZoomMeetingFrameAccess(consultationId?: string): Promise<ZoomMeetingFrameAccess> {
+  noStore();
+
+  const session = await getCurrentSession();
+  const leavePath = session?.role === "doctor" || session?.role === "admin" ? "/doctor/consultations" : "/consult";
+  const leaveUrl = new URL(leavePath, getAppEnv().NEXT_PUBLIC_APP_URL).toString();
+
+  if (!session || !consultationId || session.userId.startsWith("dev:")) {
+    return {
+      available: false,
+      consultationId: consultationId ?? null,
+      message: "ไม่พบเซสชันหรือห้อง Zoom ที่พร้อมใช้งาน",
+      leaveUrl
+    };
+  }
+
+  if (session.role !== "customer" && session.role !== "doctor" && session.role !== "admin") {
+    return {
+      available: false,
+      consultationId,
+      message: "บัญชีนี้ไม่มีสิทธิ์เข้าห้อง Zoom สำหรับการปรึกษา",
+      leaveUrl
+    };
+  }
+
+  try {
+    const consultation = await prisma.consultation.findFirst({
+      where:
+        session.role === "doctor"
+          ? {
+              id: consultationId,
+              doctor: {
+                userId: session.userId
+              },
+              status: {
+                in: ["scheduled", "live"]
+              }
+            }
+          : session.role === "admin"
+            ? {
+                id: consultationId,
+                status: {
+                  in: ["scheduled", "live"]
+                }
+              }
+            : {
+                id: consultationId,
+                patientId: session.userId,
+                status: {
+                  in: ["scheduled", "live"]
+                }
+              },
+      select: {
+        id: true,
+        zoomMeetingId: true
+      }
+    });
+
+    if (!consultation?.zoomMeetingId) {
+      return {
+        available: false,
+        consultationId: consultation?.id ?? consultationId,
+        message: "แพทย์ยังไม่ได้สร้างห้อง Zoom สำหรับนัดหมายนี้",
+        leaveUrl
+      };
+    }
+
+    return {
+      available: true,
+      consultationId: consultation.id,
+      leaveUrl
+    };
+  } catch {
+    return {
+      available: false,
+      consultationId,
+      message: "ยังเตรียมห้อง Zoom ไม่สำเร็จ กรุณากลับไปที่ห้องปรึกษาแล้วลองใหม่",
+      leaveUrl
+    };
+  }
+}
 
 export async function getZoomMeetingJoinData(consultationId?: string): Promise<ZoomMeetingJoinData> {
   noStore();

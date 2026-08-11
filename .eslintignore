@@ -2,3 +2,5 @@
 node_modules/
 next-env.d.ts
 deploy/
+zoom-client/
+public/zoom-sdk/

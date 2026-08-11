@@ -14,7 +14,7 @@ vi.mock("@/lib/env/schema", () => ({ getAppEnv: () => ({ NEXT_PUBLIC_APP_URL: "h
 vi.mock("@/lib/zoom/meeting-sdk", () => ({ issueZoomMeetingSdkSignature: mocks.signature }));
 vi.mock("@/lib/zoom/meetings", () => ({ getZoomHostZakIfConfigured: mocks.zak }));
 
-import { getZoomMeetingJoinData } from "@/features/consultations/zoom/queries";
+import { getZoomMeetingFrameAccess, getZoomMeetingJoinData } from "@/features/consultations/zoom/queries";
 
 describe("Zoom consultation access", () => {
   beforeEach(() => {
@@ -46,6 +46,17 @@ describe("Zoom consultation access", () => {
     expect(mocks.zak).not.toHaveBeenCalled();
     expect(data).toMatchObject({ available: true, userName: "Customer" });
     expect(JSON.stringify(data)).not.toContain("host-zak");
+  });
+
+  it("authorizes the isolated frame without minting a signature or host token", async () => {
+    mocks.session = { userId: "doctor-1", role: "doctor", displayName: "Dr A" };
+
+    const data = await getZoomMeetingFrameAccess("consultation-1");
+
+    expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({ doctor: { userId: "doctor-1" } });
+    expect(mocks.signature).not.toHaveBeenCalled();
+    expect(mocks.zak).not.toHaveBeenCalled();
+    expect(data).toMatchObject({ available: true, consultationId: "consultation-1" });
   });
 
   it("blocks role mismatches before querying consultation data", async () => {

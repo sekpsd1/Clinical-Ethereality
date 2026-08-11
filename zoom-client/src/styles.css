@@ -1,0 +1,44 @@
+:root {
+  color: #18352f;
+  font-family: Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: #f4f8f7;
+}
+
+.zoom-launcher {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.zoom-launcher h1,
+.zoom-launcher p {
+  margin: 0;
+}
+
+.zoom-launcher button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #138a72;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 1.5rem;
+}
+
+.zoom-launcher button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

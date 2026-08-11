@@ -15,3 +15,16 @@ export type ZoomMeetingJoinData =
       message: string;
       leaveUrl: string;
     };
+
+export type ZoomMeetingFrameAccess =
+  | {
+      available: true;
+      consultationId: string;
+      leaveUrl: string;
+    }
+  | {
+      available: false;
+      consultationId: string | null;
+      message: string;
+      leaveUrl: string;
+    };

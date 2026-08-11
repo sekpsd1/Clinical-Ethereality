@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ZoomMeetingClient } from "@/features/consultations/zoom/ZoomMeetingClient";
-import { getZoomMeetingJoinData } from "@/features/consultations/zoom/queries";
+import { ZoomMeetingFrame } from "@/features/consultations/zoom/ZoomMeetingFrame";
+import { getZoomMeetingFrameAccess } from "@/features/consultations/zoom/queries";
 
 export default async function ZoomConsultationPage({
   searchParams
@@ -11,14 +11,13 @@ export default async function ZoomConsultationPage({
   }>;
 }) {
   const { consultation } = await searchParams;
-  const data = await getZoomMeetingJoinData(consultation);
+  const data = await getZoomMeetingFrameAccess(consultation);
   const backHref = consultation ? `/consult/live?consultation=${consultation}` : "/consult";
 
   return (
     <section className="-mx-4 flex min-h-dvh flex-col justify-center bg-app px-4 py-8">
-      <div id="zmmtg-root" />
       {data.available ? (
-        <ZoomMeetingClient data={data} />
+        <ZoomMeetingFrame consultationId={data.consultationId} />
       ) : (
         <div className="rounded-[8px] border border-dashed border-border bg-white/75 p-6 text-center">
           <h1 className="font-headline text-lg font-bold text-text">ยังเปิด Zoom ไม่ได้</h1>

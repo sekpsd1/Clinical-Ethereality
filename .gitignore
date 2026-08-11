@@ -1,6 +1,7 @@
 .next/
 node_modules/
 dist/
+public/zoom-sdk/
 deploy/
 backups/
 coverage/

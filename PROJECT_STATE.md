@@ -513,6 +513,12 @@ Not implemented yet:
 - Shared customer footer navigation is implemented with the final tabs: `Consult | Store | Community | Profile`
 - Latest implemented frontend area: customer Consult flow from doctor list through advice log
 
+## Zoom Meeting SDK Isolation (Local Phase C-1)
+
+- The Production RCA showed that `@zoom/meetingsdk` 6.2.0 expects React/ReactDOM 18.2.0 while the main application intentionally remains on Next.js 15 and React 19. The Meeting SDK client view is therefore isolated into the local `zoom-client` sub-app with its own exact React 18.2.0 dependency tree and lockfile. The main package no longer owns the Meeting SDK or its React 18 peer packages.
+- The main Zoom launcher performs only existing session/role/consultation access checks and loads `/zoom-sdk/index.html` in a same-origin iframe. The iframe requests one short-lived join payload only after the user presses Join; the existing server-side ownership guard issues the signature and host token, and the response is `private, no-store`. No secret is passed in the iframe URL or retained by the launcher.
+- The isolated client pins its Zoom dependent assets to 6.2.0, loads i18n before `init`, calls `init` before `join`, and adds sanitized callback/timeout handling. Its build output is intentionally ignored at `public/zoom-sdk/`; a future deployment approval must explicitly install and build `zoom-client` before publishing that static output. No Production/Plesk/Zoom/DB operation occurred in this phase.
+
 ## Next Recommended Step
 
 Phase 12 quality work is complete, with hosted Plesk deployment now in progress at `https://app.bccgroup-thailand.com`. HTTPS, `/api/health`, Git deployment, Node 24 runtime, MySQL schema, and mobile LINE LIFF login are working. Next recommended step: deploy and verify desktop LINE Login OAuth, approve and test dedicated staff accounts, then run the documented customer-to-doctor-to-admin UAT flow. Before launch, still configure SlipOK credentials and privacy approval/Controlled Real-slip UAT, external prescription attachment storage, Zoom, final FDA numbers, and decide whether realtime chat is required. Use `PLESK_TEAM_TESTING_GUIDE.md` for the full internal checklist and `CLIENT_UAT_GUIDE.md` for the client-facing acceptance review.
