@@ -315,6 +315,7 @@
 - [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
 - [x] Build Zoom Meeting SDK client-view integration, Server-to-Server meeting creation, signature generation, and signed webhook handling; production owner credentials and hosted end-to-end validation remain pending
 - [x] Isolate the Zoom Meeting SDK client view in a React 18.2 iframe sub-app while retaining Next.js 15 + React 19 in the main app; the static client is locally built from its own lockfile, requests short-lived join data only after Join, loads i18n before init/join, pins Zoom assets, and uses sanitized timeout/error handling. Deployment and a new controlled UAT remain separately gated.
+- [x] Add a Zoom Meeting SDK CSP scoped only to `/zoom-sdk/:path*` and a separately runnable, fail-closed Plesk non-migration guard that blocks any present `PLESK_MIGRATION_TARGET` before the runtime migration runner can execute; deployment remains separately gated.
 - [x] Complete local Zoom Production Pre-Credential Readiness: server-only S2S/OAuth/ZAK flow, minimum-lifetime SDK signatures, owner/role guards, signed webhook replay handling, mock coverage, and owner setup/UAT/rollback guide; owner credential entry and non-monetary Production UAT remain pending
 - [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Remove live-room demo messages and bind the room to participant-scoped persisted messages with near-real-time refresh

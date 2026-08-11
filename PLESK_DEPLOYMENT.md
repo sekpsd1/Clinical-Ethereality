@@ -54,7 +54,7 @@ Required before production testing:
 - `LINE_CHANNEL_SECRET`
 - `LINE_LOGIN_CALLBACK_URL`
 - `STAFF_UPLOAD_DIR` set to an absolute writable directory outside the application root
-- `PLESK_MIGRATION_TARGET` only for a separately approved, one-time runtime migration; remove it immediately after the verified migration restart
+- `PLESK_MIGRATION_TARGET` must be absent for the current non-migration Zoom release, including an empty value
 
 Required only when each integration is enabled:
 
@@ -170,7 +170,10 @@ first, then switch to automatic deployment only after a successful hosted smoke 
    then run these commands one at a time:
 
 ```bash
+npm run preflight:plesk:non-migration
 npm ci --include=dev --no-audit --no-fund
+npm --prefix zoom-client ci --include=dev --no-audit --no-fund
+npm --prefix zoom-client run build
 npm run build:plesk-host
 ```
 
@@ -185,33 +188,32 @@ builds on Linux and copies required static/public files into
 Do not add `prisma db push` to deployment actions. Apply production schema
 changes separately with a reviewed backup and migration procedure.
 
+### Non-migration preflight and scoped Zoom CSP
+
+For the Zoom Meeting SDK release, `PLESK_MIGRATION_TARGET` must be **absent**
+(including an empty value) before the build or restart. Run
+`npm run preflight:plesk:non-migration` first. It exits non-zero and logs only
+the key name when the key exists; it never prints its value. `server.js` runs
+the same guard before it can call the runtime migration runner, so the app fails
+closed rather than running a migration.
+
+The Zoom Meeting SDK CSP is defined in `next.config.ts` and applies only to
+`/zoom-sdk/:path*`, including static files served from `public/zoom-sdk/` in the
+standalone app. Do not set this policy in Plesk's global additional-header UI:
+that would weaken CSP for unrelated application paths. After an approved deploy,
+verify `Content-Security-Policy` on `/zoom-sdk/index.html` and confirm that it
+is absent from an unrelated application route.
+
 ### Guarded Plesk runtime migrations
 
-The root `server.js` can run an approved Prisma migration only while starting
-inside the Plesk Node.js application runtime. It never exposes an HTTP, API, or
-Admin migration endpoint, and it does not use shell commands or command-line
-secrets. The runner invokes the installed Prisma CLI with the active Node.js
-runtime and its existing environment only.
+The root `server.js` retains the reviewed migration runner, but the current
+non-migration startup guard blocks it whenever `PLESK_MIGRATION_TARGET` exists.
+Do not set that key for this release. A future migration requires a separately
+approved source change that replaces this guard with a migration-specific,
+reviewed deployment procedure.
 
-For a reviewed migration, first confirm a backup and source commit, then set
-one exact Plesk application environment variable. For the currently approved
-pair of migrations, use:
-
-```text
-PLESK_MIGRATION_TARGET=20260809140000_add_manual_store_refund_fields
-```
-
-On the next **Restart App**, `server.js` compares that value to the latest
-repository migration directory. A missing or non-matching value starts the
-standalone app normally without running Prisma. An exact match runs `prisma
-migrate deploy` before the standalone server; a non-zero result fails closed
-and prevents the new app process from starting. Prisma records successful
-migrations, so a repeated restart while the exact flag remains is idempotent.
-
-After the approved Production migration and verification are complete, remove
-`PLESK_MIGRATION_TARGET` in Plesk and restart once more. Never put
-`DATABASE_URL` in a command, command history, temporary `.env` file, source
-file, or documentation, and do not use `prisma db push`.
+Never put `DATABASE_URL` in a command, command history, temporary `.env` file,
+source file, or documentation, and do not use `prisma db push`.
 
 ## Plesk Start And Restart
 

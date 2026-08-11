@@ -519,6 +519,11 @@ Not implemented yet:
 - The main Zoom launcher performs only existing session/role/consultation access checks and loads `/zoom-sdk/index.html` in a same-origin iframe. The iframe requests one short-lived join payload only after the user presses Join; the existing server-side ownership guard issues the signature and host token, and the response is `private, no-store`. No secret is passed in the iframe URL or retained by the launcher.
 - The isolated client pins its Zoom dependent assets to 6.2.0, loads i18n before `init`, calls `init` before `join`, and adds sanitized callback/timeout handling. Its build output is intentionally ignored at `public/zoom-sdk/`; a future deployment approval must explicitly install and build `zoom-client` before publishing that static output. No Production/Plesk/Zoom/DB operation occurred in this phase.
 
+## Zoom CSP And Non-Migration Plesk Guard (Local Phase C-2)
+
+- The Zoom Meeting SDK CSP follows Zoom's browser-support guidance but is emitted by Next.js only for `/zoom-sdk/:path*`; it therefore covers the isolated client and its public static assets without changing CSP on the rest of the application.
+- `scripts/plesk-non-migration-preflight.cjs` fails closed if `PLESK_MIGRATION_TARGET` merely exists, including when empty. It emits only the key name and is available as `npm run preflight:plesk:non-migration` for a safe pre-deploy check. `server.js` executes the same guard before the legacy migration runner, preventing a runtime migration for this release. No Production/Plesk/Zoom/DB operation occurred in this phase.
+
 ## Next Recommended Step
 
 Phase 12 quality work is complete, with hosted Plesk deployment now in progress at `https://app.bccgroup-thailand.com`. HTTPS, `/api/health`, Git deployment, Node 24 runtime, MySQL schema, and mobile LINE LIFF login are working. Next recommended step: deploy and verify desktop LINE Login OAuth, approve and test dedicated staff accounts, then run the documented customer-to-doctor-to-admin UAT flow. Before launch, still configure SlipOK credentials and privacy approval/Controlled Real-slip UAT, external prescription attachment storage, Zoom, final FDA numbers, and decide whether realtime chat is required. Use `PLESK_TEAM_TESTING_GUIDE.md` for the full internal checklist and `CLIENT_UAT_GUIDE.md` for the client-facing acceptance review.

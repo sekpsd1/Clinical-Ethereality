@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { ZOOM_SDK_CSP_HEADER } from "./lib/zoom/csp";
 
 function getConfiguredStorageImagePattern(): URL | null {
   const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL?.trim();
@@ -28,6 +29,14 @@ const configuredStorageImagePattern = getConfiguredStorageImagePattern();
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
+  async headers() {
+    return [
+      {
+        source: "/zoom-sdk/:path*",
+        headers: [ZOOM_SDK_CSP_HEADER],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb"
