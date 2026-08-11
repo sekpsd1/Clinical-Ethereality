@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { getProductCategoryLabel } from "@/features/products/categories";
+import type { StoreMarketplaceFilters } from "@/features/products/search";
 import type {
   StoreMarketplaceData,
   StoreProductDetailData,
@@ -11,10 +12,36 @@ import type {
 
 type ProductWithInventory = Awaited<ReturnType<typeof getActiveProducts>>[number];
 
-function getActiveProducts() {
+function getActiveProducts(filters: StoreMarketplaceFilters) {
   return prisma.product.findMany({
     where: {
-      status: "active"
+      status: "active",
+      ...(filters.category
+        ? {
+            category: filters.category
+          }
+        : {}),
+      ...(filters.query
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: filters.query
+                }
+              },
+              {
+                shortDescription: {
+                  contains: filters.query
+                }
+              },
+              {
+                description: {
+                  contains: filters.query
+                }
+              }
+            ]
+          }
+        : {})
     },
     orderBy: [
       {
@@ -123,17 +150,21 @@ function mapProductDetail(product: ProductWithInventory): StoreProductDetailItem
   };
 }
 
-export async function getStoreMarketplace(): Promise<StoreMarketplaceData> {
+export async function getStoreMarketplace(filters: StoreMarketplaceFilters): Promise<StoreMarketplaceData> {
   noStore();
 
   try {
-    const products = await getActiveProducts();
+    const products = await getActiveProducts(filters);
 
     return {
+      category: filters.category,
+      query: filters.query,
       products: products.map(mapProduct)
     };
   } catch {
     return {
+      category: filters.category,
+      query: filters.query,
       products: [],
       unavailable: true
     };
