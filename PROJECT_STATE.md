@@ -524,6 +524,12 @@ Not implemented yet:
 - The Zoom Meeting SDK CSP follows Zoom's browser-support guidance but is emitted by Next.js only for `/zoom-sdk/:path*`; it therefore covers the isolated client and its public static assets without changing CSP on the rest of the application.
 - `scripts/plesk-non-migration-preflight.cjs` fails closed if `PLESK_MIGRATION_TARGET` merely exists, including when empty. It emits only the key name and is available as `npm run preflight:plesk:non-migration` for a safe pre-deploy check. `server.js` executes the same guard before the legacy migration runner, preventing a runtime migration for this release. No Production/Plesk/Zoom/DB operation occurred in this phase.
 
+## Zoom Client Init Timeout Fix (Local Phase C-3)
+
+- The first controlled Production join attempt created the Zoom Meeting successfully and loaded the pinned SDK, i18n, JavaScript media, and WASM assets, but the client-view `init` callback timed out after the SDK opened its own audio/video preview. The attempt stopped before `join` completed and did not create payment, prescription, payment-slip, or recording data.
+- The isolated client now sets `disablePreview: true` so its single explicit `Join Zoom` action can proceed through `init` without a second SDK preview gate, sets `patchJsMedia: true` to receive Zoom's compatible media hotfix for the pinned SDK line, explicitly reveals `#zmmtg-root`, sets `leaveOnPageUnload: true`, and disables recording controls for the approved non-recording MVP. Focused regression coverage protects these runtime options and the fail-closed root check.
+- This phase is Local only. It does not authorize a source deploy, Plesk build/restart, Production database change, Zoom API retry, or repeat real UAT; those remain separately approved gates.
+
 ## Controlled Zoom UAT Fixture Runner (Local only)
 
 - A one-off `scripts/zoom-uat-fixture-runner.cjs` is prepared locally for an explicitly approved controlled Zoom UAT. It has fail-closed `precheck`, `create`, `verify`, and `cleanup` modes and requires Production confirmation, exact approved account labels, a future UTC slot, a unique key, and a target fingerprint. It resolves immutable IDs internally and masks them in output.

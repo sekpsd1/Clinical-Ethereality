@@ -1,5 +1,6 @@
 import { createElement, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { createZoomClientInitOptions, revealZoomClientRoot } from "./sdk-runtime";
 import "./styles.css";
 
 type ZoomJoinData =
@@ -89,7 +90,7 @@ function callbackToPromise(invoke: (success: () => void, error: (reason: unknown
 
 function ZoomClientApp() {
   const [state, setState] = useState<JoinState>("idle");
-  const [message, setMessage] = useState("Press Join Zoom to request camera and microphone access.");
+  const [message, setMessage] = useState("Press Join Zoom to connect. Camera and microphone stay optional.");
   const consultationId = getConsultationId();
 
   async function joinMeeting() {
@@ -115,17 +116,13 @@ function ZoomClientApp() {
       ZoomMtg.setZoomJSLib(`https://source.zoom.us/${SDK_VERSION}/lib`, "/av");
       ZoomMtg.preLoadWasm();
       ZoomMtg.prepareWebSDK();
+      revealZoomClientRoot(document.getElementById("zmmtg-root"));
       stage = "i18n";
       await withTimeout(Promise.resolve(ZoomMtg.i18n.load("en-US")), INIT_TIMEOUT_MS, "i18n");
       stage = "init";
       await withTimeout(
         callbackToPromise((success, error) => {
-          ZoomMtg.init({
-            leaveUrl: data.leaveUrl,
-            patchJsMedia: false,
-            success,
-            error
-          });
+          ZoomMtg.init(createZoomClientInitOptions(data.leaveUrl, success, error));
         }),
         INIT_TIMEOUT_MS,
         "init"
