@@ -11,18 +11,51 @@ const ACTIVE_CONSULTATION_STATUSES = ["requested", "pending_payment", "scheduled
 const ALLOWED_VERIFY_STATUSES = new Set(["scheduled", "live", "cancelled"]);
 const FIXTURE_DURATION_MINUTES = 30;
 const MAX_SUPPORTED_BOOKED_DURATION_MINUTES = 720;
+const RUNNER_MODES = new Set(["precheck", "create", "verify", "cleanup"]);
+const RUNNER_FAILURE_CODES = Object.freeze({
+  CUSTOMER_INELIGIBLE: "CUSTOMER_INELIGIBLE",
+  CUSTOMER_NOT_FOUND_OR_AMBIGUOUS: "CUSTOMER_NOT_FOUND_OR_AMBIGUOUS",
+  DATABASE_UNAVAILABLE: "DATABASE_UNAVAILABLE",
+  DOCTOR_INELIGIBLE: "DOCTOR_INELIGIBLE",
+  DOCTOR_NOT_FOUND_OR_AMBIGUOUS: "DOCTOR_NOT_FOUND_OR_AMBIGUOUS",
+  ENVIRONMENT_NOT_PRODUCTION: "ENVIRONMENT_NOT_PRODUCTION",
+  FIXTURE_KEY_CONFLICT: "FIXTURE_KEY_CONFLICT",
+  INVALID_ARGUMENT: "INVALID_ARGUMENT",
+  PRODUCTION_CONFIRMATION_REQUIRED: "PRODUCTION_CONFIRMATION_REQUIRED",
+  RELATED_RECORD_BOUNDARY_FAILED: "RELATED_RECORD_BOUNDARY_FAILED",
+  SLOT_NOT_FUTURE: "SLOT_NOT_FUTURE",
+  SLOT_OVERLAP: "SLOT_OVERLAP",
+  TARGET_FINGERPRINT_MISMATCH: "TARGET_FINGERPRINT_MISMATCH",
+  TRANSACTION_CONFLICT: "TRANSACTION_CONFLICT",
+  UNKNOWN_SAFE_FAILURE: "UNKNOWN_SAFE_FAILURE"
+});
+const RUNNER_FAILURE_STAGES = new Set(["arguments", "database", "environment", "fixture", "integrity", "slot", "target", "transaction", "unknown"]);
+const DATABASE_UNAVAILABLE_CODES = new Set(["P1000", "P1001", "P1002", "P1003", "P1008", "P1017"]);
+const TRANSACTION_CONFLICT_CODES = new Set(["P2028", "P2034"]);
+
+class RunnerFailure extends Error {
+  constructor(code, stage) {
+    super(code);
+    this.code = code;
+    this.stage = stage;
+  }
+}
+
+function fail(code, stage) {
+  throw new RunnerFailure(code, stage);
+}
 
 function parseArguments(argv) {
   const values = new Map();
 
   for (const argument of argv) {
     if (!argument.startsWith("--")) {
-      throw new Error("Unsupported positional argument.");
+      fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
     }
 
     if (argument === "--confirm-production") {
       if (values.has("confirm-production")) {
-        throw new Error("Duplicate argument.");
+        fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
       }
       values.set("confirm-production", true);
       continue;
@@ -30,16 +63,16 @@ function parseArguments(argv) {
 
     const separator = argument.indexOf("=");
     if (separator <= 2) {
-      throw new Error("Arguments must use --name=value.");
+      fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
     }
 
     const name = argument.slice(2, separator);
     const value = argument.slice(separator + 1);
     if (!value) {
-      throw new Error(`Missing argument value: ${name}.`);
+      fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
     }
     if (values.has(name)) {
-      throw new Error(`Duplicate argument: ${name}.`);
+      fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
     }
     values.set(name, value);
   }
@@ -50,7 +83,7 @@ function parseArguments(argv) {
 function requiredArgument(values, name) {
   const value = values.get(name);
   if (!value || value === true) {
-    throw new Error(`Missing required argument: ${name}.`);
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
   return value;
 }
@@ -58,17 +91,17 @@ function requiredArgument(values, name) {
 function parseScheduledAt(value) {
   const scheduledAt = new Date(value);
   if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.toISOString() !== value) {
-    throw new Error("scheduled-at must be an ISO UTC timestamp.");
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
   if (scheduledAt.getTime() <= Date.now()) {
-    throw new Error("scheduled-at must be in the future.");
+    fail(RUNNER_FAILURE_CODES.SLOT_NOT_FUTURE, "slot");
   }
   return scheduledAt;
 }
 
 function validateFixtureKey(value) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,80}$/.test(value)) {
-    throw new Error("fixture-key format is invalid.");
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
   return value;
 }
@@ -76,25 +109,28 @@ function validateFixtureKey(value) {
 function parseRunnerOptions(argv, environment = process.env) {
   const values = parseArguments(argv);
   const mode = requiredArgument(values, "mode");
-  if (!new Set(["precheck", "create", "verify", "cleanup"]).has(mode)) {
-    throw new Error("Unsupported mode.");
+  if (!RUNNER_MODES.has(mode)) {
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
-  if (values.get("confirm-production") !== true || environment.NODE_ENV !== "production") {
-    throw new Error("Production confirmation is required.");
+  if (values.get("confirm-production") !== true) {
+    fail(RUNNER_FAILURE_CODES.PRODUCTION_CONFIRMATION_REQUIRED, "environment");
+  }
+  if (environment.NODE_ENV !== "production") {
+    fail(RUNNER_FAILURE_CODES.ENVIRONMENT_NOT_PRODUCTION, "environment");
   }
 
   const fixtureKey = validateFixtureKey(requiredArgument(values, "fixture-key"));
   const customerLabel = requiredArgument(values, "customer-label");
   const doctorLabel = requiredArgument(values, "doctor-label");
   if (customerLabel !== CUSTOMER_LABEL || doctorLabel !== DOCTOR_LABEL) {
-    throw new Error("Unexpected UAT account labels.");
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
 
   const scheduledAt = parseScheduledAt(requiredArgument(values, "scheduled-at"));
   const targetFingerprint = mode === "precheck" ? null : requiredArgument(values, "target-fingerprint");
   const expectedStatus = values.get("expected-status") ?? "scheduled";
   if (!ALLOWED_VERIFY_STATUSES.has(expectedStatus)) {
-    throw new Error("Unsupported expected status.");
+    fail(RUNNER_FAILURE_CODES.INVALID_ARGUMENT, "arguments");
   }
 
   return {
@@ -151,7 +187,7 @@ function getOverlap(consultations, scheduledAt) {
     }
     const duration = consultation.bookedDurationMinutes ?? FIXTURE_DURATION_MINUTES;
     if (!Number.isInteger(duration) || duration <= 0 || duration > MAX_SUPPORTED_BOOKED_DURATION_MINUTES) {
-      throw new Error("Existing consultation duration is outside the supported safe range.");
+      fail(RUNNER_FAILURE_CODES.SLOT_OVERLAP, "slot");
     }
     const consultationEnd = new Date(consultation.scheduledAt.getTime() + duration * 60_000);
     if (consultation.scheduledAt < fixtureEnd && consultationEnd > scheduledAt) {
@@ -187,8 +223,31 @@ async function resolveTarget(prisma, options) {
     })
   ]);
 
-  if (customers.length !== 1 || doctors.length !== 1) {
-    throw new Error("Expected UAT identities are not uniquely eligible.");
+  if (customers.length !== 1) {
+    const candidates = await prisma.user.findMany({
+      where: { displayName: options.customerLabel },
+      select: { id: true },
+      take: 2
+    });
+    fail(
+      candidates.length === 1
+        ? RUNNER_FAILURE_CODES.CUSTOMER_INELIGIBLE
+        : RUNNER_FAILURE_CODES.CUSTOMER_NOT_FOUND_OR_AMBIGUOUS,
+      "target"
+    );
+  }
+  if (doctors.length !== 1) {
+    const candidates = await prisma.doctor.findMany({
+      where: { user: { displayName: options.doctorLabel } },
+      select: { id: true },
+      take: 2
+    });
+    fail(
+      candidates.length === 1
+        ? RUNNER_FAILURE_CODES.DOCTOR_INELIGIBLE
+        : RUNNER_FAILURE_CODES.DOCTOR_NOT_FOUND_OR_AMBIGUOUS,
+      "target"
+    );
   }
 
   return {
@@ -218,7 +277,7 @@ async function findFixture(prisma, target, fixtureKey) {
   });
 
   if (fixtures.length > 1) {
-    throw new Error("Fixture key is not unique.");
+    fail(RUNNER_FAILURE_CODES.FIXTURE_KEY_CONFLICT, "fixture");
   }
   return fixtures[0] ?? null;
 }
@@ -248,7 +307,7 @@ async function assertNoSlotOverlap(prisma, target, scheduledAt) {
   ]);
 
   if (slotLock || getOverlap(consultations, scheduledAt)) {
-    throw new Error("The requested UAT slot is unavailable.");
+    fail(RUNNER_FAILURE_CODES.SLOT_OVERLAP, "slot");
   }
 }
 
@@ -286,13 +345,13 @@ function assertFixtureIntegrity(fixture, integrity, expectedStatus) {
     integrity.prescriptionCount !== 0 ||
     integrity.orderCount !== 0
   ) {
-    throw new Error("Fixture integrity check failed.");
+    fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "integrity");
   }
 }
 
 function assertTargetFingerprint(target, options) {
   if (getTargetFingerprint(target, options.fixtureKey, options.scheduledAt) !== options.targetFingerprint) {
-    throw new Error("Target fingerprint does not match the approved fixture plan.");
+    fail(RUNNER_FAILURE_CODES.TARGET_FINGERPRINT_MISMATCH, "fixture");
   }
 }
 
@@ -317,13 +376,39 @@ function safeResult(mode, target, fixture, integrity, fixtureKey, scheduledAt) {
   };
 }
 
+function getSafeMode(argv) {
+  const modeArgument = argv.find((argument) => argument.startsWith("--mode="));
+  const mode = modeArgument?.slice("--mode=".length);
+  return RUNNER_MODES.has(mode) ? mode : "unknown";
+}
+
+function getSafeFailure(error) {
+  if (error instanceof RunnerFailure && Object.values(RUNNER_FAILURE_CODES).includes(error.code)) {
+    return { code: error.code, stage: RUNNER_FAILURE_STAGES.has(error.stage) ? error.stage : "unknown" };
+  }
+
+  const prismaCode = typeof error?.code === "string" ? error.code : null;
+  if (DATABASE_UNAVAILABLE_CODES.has(prismaCode)) {
+    return { code: RUNNER_FAILURE_CODES.DATABASE_UNAVAILABLE, stage: "database" };
+  }
+  if (TRANSACTION_CONFLICT_CODES.has(prismaCode)) {
+    return { code: RUNNER_FAILURE_CODES.TRANSACTION_CONFLICT, stage: "transaction" };
+  }
+  return { code: RUNNER_FAILURE_CODES.UNKNOWN_SAFE_FAILURE, stage: "unknown" };
+}
+
+function writeSafeFailure(error, argv, write = console.error) {
+  const failure = getSafeFailure(error);
+  write(JSON.stringify({ code: failure.code, mode: getSafeMode(argv), stage: failure.stage }));
+}
+
 async function runFixtureRunner(prisma, options) {
   const target = await resolveTarget(prisma, options);
 
   if (options.mode === "precheck") {
     const existingFixture = await findFixture(prisma, target, options.fixtureKey);
     if (existingFixture) {
-      throw new Error("Fixture key has already been used.");
+      fail(RUNNER_FAILURE_CODES.FIXTURE_KEY_CONFLICT, "fixture");
     }
     await assertNoSlotOverlap(prisma, target, options.scheduledAt);
     return safeResult("precheck", target, null, null, options.fixtureKey, options.scheduledAt);
@@ -336,7 +421,7 @@ async function runFixtureRunner(prisma, options) {
       async (transaction) => {
         const existingFixture = await findFixture(transaction, target, options.fixtureKey);
         if (existingFixture) {
-          throw new Error("Fixture key has already been used.");
+          fail(RUNNER_FAILURE_CODES.FIXTURE_KEY_CONFLICT, "fixture");
         }
         await assertNoSlotOverlap(transaction, target, options.scheduledAt);
 
@@ -362,7 +447,7 @@ async function runFixtureRunner(prisma, options) {
         });
         const beforeAuditIntegrity = await getFixtureIntegrity(transaction, fixture);
         if (beforeAuditIntegrity.auditCount !== 0) {
-          throw new Error("Unexpected audit state for new fixture.");
+          fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "integrity");
         }
         assertFixtureIntegrity(fixture, beforeAuditIntegrity, "scheduled");
 
@@ -383,7 +468,7 @@ async function runFixtureRunner(prisma, options) {
 
         const afterAuditIntegrity = await getFixtureIntegrity(transaction, fixture);
         if (afterAuditIntegrity.auditCount !== 1) {
-          throw new Error("Fixture audit was not recorded exactly once.");
+          fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "integrity");
         }
         return safeResult("create", target, fixture, afterAuditIntegrity, options.fixtureKey, options.scheduledAt);
       },
@@ -393,14 +478,14 @@ async function runFixtureRunner(prisma, options) {
 
   const fixture = await findFixture(prisma, target, options.fixtureKey);
   if (!fixture) {
-    throw new Error("Fixture was not found.");
+    fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "fixture");
   }
 
   if (options.mode === "verify") {
     const integrity = await getFixtureIntegrity(prisma, fixture);
     assertFixtureIntegrity(fixture, integrity, options.expectedStatus);
     if (integrity.auditCount < 1) {
-      throw new Error("Fixture audit is missing.");
+      fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "integrity");
     }
     return safeResult("verify", target, fixture, integrity, options.fixtureKey, options.scheduledAt);
   }
@@ -409,7 +494,7 @@ async function runFixtureRunner(prisma, options) {
     async (transaction) => {
       const currentFixture = await findFixture(transaction, target, options.fixtureKey);
       if (!currentFixture) {
-        throw new Error("Fixture was not found.");
+        fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "fixture");
       }
       const beforeCleanupIntegrity = await getFixtureIntegrity(transaction, currentFixture);
       if (currentFixture.status === "cancelled") {
@@ -417,7 +502,7 @@ async function runFixtureRunner(prisma, options) {
         return safeResult("cleanup", target, currentFixture, beforeCleanupIntegrity, options.fixtureKey, options.scheduledAt);
       }
       if (!new Set(["scheduled", "live"]).has(currentFixture.status)) {
-        throw new Error("Fixture is not safe to cancel.");
+        fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "fixture");
       }
       assertFixtureIntegrity(currentFixture, beforeCleanupIntegrity, currentFixture.status);
 
@@ -432,7 +517,7 @@ async function runFixtureRunner(prisma, options) {
         data: { status: "cancelled" }
       });
       if (updated.count !== 1) {
-        throw new Error("Fixture cleanup compare-and-swap failed.");
+        fail(RUNNER_FAILURE_CODES.TRANSACTION_CONFLICT, "transaction");
       }
       await transaction.auditLog.create({
         data: {
@@ -450,7 +535,7 @@ async function runFixtureRunner(prisma, options) {
       const afterCleanupIntegrity = await getFixtureIntegrity(transaction, cancelledFixture);
       assertFixtureIntegrity(cancelledFixture, afterCleanupIntegrity, "cancelled");
       if (afterCleanupIntegrity.auditCount < 2) {
-        throw new Error("Fixture cleanup audit is missing.");
+        fail(RUNNER_FAILURE_CODES.RELATED_RECORD_BOUNDARY_FAILED, "integrity");
       }
       return safeResult("cleanup", target, cancelledFixture, afterCleanupIntegrity, options.fixtureKey, options.scheduledAt);
     },
@@ -470,8 +555,8 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(() => {
-    console.error("Zoom UAT fixture runner stopped safely.");
+  main().catch((error) => {
+    writeSafeFailure(error, process.argv.slice(2));
     process.exitCode = 1;
   });
 }
@@ -483,11 +568,17 @@ module.exports = {
   FIXTURE_ACTION_CANCELLED,
   FIXTURE_ACTION_CREATED,
   FIXTURE_DURATION_MINUTES,
+  RUNNER_FAILURE_CODES,
+  RUNNER_FAILURE_STAGES,
+  RunnerFailure,
+  getSafeFailure,
+  getSafeMode,
   getFixtureSummary,
   getOverlap,
   getTargetFingerprint,
   maskIdentifier,
   parseRunnerOptions,
   resolveTarget,
-  runFixtureRunner
+  runFixtureRunner,
+  writeSafeFailure
 };

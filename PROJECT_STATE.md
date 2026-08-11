@@ -529,6 +529,7 @@ Not implemented yet:
 - A one-off `scripts/zoom-uat-fixture-runner.cjs` is prepared locally for an explicitly approved controlled Zoom UAT. It has fail-closed `precheck`, `create`, `verify`, and `cleanup` modes and requires Production confirmation, exact approved account labels, a future UTC slot, a unique key, and a target fingerprint. It resolves immutable IDs internally and masks them in output.
 - The runner creates only one 30-minute `scheduled` Consultation marked `[UAT]` in `summary` plus one AuditLog, after checking account eligibility, duplicate-key, slot-overlap, and related-record boundaries in a Serializable transaction. It never creates Payment, payment-slip attachment, Order, or Prescription records, never migrates schema, and never invokes Zoom through the database. Cleanup is non-destructive: the exact fixture becomes `cancelled` with a second AuditLog.
 - This runner is Local-only until a separately approved review, source deployment, and controlled Production UAT. It does not alter startup, build, deployment, restart, dependencies, lockfiles, or schema.
+- The runner's failure diagnostics are limited to allowlisted code/mode/stage JSON. Raw exceptions, stacks, queries, identifiers, labels, environment values, and tokens are never emitted; a diagnostic result does not authorize a retry or mutation.
 
 ## Next Recommended Step
 

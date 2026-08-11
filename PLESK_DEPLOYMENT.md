@@ -227,6 +227,11 @@ Production use requires a separately approved source deployment and separately
 approved controlled UAT. Do not put fixture identifiers, keys, fingerprints, or
 command output in public tickets or chat transcripts.
 
+On failure, the runner writes only JSON with an allowlisted `code`, safe `mode`,
+and safe `stage`. It never writes a raw exception, stack, database query,
+identifier, label, environment value, or token. A failure code is diagnostic
+only: it does not authorize a retry, fixture creation, or any other mutation.
+
 ### Guarded Plesk runtime migrations
 
 The root `server.js` retains the reviewed migration runner, but the current
