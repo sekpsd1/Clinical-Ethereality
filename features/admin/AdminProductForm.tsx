@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Save, Upload } from "lucide-react";
 import { upsertProductAction } from "@/features/admin/products/actions";
@@ -10,6 +10,7 @@ import type { AdminProductActionState } from "@/features/admin/products/actions"
 import type { AdminProductItem } from "@/features/admin/products/types";
 
 type AdminProductFormProps = {
+  onSaved?: () => void;
   product?: AdminProductItem;
 };
 
@@ -18,8 +19,14 @@ const initialActionState: AdminProductActionState = {
   message: ""
 };
 
-export function AdminProductForm({ product }: AdminProductFormProps) {
+export function AdminProductForm({ onSaved, product }: AdminProductFormProps) {
   const [state, action] = useActionState(upsertProductAction, initialActionState);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      onSaved?.();
+    }
+  }, [onSaved, state.status]);
 
   return (
     <form action={action} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
@@ -61,7 +68,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
           defaultValue={product?.usageInstructions ?? ""}
           placeholder="วิธีใช้ ปริมาณ และความถี่ตามข้อมูลที่ได้รับอนุมัติ"
         />
-        <div className="grid grid-cols-[1fr_1fr] gap-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <TextField
             label="เลข อย."
             name="fdaNumber"
@@ -90,7 +97,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
           placeholder="เช่น ต้องควบคุมอุณหภูมิ หรือมีขั้นตอนแพ็กเฉพาะ"
           minHeightClass="min-h-16"
         />
-        <div className="grid grid-cols-[1fr_1fr] gap-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label>
             <span className="block text-[13px] font-bold text-muted">สถานะ</span>
             <select
@@ -124,7 +131,8 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
             </label>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 border-t border-border/70 pt-3">
+        <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+          <p className="text-[11px] font-semibold text-muted">ตรวจข้อมูลก่อนบันทึกทุกครั้ง</p>
           <SubmitButton label={product ? "บันทึกสินค้า" : "สร้างสินค้า"} />
         </div>
       </div>
@@ -250,11 +258,12 @@ function SubmitButton({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-60"
+      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-bold text-white disabled:opacity-60"
       aria-label={label}
       disabled={pending}
     >
       <Save aria-hidden="true" className="size-4" strokeWidth={2.1} />
+      <span>{pending ? "กำลังบันทึก…" : label}</span>
     </button>
   );
 }

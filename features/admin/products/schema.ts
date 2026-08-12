@@ -30,3 +30,7 @@ export const upsertProductSchema = z.object({
   requiresPrescription: z.preprocess((value) => value === "on" || value === "true", z.boolean()),
   controlledOrRestricted: z.preprocess((value) => value === "on" || value === "true", z.boolean())
 });
+
+export const archiveProductSchema = z.object({
+  productId: z.string().trim().min(1).max(191)
+});

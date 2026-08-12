@@ -19,7 +19,8 @@ export type AdminProductItem = {
   price: string;
   status: ProductStatus;
   requiresPrescription: boolean;
-  inventoryQuantity: number | null;
+  inventoryAvailableQuantity: number | null;
+  inventoryLowStockThreshold: number | null;
   updatedAt: string;
 };
 

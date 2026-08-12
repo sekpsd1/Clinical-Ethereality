@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { actionError, actionSuccess, formDataToObject, type FormActionState } from "@/lib/actions/server-actions";
-import { upsertProductSchema } from "@/features/admin/products/schema";
+import { archiveProductSchema, upsertProductSchema } from "@/features/admin/products/schema";
 
 export type AdminProductActionState = FormActionState;
 
@@ -95,4 +95,59 @@ export async function upsertProductAction(
   revalidatePath("/admin/inventory");
 
   return actionSuccess(productId ? "อัปเดตสินค้าแล้ว" : "สร้างสินค้าแล้ว");
+}
+
+export async function archiveProductAction(
+  _previousState: AdminProductActionState,
+  formData: FormData
+): Promise<AdminProductActionState> {
+  const session = await requireAdminSession();
+  const parsed = archiveProductSchema.safeParse(formDataToObject(formData));
+
+  if (!parsed.success) {
+    return actionError("ไม่พบสินค้าที่ต้องการเก็บถาวร", parsed.error);
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({
+        where: { id: parsed.data.productId },
+        select: { id: true, slug: true, status: true }
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      if (product.status === "archived") {
+        return;
+      }
+
+      await tx.product.update({
+        where: { id: product.id },
+        data: { status: "archived" }
+      });
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "product.archive",
+        entityType: "product",
+        entityId: product.id,
+        metadata: {
+          slug: product.slug,
+          previousStatus: product.status,
+          status: "archived"
+        }
+      });
+    });
+  } catch {
+    return actionError("ยังเก็บสินค้าถาวรไม่ได้ กรุณาลองอีกครั้ง");
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/store");
+
+  return actionSuccess("เก็บสินค้าถาวรแล้ว");
 }

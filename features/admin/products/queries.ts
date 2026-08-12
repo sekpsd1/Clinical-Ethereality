@@ -50,7 +50,10 @@ function mapProduct(product: ProductWithInventory): AdminProductItem {
     price: formatPrice(product.price),
     status: product.status,
     requiresPrescription: product.requiresPrescription,
-    inventoryQuantity: product.inventory?.quantity ?? null,
+    inventoryAvailableQuantity: product.inventory
+      ? Math.max(product.inventory.quantity - product.inventory.reservedQuantity, 0)
+      : null,
+    inventoryLowStockThreshold: product.inventory?.lowStockThreshold ?? null,
     updatedAt: formatDate(product.updatedAt)
   };
 }
