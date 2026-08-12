@@ -27,8 +27,8 @@ export function AdminModerationActionButtons({ item }: AdminModerationActionButt
   const itemTypeLabel = item.type === "article" ? "บทความ" : "ความคิดเห็น";
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-2">
-      <div className="flex gap-2">
+    <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-end">
+      <div className="flex flex-wrap gap-2">
         {item.reportId && !isHidden && !isArchived ? (
           <ModerationActionForm
             action={restoreAction}
@@ -101,25 +101,37 @@ function ModerationActionForm({
   label: string;
 }) {
   return (
-    <form action={action}>
+    <form
+      action={action}
+      onSubmit={(event) => {
+        if (
+          actionName === "archive" &&
+          !window.confirm(`ยืนยันเก็บ${label.replace("เก็บถาวร", "")}ถาวร? รายการจะถูกซ่อนจากคิวเริ่มต้น แต่ไม่ถูกลบถาวรและยังกู้คืนได้`)
+        ) {
+          event.preventDefault();
+        }
+      }}
+    >
       <input type="hidden" name="itemId" value={item.id} />
       {"reportId" in item && item.reportId ? <input type="hidden" name="reportId" value={item.reportId} /> : null}
       <input type="hidden" name="itemType" value={item.type} />
       <input type="hidden" name="action" value={actionName} />
-      <ActionIconButton ariaLabel={label} className={className} icon={icon} title={label} />
+      <ActionButton ariaLabel={label} className={className} icon={icon} label={actionName === "restore" ? (label.startsWith("คง") ? "คงไว้" : "คืนค่า") : actionName === "hide" ? "ซ่อน" : "เก็บถาวร"} title={label} />
     </form>
   );
 }
 
-function ActionIconButton({
+function ActionButton({
   ariaLabel,
   className,
   icon,
+  label,
   title
 }: {
   ariaLabel: string;
   className: string;
   icon: "restore" | "hide" | "archive";
+  label: string;
   title: string;
 }) {
   const { pending } = useFormStatus();
@@ -128,12 +140,13 @@ function ActionIconButton({
   return (
     <button
       type="submit"
-      className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
+      className={cn("inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[8px] px-3 text-xs font-bold disabled:opacity-60", className)}
       aria-label={ariaLabel}
       disabled={pending}
       title={title}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
+      {pending ? "กำลังบันทึก…" : label}
     </button>
   );
 }

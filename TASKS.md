@@ -357,6 +357,7 @@
 - [x] Build persistent report records and connect them to the admin moderation queue without automatically hiding reported content
 - [x] Build admin moderation workflow with keep, hide, archive, audit, and customer notification outcomes
 - [x] Minimize admin moderation steps
+- [x] Refine `/admin/moderation` UX with pending-first ordering and count, default-hidden Test/UAT and archived records, search/type/reason/status filters, explicit view/hide/archive controls, a detail side panel, non-mutating bulk selection preparation, and confirmed recoverable archiving
 - [x] Build notifications
 - [x] Back customer notification center with Prisma notifications
 - [x] Build reward points earning and spending rules

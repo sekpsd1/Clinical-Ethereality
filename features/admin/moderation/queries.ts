@@ -126,6 +126,7 @@ function mapPendingReport(report: PendingReport): AdminModerationQueueItem | nul
       status: report.article.status,
       createdAt: formatDate(report.article.createdAt),
       reporterName: report.reporter.displayName ?? `สมาชิก ${report.reporter.id.slice(-4).toUpperCase()}`,
+      reportReasonCode: report.reason,
       reportReason: getCommunityReportReasonLabel(report.reason),
       reportDetails: report.details,
       reportedAt: formatDate(report.createdAt)
@@ -143,6 +144,7 @@ function mapPendingReport(report: PendingReport): AdminModerationQueueItem | nul
       status: report.comment.status,
       createdAt: formatDate(report.comment.createdAt),
       reporterName: report.reporter.displayName ?? `สมาชิก ${report.reporter.id.slice(-4).toUpperCase()}`,
+      reportReasonCode: report.reason,
       reportReason: getCommunityReportReasonLabel(report.reason),
       reportDetails: report.details,
       reportedAt: formatDate(report.createdAt)
@@ -163,6 +165,7 @@ function mapHiddenArticle(article: HiddenArticle): AdminModerationQueueItem {
     status: article.status,
     createdAt: formatDate(article.createdAt),
     reporterName: null,
+    reportReasonCode: null,
     reportReason: null,
     reportDetails: null,
     reportedAt: null
@@ -180,6 +183,7 @@ function mapHiddenComment(comment: HiddenComment): AdminModerationQueueItem {
     status: comment.status,
     createdAt: formatDate(comment.createdAt),
     reporterName: null,
+    reportReasonCode: null,
     reportReason: null,
     reportDetails: null,
     reportedAt: null

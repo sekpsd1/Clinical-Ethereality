@@ -12,6 +12,7 @@ export type AdminModerationQueueItem = {
   status: ArticleStatus | CommentStatus;
   createdAt: string;
   reporterName: string | null;
+  reportReasonCode: string | null;
   reportReason: string | null;
   reportDetails: string | null;
   reportedAt: string | null;
