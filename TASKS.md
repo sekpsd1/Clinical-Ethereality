@@ -386,6 +386,7 @@
 - [x] Add cPanel-to-Plesk migration handoff after the temporary cPanel proof-of-run and LINE LIFF smoke check
 - [x] Run protected-route middleware on the Node.js runtime so Plesk JWT refresh and route verification share runtime secrets
 - [x] Add Plesk GitHub deployment build helper for standalone Next.js runtime output
+- [x] Add fail-closed Plesk standalone asset readiness checks: verify the complete static/public mirror after `build:plesk-host`, recheck server/BUILD_ID/assets before startup, and cover missing page chunks with regression tests
 - [x] Add responsive desktop admin navigation, admin logout, and public-origin LINE OAuth redirects for Passenger/Plesk
 - [x] Add temporary private Plesk uploads for staff profile photos and license proofs from Admin review, with admin-only license access, approval prerequisites, file metadata, and audit logs; keep public staff requests text-only to avoid exposing upload handling to the Plesk WAF
 - [x] Keep doctor/pharmacist applicants active as customers during review, show a Thai pending-review confirmation, expose clearer admin document-review controls, and create an in-app approval notification
