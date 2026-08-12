@@ -44,8 +44,8 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
   const doctorName = doctor?.name ?? "พญ. กมลภัทร วิจักขณ์พันธ์";
 
   return (
-    <article className="relative h-[260px] rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 shadow-bio-card backdrop-blur-topbar">
-      <div className="absolute left-1/2 top-6 -translate-x-1/2">
+    <article className="flex min-h-[276px] flex-col items-center rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 px-5 pb-6 pt-6 text-center shadow-bio-card backdrop-blur-topbar">
+      <div>
         <div className="relative size-24 rounded-full border-4 border-white p-1 shadow-avatar">
           <div className="relative size-full overflow-hidden rounded-full">
             <DoctorAvatar src={doctor?.avatarUrl} alt={doctorName} />
@@ -56,16 +56,16 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 top-[124px] flex flex-col items-center gap-1 px-5 text-center">
-        <h2 className="text-xl font-bold leading-7 tracking-normal text-primary">{doctorName}</h2>
+      <div className="mt-3 flex max-w-full flex-col items-center gap-1">
+        <h2 className="max-w-full break-words text-xl font-bold leading-7 tracking-normal text-primary">{doctorName}</h2>
         <div className="flex min-h-6 items-center justify-center gap-1 rounded-full bg-white/70 px-3 text-sm font-medium leading-5 text-[#3e494a] shadow-sm">
           <Star aria-hidden="true" className="size-[15px] fill-[#f2b705] text-[#f2b705]" />
           <span>4.9 (120+ รีวิว)</span>
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-6 flex flex-wrap justify-center gap-2 px-5">
-        <span className="rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-primary">
+      <div className="mt-3 flex max-w-full flex-col items-center gap-2">
+        <span className="max-w-full rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-primary">
           {doctor?.specialty ?? "สูตินรีเวช"}
         </span>
         <span className="rounded-full bg-[#dfe0e0]/50 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-[#616363]">
