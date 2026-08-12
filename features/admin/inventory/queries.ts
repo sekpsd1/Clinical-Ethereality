@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminInventoryData, AdminInventoryItem } from "@/features/admin/inventory/types";
+import { getProductCategoryLabel, productCategories, type ProductCategory } from "@/features/products/categories";
 
 type InventoryWithProduct = Awaited<ReturnType<typeof getInventoryForAdmin>>[number];
 
@@ -32,12 +33,18 @@ function isLowStock(item: Pick<AdminInventoryItem, "availableQuantity" | "lowSto
 
 function mapInventoryItem(item: InventoryWithProduct): AdminInventoryItem {
   const availableQuantity = Math.max(item.quantity - item.reservedQuantity, 0);
+  const category = productCategories.some((categoryItem) => categoryItem.value === item.product.category)
+    ? (item.product.category as ProductCategory)
+    : "other";
 
   return {
     id: item.id,
     productId: item.productId,
     productName: item.product.name,
     productSlug: item.product.slug,
+    productCategory: category,
+    productCategoryLabel: getProductCategoryLabel(category),
+    productImageUrl: item.product.imageUrl ?? "",
     productStatus: item.product.status,
     quantity: item.quantity,
     reservedQuantity: item.reservedQuantity,

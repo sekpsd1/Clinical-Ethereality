@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
+  Boxes,
   CalendarClock,
-  ClipboardCheck,
   ContactRound,
   CreditCard,
   FileCheck2,
@@ -50,9 +50,9 @@ const adminNavItems = [
     icon: PackageCheck
   },
   {
-    label: "สต็อก",
-    href: "/admin/inventory",
-    icon: ClipboardCheck
+    label: "สินค้า",
+    href: "/admin/products",
+    icon: Boxes
   },
   {
     label: "ดูแลชุมชน",
@@ -71,6 +71,18 @@ const adminNavItems = [
   }
 ] as const;
 
+function isAdminNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/admin") {
+    return pathname === "/admin";
+  }
+
+  if (href === "/admin/products") {
+    return pathname.startsWith("/admin/products") || pathname.startsWith("/admin/inventory");
+  }
+
+  return pathname.startsWith(href);
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -85,7 +97,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <nav aria-label="เมนูผู้ดูแลระบบ" className="mt-7 flex flex-1 flex-col gap-1">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const isActive = isAdminNavItemActive(pathname, item.href);
 
             return (
               <Link
@@ -143,7 +155,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex w-full max-w-mobile snap-x gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const isActive = isAdminNavItemActive(pathname, item.href);
 
             return (
               <Link

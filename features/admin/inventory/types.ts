@@ -1,10 +1,14 @@
 import type { ProductStatus } from "@prisma/client";
+import type { ProductCategory } from "@/features/products/categories";
 
 export type AdminInventoryItem = {
   id: string;
   productId: string;
   productName: string;
   productSlug: string;
+  productCategory: ProductCategory;
+  productCategoryLabel: string;
+  productImageUrl: string;
   productStatus: ProductStatus;
   quantity: number;
   reservedQuantity: number;

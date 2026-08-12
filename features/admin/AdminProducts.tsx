@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, ImageIcon, PackagePlus, Pencil, Plus, X } from "lucide-react";
+import { ImageIcon, PackagePlus, Pencil, Plus, X } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminProductArchiveButton } from "@/features/admin/AdminProductArchiveButton";
 import { AdminProductForm } from "@/features/admin/AdminProductForm";
+import { AdminProductTabs } from "@/features/admin/AdminProductTabs";
 import { productCategories } from "@/features/products/categories";
 import { cn } from "@/lib/design-system/variants";
 import type { AdminProductItem, AdminProductsData } from "@/features/admin/products/types";
@@ -102,6 +102,8 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
         </div>
       </section>
 
+      <AdminProductTabs active="catalog" />
+
       <section className="grid grid-cols-3 gap-2" aria-label="สรุปแคตตาล็อก">
         <CatalogSummary label="ทั้งหมด" value={data.products.length} />
         <CatalogSummary label="เผยแพร่" value={data.summary.active} tone="success" />
@@ -115,13 +117,6 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
             <p className="mt-0.5 text-xs font-semibold text-muted">{data.products.length} รายการในแคตตาล็อก</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/admin/inventory"
-              className="inline-flex min-h-10 items-center gap-1 whitespace-nowrap rounded-[8px] px-2 text-xs font-bold text-primary hover:bg-primary/5 sm:px-3"
-            >
-              จัดการสต็อก
-              <ArrowUpRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
-            </Link>
             <button
               type="button"
               className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-[8px] bg-primary px-3 text-xs font-bold text-white sm:hidden"

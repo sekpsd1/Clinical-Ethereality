@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Save } from "lucide-react";
 import { updateInventoryAction } from "@/features/admin/inventory/actions";
@@ -13,15 +13,30 @@ const initialActionState: AdminInventoryActionState = {
   message: ""
 };
 
-export function AdminInventoryForm({ item }: { item: Pick<AdminInventoryItem, "id" | "quantity" | "lowStockThreshold"> }) {
+export function AdminInventoryForm({
+  item,
+  onSaved
+}: {
+  item: Pick<AdminInventoryItem, "id" | "quantity" | "lowStockThreshold">;
+  onSaved?: () => void;
+}) {
   const [state, action] = useActionState(updateInventoryAction, initialActionState);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      onSaved?.();
+    }
+  }, [onSaved, state.status]);
 
   return (
     <form action={action} className="mt-4 border-t border-border/70 pt-3">
       <input type="hidden" name="inventoryId" value={item.id} />
-      <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <NumberField label="คงคลัง" name="quantity" defaultValue={item.quantity} />
         <NumberField label="เตือนต่ำกว่า" name="lowStockThreshold" defaultValue={item.lowStockThreshold} />
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+        <p className="text-[11px] font-semibold leading-4 text-muted">คงคลังต้องไม่น้อยกว่าจำนวนที่ถูกจอง</p>
         <SubmitButton />
       </div>
       {state.status !== "idle" ? (
@@ -61,11 +76,12 @@ function SubmitButton() {
   return (
     <button
       type="submit"
-      className="inline-flex size-10 items-center justify-center rounded-full bg-primary text-white disabled:opacity-60"
+      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-bold text-white disabled:opacity-60"
       aria-label="บันทึกสต็อก"
       disabled={pending}
     >
       <Save aria-hidden="true" className="size-4" strokeWidth={2.1} />
+      <span>{pending ? "กำลังบันทึก…" : "บันทึกสต็อก"}</span>
     </button>
   );
 }

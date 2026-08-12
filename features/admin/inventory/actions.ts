@@ -86,6 +86,7 @@ export async function updateInventoryAction(
 
   revalidatePath("/admin");
   revalidatePath("/admin/inventory");
+  revalidatePath("/admin/products");
 
   return {
     status: "success",
