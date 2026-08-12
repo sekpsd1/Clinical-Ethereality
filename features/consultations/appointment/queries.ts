@@ -105,11 +105,7 @@ function formatTime(date: Date | null): string {
 }
 
 function formatMoney(value: number | null): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(value ?? 1000);
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value ?? 1000)} บาท`;
 }
 
 function getCtaHref(status: ConsultationStatus, consultationId: string): string {
@@ -159,9 +155,7 @@ function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointm
 function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentDetail {
   const status = statusContent[consultation.status];
   const paymentStatus = getPaymentStatusCopy(consultation.status);
-  const avatarUrl = consultation.doctor.user.avatarUrl?.startsWith("/")
-    ? consultation.doctor.user.avatarUrl
-    : "/images/doctors/somchai-payment.png";
+  const avatarUrl = consultation.doctor.user.avatarUrl ?? "/images/doctors/somchai-payment.png";
 
   return {
     id: consultation.id,

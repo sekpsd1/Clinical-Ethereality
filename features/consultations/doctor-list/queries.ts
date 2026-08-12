@@ -10,7 +10,7 @@ const fallbackDoctor: ConsultDoctorListDoctor = {
   name: "พญ. กมลภัทร วิจักขณ์พันธ์",
   specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์",
   tags: ["#Telemedicine", "#VideoChat"],
-  price: "฿800 / 15 นาที",
+  price: "800 บาท / 15 นาที",
   rating: "4.9",
   imageSrc: "/images/doctors/kamonpat.jpg",
   bookingHref: "/consult/booking/somchai",
@@ -40,11 +40,7 @@ function getApprovedDoctors() {
 }
 
 function formatMoney(value: number | null): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(value ?? 0);
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value ?? 0)} บาท`;
 }
 
 function mapDoctor(doctor: ApprovedDoctorRecord, recommendedDoctorId: string | null): ConsultDoctorListDoctor {

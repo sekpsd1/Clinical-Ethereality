@@ -56,11 +56,7 @@ function getPrimaryBookingDoctor() {
 }
 
 function formatMoney(value: number | null): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(value ?? 1000);
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value ?? 1000)} บาท`;
 }
 
 function formatDate(date: Date): string {

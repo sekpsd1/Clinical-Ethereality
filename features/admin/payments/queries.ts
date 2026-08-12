@@ -47,10 +47,7 @@ function getPaymentsForAdmin() {
 }
 
 function formatMoney(value: unknown): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    style: "currency"
-  }).format(Number(value));
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Number(value))} บาท`;
 }
 
 function formatOptionalMoney(value: unknown): string | null {

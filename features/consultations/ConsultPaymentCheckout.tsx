@@ -325,10 +325,6 @@ function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymen
 function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDetail }) {
   return (
     <article className="flex flex-col items-center rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-[25px] shadow-promptpay backdrop-blur-topbar">
-      <div className="pb-4">
-        <Image src="/images/payments/promptpay-logo.png" alt="PromptPay" width={32} height={32} className="size-8 object-contain" />
-      </div>
-
       <div className="rounded-2xl border border-[#bdc9ca]/30 bg-white p-[17px] shadow-qr-inset">
         {consultation.promptPay.qrDataUrl ? (
           <Image

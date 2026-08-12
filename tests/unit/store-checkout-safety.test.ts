@@ -8,10 +8,10 @@ import {
 const baseItem: CartItem = {
   slug: "hpv-home-test-14",
   name: "HPV Home Test Kit",
-  price: "฿1,200",
+  price: "1,200 บาท",
   quantity: 1,
   availableQuantity: 5,
-  lineTotal: "฿1,200",
+  lineTotal: "1,200 บาท",
   requiresPrescription: false,
   media: "kit",
   stockLabel: "พร้อมจัดส่ง 5"
@@ -23,7 +23,7 @@ function cart(overrides: Partial<CartData> = {}): CartData {
     staleItems: [],
     itemCount: 1,
     subtotalAmount: 1200,
-    subtotal: "฿1,200",
+    subtotal: "1,200 บาท",
     ...overrides
   };
 }
@@ -38,7 +38,7 @@ describe("store checkout safety", () => {
           staleItems: [],
           itemCount: 0,
           subtotalAmount: 0,
-          subtotal: "฿0"
+          subtotal: "0 บาท"
         })
       )
     ).toBe("empty");
@@ -52,7 +52,7 @@ describe("store checkout safety", () => {
           staleItems: [{ slug: "archived-product", quantity: 2 }],
           itemCount: 0,
           subtotalAmount: 0,
-          subtotal: "฿0"
+          subtotal: "0 บาท"
         })
       )
     ).toBe("stale");

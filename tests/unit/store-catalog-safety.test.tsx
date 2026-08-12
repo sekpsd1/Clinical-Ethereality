@@ -51,7 +51,7 @@ function createProduct(overrides: Partial<StoreProductDetailItem> = {}): StorePr
     slug: "database-product",
     category: "health-equipment",
     categoryLabel: "อุปกรณ์สุขภาพ",
-    price: "฿1,200",
+    price: "1,200 บาท",
     description: "รายละเอียดสินค้า",
     imageAlt: "สินค้าจริงจากฐานข้อมูล",
     imageUrl: null,

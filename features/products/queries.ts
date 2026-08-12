@@ -70,11 +70,7 @@ function getActiveProductBySlug(slug: string) {
 }
 
 function formatMoney(value: unknown): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(Number(value));
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Number(value))} บาท`;
 }
 
 function getProductMedia(product: Pick<ProductWithInventory, "slug" | "requiresPrescription">): StoreProductMedia {

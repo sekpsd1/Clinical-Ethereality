@@ -54,7 +54,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#3e494a]">อัตราค่าบริการ</p>
             <p className="whitespace-nowrap text-sm leading-5 text-[#3e494a]">
-              <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "฿800"}</span> / slot
+              <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "800 บาท"}</span> / slot
             </p>
           </div>
         </div>
@@ -159,12 +159,12 @@ function CalendarPicker({
                 aria-pressed={isSelected}
                 className={
                   isSelected
-                    ? "flex min-h-14 flex-col items-center justify-center rounded-full bg-primary px-3 text-sm font-bold leading-5 text-white shadow-selected-date"
-                    : "flex min-h-14 flex-col items-center justify-center rounded-full bg-white/60 px-3 text-sm font-bold leading-5 text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
+                    ? "flex size-16 flex-col items-center justify-center rounded-full bg-primary p-0 font-bold text-white shadow-selected-date"
+                    : "flex size-16 flex-col items-center justify-center rounded-full bg-white/60 p-0 font-bold text-[#3e494a] disabled:cursor-not-allowed disabled:opacity-50"
                 }
               >
-                <span>{getDayNumber(dateLabel)}</span>
-                <span className="mt-0.5 text-[10px] opacity-80">{dateLabel.replace(getDayNumber(dateLabel), "").trim()}</span>
+                <span className="text-base leading-none">{getDayNumber(dateLabel)}</span>
+                <span className="mt-1 text-xs leading-none opacity-85">{dateLabel.replace(getDayNumber(dateLabel), "").trim()}</span>
               </button>
             );
           })}

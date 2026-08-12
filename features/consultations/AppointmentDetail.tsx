@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft, CalendarDays, Clock3, CreditCard, ShieldCheck, Stethoscope } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { CustomerAppointmentData } from "@/features/consultations/appointment/types";
 
 export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
@@ -27,13 +27,7 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-4">
                   <div className="relative size-16 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-avatar">
-                    <Image
-                      src={appointment.doctorAvatarUrl}
-                      alt={appointment.doctorName}
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                    />
+                    <DoctorAvatar src={appointment.doctorAvatarUrl} alt={appointment.doctorName} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase leading-4 tracking-[1px] text-[#3e494a]">
