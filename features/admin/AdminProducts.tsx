@@ -117,7 +117,7 @@ export function AdminProducts({ data }: { data: AdminProductsData }) {
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <InfoTile label="ราคา" value={`฿${product.price}`} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                <InfoTile label="ราคา" value={`${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Number(product.price))} บาท`} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
                 <InfoTile label="สต็อก" value={product.inventoryQuantity === null ? "ยังไม่มี" : String(product.inventoryQuantity)} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
                 <InfoTile label="ใบสั่งยา" value={product.requiresPrescription ? "ต้องใช้" : "ไม่ต้องใช้"} icon={<Pill aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
               </div>

@@ -74,11 +74,7 @@ function formatTime(date: Date | null): string {
 }
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(value);
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value)} บาท`;
 }
 
 function normalizePaymentStatus(value?: string): ConsultationPaymentStatus {

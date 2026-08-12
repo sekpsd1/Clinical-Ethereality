@@ -339,7 +339,7 @@ describe("Stitch UI primitives", () => {
     const compactHtml = render(
       createElement(TestInfoTile, {
         label: "ยอดรวม",
-        value: "฿800",
+        value: "800 บาท",
         icon: createElement("span", { "aria-hidden": true }, "i")
       })
     );
@@ -354,7 +354,7 @@ describe("Stitch UI primitives", () => {
     );
 
     expect(compactHtml).toContain("ยอดรวม");
-    expect(compactHtml).toContain("฿800");
+    expect(compactHtml).toContain("800 บาท");
     expect(compactHtml).toContain("px-3");
     expect(compactHtml).toContain("py-2");
     expect(descriptionHtml).toContain("<dt");

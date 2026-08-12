@@ -105,11 +105,7 @@ function formatTime(date: Date | null): string {
 }
 
 function formatMoney(value: number | null): string {
-  return new Intl.NumberFormat("th-TH", {
-    currency: "THB",
-    maximumFractionDigits: 0,
-    style: "currency"
-  }).format(value ?? 1000);
+  return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value ?? 1000)} บาท`;
 }
 
 function getCtaHref(status: ConsultationStatus, consultationId: string): string {

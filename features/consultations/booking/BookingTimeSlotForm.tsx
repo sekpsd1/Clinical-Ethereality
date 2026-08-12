@@ -54,7 +54,7 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#3e494a]">อัตราค่าบริการ</p>
             <p className="whitespace-nowrap text-sm leading-5 text-[#3e494a]">
-              <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "฿800"}</span> / slot
+              <span className="text-lg font-bold leading-7 text-primary">{data.doctor?.fee ?? "800 บาท"}</span> / slot
             </p>
           </div>
         </div>

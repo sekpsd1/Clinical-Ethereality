@@ -51,7 +51,7 @@ export function PaymentSuccessTracking() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-sm text-[#3e494a]">ยอดเงิน</dt>
-              <dd className="text-right text-lg font-extrabold text-primary">฿1,800.00</dd>
+              <dd className="text-right text-lg font-extrabold text-primary">1,800 บาท</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-sm text-[#3e494a]">วันเวลา</dt>

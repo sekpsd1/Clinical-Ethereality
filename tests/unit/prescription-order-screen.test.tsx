@@ -33,7 +33,7 @@ describe("doctor-issued prescription order screen", () => {
                 name: "Doctor selected product",
                 slug: "doctor-selected-product",
                 description: "Only the doctor-selected product is shown.",
-                priceLabel: "฿1,200",
+                priceLabel: "1,200 บาท",
                 stockLabel: "พร้อมจัดส่ง 5 ชิ้น",
                 availableQuantity: 5,
                 prescribedQuantity: 2
