@@ -166,15 +166,16 @@ first, then switch to automatic deployment only after a successful hosted smoke 
    additional deployment actions: its non-interactive Git shell does not expose
    the selected Node.js runtime and fails with `nodenv: npm: command not found`.
 6. Click **Pull Now**, then **Deploy Now**.
-7. Open **Node.js > Run Node.js commands**, select Node.js `24.18.0` and npm,
-   then run these commands one at a time:
+7. Open **Node.js > Run Node.js commands**, select Node.js `24.18.0` and npm.
+   Plesk automatically adds the `npm` prefix, so enter only these arguments one
+   at a time and verify the rendered command before execution:
 
 ```bash
-npm run preflight:plesk:non-migration
-npm ci --include=dev --no-audit --no-fund
-npm --prefix zoom-client ci --include=dev --no-audit --no-fund
-npm --prefix zoom-client run build
-npm run build:plesk-host
+run preflight:plesk:non-migration
+ci --include=dev --no-audit --no-fund
+--prefix zoom-client ci --include=dev --no-audit --no-fund
+--prefix zoom-client run build
+run build:plesk-host
 ```
 
 8. Keep the Node.js startup file as `server.js` and document root as `public`.
@@ -185,6 +186,11 @@ If it reports a lock-file mismatch, click **Pull Now** and **Deploy Now** again
 before retrying; do not run an ad-hoc `npm install` on the server. `build:plesk-host`
 builds on Linux and copies required static/public files into
 `.next/standalone`; the committed root `server.js` then starts that standalone app.
+The helper compares every source static/public file and size with its standalone
+copy after preparation. At startup, `server.js` repeats the same readiness check,
+including the standalone server and `BUILD_ID`, before the migration runner or
+Next.js runtime can start. A missing or partial mirror fails closed with an
+instruction to rerun `npm run build:plesk-host` instead of serving a partial app.
 Do not add `prisma db push` to deployment actions. Apply production schema
 changes separately with a reviewed backup and migration procedure.
 
