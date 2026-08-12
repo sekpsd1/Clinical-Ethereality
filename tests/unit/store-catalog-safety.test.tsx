@@ -265,6 +265,27 @@ describe("store catalog component safety", () => {
     expect(html).toContain("สินค้าทั่วไป");
   });
 
+  it("uses the full-card product image as the only detail link and clamps names to two lines", () => {
+    const products = [
+      toListItem(createProduct({ id: "featured", name: "สินค้าแนะนำ", slug: "featured", href: "/store/featured", imageUrl: "/images/featured.png", featured: true })),
+      toListItem(createProduct({ id: "standard", name: "สินค้าทั่วไป", slug: "standard", href: "/store/standard" }))
+    ];
+
+    const html = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "", query: "", products }} />
+    );
+
+    expect(html.match(/href="\/store\/featured"/g)).toHaveLength(1);
+    expect(html.match(/href="\/store\/standard"/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="ดูรายละเอียด สินค้าแนะนำ"');
+    expect(html).toContain('aria-label="ดูรายละเอียด สินค้าทั่วไป"');
+    expect(html).toContain("rounded-t-[5px]");
+    expect(html).toContain("rounded-[5px]");
+    expect(html).toContain("line-clamp-2");
+    expect(html).toContain('class="object-contain"');
+    expect(html).not.toContain("ดูสินค้า");
+  });
+
   it("does not render a purchase action for missing, unavailable, or out-of-stock products", () => {
     const missingHtml = renderToStaticMarkup(
       <ProductDetail data={{ product: null }} storageReadiness={storageReadiness} />

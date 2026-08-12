@@ -203,52 +203,47 @@ function CategoryCard({
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <article className="flex min-h-[300px] flex-col rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
-      <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-[#eceef0]">
+    <article className="flex min-h-[300px] flex-col overflow-hidden rounded-[5px] border border-[#bdc9ca]/15 bg-white/70 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+      <Link
+        href={product.href}
+        aria-label={`ดูรายละเอียด ${product.name}`}
+        className="relative block aspect-square w-full overflow-hidden rounded-t-[5px] bg-[#eceef0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
         <ProductMedia product={product} />
         {product.requiresPrescription ? (
           <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1.5 text-[8px] font-bold uppercase tracking-wide text-white">
             ต้องมีใบสั่งแพทย์
           </span>
         ) : null}
-      </div>
+      </Link>
 
-      <div className="mt-4 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col px-4 pb-4 pt-4">
         <p className="truncate text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="truncate text-base font-bold leading-5 text-[#191c1e]">{product.name}</h3>
+        <h3 className="line-clamp-2 min-h-10 text-base font-bold leading-5 text-[#191c1e]">{product.name}</h3>
         <p className="mt-1.5 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
       </div>
-
-      <Link
-        href={product.href}
-        className="mt-auto flex min-h-11 items-center justify-center rounded-full bg-primary-gradient px-4 text-xs font-bold text-white shadow-chip"
-      >
-        {product.cta}
-      </Link>
     </article>
   );
 }
 
 function FeaturedProductCard({ product }: { product: Product }) {
   return (
-    <article className="mt-5 flex min-h-[220px] gap-4 rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-4 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
-      <div className="relative aspect-square w-[46%] max-w-[168px] shrink-0 overflow-hidden rounded-[16px] bg-[#eceef0]">
+    <article className="mt-5 flex min-h-[220px] overflow-hidden rounded-[5px] border border-[#bdc9ca]/15 bg-white/70 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+      <Link
+        href={product.href}
+        aria-label={`ดูรายละเอียด ${product.name}`}
+        className="relative block w-[46%] max-w-[168px] shrink-0 self-stretch overflow-hidden bg-[#eceef0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
         <ProductMedia product={product} />
-      </div>
+      </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col py-1">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
         <p className="text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="text-[17px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
+        <h3 className="line-clamp-2 text-[17px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
         <p className="mt-2 text-xs leading-5 text-[#3e494a]">{product.description}</p>
         <p className="mt-3 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
-        <Link
-          href={product.href}
-          className="mt-auto flex min-h-11 w-[132px] items-center justify-center rounded-full bg-primary-gradient px-4 text-xs font-bold text-white shadow-chip"
-        >
-          {product.cta}
-        </Link>
       </div>
     </article>
   );
@@ -256,7 +251,7 @@ function FeaturedProductCard({ product }: { product: Product }) {
 
 function ProductMedia({ product }: { product: Product }) {
   if (product.imageUrl) {
-    return <Image src={product.imageUrl} alt={product.imageAlt} fill sizes="(max-width: 480px) 45vw, 180px" className="object-contain p-2" />;
+    return <Image src={product.imageUrl} alt={product.imageAlt} fill sizes="(max-width: 480px) 45vw, 180px" className="object-contain" />;
   }
 
   if (product.media === "gel") {
