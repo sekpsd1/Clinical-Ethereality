@@ -159,9 +159,7 @@ function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointm
 function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentDetail {
   const status = statusContent[consultation.status];
   const paymentStatus = getPaymentStatusCopy(consultation.status);
-  const avatarUrl = consultation.doctor.user.avatarUrl?.startsWith("/")
-    ? consultation.doctor.user.avatarUrl
-    : "/images/doctors/somchai-payment.png";
+  const avatarUrl = consultation.doctor.user.avatarUrl ?? "/images/doctors/somchai-payment.png";
 
   return {
     id: consultation.id,
