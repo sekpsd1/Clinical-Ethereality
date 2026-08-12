@@ -57,6 +57,7 @@
 - [x] Approve and document the Community rules, four existing article categories, five existing report reasons, post-moderation policy, Before/After prohibition, review SLA, support-channel appeals, and 2,555-day audit target in `COMMUNITY_LAUNCH_POLICY.md`
 - [x] Complete Community Production operational readiness: verified `COMMUNITY_UPLOAD_DIR` as an absolute private path outside the deployment directory with least-privilege access and Node write access; completed a private Google Drive backup/restore hash drill; assigned Admin Media design moderation ownership (10:00/16:00 ICT business-day checks), the normal Support appeal path, and the approved SLA; and completed controlled `[UAT]` Production Community UAT without deleting Audit/Report history. Plesk-native restore-to-temp remains a future hardening item.
 - [x] Confirm Stitch source/tokens/assets are owner-managed; use owner-provided HTML exports for any new screens
+- [ ] Confirm the client-approved patient verification policy before implementation. The client is reviewing a no-ID-card flow using LINE Login, SMS OTP phone verification, Admin data review/approval, appointment ownership checks, and Doctor name/date-of-birth confirmation; do not label it as legal-document identity verification.
 
 ## Phase 1: Project Scaffolding And Frontend Foundation
 
@@ -313,13 +314,14 @@
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
 - [x] Add in-place doctor availability editing and replace the icon-only schedule toggle with explicit Thai activate/deactivate labels
-- [x] Build Zoom Meeting SDK client-view integration, Server-to-Server meeting creation, signature generation, and signed webhook handling; production owner credentials and hosted end-to-end validation remain pending
+- [x] Build Zoom Meeting SDK client-view integration, Server-to-Server meeting creation, signature generation, and signed webhook handling; owner credentials and hosted non-recording end-to-end validation are complete
 - [x] Prepare a Local-only fail-closed one-off Zoom UAT fixture runner with `precheck`/`create`/`verify`/`cleanup`, exact approved-account checks, serialized non-monetary fixture creation, and non-destructive cleanup; Production source deployment and controlled execution remain separately approved gates
 - [x] Add allowlisted safe failure-code diagnostics to the one-off Zoom UAT fixture runner without emitting raw errors, identifiers, labels, environment values, or secrets; source deployment and any runner retry remain separately approved gates
 - [x] Isolate the Zoom Meeting SDK client view in a React 18.2 iframe sub-app while retaining Next.js 15 + React 19 in the main app; the static client is locally built from its own lockfile, requests short-lived join data only after Join, loads i18n before init/join, pins Zoom assets, and uses sanitized timeout/error handling. Deployment and a new controlled UAT remain separately gated.
 - [x] Add a Zoom Meeting SDK CSP scoped only to `/zoom-sdk/:path*` and a separately runnable, fail-closed Plesk non-migration guard that blocks any present `PLESK_MIGRATION_TARGET` before the runtime migration runner can execute; deployment remains separately gated.
 - [x] Fix the Production-observed Zoom client-view `init_timeout` locally by disabling the SDK's blocking audio/video preview, enabling Zoom's media hotfix path, explicitly revealing `#zmmtg-root`, disabling recording controls, and adding regression coverage; deployment and repeat Production UAT remain separately gated.
-- [x] Complete local Zoom Production Pre-Credential Readiness: server-only S2S/OAuth/ZAK flow, minimum-lifetime SDK signatures, owner/role guards, signed webhook replay handling, mock coverage, and owner setup/UAT/rollback guide; owner credential entry and non-monetary Production UAT remain pending
+- [x] Complete local Zoom Production Pre-Credential Readiness: server-only S2S/OAuth/ZAK flow, minimum-lifetime SDK signatures, owner/role guards, signed webhook replay handling, mock coverage, and owner setup/UAT/rollback guide
+- [x] Deploy Zoom fix commit `bb64a68`, pass the non-migration preflight, isolated Zoom build, main build, one restart, and HTTP 200 health check; complete one controlled non-recording Production Join with mic muted/video off, then cancel the exact fixture non-destructively with creation/cancellation audits and zero Payment/Prescription/payment-slip records
 - [x] Build persisted in-app consultation chat foundation separate from LINE
 - [x] Remove live-room demo messages and bind the room to participant-scoped persisted messages with near-real-time refresh
 - [x] Persist consultation payment evidence and status in the shared Payment entity
