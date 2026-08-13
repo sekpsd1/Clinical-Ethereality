@@ -1,5 +1,6 @@
 import { getAppEnv } from "@/lib/env/schema";
 import { getStorageReadiness } from "@/lib/storage/provider";
+import { getSmsOtpReadiness } from "@/lib/sms/otp";
 
 export type IntegrationReadinessItem = {
   label: string;
@@ -43,8 +44,18 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
   const env = getAppEnv();
   const isSlipOk = env.SLIP_VERIFICATION_PROVIDER === "slipok";
   const storageReadiness = getStorageReadiness(env);
+  const smsOtpReadiness = getSmsOtpReadiness(env);
 
   const items = [
+    buildItem(
+      "SMS OTP",
+      "ยืนยันการเข้าถึงเบอร์โทรของบัญชี LINE เท่านั้น ไม่ใช่การพิสูจน์ตัวตนตามเอกสาร",
+      [
+        ["SMS_OTP_PROVIDER", !smsOtpReadiness.missingKeys.includes("SMS_OTP_PROVIDER")],
+        ["SMS_OTP_API_KEY", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_KEY")],
+        ["SMS_OTP_API_SECRET", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_SECRET")]
+      ]
+    ),
     buildItem("PromptPay และ payment webhook", "ใช้สร้าง QR และรับ webhook/ตรวจสอบสถานะการชำระเงิน", [
       ["THAI_QR_PROMPTPAY_ID", hasValue(env.THAI_QR_PROMPTPAY_ID)],
       ["PAYMENT_WEBHOOK_SECRET", hasValue(env.PAYMENT_WEBHOOK_SECRET)]

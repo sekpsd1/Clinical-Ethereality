@@ -724,6 +724,8 @@ The authentication system should support:
 
 - LINE Mini App/LINE LIFF login as the required customer/patient entry point
 - LINE identity as the primary customer account identity
+- SMS OTP as confirmation that the signed-in LINE user can access the submitted Thai mobile number; it is not legal-document identity proof
+- No customer ID card, passport, or selfie upload and no Admin patient-document review
 - No standalone customer email/password or guest account flow for MVP
 - Email login may be added only after the LINE Mini App MVP is complete
 - JWT session handling for app authorization

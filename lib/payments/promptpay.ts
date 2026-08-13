@@ -71,6 +71,16 @@ function formatAmount(amount: number): string {
   return amount.toFixed(2);
 }
 
+export function isSupportedPromptPayId(promptPayId: string | undefined): promptPayId is string {
+  const digits = promptPayId?.replace(/\D/g, "") ?? "";
+
+  return (
+    (digits.length === 10 && digits.startsWith("0")) ||
+    digits.length === 13 ||
+    digits.length === 15
+  );
+}
+
 export function maskPromptPayId(promptPayId?: string): string {
   if (!promptPayId) {
     return "PromptPay ID not configured";
@@ -86,6 +96,10 @@ export function maskPromptPayId(promptPayId?: string): string {
 }
 
 export function buildPromptPayPayload(promptPayId: string, amount: number): string {
+  if (!isSupportedPromptPayId(promptPayId) || !Number.isFinite(amount) || amount <= 0) {
+    throw new Error("A supported PromptPay ID and positive amount are required.");
+  }
+
   const normalized = normalizePromptPayId(promptPayId);
   const merchantAccountInfo = [
     formatEmvField("00", "A000000677010111"),
@@ -108,7 +122,7 @@ export async function getPromptPayInstruction(amount: number): Promise<PromptPay
   const promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID;
   const promptPayIdLabel = maskPromptPayId(promptPayId);
 
-  if (!promptPayId) {
+  if (!isSupportedPromptPayId(promptPayId) || !Number.isFinite(amount) || amount <= 0) {
     return {
       payload: null,
       qrDataUrl: null,

@@ -14,6 +14,10 @@ export const envSchema = z.object({
   LINE_CHANNEL_ID: z.string().optional(),
   LINE_CHANNEL_SECRET: z.string().optional(),
   LINE_LOGIN_CALLBACK_URL: z.string().url().optional(),
+  SMS_OTP_PROVIDER: z.enum(["thaibulksms"]).optional(),
+  SMS_OTP_API_KEY: z.string().optional(),
+  SMS_OTP_API_SECRET: z.string().optional(),
+  SMS_OTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   THAI_QR_PROMPTPAY_ID: z.string().optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
   STORE_RESERVATION_CLEANUP_SECRET: z.preprocess(

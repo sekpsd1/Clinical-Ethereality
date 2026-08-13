@@ -1,15 +1,7 @@
-import { buildPromptPayPayload } from "@/lib/payments/promptpay";
+import { buildPromptPayPayload, isSupportedPromptPayId } from "@/lib/payments/promptpay";
 import { getAppEnv } from "@/lib/env/schema";
 
-export function isSupportedPromptPayId(promptPayId: string | undefined): boolean {
-  const digits = promptPayId?.replace(/\D/g, "") ?? "";
-
-  return (
-    (digits.length === 10 && digits.startsWith("0")) ||
-    digits.length === 13 ||
-    digits.length === 15
-  );
-}
+export { isSupportedPromptPayId };
 
 export function isStorePromptPayReady(
   promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID
