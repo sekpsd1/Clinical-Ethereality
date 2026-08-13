@@ -63,7 +63,7 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
     buildItem("Slip verification", "รองรับ SlipOK/EasySlip โดยไม่แสดง API key ในหน้าแอดมิน", [
       ["SLIP_VERIFICATION_PROVIDER", hasValue(env.SLIP_VERIFICATION_PROVIDER)],
       ["SLIP_VERIFICATION_API_KEY", hasValue(env.SLIP_VERIFICATION_API_KEY)],
-      ["SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME", hasValue(env.SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME)],
+      ["SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME", isSlipOk || hasValue(env.SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME)],
       ["SLIPOK_BRANCH_ID", !isSlipOk || hasValue(env.SLIPOK_BRANCH_ID)]
     ]),
     buildItem("File storage", "ใช้เก็บ slip, prescription attachment, PDFs, images และไฟล์ clinical อื่น ๆ", [

@@ -7,7 +7,8 @@ import {
   getPaymentVerificationRetryAfterSeconds,
   isPaymentReadyForProviderVerification,
   mergePaymentVerificationPayload,
-  PaymentVerificationConflictError
+  PaymentVerificationConflictError,
+  type ProviderPaymentSnapshot
 } from "@/features/payments/service";
 import {
   getPaymentSlipErrorMessage,
@@ -20,6 +21,7 @@ import {
   isStoreReservationExpired,
   releaseExpiredStoreOrderReservations
 } from "@/features/orders/reservations";
+import { verifyUploadedStorePrivateSlip } from "@/features/payments/store-private-slip-verification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,13 +108,16 @@ async function submitStoreSlip(input: {
     paymentId: payment.id
   });
 
+  let providerPayment: ProviderPaymentSnapshot;
+
   try {
-    await prisma.$transaction(
+    providerPayment = await prisma.$transaction(
       async (tx) => {
         const current = await tx.payment.findUnique({
           where: { id: payment.id },
           select: {
             orderId: true,
+            amount: true,
             status: true,
             updatedAt: true,
             verificationPayload: true,
@@ -131,19 +136,26 @@ async function submitStoreSlip(input: {
         }
 
         const submittedAt = new Date();
+        const verificationPayload = mergePaymentVerificationPayload(current.verificationPayload, {
+          providerAttempt: {
+            claimedAt: submittedAt.toISOString(),
+            claimedBy: input.actorId,
+            status: "pending_review"
+          },
+          submittedEvidence: {
+            attachmentId: prepared.attachmentId,
+            submittedAt: submittedAt.toISOString(),
+            type: "private_file"
+          },
+          submissionSource: "private_file"
+        });
         const paymentUpdate = await tx.payment.updateMany({
           where: { id: payment.id, status: current.status, updatedAt: current.updatedAt },
           data: {
             status: "pending_review",
             slipImageUrl: prepared.storageUrl,
-            verificationPayload: mergePaymentVerificationPayload(current.verificationPayload, {
-              submittedEvidence: {
-                attachmentId: prepared.attachmentId,
-                submittedAt: submittedAt.toISOString(),
-                type: "private_file"
-              },
-              submissionSource: "private_file"
-            })
+            updatedAt: submittedAt,
+            verificationPayload
           }
         });
 
@@ -194,7 +206,7 @@ async function submitStoreSlip(input: {
             type: "payment",
             channel: "in_app",
             title: "ได้รับสลิปแล้ว",
-            body: "ทีมงานจะตรวจสอบสลิปการชำระเงินของคุณ",
+            body: "ระบบกำลังตรวจสอบสลิปอัตโนมัติ และจะส่งให้ทีมงานตรวจหากผู้ให้บริการยังไม่พร้อม",
             metadataJson: { orderId: order.id, paymentId: payment.id, href: "/store/orders" }
           }
         });
@@ -207,9 +219,21 @@ async function submitStoreSlip(input: {
             attachmentId: prepared.attachmentId,
             orderId: order.id,
             previousStatus: current.status,
-            nextStatus: "pending_review"
+            nextStatus: "pending_review",
+            verificationMode: "automatic_provider_with_manual_fallback"
           }
         });
+
+        return {
+          id: payment.id,
+          orderId: order.id,
+          orderUserId: order.userId,
+          amount: current.amount,
+          status: "pending_review" as const,
+          slipImageUrl: prepared.storageUrl,
+          verificationPayload: verificationPayload as Prisma.JsonValue,
+          updatedAt: submittedAt
+        } satisfies ProviderPaymentSnapshot;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
@@ -223,7 +247,21 @@ async function submitStoreSlip(input: {
     throw error;
   }
 
-  return { attachmentId: prepared.attachmentId, paymentId: payment.id, status: "pending_review" as const };
+  const verification = await verifyUploadedStorePrivateSlip({
+    actorId: input.actorId,
+    payment: providerPayment,
+    privateSlip: {
+      fileName: prepared.fileName,
+      mimeType: prepared.mimeType,
+      storageKey: prepared.storageKey
+    }
+  });
+
+  return {
+    attachmentId: prepared.attachmentId,
+    paymentId: payment.id,
+    ...verification
+  };
 }
 
 async function submitConsultationSlip(input: {

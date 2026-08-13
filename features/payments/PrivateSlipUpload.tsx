@@ -83,14 +83,25 @@ export function PrivateSlipUpload({ consultationId, paymentId, referenceLabel }:
 
     try {
       const response = await fetch("/api/payments/private-slip", { method: "POST", body: formData });
-      const payload = (await response.json().catch(() => null)) as { error?: string; ok?: boolean } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        ok?: boolean;
+        status?: "pending_review" | "rejected" | "verified";
+        verification?: "manual_review_required" | "provider_rejected" | "provider_verified";
+      } | null;
 
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.error ?? "ไม่สามารถส่งสลิปได้");
       }
 
       setStatus("success");
-      setMessage("ได้รับสลิปแล้ว และส่งเข้าคิวให้ทีมงานตรวจสอบ");
+      setMessage(
+        payload.verification === "provider_verified"
+          ? "ตรวจสอบสลิปอัตโนมัติสำเร็จแล้ว"
+          : payload.verification === "provider_rejected"
+            ? "สลิปไม่ผ่านการตรวจสอบ กรุณาตรวจสอบยอดและส่งสลิปใหม่อีกครั้ง"
+            : "ได้รับสลิปแล้ว ผู้ให้บริการยังตรวจอัตโนมัติไม่ได้ และส่งเข้าคิวให้ทีมงานตรวจสอบแล้ว"
+      );
       router.refresh();
     } catch (error) {
       setStatus("error");
