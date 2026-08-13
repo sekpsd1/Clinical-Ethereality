@@ -4,6 +4,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const MIGRATION_APPROVAL_ENV = "PLESK_MIGRATION_TARGET";
+const SMS_OTP_MIGRATION_TARGET = "20260814090000_add_patient_phone_verification";
+
+function hasPleskMigrationTarget(env = process.env) {
+  return Object.prototype.hasOwnProperty.call(env, MIGRATION_APPROVAL_ENV);
+}
+
+function isAllowedPleskMigrationTarget(target) {
+  return target === SMS_OTP_MIGRATION_TARGET;
+}
 
 function getCurrentMigrationTarget(rootDir) {
   const migrationsDir = path.join(rootDir, "prisma", "migrations");
@@ -32,13 +41,25 @@ function runPleskRuntimeMigration({
   const currentTarget = getCurrentMigrationTarget(rootDir);
   const approvedTarget = env[MIGRATION_APPROVAL_ENV];
 
-  if (!approvedTarget || approvedTarget !== currentTarget) {
-    if (approvedTarget) {
-      log("[plesk-migration] Approval target does not match the current source migration; starting app without migrations.");
-    }
-
+  if (!hasPleskMigrationTarget(env)) {
     return {
       shouldStart: true,
+      migrationRun: false
+    };
+  }
+
+  if (!isAllowedPleskMigrationTarget(approvedTarget)) {
+    error("[plesk-migration] Migration target is not allowlisted; standalone server will not start.");
+    return {
+      shouldStart: false,
+      migrationRun: false
+    };
+  }
+
+  if (approvedTarget !== currentTarget) {
+    error("[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start.");
+    return {
+      shouldStart: false,
       migrationRun: false
     };
   }
@@ -81,6 +102,9 @@ function runPleskRuntimeMigration({
 
 module.exports = {
   MIGRATION_APPROVAL_ENV,
+  SMS_OTP_MIGRATION_TARGET,
   getCurrentMigrationTarget,
+  hasPleskMigrationTarget,
+  isAllowedPleskMigrationTarget,
   runPleskRuntimeMigration
 };

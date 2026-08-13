@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { assertPleskHostRuntimeReady } = require("./scripts/plesk-host-runtime-readiness.cjs");
-const { assertNoPleskMigrationTarget } = require("./scripts/plesk-non-migration-preflight.cjs");
+const { assertPleskSmsOtpMigrationTarget } = require("./scripts/plesk-sms-otp-migration-guard.cjs");
 const { runPleskRuntimeMigration } = require("./scripts/plesk-runtime-migration-runner.cjs");
 
-if (!assertNoPleskMigrationTarget()) {
-  throw new Error("Plesk non-migration preflight failed. Remove PLESK_MIGRATION_TARGET before starting this release.");
+if (!assertPleskSmsOtpMigrationTarget()) {
+  throw new Error("Plesk migration target is not approved for this release.");
 }
 
 assertPleskHostRuntimeReady({ rootDir: __dirname });

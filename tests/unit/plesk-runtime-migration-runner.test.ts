@@ -5,6 +5,7 @@ const path = require("node:path");
 import { afterEach, describe, expect, it, vi } from "vitest";
 const {
   MIGRATION_APPROVAL_ENV,
+  SMS_OTP_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -13,7 +14,7 @@ const workspaces: string[] = [];
 
 function createRunnerWorkspace(migrations = [
   "20260809120000_add_payment_normalized_transaction_reference",
-  "20260809140000_add_manual_store_refund_fields"
+  SMS_OTP_MIGRATION_TARGET
 ]) {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "plesk-runtime-migration-runner-"));
   workspaces.push(rootDir);
@@ -71,7 +72,7 @@ describe("Plesk runtime migration runner", () => {
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
-  it("starts without migrations when the approval flag does not match exactly", () => {
+  it("fails closed when the approval flag is not the fixed SMS OTP target", () => {
     const spawnSync = vi.fn();
     const loggers = createLoggers();
     const result = runPleskRuntimeMigration({
@@ -81,17 +82,34 @@ describe("Plesk runtime migration runner", () => {
       ...loggers
     });
 
-    expect(result).toEqual({ shouldStart: true, migrationRun: false });
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
     expect(spawnSync).not.toHaveBeenCalled();
-    expect(loggers.logs).toEqual([
-      "[plesk-migration] Approval target does not match the current source migration; starting app without migrations."
+    expect(loggers.errors).toEqual([
+      "[plesk-migration] Migration target is not allowlisted; standalone server will not start."
+    ]);
+  });
+
+  it("fails closed when the allowlisted target is not the latest source migration", () => {
+    const spawnSync = vi.fn();
+    const loggers = createLoggers();
+    const result = runPleskRuntimeMigration({
+      rootDir: createRunnerWorkspace([SMS_OTP_MIGRATION_TARGET, "20260815000000_future_migration"]),
+      env: { [MIGRATION_APPROVAL_ENV]: SMS_OTP_MIGRATION_TARGET },
+      spawnSync,
+      ...loggers
+    });
+
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
+    expect(spawnSync).not.toHaveBeenCalled();
+    expect(loggers.errors).toEqual([
+      "[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start."
     ]);
   });
 
   it("runs Prisma through the Node runtime only for an exact approval target", () => {
     const rootDir = createRunnerWorkspace();
     const env = {
-      [MIGRATION_APPROVAL_ENV]: "20260809140000_add_manual_store_refund_fields",
+      [MIGRATION_APPROVAL_ENV]: SMS_OTP_MIGRATION_TARGET,
       DATABASE_URL: "database-url-value"
     };
     const spawnSync = vi.fn().mockReturnValue({ status: 0 });
@@ -116,7 +134,7 @@ describe("Plesk runtime migration runner", () => {
   it("fails closed and never logs secrets when Prisma migration fails", () => {
     const rootDir = createRunnerWorkspace();
     const env = {
-      [MIGRATION_APPROVAL_ENV]: "20260809140000_add_manual_store_refund_fields",
+      [MIGRATION_APPROVAL_ENV]: SMS_OTP_MIGRATION_TARGET,
       DATABASE_URL: "database-url-value",
       JWT_SECRET: "jwt-value"
     };
