@@ -857,6 +857,7 @@ Deployment runbook:
 - See `DEPLOYMENT.md` for the Vercel preview, staging, and production readiness checklist.
 - See `PLESK_DEPLOYMENT.md` for the Plesk Node.js standalone deployment checklist.
 - See `PLESK_TEAM_TESTING_GUIDE.md` for the remote team testing guide after the app is deployed to Plesk.
+- See `PLESK_STORE_RESERVATION_CLEANUP.md` for the secure five-minute Store reservation cleanup task and readiness check.
 - See `STAGING.md` and `.env.staging.example` for the staging environment setup checklist.
 - See `PRODUCTION.md` and `.env.production.example` for the production environment launch gates.
 - See `BACKUPS.md` for database and object-storage backup and restore procedures.

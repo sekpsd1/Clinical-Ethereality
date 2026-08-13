@@ -1,9 +1,9 @@
 name: Store reservation cleanup
 
 on:
-  schedule:
-    # Run every five minutes.
-    - cron: "*/5 * * * *"
+  # Plesk Scheduled Tasks is the authoritative five-minute Production scheduler.
+  # Keep this workflow only as an explicitly dispatched recovery path because
+  # GitHub-hosted schedules do not provide a five-minute execution SLA.
   workflow_dispatch:
 
 permissions: {}
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   cleanup:
-    name: Release expired Store reservations
+    name: Manually release expired Store reservations
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
