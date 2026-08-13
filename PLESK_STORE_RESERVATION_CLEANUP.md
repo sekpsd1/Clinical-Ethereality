@@ -4,7 +4,7 @@ The target authoritative Production trigger is a five-minute Plesk host-level ta
 
 ## Current Production blocker
 
-Commit `dddce27` is deployed and the runner is ready, but the task is not active. Safe Plesk preflight confirmed that the customer-level Scheduled Tasks shell is chrooted: `/app.bccgroup-thailand.com` exists, while both `node` and `/opt/plesk/node/24/bin/node` are unavailable and the Node application environment is not inherited. No invalid task was saved, no cleanup request was run, and the existing secret was not copied into a command or file.
+Commit `dddce27` is deployed and the runner is ready, but the task is not active. Safe Plesk preflight confirmed that the customer-level Scheduled Tasks shell is chrooted: `/app.bccgroup-thailand.com` exists, while both `node` and `/opt/plesk/node/24/bin/node` are unavailable. The required Node application environment therefore could not be verified in that execution context. No invalid task was saved, no cleanup request was run, and the existing secret was not copied into a command or file.
 
 The hosting operator must provide one of these approved boundaries before activation:
 
