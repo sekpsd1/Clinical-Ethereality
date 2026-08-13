@@ -125,12 +125,10 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-text">{order.orderCode}</h3>
                       <p className="mt-0.5 truncate text-sm font-bold text-text">{order.customerName}</p>
-                      {order.customerPhone ? (
-                        <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
-                          <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
-                          {order.customerPhone}
-                        </p>
-                      ) : null}
+                      <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
+                        <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
+                        <span>{order.customerPhoneVerificationStatus === "verified" ? "เบอร์โปรไฟล์ (ยืนยันแล้ว)" : order.customerPhoneVerificationStatus === "pending" ? "เบอร์โปรไฟล์ (รอยืนยัน)" : "เบอร์โปรไฟล์"}: {order.customerPhone ?? "ไม่ได้ระบุ"}</span>
+                      </p>
                     </div>
                     <StatusBadge tone={tone}>{orderStatusLabels[order.status]}</StatusBadge>
                   </div>
@@ -170,7 +168,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
 
               <div className={`mt-3 rounded-[8px] p-3 ${order.shippingAddress ? "bg-primary/5" : "border border-danger/20 bg-danger/5"}`}>
                 <p className="flex items-center gap-2 text-[11px] font-bold text-text"><MapPin aria-hidden="true" className="size-3.5 text-primary" />ที่อยู่จัดส่งของคำสั่งซื้อ</p>
-                {order.shippingAddress ? <><p className="mt-2 text-xs font-bold text-text">{order.shippingAddress.recipientName} · {order.shippingAddress.phone}</p><p className="mt-1 text-xs leading-5 text-muted">{formatShippingAddress(order.shippingAddress)}</p></> : <p className="mt-2 text-xs font-bold leading-5 text-danger">คำสั่งซื้อเดิมไม่มี snapshot กรุณาตรวจสอบก่อนจัดส่ง</p>}
+                {order.shippingAddress ? <><p className="mt-2 text-xs font-bold text-text">ผู้รับพัสดุ: {order.shippingAddress.recipientName}</p><p className="mt-1 text-xs font-semibold text-text">เบอร์ผู้รับพัสดุ: {order.shippingAddress.phone}</p><p className="mt-1 text-xs leading-5 text-muted">{formatShippingAddress(order.shippingAddress)}</p></> : <p className="mt-2 text-xs font-bold leading-5 text-danger">คำสั่งซื้อเดิมไม่มี snapshot กรุณาตรวจสอบก่อนจัดส่ง</p>}
               </div>
 
               {order.fulfillmentHistory.length > 0 ? (

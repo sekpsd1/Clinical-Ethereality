@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
   releaseExpiredConsultationSlotLocks: vi.fn(),
   requireCurrentSession: vi.fn(),
+  requireVerifiedPatientProfile: vi.fn(),
 }));
 
 vi.mock("@/features/consultations/booking/lock-release", () => ({
@@ -21,6 +22,10 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/permissions", () => ({ assertPermission: mocks.assertPermission }));
+vi.mock("@/features/identity-verification/service", () => ({
+  PatientVerificationError: class PatientVerificationError extends Error {},
+  requireVerifiedPatientProfile: mocks.requireVerifiedPatientProfile,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
@@ -58,12 +63,22 @@ describe("createConsultationBookingAction booked-duration audit", () => {
         }),
       },
       notification: { create: vi.fn().mockResolvedValue({}) },
+      user: {
+        findUnique: vi.fn().mockResolvedValue({
+          fullName: "Patient Example",
+          dateOfBirth: new Date("1990-01-30T00:00:00.000Z"),
+          phone: "0812345678",
+          normalizedPhone: "+66812345678",
+          phoneVerifiedAt: new Date("2026-08-13T16:00:00.000Z")
+        })
+      },
     };
 
     mocks.requireCurrentSession.mockResolvedValue({
       userId: "patient-1",
     });
     mocks.assertPermission.mockReturnValue(undefined);
+    mocks.requireVerifiedPatientProfile.mockResolvedValue(undefined);
     mocks.releaseExpiredConsultationSlotLocks.mockResolvedValue(undefined);
     mocks.prisma.$transaction.mockImplementation(
       async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),

@@ -177,8 +177,12 @@ model User {
   id            String        @id @default(cuid())
   lineUserId    String        @unique
   displayName   String?
+  fullName      String?       @db.VarChar(191)
+  dateOfBirth   DateTime?     @db.Date
   email         String?
   phone         String?
+  normalizedPhone String?     @unique @db.VarChar(20)
+  phoneVerifiedAt DateTime?
   avatarUrl     String?
   role          UserRole      @default(customer)
   status        AccountStatus @default(active)
@@ -211,9 +215,29 @@ model User {
   updatedShipments    ShipmentTracking[]    @relation("ShipmentUpdater")
   fileAttachments     FileAttachment[]
   sentConsultMessages ConsultationMessage[] @relation("ConsultationMessageSender")
+  phoneVerificationChallenges PhoneVerificationChallenge[]
 
   @@index([role])
   @@index([status])
+  @@index([phoneVerifiedAt])
+}
+
+model PhoneVerificationChallenge {
+  id                         String   @id @default(cuid())
+  userId                     String
+  normalizedPhone            String   @db.VarChar(20)
+  providerChallengeCiphertext String  @db.Text
+  expiresAt                  DateTime
+  attemptCount               Int      @default(0)
+  requestedAt                DateTime @default(now())
+  verifiedAt                 DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([userId, requestedAt])
 }
 
 model ConsentRecord {

@@ -29,6 +29,7 @@ function createPayment(
       user: {
         displayName: overrides.displayName === undefined ? "  Customer Profile  " : overrides.displayName,
         phone: overrides.phone === undefined ? "  0800000000  " : overrides.phone,
+        phoneVerifiedAt: new Date("2026-08-13T16:26:00.000Z"),
         lineUserId: "U0123456789"
       },
       items: []
@@ -72,12 +73,13 @@ describe("Admin Payments customer identity", () => {
     expect(data.payments[0]).toMatchObject({
       customerName: "Customer Profile",
       customerPhone: "0800000000",
+      customerPhoneVerificationStatus: "verified",
       receiverLabel: "ตรวจสอบผู้รับแล้ว"
     });
 
     const html = renderToStaticMarkup(<AdminPayments data={data} />);
     expect(html).toContain("Customer Profile");
-    expect(html).toContain("0800000000");
+    expect(html).toContain("เบอร์โปรไฟล์ (ยืนยันแล้ว): 0800000000");
     expect(html).toContain("SlipOK");
     expect(html).toContain("ตรวจสอบผู้รับแล้ว");
     expect(html).toContain("ตรวจสอบเมื่อ");
@@ -102,5 +104,8 @@ describe("Admin Payments customer identity", () => {
       customerName: "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
       customerPhone: null
     });
+
+    const html = renderToStaticMarkup(<AdminPayments data={data} />);
+    expect(html).toContain("เบอร์โปรไฟล์: ไม่ได้ระบุ");
   });
 });

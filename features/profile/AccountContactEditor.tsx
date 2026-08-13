@@ -17,11 +17,13 @@ const initialState: UpdateProfileContactActionState = {
 export function AccountContactEditor({
   rows,
   email,
-  phone
+  phone,
+  phoneVerified
 }: {
   rows: Array<{ label: string; value: string }>;
   email: string | null;
   phone: string | null;
+  phoneVerified: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, action] = useActionState(updateProfileContactAction, initialState);
@@ -82,6 +84,7 @@ export function AccountContactEditor({
         <>
           <ContactRow label="อีเมล" value={email ?? "ยังไม่ได้ระบุ"} />
           <ContactRow label="เบอร์โทรศัพท์" value={phone ?? "ยังไม่ได้ระบุ"} />
+          <ContactRow label="สถานะยืนยันเบอร์" value={phoneVerified ? "ยืนยันแล้ว" : "รอยืนยัน"} />
           <button
             type="button"
             onClick={() => setEditing(true)}

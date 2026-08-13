@@ -5,6 +5,7 @@ export type CustomerProfileData = {
   avatarUrl: string | null;
   email: string | null;
   phone: string | null;
+  phoneVerifiedAt: string | null;
   memberStatus: string;
   adviceCount: number;
   postCount: number;

@@ -17,6 +17,7 @@ export const envSchema = z.object({
   SMS_OTP_PROVIDER: z.enum(["thaibulksms"]).optional(),
   SMS_OTP_API_KEY: z.string().optional(),
   SMS_OTP_API_SECRET: z.string().optional(),
+  SMS_OTP_CHALLENGE_ENCRYPTION_KEY: z.string().min(32).optional(),
   SMS_OTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   THAI_QR_PROMPTPAY_ID: z.string().optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),

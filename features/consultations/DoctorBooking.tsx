@@ -3,8 +3,9 @@ import { ArrowLeft, Bell, HeartPulse, Star } from "lucide-react";
 import { BookingTimeSlotForm } from "@/features/consultations/booking/BookingTimeSlotForm";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { DoctorBookingData } from "@/features/consultations/booking/types";
+import type { PatientVerificationStatus } from "@/features/identity-verification/service";
 
-export function DoctorBooking({ data, bookingStatus }: { data: DoctorBookingData; bookingStatus?: string }) {
+export function DoctorBooking({ data, verification, bookingStatus }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingStatus?: string }) {
   const bookingError =
     bookingStatus === "failed"
       ? "ไม่สามารถจองเวลานี้ได้ อาจมีผู้จองแล้วหรือ slot ถูกปิด กรุณาเลือกเวลาอื่น"
@@ -12,6 +13,8 @@ export function DoctorBooking({ data, bookingStatus }: { data: DoctorBookingData
         ? "เวลานี้ถูกจองแล้ว กรุณาเลือกเวลาปรึกษาอื่น"
         : bookingStatus === "invalid"
         ? "กรุณาเลือกเวลานัดหมายก่อนยืนยัน"
+        : bookingStatus === "identity_required"
+        ? "กรุณายืนยันชื่อ วันเกิด และเบอร์โทรก่อนจองแพทย์"
         : null;
 
   return (
@@ -20,7 +23,7 @@ export function DoctorBooking({ data, bookingStatus }: { data: DoctorBookingData
 
       <div className="flex flex-col gap-6 px-4 pt-[72px]">
         <DoctorBioCard doctor={data.doctor} />
-        <BookingTimeSlotForm data={data} bookingError={bookingError} />
+        <BookingTimeSlotForm data={data} verification={verification} bookingError={bookingError} />
       </div>
     </section>
   );

@@ -54,6 +54,12 @@ export async function getZoomMeetingFrameAccess(consultationId?: string): Promis
             : {
                 id: consultationId,
                 patientId: session.userId,
+                patient: {
+                  fullName: { not: null },
+                  dateOfBirth: { not: null },
+                  normalizedPhone: { not: null },
+                  phoneVerifiedAt: { not: null }
+                },
                 status: {
                   in: ["scheduled", "live"]
                 }
@@ -136,6 +142,12 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
             : {
                 id: consultationId,
                 patientId: session.userId,
+                patient: {
+                  fullName: { not: null },
+                  dateOfBirth: { not: null },
+                  normalizedPhone: { not: null },
+                  phoneVerifiedAt: { not: null }
+                },
                 status: {
                   in: ["scheduled", "live"]
                 }

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateProfileContactSchema } from "@/features/profile/schema";
+import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 
 export type UpdateProfileContactActionState = {
   status: "idle" | "success" | "error";
@@ -40,7 +41,8 @@ export async function updateProfileContactAction(
         },
         select: {
           email: true,
-          phone: true
+          phone: true,
+          normalizedPhone: true
         }
       });
 
@@ -50,9 +52,12 @@ export async function updateProfileContactAction(
 
       const email = parsed.data.email ?? null;
       const phone = parsed.data.phone ?? null;
+      const normalizedPhone = phone ? normalizeThaiMobileNumber(phone).e164 : null;
+      const phoneChanged = currentUser.normalizedPhone !== normalizedPhone;
       const changedFields = [
         ...(currentUser.email !== email ? ["email"] : []),
-        ...(currentUser.phone !== phone ? ["phone"] : [])
+        ...(currentUser.phone !== phone ? ["phone"] : []),
+        ...(phoneChanged ? ["phoneVerificationInvalidated"] : [])
       ];
 
       await tx.user.update({
@@ -61,7 +66,9 @@ export async function updateProfileContactAction(
         },
         data: {
           email,
-          phone
+          phone,
+          normalizedPhone,
+          ...(phoneChanged ? { phoneVerifiedAt: null } : {})
         }
       });
 

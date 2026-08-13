@@ -26,7 +26,8 @@ function getPaymentsForAdmin() {
           user: {
             select: {
               displayName: true,
-              phone: true
+              phone: true,
+              phoneVerifiedAt: true
             }
           },
           items: {
@@ -45,7 +46,8 @@ function getPaymentsForAdmin() {
           patient: {
             select: {
               displayName: true,
-              phone: true
+              phone: true,
+              phoneVerifiedAt: true
             }
           },
           doctor: {
@@ -206,6 +208,9 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
     canManualReview: Boolean(payment.orderId),
     customerName: customer?.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     customerPhone: customer?.phone?.trim() || null,
+    customerPhoneVerificationStatus: customer?.phone?.trim()
+      ? customer.phoneVerifiedAt ? "verified" : "pending"
+      : "not_provided",
     amount: formatMoney(payment.amount),
     refundAmountInput: payment.amount.toString(),
     status: payment.status,

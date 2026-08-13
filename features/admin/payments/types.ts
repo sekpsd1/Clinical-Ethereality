@@ -9,6 +9,7 @@ export type AdminPaymentQueueItem = {
   canManualReview: boolean;
   customerName: string;
   customerPhone: string | null;
+  customerPhoneVerificationStatus: "verified" | "pending" | "not_provided";
   amount: string;
   refundAmountInput: string;
   status: PaymentStatus;

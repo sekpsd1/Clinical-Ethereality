@@ -10,6 +10,7 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { getActiveConsultationSlotWhere, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { PatientVerificationError, requireVerifiedPatientProfile } from "@/features/identity-verification/service";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -25,6 +26,15 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     redirect("/consult/booking/somchai?booking=invalid");
   }
 
+  try {
+    await requireVerifiedPatientProfile(session.userId);
+  } catch (error) {
+    if (error instanceof PatientVerificationError) {
+      redirect("/consult/booking/somchai?booking=identity_required");
+    }
+    throw error;
+  }
+
   let consultationId: string | null = null;
 
   try {
@@ -32,6 +42,19 @@ export async function createConsultationBookingAction(formData: FormData): Promi
 
     const result = await prisma.$transaction(async (tx) => {
       const now = new Date();
+      const patient = await tx.user.findUnique({
+        where: { id: session.userId },
+        select: {
+          fullName: true,
+          dateOfBirth: true,
+          phone: true,
+          normalizedPhone: true,
+          phoneVerifiedAt: true
+        }
+      });
+      if (!patient?.fullName || !patient.dateOfBirth || !patient.phone || !patient.normalizedPhone || !patient.phoneVerifiedAt) {
+        throw new PatientVerificationError("PROFILE_REQUIRED");
+      }
       const availability = await tx.doctorAvailability.findUnique({
         where: {
           id: parsed.data.availabilityId
@@ -199,6 +222,9 @@ export async function createConsultationBookingAction(formData: FormData): Promi
 
     consultationId = result.id;
   } catch (error) {
+    if (error instanceof PatientVerificationError) {
+      redirect("/consult/booking/somchai?booking=identity_required");
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       await releaseExpiredConsultationSlotLocks();
       redirect("/consult/booking/somchai?booking=locked");

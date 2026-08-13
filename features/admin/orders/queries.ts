@@ -30,7 +30,8 @@ function getOrdersForAdmin() {
       user: {
         select: {
           displayName: true,
-          phone: true
+          phone: true,
+          phoneVerifiedAt: true
         }
       },
       items: {
@@ -148,6 +149,9 @@ function mapOrder(
     orderCode: getOrderCode(order.id),
     customerName: order.user.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     customerPhone: order.user.phone?.trim() || null,
+    customerPhoneVerificationStatus: order.user.phone?.trim()
+      ? order.user.phoneVerifiedAt ? "verified" : "pending"
+      : "not_provided",
     status: order.status,
     total: formatMoney(order.grandTotal),
     itemSummary: getItemSummary(order),

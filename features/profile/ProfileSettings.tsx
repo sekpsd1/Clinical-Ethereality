@@ -119,7 +119,8 @@ export function ProfileSettings({
             { label: "สถานะสมาชิก", value: profileData.memberStatus },
             { label: "บัญชี LINE", value: "เชื่อมต่อแล้ว" },
             { label: "อีเมล", value: profileData.email ?? "ยังไม่ได้ระบุ" },
-            { label: "เบอร์โทรศัพท์", value: profileData.phone ?? "ยังไม่ได้ระบุ" }
+            { label: "เบอร์โทรศัพท์", value: profileData.phone ?? "ยังไม่ได้ระบุ" },
+            { label: "สถานะยืนยันเบอร์", value: profileData.phoneVerifiedAt ? "ยืนยันแล้ว" : "รอยืนยัน" }
           ]
         }
       : sectionDetails[activeSection]
@@ -179,7 +180,7 @@ export function ProfileSettings({
         {activeSection === "privacy" ? (
           <PrivacyConsentPanel data={consentData} />
         ) : activeSection === "account" && activeDetail ? (
-          <AccountContactEditor rows={activeDetail.rows} email={profileData.email} phone={profileData.phone} />
+          <AccountContactEditor rows={activeDetail.rows} email={profileData.email} phone={profileData.phone} phoneVerified={Boolean(profileData.phoneVerifiedAt)} />
         ) : activeDetail ? (
           <SettingDetailRows rows={activeDetail.rows} />
         ) : (

@@ -13,6 +13,7 @@ export type AdminOrderQueueItem = {
   orderCode: string;
   customerName: string;
   customerPhone: string | null;
+  customerPhoneVerificationStatus: "verified" | "pending" | "not_provided";
   status: OrderStatus;
   total: string;
   itemSummary: string;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const thaiPhonePattern = /^(?:\+66|0)\d{8,9}$/;
+const thaiPhonePattern = /^(?:\+66|0)[689]\d{8}$/;
 
 export const updateProfileContactSchema = z.object({
   email: z

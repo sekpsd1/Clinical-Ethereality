@@ -113,12 +113,10 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-text">{payment.orderCode}</h3>
                       <p className="mt-0.5 truncate text-sm font-bold text-text">{payment.customerName}</p>
-                      {payment.customerPhone ? (
-                        <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
-                          <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
-                          {payment.customerPhone}
-                        </p>
-                      ) : null}
+                      <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
+                        <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
+                        <span>{payment.customerPhoneVerificationStatus === "verified" ? "เบอร์โปรไฟล์ (ยืนยันแล้ว)" : payment.customerPhoneVerificationStatus === "pending" ? "เบอร์โปรไฟล์ (รอยืนยัน)" : "เบอร์โปรไฟล์"}: {payment.customerPhone ?? "ไม่ได้ระบุ"}</span>
+                      </p>
                       <p className="mt-0.5 text-[10px] font-bold text-primary">{payment.paymentKindLabel}</p>
                     </div>
                     <StatusBadge tone={tone}>{statusLabels[payment.status]}</StatusBadge>

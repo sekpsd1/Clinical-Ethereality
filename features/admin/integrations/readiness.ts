@@ -53,7 +53,8 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
       [
         ["SMS_OTP_PROVIDER", !smsOtpReadiness.missingKeys.includes("SMS_OTP_PROVIDER")],
         ["SMS_OTP_API_KEY", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_KEY")],
-        ["SMS_OTP_API_SECRET", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_SECRET")]
+        ["SMS_OTP_API_SECRET", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_SECRET")],
+        ["SMS_OTP_CHALLENGE_ENCRYPTION_KEY", hasValue(env.SMS_OTP_CHALLENGE_ENCRYPTION_KEY)]
       ]
     ),
     buildItem("PromptPay และ payment webhook", "ใช้สร้าง QR และรับ webhook/ตรวจสอบสถานะการชำระเงิน", [

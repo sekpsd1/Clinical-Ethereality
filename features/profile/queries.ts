@@ -24,6 +24,7 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
           avatarUrl: true,
           email: true,
           phone: true,
+          phoneVerifiedAt: true,
           status: true
         }
       }),
@@ -46,6 +47,7 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
       avatarUrl: user?.avatarUrl ?? session.pictureUrl ?? null,
       email: user?.email ?? null,
       phone: user?.phone ?? null,
+      phoneVerifiedAt: user?.phoneVerifiedAt?.toISOString() ?? null,
       memberStatus: user ? memberStatusLabels[user.status] : "สมาชิก LINE",
       adviceCount,
       postCount
@@ -56,6 +58,7 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
       avatarUrl: session.pictureUrl ?? null,
       email: null,
       phone: null,
+      phoneVerifiedAt: null,
       memberStatus: "สมาชิก LINE",
       adviceCount: 0,
       postCount: 0,

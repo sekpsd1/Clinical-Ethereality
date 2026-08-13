@@ -43,6 +43,7 @@ describe("customer profile query", () => {
       avatarUrl: "https://example.com/profile.jpg",
       email: "ananya@example.com",
       phone: "0800000000",
+      phoneVerifiedAt: new Date("2026-08-13T16:27:00.000Z"),
       status: "active"
     });
     prismaMock.consultation.count.mockResolvedValue(3);
@@ -53,6 +54,7 @@ describe("customer profile query", () => {
       avatarUrl: "https://example.com/profile.jpg",
       email: "ananya@example.com",
       phone: "0800000000",
+      phoneVerifiedAt: "2026-08-13T16:27:00.000Z",
       memberStatus: "สมาชิกที่ยืนยันแล้ว",
       adviceCount: 3,
       postCount: 2
@@ -81,6 +83,7 @@ describe("customer profile query", () => {
       avatarUrl: "https://example.com/fallback.jpg",
       email: null,
       phone: null,
+      phoneVerifiedAt: null,
       memberStatus: "สมาชิก LINE",
       adviceCount: 0,
       postCount: 0,

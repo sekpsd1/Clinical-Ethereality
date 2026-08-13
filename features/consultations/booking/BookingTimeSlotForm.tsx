@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { CalendarCheck } from "lucide-react";
 import { createConsultationBookingAction } from "@/features/consultations/booking/actions";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
+import { BookingIdentityVerification } from "@/features/identity-verification/BookingIdentityVerification";
+import type { PatientVerificationStatus } from "@/features/identity-verification/service";
 
 const staticTimeSlots = ["09:00", "09:15", "09:30", "09:45", "10:00", "10:15"];
 
@@ -26,7 +28,7 @@ function getStaticSlot(slot: string): BookingSlot {
   };
 }
 
-export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookingData; bookingError: string | null }) {
+export function BookingTimeSlotForm({ data, verification, bookingError }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingError: string | null }) {
   const slots = useMemo(() => (data.slots.length > 0 ? data.slots : staticTimeSlots.map(getStaticSlot)), [data.slots]);
   const hasRealSlots = data.slots.length > 0 && !data.unavailable;
   const firstAvailableSlot = slots.find((slot) => slot.status === "available");
@@ -77,6 +79,8 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
           </p>
         ) : null}
 
+        {!verification.isVerified ? <BookingIdentityVerification status={verification} /> : null}
+
         <input type="hidden" name="availabilityId" value={hasRealSlots ? selectedSlot?.id ?? "" : ""} />
         <input type="hidden" name="scheduledAt" value={hasRealSlots ? selectedSlot?.scheduledAt ?? "" : ""} />
 
@@ -115,11 +119,11 @@ export function BookingTimeSlotForm({ data, bookingError }: { data: DoctorBookin
         <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-4">
           <button
             type="submit"
-            disabled={!hasBookableSlots || !selectedSlot}
+            disabled={!hasBookableSlots || !selectedSlot || !verification.isVerified}
             className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-base font-bold leading-6 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />
-            ยืนยันการจอง
+            {verification.isVerified ? "ยืนยันการจอง" : "ยืนยันข้อมูลเพื่อจอง"}
           </button>
         </div>
       </section>
