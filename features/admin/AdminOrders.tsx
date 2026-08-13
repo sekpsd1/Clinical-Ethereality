@@ -1,6 +1,7 @@
-import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, PackageCheck, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, MessageCircle, Phone, Truck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AdminLineIdCopy } from "@/features/admin/AdminLineIdCopy";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
 import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
@@ -124,7 +125,13 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-text">{order.orderCode}</h3>
-                      <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">{order.customerName}</p>
+                      <p className="mt-0.5 truncate text-sm font-bold text-text">{order.customerName}</p>
+                      {order.customerPhone ? (
+                        <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
+                          <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
+                          {order.customerPhone}
+                        </p>
+                      ) : null}
                     </div>
                     <StatusBadge tone={tone}>{orderStatusLabels[order.status]}</StatusBadge>
                   </div>
@@ -148,9 +155,16 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="mt-4 text-xs">
                 <InfoTile label="ยอดรวม" value={order.total} icon={<CreditCard aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
-                <InfoTile label="LINE" value={order.customerLineId} icon={<PackageCheck aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+              </div>
+
+              <div className="mt-2 rounded-[8px] border border-border/70 bg-white/70 px-3 py-2">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted">
+                  <MessageCircle aria-hidden="true" className="size-3.5 text-primary" strokeWidth={2.1} />
+                  LINE ID
+                </p>
+                <AdminLineIdCopy lineId={order.customerLineId} />
               </div>
 
               <div className="mt-4 rounded-[8px] bg-primary/5 p-3">

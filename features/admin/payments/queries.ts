@@ -20,7 +20,13 @@ function getPaymentsForAdmin() {
       },
       order: {
         include: {
-          user: true,
+          user: {
+            select: {
+              displayName: true,
+              phone: true,
+              lineUserId: true
+            }
+          },
           items: {
             include: {
               product: {
@@ -34,10 +40,20 @@ function getPaymentsForAdmin() {
       },
       consultation: {
         include: {
-          patient: true,
+          patient: {
+            select: {
+              displayName: true,
+              phone: true,
+              lineUserId: true
+            }
+          },
           doctor: {
             include: {
-              user: true
+              user: {
+                select: {
+                  displayName: true
+                }
+              }
             }
           }
         }
@@ -207,7 +223,8 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
     orderCode: isConsultationPayment ? `CONSULT-${referenceId.slice(-6).toUpperCase()}` : getOrderCode(referenceId),
     paymentKindLabel: isConsultationPayment ? "ค่าปรึกษาแพทย์" : "คำสั่งซื้อ",
     canManualReview: Boolean(payment.orderId),
-    customerName: customer?.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    customerName: customer?.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    customerPhone: customer?.phone?.trim() || null,
     customerLineId: customer?.lineUserId ?? "ไม่พบผู้ใช้",
     amount: formatMoney(payment.amount),
     refundAmountInput: payment.amount.toString(),

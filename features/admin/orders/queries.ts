@@ -27,7 +27,13 @@ function getOrdersForAdmin() {
     },
     take: 50,
     include: {
-      user: true,
+      user: {
+        select: {
+          displayName: true,
+          phone: true,
+          lineUserId: true
+        }
+      },
       items: {
         include: {
           product: true,
@@ -141,7 +147,8 @@ function mapOrder(
   return {
     id: order.id,
     orderCode: getOrderCode(order.id),
-    customerName: order.user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    customerName: order.user.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    customerPhone: order.user.phone?.trim() || null,
     customerLineId: order.user.lineUserId,
     status: order.status,
     total: formatMoney(order.grandTotal),

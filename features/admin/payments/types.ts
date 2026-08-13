@@ -8,6 +8,7 @@ export type AdminPaymentQueueItem = {
   paymentKindLabel: string;
   canManualReview: boolean;
   customerName: string;
+  customerPhone: string | null;
   customerLineId: string;
   amount: string;
   refundAmountInput: string;

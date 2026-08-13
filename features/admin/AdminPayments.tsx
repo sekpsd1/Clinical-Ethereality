@@ -1,6 +1,7 @@
-import { CheckCircle2, CreditCard, ImageOff, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
+import { CheckCircle2, CreditCard, ImageOff, MessageCircle, Phone, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AdminLineIdCopy } from "@/features/admin/AdminLineIdCopy";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
 import { AdminPaymentRefundForm } from "@/features/admin/AdminPaymentRefundForm";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
@@ -112,7 +113,13 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-text">{payment.orderCode}</h3>
-                      <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">{payment.customerName}</p>
+                      <p className="mt-0.5 truncate text-sm font-bold text-text">{payment.customerName}</p>
+                      {payment.customerPhone ? (
+                        <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted">
+                          <Phone aria-hidden="true" className="size-3 shrink-0 text-primary" strokeWidth={2.1} />
+                          {payment.customerPhone}
+                        </p>
+                      ) : null}
                       <p className="mt-0.5 text-[10px] font-bold text-primary">{payment.paymentKindLabel}</p>
                     </div>
                     <StatusBadge tone={tone}>{statusLabels[payment.status]}</StatusBadge>
@@ -124,8 +131,15 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                 <InfoTile label="ยอดชำระ" value={payment.amount} />
                 <InfoTile label="ช่องทาง" value={payment.methodLabel} />
-                <InfoTile label="LINE" value={payment.customerLineId} />
                 <InfoTile label="ผลตรวจ" value={payment.resultLabel} />
+              </div>
+
+              <div className="mt-2 rounded-[8px] border border-border/70 bg-white/70 px-3 py-2">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted">
+                  <MessageCircle aria-hidden="true" className="size-3.5 text-primary" strokeWidth={2.1} />
+                  LINE ID
+                </p>
+                <AdminLineIdCopy lineId={payment.customerLineId} />
               </div>
 
               <div className="mt-4 rounded-[8px] border border-dashed border-border bg-primary/5 p-3">
