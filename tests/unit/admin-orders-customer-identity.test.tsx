@@ -49,23 +49,20 @@ describe("Admin Orders customer identity", () => {
     prismaMock.auditLog.findMany.mockResolvedValue([]);
   });
 
-  it("uses the stored profile display name and phone without promoting the raw LINE ID", async () => {
+  it("uses the stored profile display name and phone without exposing the raw LINE ID", async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
     const data = await getAdminOrders();
 
     expect(data.orders[0]).toMatchObject({
       customerName: "Customer Profile",
-      customerPhone: "0800000000",
-      customerLineId: "U0123456789"
+      customerPhone: "0800000000"
     });
 
     const html = renderToStaticMarkup(<AdminOrders data={data} />);
     expect(html).toContain("Customer Profile");
     expect(html).toContain("0800000000");
-    expect(html).toContain("LINE ID");
-    expect(html).toContain('aria-label="คัดลอก LINE ID"');
-    expect(html.indexOf("Customer Profile")).toBeLessThan(html.indexOf("U0123456789"));
+    expect(html).not.toContain("U0123456789");
   });
 
   it("uses a neutral fallback and does not fabricate a name from LINE ID or phone", async () => {
@@ -80,8 +77,7 @@ describe("Admin Orders customer identity", () => {
 
     expect(data.orders[0]).toMatchObject({
       customerName: "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
-      customerPhone: null,
-      customerLineId: "U0123456789"
+      customerPhone: null
     });
   });
 });

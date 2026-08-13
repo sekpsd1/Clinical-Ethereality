@@ -18,7 +18,9 @@ vi.mock("@/lib/db/prisma", () => ({
 import { AdminPayments } from "@/features/admin/AdminPayments";
 import { getAdminPayments } from "@/features/admin/payments/queries";
 
-function createPayment(overrides: { displayName?: string | null; phone?: string | null } = {}) {
+function createPayment(
+  overrides: { displayName?: string | null; phone?: string | null; status?: "pending_slip" | "verified"; reviewedAt?: Date | null } = {}
+) {
   return {
     id: "payment-1",
     orderId: "order-abcdef",
@@ -35,13 +37,20 @@ function createPayment(overrides: { displayName?: string | null; phone?: string 
     reviewedBy: null,
     amount: 1,
     method: "promptpay",
-    status: "pending_slip",
-    slipImageUrl: null,
-    qrPayload: null,
-    verificationPayload: null,
-    normalizedTransactionReference: null,
+    status: overrides.status ?? "pending_slip",
+    slipImageUrl: "/api/payments/slips/private-slip-id",
+    qrPayload: "000201010212-private-qr-payload",
+    verificationPayload: {
+      source: "slipok",
+      result: {
+        status: "verified",
+        transRef: "private-transfer-reference",
+        receiverName: "Private Receiver Name",
+        amount: 1
+      }
+    },
     createdAt: new Date("2026-08-13T16:27:00.000Z"),
-    reviewedAt: null
+    reviewedAt: overrides.reviewedAt ?? null
   };
 }
 
@@ -50,23 +59,33 @@ describe("Admin Payments customer identity", () => {
     vi.clearAllMocks();
   });
 
-  it("uses the stored profile display name and phone before the secondary LINE ID", async () => {
-    prismaMock.payment.findMany.mockResolvedValue([createPayment()]);
+  it("renders the stored profile display name and phone with a redacted operational payment summary", async () => {
+    prismaMock.payment.findMany.mockResolvedValue([
+      createPayment({
+        status: "verified",
+        reviewedAt: new Date("2026-08-13T16:30:00.000Z")
+      })
+    ]);
 
     const data = await getAdminPayments();
 
     expect(data.payments[0]).toMatchObject({
       customerName: "Customer Profile",
       customerPhone: "0800000000",
-      customerLineId: "U0123456789"
+      receiverLabel: "ตรวจสอบผู้รับแล้ว"
     });
 
     const html = renderToStaticMarkup(<AdminPayments data={data} />);
     expect(html).toContain("Customer Profile");
     expect(html).toContain("0800000000");
-    expect(html).toContain("LINE ID");
-    expect(html).toContain('aria-label="คัดลอก LINE ID"');
-    expect(html.indexOf("Customer Profile")).toBeLessThan(html.indexOf("U0123456789"));
+    expect(html).toContain("SlipOK");
+    expect(html).toContain("ตรวจสอบผู้รับแล้ว");
+    expect(html).toContain("ตรวจสอบเมื่อ");
+    expect(html).not.toContain("U0123456789");
+    expect(html).not.toContain("/api/payments/slips/private-slip-id");
+    expect(html).not.toContain("000201010212-private-qr-payload");
+    expect(html).not.toContain("private-transfer-reference");
+    expect(html).not.toContain("Private Receiver Name");
   });
 
   it("does not derive a customer name from LINE ID when the profile name is absent", async () => {
@@ -81,8 +100,7 @@ describe("Admin Payments customer identity", () => {
 
     expect(data.payments[0]).toMatchObject({
       customerName: "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
-      customerPhone: null,
-      customerLineId: "U0123456789"
+      customerPhone: null
     });
   });
 });

@@ -30,8 +30,7 @@ function getOrdersForAdmin() {
       user: {
         select: {
           displayName: true,
-          phone: true,
-          lineUserId: true
+          phone: true
         }
       },
       items: {
@@ -149,7 +148,6 @@ function mapOrder(
     orderCode: getOrderCode(order.id),
     customerName: order.user.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     customerPhone: order.user.phone?.trim() || null,
-    customerLineId: order.user.lineUserId,
     status: order.status,
     total: formatMoney(order.grandTotal),
     itemSummary: getItemSummary(order),

@@ -1,7 +1,6 @@
-import { CheckCircle2, CreditCard, ImageOff, MessageCircle, Phone, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
+import { CreditCard, Phone, ShieldCheck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { AdminLineIdCopy } from "@/features/admin/AdminLineIdCopy";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
 import { AdminPaymentRefundForm } from "@/features/admin/AdminPaymentRefundForm";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
@@ -134,14 +133,6 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                 <InfoTile label="ผลตรวจ" value={payment.resultLabel} />
               </div>
 
-              <div className="mt-2 rounded-[8px] border border-border/70 bg-white/70 px-3 py-2">
-                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted">
-                  <MessageCircle aria-hidden="true" className="size-3.5 text-primary" strokeWidth={2.1} />
-                  LINE ID
-                </p>
-                <AdminLineIdCopy lineId={payment.customerLineId} />
-              </div>
-
               <div className="mt-4 rounded-[8px] border border-dashed border-border bg-primary/5 p-3">
                 <div className="flex items-start gap-2 text-xs font-semibold text-primary">
                   <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={2.1} />
@@ -150,24 +141,15 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                       <StatusBadge tone={getEvidenceTone(payment.status)}>{payment.reviewSourceLabel}</StatusBadge>
                       <span className="text-muted">{payment.providerLabel}</span>
                     </div>
-                    <p className="mt-2 break-words leading-5 text-[#3e494a]">{payment.evidenceSummary}</p>
+                    <p className="mt-2 leading-5 text-[#3e494a]">{payment.receiverLabel}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-2 text-xs">
-                <EvidenceRow icon="qr" label="ข้อมูล QR" value={payment.qrPayloadStatus} />
-                <EvidenceRow icon="slip" label="ลิงก์สลิป" value={payment.slipImageUrl ?? "ยังไม่มี URL/ไฟล์สลิป"} href={payment.slipImageUrl} />
-                {payment.transRef ? <EvidenceRow icon="check" label="เลขอ้างอิง" value={payment.transRef} /> : null}
-                {payment.verifiedAmount ? <EvidenceRow icon="check" label="ยอดจากผู้ให้บริการ" value={payment.verifiedAmount} /> : null}
-                {payment.receiverName ? <EvidenceRow icon="check" label="ชื่อผู้รับ" value={payment.receiverName} /> : null}
-              </div>
-
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
                 <p className="min-w-0 truncate text-[11px] font-semibold text-muted">
-                  ส่งเมื่อ {payment.submittedAt}
-                  {payment.reviewedAt ? ` • ตรวจแล้ว ${payment.reviewedAt}` : ""}
-                  {payment.reviewedByName ? ` • โดย ${payment.reviewedByName}` : ""}
+                  สร้างรายการเมื่อ {payment.submittedAt}
+                  {payment.reviewedAt ? ` • ตรวจสอบเมื่อ ${payment.reviewedAt}` : ""}
                 </p>
                 {payment.status === "pending_review" && payment.canManualReview ? <AdminPaymentReviewButtons payment={payment} /> : null}
               </div>
@@ -185,35 +167,6 @@ function EmptyPaymentQueue({ title, body }: { title: string; body: string }) {
     <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-muted">{body}</p>
-    </div>
-  );
-}
-
-function EvidenceRow({
-  icon,
-  label,
-  value,
-  href
-}: {
-  icon: "check" | "qr" | "slip";
-  label: string;
-  value: string;
-  href?: string | null;
-}) {
-  const Icon = icon === "check" ? CheckCircle2 : icon === "qr" ? QrCode : value.startsWith("ยังไม่มี") ? ImageOff : ReceiptText;
-  const content = href ? (
-    <a href={href} target="_blank" rel="noreferrer" className="truncate font-semibold text-primary underline-offset-2 hover:underline">
-      {value}
-    </a>
-  ) : (
-    <span className="truncate font-semibold text-[#3e494a]">{value}</span>
-  );
-
-  return (
-    <div className="flex items-center gap-2 rounded-[8px] bg-white/70 px-3 py-2">
-      <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" strokeWidth={2.1} />
-      <span className="shrink-0 text-[10px] font-bold uppercase text-muted">{label}</span>
-      <span className="min-w-0 flex-1 text-right">{content}</span>
     </div>
   );
 }

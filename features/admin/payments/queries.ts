@@ -11,20 +11,22 @@ function getPaymentsForAdmin() {
       updatedAt: "desc"
     },
     take: 50,
-    include: {
-      reviewedBy: {
-        select: {
-          displayName: true,
-          lineUserId: true
-        }
-      },
+    select: {
+      id: true,
+      orderId: true,
+      consultationId: true,
+      amount: true,
+      method: true,
+      status: true,
+      verificationPayload: true,
+      createdAt: true,
+      reviewedAt: true,
       order: {
-        include: {
+        select: {
           user: {
             select: {
               displayName: true,
-              phone: true,
-              lineUserId: true
+              phone: true
             }
           },
           items: {
@@ -39,16 +41,15 @@ function getPaymentsForAdmin() {
         }
       },
       consultation: {
-        include: {
+        select: {
           patient: {
             select: {
               displayName: true,
-              phone: true,
-              lineUserId: true
+              phone: true
             }
           },
           doctor: {
-            include: {
+            select: {
               user: {
                 select: {
                   displayName: true
@@ -64,14 +65,6 @@ function getPaymentsForAdmin() {
 
 function formatMoney(value: unknown): string {
   return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Number(value))} บาท`;
-}
-
-function formatOptionalMoney(value: unknown): string | null {
-  if (typeof value !== "number") {
-    return null;
-  }
-
-  return formatMoney(value);
 }
 
 function formatDate(date: Date | null): string | null {
@@ -113,10 +106,6 @@ function asRecord(value: Prisma.JsonValue | null | undefined): Record<string, un
 
 function getString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function getNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function getProviderLabel(source: string | null): string {
@@ -172,46 +161,38 @@ function getResultLabel(status: AdminPaymentQueueItem["status"], resultStatus: s
   return "คืนเงินแล้ว";
 }
 
-function getPaymentEvidence(payment: PaymentWithContext) {
+function getReceiverLabel(status: AdminPaymentQueueItem["status"]): string {
+  if (status === "verified") {
+    return "ตรวจสอบผู้รับแล้ว";
+  }
+
+  if (status === "rejected") {
+    return "ไม่ยืนยันผู้รับ";
+  }
+
+  if (status === "refunded") {
+    return "ไม่แสดงข้อมูลผู้รับ";
+  }
+
+  return "รอการตรวจสอบ";
+}
+
+function getPaymentOperationalSummary(payment: PaymentWithContext) {
   const payload = asRecord(payment.verificationPayload);
   const result = asRecord(payload.result as Prisma.JsonValue | null | undefined);
-  const submittedEvidence = asRecord(payload.submittedEvidence as Prisma.JsonValue | null | undefined);
   const source = getString(payload.verificationSource) ?? getString(payload.source);
   const resultStatus = getString(result.status);
-  const transRef =
-    payment.normalizedTransactionReference ??
-    getString(result.transRef) ??
-    getString(payload.transactionReference);
-  const receiverName = getString(result.receiverName);
-  const verifiedAmount = formatOptionalMoney(getNumber(result.amount));
-  const providerLabel = getProviderLabel(source);
-  const reviewSourceLabel = getReviewSourceLabel(source);
-  const resultLabel = getResultLabel(payment.status, resultStatus);
-  const qrPayloadStatus = payment.qrPayload ? "มีข้อมูล QR" : "ยังไม่มีข้อมูล QR";
-  const slipStatus = payment.slipImageUrl ? "มี URL/ไฟล์สลิป" : "ยังไม่มี URL/ไฟล์สลิป";
-  const submittedEvidenceLabel =
-    getString(submittedEvidence.type) === "qr_payload" && getString(submittedEvidence.qrPayload)
-      ? "มี QR จากสลิปที่ลูกค้าส่ง"
-      : getString(submittedEvidence.type) === "image_url" && getString(submittedEvidence.imageUrl)
-        ? "มี URL สลิปที่ลูกค้าส่ง"
-        : null;
 
   return {
-    qrPayloadStatus,
-    providerLabel,
-    reviewSourceLabel,
-    resultLabel,
-    evidenceSummary: [slipStatus, qrPayloadStatus, submittedEvidenceLabel, transRef ? `เลขอ้างอิง ${transRef}` : null, receiverName ? `ผู้รับ ${receiverName}` : null]
-      .filter(Boolean)
-      .join(" • "),
-    transRef,
-    verifiedAmount,
-    receiverName
+    providerLabel: getProviderLabel(source),
+    reviewSourceLabel: getReviewSourceLabel(source),
+    resultLabel: getResultLabel(payment.status, resultStatus),
+    receiverLabel: getReceiverLabel(payment.status)
   };
 }
 
 function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
-  const evidence = getPaymentEvidence(payment);
+  const summary = getPaymentOperationalSummary(payment);
   const customer = payment.order?.user ?? payment.consultation?.patient ?? null;
   const referenceId = payment.orderId ?? payment.consultationId ?? payment.id;
   const isConsultationPayment = Boolean(payment.consultationId);
@@ -225,21 +206,14 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
     canManualReview: Boolean(payment.orderId),
     customerName: customer?.displayName?.trim() || "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
     customerPhone: customer?.phone?.trim() || null,
-    customerLineId: customer?.lineUserId ?? "ไม่พบผู้ใช้",
     amount: formatMoney(payment.amount),
     refundAmountInput: payment.amount.toString(),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,
-    slipImageUrl: payment.slipImageUrl,
-    qrPayloadStatus: evidence.qrPayloadStatus,
-    providerLabel: evidence.providerLabel,
-    reviewSourceLabel: evidence.reviewSourceLabel,
-    resultLabel: evidence.resultLabel,
-    evidenceSummary: evidence.evidenceSummary,
-    transRef: evidence.transRef,
-    verifiedAmount: evidence.verifiedAmount,
-    receiverName: evidence.receiverName,
-    reviewedByName: payment.reviewedBy?.displayName ?? payment.reviewedBy?.lineUserId ?? null,
+    providerLabel: summary.providerLabel,
+    reviewSourceLabel: summary.reviewSourceLabel,
+    resultLabel: summary.resultLabel,
+    receiverLabel: summary.receiverLabel,
     itemSummary: getItemSummary(payment),
     submittedAt: formatDate(payment.createdAt) ?? "",
     reviewedAt: formatDate(payment.reviewedAt)

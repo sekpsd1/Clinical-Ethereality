@@ -13,7 +13,6 @@ export type AdminOrderQueueItem = {
   orderCode: string;
   customerName: string;
   customerPhone: string | null;
-  customerLineId: string;
   status: OrderStatus;
   total: string;
   itemSummary: string;

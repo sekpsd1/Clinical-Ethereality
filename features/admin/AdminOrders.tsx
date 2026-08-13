@@ -1,7 +1,6 @@
-import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, MessageCircle, Phone, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, Phone, Truck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { AdminLineIdCopy } from "@/features/admin/AdminLineIdCopy";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
 import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
@@ -157,14 +156,6 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
 
               <div className="mt-4 text-xs">
                 <InfoTile label="ยอดรวม" value={order.total} icon={<CreditCard aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
-              </div>
-
-              <div className="mt-2 rounded-[8px] border border-border/70 bg-white/70 px-3 py-2">
-                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted">
-                  <MessageCircle aria-hidden="true" className="size-3.5 text-primary" strokeWidth={2.1} />
-                  LINE ID
-                </p>
-                <AdminLineIdCopy lineId={order.customerLineId} />
               </div>
 
               <div className="mt-4 rounded-[8px] bg-primary/5 p-3">
