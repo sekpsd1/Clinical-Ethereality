@@ -1,6 +1,17 @@
 # Plesk Store Reservation Cleanup
 
-Plesk Scheduled Tasks is the authoritative Production trigger for releasing expired Store reservations. GitHub Actions remains an explicitly dispatched recovery path only because hosted cron delivery does not guarantee a five-minute execution interval.
+The target authoritative Production trigger is a five-minute Plesk host-level task. GitHub Actions remains an explicitly dispatched recovery path only because hosted cron delivery does not guarantee a five-minute execution interval.
+
+## Current Production blocker
+
+Commit `dddce27` is deployed and the runner is ready, but the task is not active. Safe Plesk preflight confirmed that the customer-level Scheduled Tasks shell is chrooted: `/app.bccgroup-thailand.com` exists, while both `node` and `/opt/plesk/node/24/bin/node` are unavailable and the Node application environment is not inherited. No invalid task was saved, no cleanup request was run, and the existing secret was not copied into a command or file.
+
+The hosting operator must provide one of these approved boundaries before activation:
+
+- a non-chrooted task running as the existing `bccgroup` system user with the existing Node application environment injected securely; or
+- a provider-managed wrapper that exposes only the approved Node runtime and existing environment to this command without embedding or printing the secret.
+
+Do not disable chroot globally, add a query-string secret, weaken endpoint authentication, or paste the secret into the task command.
 
 ## Safety boundaries
 
@@ -15,13 +26,13 @@ The runner holds a private lock so overlapping starts do not submit twice. The d
 
 ## Task command
 
-Set the Plesk task working directory to the verified deployed repository root, then use only:
+After the hosting operator provides the runtime/environment boundary, set the task working directory to the verified deployed repository root. The expected host-level execution is equivalent to:
 
 ```text
-npm run job:store-reservation-cleanup
+cd /var/www/vhosts/bccgroup-thailand.com/app.bccgroup-thailand.com && /opt/plesk/node/24/bin/node scripts/store-reservation-cleanup-runner.cjs
 ```
 
-Do not prefix the command with the secret. If Plesk does not supply the Node application environment to the scheduled shell, stop and correct the environment boundary without printing or copying the value.
+Do not prefix the command with the secret. The hosting operator must verify the actual host path and environment injection without printing or copying the value before saving the task.
 
 ## Readiness
 
