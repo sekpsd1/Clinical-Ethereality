@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 const mocks = vi.hoisted(() => ({
   applyManualPaymentReview: vi.fn(),
   applyManualStoreRefund: vi.fn(),
+  getManualStoreRefundReadiness: vi.fn(),
   requireAdminSession: vi.fn(),
   revalidatePath: vi.fn(),
   transaction: vi.fn()
@@ -31,6 +32,10 @@ vi.mock("@/features/payments/refunds", () => ({
   applyManualStoreRefund: mocks.applyManualStoreRefund
 }));
 
+vi.mock("@/features/payments/refund-readiness", () => ({
+  getManualStoreRefundReadiness: mocks.getManualStoreRefundReadiness
+}));
+
 import { refundStorePaymentAction, reviewPaymentAction } from "@/features/admin/payments/actions";
 
 describe("admin payment review action", () => {
@@ -41,6 +46,7 @@ describe("admin payment review action", () => {
       role: "admin"
     });
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<void>) => callback({}));
+    mocks.getManualStoreRefundReadiness.mockResolvedValue({ status: "ready", message: "พร้อมบันทึกคืนเงิน" });
   });
 
   it("runs manual payment review in a serializable transaction", async () => {
@@ -147,5 +153,26 @@ describe("admin payment review action", () => {
     expect(result.status).toBe("error");
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.applyManualStoreRefund).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before a refund transaction when the readiness check is not ready", async () => {
+    mocks.getManualStoreRefundReadiness.mockResolvedValueOnce({
+      status: "not_ready",
+      message: "ยังไม่พร้อมบันทึกคืนเงิน กรุณาตรวจ schema ก่อน"
+    });
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("refundAmount", "100.00");
+    formData.set("refundReason", "คืนเงินรายการทดสอบ UAT — ไม่จัดส่งสินค้า");
+    formData.set("refundTransactionReference", "refund-reference-1");
+    formData.set("confirmedExternalTransfer", "true");
+
+    const result = await refundStorePaymentAction({ status: "idle", message: "" }, formData);
+
+    expect(result).toEqual({
+      status: "error",
+      message: "ยังไม่พร้อมบันทึกคืนเงิน กรุณาตรวจ schema ก่อน"
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });

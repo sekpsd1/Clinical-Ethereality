@@ -6,6 +6,7 @@ import { RotateCcw } from "lucide-react";
 import { refundStorePaymentAction, type AdminPaymentActionState } from "@/features/admin/payments/actions";
 import { cn } from "@/lib/design-system/variants";
 import type { AdminPaymentQueueItem } from "@/features/admin/payments/types";
+import type { ManualRefundReadiness } from "@/features/payments/refund-readiness";
 
 const initialActionState: AdminPaymentActionState = {
   status: "idle",
@@ -13,11 +14,33 @@ const initialActionState: AdminPaymentActionState = {
 };
 
 export function AdminPaymentRefundForm({
-  payment
+  payment,
+  readiness
 }: {
   payment: Pick<AdminPaymentQueueItem, "id" | "amount" | "orderCode" | "refundAmountInput">;
+  readiness: ManualRefundReadiness;
 }) {
   const [state, formAction] = useActionState(refundStorePaymentAction, initialActionState);
+
+  if (readiness.status !== "ready") {
+    return (
+      <section
+        className="mt-3 rounded-[8px] border border-warning/30 bg-warning/5 p-3"
+        data-refund-readiness={readiness.status}
+        aria-label="สถานะการคืนเงิน"
+      >
+        <p className="text-xs font-bold text-text">{readiness.message}</p>
+        <p className="mt-1 text-[11px] leading-5 text-muted">ห้ามโอนเงินคืนจนกว่าระบบจะแสดงว่าพร้อมบันทึกคืนเงิน</p>
+        <button
+          type="button"
+          disabled
+          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-[8px] bg-muted px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+        >
+          ยังไม่เปิดใช้ฟอร์มคืนเงิน
+        </button>
+      </section>
+    );
+  }
 
   return (
     <form action={formAction} className="mt-3 rounded-[8px] border border-danger/20 bg-danger/5 p-3">

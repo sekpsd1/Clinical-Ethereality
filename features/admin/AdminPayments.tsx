@@ -88,6 +88,19 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <div className="flex justify-end">
+          <StatusBadge
+            tone={
+              data.refundReadiness.status === "ready"
+                ? "success"
+                : data.refundReadiness.status === "unavailable"
+                  ? "danger"
+                  : "warning"
+            }
+          >
+            {data.refundReadiness.message}
+          </StatusBadge>
+        </div>
         <div className="flex items-center justify-between">
           <h2 className="font-headline text-lg font-bold text-text">รายการชำระเงิน</h2>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>{data.unavailable ? "ฐานข้อมูลออฟไลน์" : "พร้อมใช้งาน"}</StatusBadge>
@@ -151,7 +164,9 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                 </p>
                 {payment.status === "pending_review" && payment.canManualReview ? <AdminPaymentReviewButtons payment={payment} /> : null}
               </div>
-              {payment.status === "verified" && payment.orderId ? <AdminPaymentRefundForm payment={payment} /> : null}
+              {payment.status === "verified" && payment.orderId ? (
+                <AdminPaymentRefundForm payment={payment} readiness={data.refundReadiness} />
+              ) : null}
             </article>
           );
         })}

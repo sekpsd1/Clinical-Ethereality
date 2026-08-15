@@ -1,4 +1,5 @@
 import type { PaymentStatus } from "@prisma/client";
+import type { ManualRefundReadiness } from "@/features/payments/refund-readiness";
 
 export type AdminPaymentQueueItem = {
   id: string;
@@ -31,5 +32,6 @@ export type AdminPaymentsData = {
     verified: number;
     rejected: number;
   };
+  refundReadiness: ManualRefundReadiness;
   unavailable?: boolean;
 };

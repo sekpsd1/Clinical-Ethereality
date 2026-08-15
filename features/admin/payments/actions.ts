@@ -7,6 +7,7 @@ import { requireAdminSession } from "@/lib/auth/guards";
 import { manualStoreRefundSchema, reviewPaymentSchema } from "@/features/admin/payments/schema";
 import { applyManualPaymentReview } from "@/features/payments/service";
 import { applyManualStoreRefund } from "@/features/payments/refunds";
+import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
 
 export type AdminPaymentActionState = {
   status: "idle" | "success" | "error";
@@ -66,6 +67,15 @@ export async function refundStorePaymentAction(
   formData: FormData
 ): Promise<AdminPaymentActionState> {
   const session = await requireAdminSession();
+  const readiness = await getManualStoreRefundReadiness();
+
+  if (readiness.status !== "ready") {
+    return {
+      status: "error",
+      message: readiness.message
+    };
+  }
+
   const parsed = manualStoreRefundSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {

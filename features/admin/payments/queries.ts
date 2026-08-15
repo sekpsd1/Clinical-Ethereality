@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
+import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
 
 type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
 
@@ -229,7 +230,7 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
   noStore();
 
   try {
-    const payments = await getPaymentsForAdmin();
+    const [payments, refundReadiness] = await Promise.all([getPaymentsForAdmin(), getManualStoreRefundReadiness()]);
     const paymentItems = payments.map(mapPayment);
 
     return {
@@ -239,7 +240,8 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
         pendingReview: paymentItems.filter((payment) => payment.status === "pending_review").length,
         verified: paymentItems.filter((payment) => payment.status === "verified").length,
         rejected: paymentItems.filter((payment) => payment.status === "rejected").length
-      }
+      },
+      refundReadiness
     };
   } catch {
     return {
@@ -249,6 +251,10 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
         pendingReview: 0,
         verified: 0,
         rejected: 0
+      },
+      refundReadiness: {
+        status: "unavailable",
+        message: "ไม่สามารถตรวจความพร้อมคืนเงินได้"
       },
       unavailable: true
     };
