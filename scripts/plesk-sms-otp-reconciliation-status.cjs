@@ -52,6 +52,44 @@ const SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS = Object.freeze([
   "unsupported_collation"
 ]);
 
+const SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS = Object.freeze([
+  "metadata_unavailable",
+  "id_missing",
+  "id_type",
+  "id_nullability",
+  "id_length",
+  "id_default",
+  "full_name_missing",
+  "full_name_type",
+  "full_name_nullability",
+  "full_name_length",
+  "full_name_default",
+  "date_of_birth_missing",
+  "date_of_birth_type",
+  "date_of_birth_nullability",
+  "date_of_birth_default",
+  "normalized_phone_missing",
+  "normalized_phone_type",
+  "normalized_phone_nullability",
+  "normalized_phone_length",
+  "normalized_phone_default",
+  "phone_verified_at_missing",
+  "phone_verified_at_type",
+  "phone_verified_at_nullability",
+  "phone_verified_at_precision",
+  "phone_verified_at_default"
+]);
+
+function isSafeReasonDetail(reasonComponent, reasonDetail) {
+  if (reasonComponent === "user_table") {
+    return SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(reasonDetail);
+  }
+  if (reasonComponent === "user_columns") {
+    return SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS.includes(reasonDetail);
+  }
+  return false;
+}
+
 function getSafeReconciliationEvent(eventName) {
   if (!Object.prototype.hasOwnProperty.call(SAFE_RECONCILIATION_EVENTS, eventName)) {
     throw new Error("SMS OTP reconciliation status event is not allowlisted.");
@@ -82,8 +120,7 @@ function writePleskSmsOtpReconciliationStatus({
   if (
     reasonDetail !== undefined &&
     (eventName !== "precondition_rejected" ||
-      reasonComponent !== "user_table" ||
-      !SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(reasonDetail))
+      !isSafeReasonDetail(reasonComponent, reasonDetail))
   ) {
     throw new Error("SMS OTP reconciliation status reason detail is not allowlisted.");
   }
@@ -131,6 +168,7 @@ module.exports = {
   RECONCILIATION_STATUS_RELATIVE_PATH,
   SAFE_RECONCILIATION_EVENTS,
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS,
   SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   getSafeReconciliationEvent,
   writePleskSmsOtpReconciliationStatus

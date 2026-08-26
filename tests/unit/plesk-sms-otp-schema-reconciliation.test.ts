@@ -12,6 +12,7 @@ const {
   createPhoneVerificationChallengeSchema,
   createPleskSmsOtpSchemaReconciliationRunner,
   inspectSmsOtpSchema,
+  userColumnsReasonDetail,
   userTableReasonDetail
 } = require("../../scripts/plesk-sms-otp-schema-reconciliation.cjs");
 
@@ -34,7 +35,8 @@ type SchemaState = {
     | "wrong_type"
     | "metadata_unavailable"
     | "collation_incompatible"
-    | "unsupported_collation";
+    | "unsupported_collation"
+    | "full_name_missing";
   userIdCollation?: string;
 };
 
@@ -502,7 +504,12 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     ],
     [
       "required User component missing",
-      { ...exactPartialState, user: "not_ready", reasonComponent: "user_columns" },
+      {
+        ...exactPartialState,
+        user: "not_ready",
+        reasonComponent: "user_columns",
+        reasonDetail: "full_name_missing"
+      },
       "user_columns"
     ],
     [
@@ -529,7 +536,11 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       rootDir: bundle.options.rootDir,
       eventName: "precondition_rejected",
       reasonComponent: expectedReason,
-      ...(expectedReason === "user_table" ? { reasonDetail: "collation_incompatible" } : {})
+      ...(expectedReason === "user_table"
+        ? { reasonDetail: "collation_incompatible" }
+        : expectedReason === "user_columns"
+          ? { reasonDetail: "full_name_missing" }
+          : {})
     });
   });
 
@@ -742,6 +753,78 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(classifyPreconditionReason(snapshot)).toBe("user_table");
   });
 
+  it.each([
+    ["id", "id_missing"],
+    ["fullName", "full_name_missing"],
+    ["dateOfBirth", "date_of_birth_missing"],
+    ["normalizedPhone", "normalized_phone_missing"],
+    ["phoneVerifiedAt", "phone_verified_at_missing"]
+  ] as const)("classifies a missing %s User column without exposing metadata", (columnName, expected) => {
+    const snapshot = rawSnapshot();
+    snapshot.userColumns = snapshot.userColumns.filter((row) => row.name !== columnName);
+
+    expect(userColumnsReasonDetail(snapshot)).toBe(expected);
+    expect(classifyPreconditionReason(snapshot)).toBe("user_columns");
+  });
+
+  it.each([
+    ["id_length", "id", "characterLength", 190],
+    ["full_name_type", "fullName", "dataType", "text"],
+    ["date_of_birth_nullability", "dateOfBirth", "isNullable", "NO"],
+    ["normalized_phone_default", "normalizedPhone", "defaultValue", "'NULL'"],
+    ["phone_verified_at_precision", "phoneVerifiedAt", "datetimePrecision", 0]
+  ] as const)("classifies the closed User column mismatch %s", (expected, columnName, field, value) => {
+    const snapshot = rawSnapshot();
+    const column = snapshot.userColumns.find((row) => row.name === columnName);
+    if (!column) throw new Error("test fixture is missing a User column");
+    Object.assign(column, { [field]: value });
+
+    expect(userColumnsReasonDetail(snapshot)).toBe(expected);
+    expect(classifyPreconditionReason(snapshot)).toBe("user_columns");
+  });
+
+  it("accepts MariaDB's unquoted NULL metadata for nullable columns but not for User.id", () => {
+    const snapshot = rawSnapshot();
+    for (const column of snapshot.userColumns) {
+      if (column.isNullable === "YES") {
+        (column as { defaultValue: string | null }).defaultValue = "NULL";
+      }
+    }
+
+    expect(userColumnsReasonDetail(snapshot)).toBeNull();
+    expect(classifyPreconditionReason(snapshot)).toBeNull();
+
+    (snapshot.userColumns[0] as { defaultValue: string | null }).defaultValue = "NULL";
+    expect(userColumnsReasonDetail(snapshot)).toBe("id_default");
+    expect(classifyPreconditionReason(snapshot)).toBe("user_columns");
+  });
+
+  it("preserves post-create parity for MariaDB's unquoted NULL on nullable challenge columns", () => {
+    const snapshot = rawSnapshot({ applied: true, challenge: true });
+    for (const column of snapshot.userColumns) {
+      if (column.isNullable === "YES") {
+        (column as { defaultValue: string | null }).defaultValue = "NULL";
+      }
+    }
+    const verifiedAt = snapshot.challengeColumns.find((row) => row.name === "verifiedAt");
+    if (!verifiedAt) throw new Error("test fixture is missing verifiedAt");
+    verifiedAt.defaultValue = "NULL";
+
+    expect(classifySmsOtpSchema(snapshot)).toEqual({
+      migration: "applied",
+      user: "ready",
+      challenge: "ready"
+    });
+  });
+
+  it("fails closed with a safe fallback when User column metadata is duplicated", () => {
+    const snapshot = rawSnapshot();
+    snapshot.userColumns.push({ ...snapshot.userColumns[0] });
+
+    expect(userColumnsReasonDetail(snapshot)).toBe("metadata_unavailable");
+    expect(classifyPreconditionReason(snapshot)).toBe("user_columns");
+  });
+
   it("maps the static metadata-query results into the exact partial classification", async () => {
     const snapshot = rawSnapshot();
     const queryResults = [
@@ -761,6 +844,33 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     await expect(inspectSmsOtpSchema(client)).resolves.toEqual({
       ...exactPartialState,
       reasonComponent: null
+    });
+    expect(client.$queryRaw).toHaveBeenCalledTimes(8);
+  });
+
+  it("maps an exact User column mismatch to only the closed reason detail", async () => {
+    const snapshot = rawSnapshot();
+    const fullName = snapshot.userColumns.find((row) => row.name === "fullName");
+    if (!fullName) throw new Error("test fixture is missing fullName");
+    fullName.characterLength = 255;
+    const queryResults = [
+      snapshot.userTables,
+      snapshot.migrations,
+      snapshot.userColumns,
+      snapshot.userIndexes,
+      snapshot.challengeTables,
+      snapshot.challengeColumns,
+      snapshot.challengeIndexes,
+      snapshot.challengeForeignKeys
+    ];
+    const client = { $queryRaw: vi.fn(async () => queryResults.shift()) };
+
+    await expect(inspectSmsOtpSchema(client)).resolves.toEqual({
+      migration: "not_applied",
+      user: "not_ready",
+      challenge: "absent",
+      reasonComponent: "user_columns",
+      reasonDetail: "full_name_length"
     });
     expect(client.$queryRaw).toHaveBeenCalledTimes(8);
   });

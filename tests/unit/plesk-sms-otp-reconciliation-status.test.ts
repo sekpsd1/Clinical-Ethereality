@@ -7,6 +7,7 @@ const {
   RECONCILIATION_STATUS_RELATIVE_PATH,
   SAFE_RECONCILIATION_EVENTS,
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS,
   SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   getSafeReconciliationEvent,
   writePleskSmsOtpReconciliationStatus
@@ -123,6 +124,30 @@ describe("Plesk SMS OTP reconciliation private status", () => {
         "collation_incompatible",
         "unsupported_collation"
       ]);
+      expect(SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS).toContain("full_name_missing");
+      expect(SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS).toContain("phone_verified_at_precision");
+    });
+  });
+
+  it("writes only a closed-enum User column reason detail", () => {
+    withTemporaryRoot((rootDir) => {
+      const destination = writePleskSmsOtpReconciliationStatus({
+        rootDir,
+        eventName: "precondition_rejected",
+        reasonComponent: "user_columns",
+        reasonDetail: "normalized_phone_default",
+        now: () => new Date("2026-08-26T12:00:03.000Z")
+      });
+
+      expect(JSON.parse(fs.readFileSync(destination, "utf8"))).toEqual({
+        version: 1,
+        component: "sms_otp_schema_reconciliation",
+        stage: "precondition",
+        status: "rejected",
+        reasonComponent: "user_columns",
+        reasonDetail: "normalized_phone_default",
+        updatedAt: "2026-08-26T12:00:03.000Z"
+      });
     });
   });
 

@@ -9,6 +9,7 @@ const {
 } = require("./plesk-runtime-migration-runner.cjs");
 const {
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS,
   SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   writePleskSmsOtpReconciliationStatus
 } = require("./plesk-sms-otp-reconciliation-status.cjs");
@@ -55,6 +56,43 @@ const REQUIRED_CHALLENGE_COLUMNS = {
   updatedAt: { dataType: "datetime", nullable: false, datetimePrecision: 3, defaultValue: null }
 };
 
+const USER_COLUMN_REASON_DETAILS = Object.freeze({
+  id: Object.freeze({
+    missing: "id_missing",
+    dataType: "id_type",
+    nullable: "id_nullability",
+    characterLength: "id_length",
+    defaultValue: "id_default"
+  }),
+  fullName: Object.freeze({
+    missing: "full_name_missing",
+    dataType: "full_name_type",
+    nullable: "full_name_nullability",
+    characterLength: "full_name_length",
+    defaultValue: "full_name_default"
+  }),
+  dateOfBirth: Object.freeze({
+    missing: "date_of_birth_missing",
+    dataType: "date_of_birth_type",
+    nullable: "date_of_birth_nullability",
+    defaultValue: "date_of_birth_default"
+  }),
+  normalizedPhone: Object.freeze({
+    missing: "normalized_phone_missing",
+    dataType: "normalized_phone_type",
+    nullable: "normalized_phone_nullability",
+    characterLength: "normalized_phone_length",
+    defaultValue: "normalized_phone_default"
+  }),
+  phoneVerifiedAt: Object.freeze({
+    missing: "phone_verified_at_missing",
+    dataType: "phone_verified_at_type",
+    nullable: "phone_verified_at_nullability",
+    datetimePrecision: "phone_verified_at_precision",
+    defaultValue: "phone_verified_at_default"
+  })
+});
+
 function hasOwn(env, key) {
   return Object.prototype.hasOwnProperty.call(env, key);
 }
@@ -86,6 +124,38 @@ function normalizeDefault(value) {
   return String(value).toLowerCase();
 }
 
+function defaultMatches(row, requirement) {
+  const actual = normalizeDefault(row.defaultValue);
+  if (requirement.nullable && requirement.defaultValue === null && actual === "null") {
+    return true;
+  }
+  return actual === requirement.defaultValue;
+}
+
+function columnDefinitionMismatch(row, requirement) {
+  if (normalizeText(row.dataType) !== requirement.dataType) return "dataType";
+  if ((normalizeText(row.isNullable) === "yes") !== requirement.nullable) return "nullable";
+  if (
+    Object.prototype.hasOwnProperty.call(requirement, "characterLength") &&
+    asNumber(row.characterLength) !== requirement.characterLength
+  ) {
+    return "characterLength";
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(requirement, "datetimePrecision") &&
+    asNumber(row.datetimePrecision) !== requirement.datetimePrecision
+  ) {
+    return "datetimePrecision";
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(requirement, "defaultValue") &&
+    !defaultMatches(row, requirement)
+  ) {
+    return "defaultValue";
+  }
+  return null;
+}
+
 function hasExactColumns(rows, expected) {
   if (rows.length !== Object.keys(expected).length) return false;
 
@@ -95,28 +165,29 @@ function hasExactColumns(rows, expected) {
   return Object.entries(expected).every(([name, requirement]) => {
     const row = byName.get(name);
     if (!row) return false;
-    if (normalizeText(row.dataType) !== requirement.dataType) return false;
-    if ((normalizeText(row.isNullable) === "yes") !== requirement.nullable) return false;
-    if (
-      Object.prototype.hasOwnProperty.call(requirement, "characterLength") &&
-      asNumber(row.characterLength) !== requirement.characterLength
-    ) {
-      return false;
-    }
-    if (
-      Object.prototype.hasOwnProperty.call(requirement, "datetimePrecision") &&
-      asNumber(row.datetimePrecision) !== requirement.datetimePrecision
-    ) {
-      return false;
-    }
-    if (
-      Object.prototype.hasOwnProperty.call(requirement, "defaultValue") &&
-      normalizeDefault(row.defaultValue) !== requirement.defaultValue
-    ) {
-      return false;
-    }
-    return true;
+    return columnDefinitionMismatch(row, requirement) === null;
   });
+}
+
+function userColumnsReasonDetail(snapshot) {
+  const rows = snapshot.userColumns;
+  if (!Array.isArray(rows)) return "metadata_unavailable";
+
+  const byName = new Map(rows.map((row) => [row?.name, row]));
+  if (byName.size !== rows.length) return "metadata_unavailable";
+
+  for (const [name, requirement] of Object.entries(REQUIRED_USER_COLUMNS)) {
+    const details = USER_COLUMN_REASON_DETAILS[name];
+    const row = byName.get(name);
+    if (!row) return details.missing;
+
+    const mismatch = columnDefinitionMismatch(row, requirement);
+    if (mismatch) return details[mismatch] ?? "metadata_unavailable";
+  }
+
+  return rows.length === Object.keys(REQUIRED_USER_COLUMNS).length
+    ? null
+    : "metadata_unavailable";
 }
 
 function hasExactIndex(rows, indexName, columns, unique) {
@@ -181,14 +252,15 @@ function userTableReasonDetail(snapshot) {
 
 function userPreconditionReason(snapshot) {
   const tableReasonDetail = userTableReasonDetail(snapshot);
-  const columnsReady = hasExactColumns(snapshot.userColumns, REQUIRED_USER_COLUMNS);
+  const columnsReasonDetail = userColumnsReasonDetail(snapshot);
   const indexesReady =
     snapshot.userIndexes.length === 2 &&
     hasExactIndex(snapshot.userIndexes, "User_normalizedPhone_key", ["normalizedPhone"], true) &&
     hasExactIndex(snapshot.userIndexes, "User_phoneVerifiedAt_idx", ["phoneVerifiedAt"], false);
 
+  if (tableReasonDetail === "missing" || tableReasonDetail === "wrong_type") return "user_table";
+  if (columnsReasonDetail) return "user_columns";
   if (tableReasonDetail) return "user_table";
-  if (!columnsReady) return "user_columns";
   if (!indexesReady) return "user_indexes";
   return null;
 }
@@ -288,13 +360,20 @@ function getPreconditionReasonComponent(precondition) {
 }
 
 function getPreconditionReasonDetail(precondition, reasonComponent) {
-  if (reasonComponent !== "user_table") return undefined;
-  if (SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(precondition.reasonDetail)) {
-    return precondition.reasonDetail;
+  if (reasonComponent === "user_table") {
+    if (SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(precondition.reasonDetail)) {
+      return precondition.reasonDetail;
+    }
+    return typeof precondition.userIdCollation === "string"
+      ? "unsupported_collation"
+      : "metadata_unavailable";
   }
-  return typeof precondition.userIdCollation === "string"
-    ? "unsupported_collation"
-    : "metadata_unavailable";
+  if (reasonComponent === "user_columns") {
+    return SAFE_RECONCILIATION_USER_COLUMNS_REASON_DETAILS.includes(precondition.reasonDetail)
+      ? precondition.reasonDetail
+      : "metadata_unavailable";
+  }
+  return undefined;
 }
 
 async function inspectSmsOtpSchema(client) {
@@ -416,7 +495,12 @@ async function inspectSmsOtpSchema(client) {
 
   const schemaState = classifySmsOtpSchema(snapshot);
   const reasonComponent = classifyPreconditionReason(snapshot);
-  const reasonDetail = reasonComponent === "user_table" ? userTableReasonDetail(snapshot) : null;
+  const reasonDetail =
+    reasonComponent === "user_table"
+      ? userTableReasonDetail(snapshot)
+      : reasonComponent === "user_columns"
+        ? userColumnsReasonDetail(snapshot)
+        : null;
   const userIdCollation = schemaState.user === "ready" ? getSupportedUserIdCollation(snapshot) : null;
 
   return {
@@ -717,6 +801,7 @@ module.exports = {
   inspectSmsOtpSchema,
   isAllowedReconciliationTarget,
   runPleskSmsOtpSchemaReconciliation,
+  userColumnsReasonDetail,
   validateReconciliationSource,
   writePleskSmsOtpReconciliationStatus
 };
