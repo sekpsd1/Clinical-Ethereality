@@ -188,7 +188,12 @@ export async function getSmsOtpSchemaReadiness(
         `)
       ]);
 
-    const migration = migrations.find((row) => row.name === SMS_OTP_SCHEMA_MIGRATION);
+    const migrationReady = migrations.some(
+      (row) =>
+        row.name === SMS_OTP_SCHEMA_MIGRATION &&
+        asBoolean(row.finished) &&
+        !asBoolean(row.rolledBack)
+    );
     const foreignKeyReady = foreignKeys.some(
       (row) =>
         row.constraintName === "PhoneVerificationChallenge_userId_fkey" &&
@@ -203,7 +208,7 @@ export async function getSmsOtpSchemaReadiness(
     const components: SmsOtpSchemaReadinessComponent[] = [
       component(
         `migration:${SMS_OTP_SCHEMA_MIGRATION}`,
-        Boolean(migration && asBoolean(migration.finished) && !asBoolean(migration.rolledBack))
+        migrationReady
       ),
       component("User.columns", includesAll(userColumns, REQUIRED_USER_COLUMNS)),
       component(

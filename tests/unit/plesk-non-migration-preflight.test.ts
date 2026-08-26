@@ -2,8 +2,10 @@
 import { describe, expect, it, vi } from "vitest";
 const {
   MIGRATION_APPROVAL_ENV,
+  RECONCILIATION_APPROVAL_ENV,
   assertNoPleskMigrationTarget,
   hasPleskMigrationTarget,
+  hasPleskRuntimeMutationTarget,
 } = require("../../scripts/plesk-non-migration-preflight.cjs");
 
 describe("Plesk non-migration preflight", () => {
@@ -11,6 +13,7 @@ describe("Plesk non-migration preflight", () => {
     const error = vi.fn();
 
     expect(hasPleskMigrationTarget({})).toBe(false);
+    expect(hasPleskRuntimeMutationTarget({})).toBe(false);
     expect(assertNoPleskMigrationTarget({ env: {}, error })).toBe(true);
     expect(error).not.toHaveBeenCalled();
   });
@@ -41,5 +44,17 @@ describe("Plesk non-migration preflight", () => {
       }),
     ).toBe(false);
     expect(error.mock.calls.flat().join(" ")).not.toContain(target);
+  });
+
+  it("fails closed when the one-time reconciliation target is present, including when empty", () => {
+    for (const target of ["", "private-target-value"]) {
+      const error = vi.fn();
+      const env = { [RECONCILIATION_APPROVAL_ENV]: target };
+
+      expect(hasPleskRuntimeMutationTarget(env)).toBe(true);
+      expect(assertNoPleskMigrationTarget({ env, error })).toBe(false);
+      expect(error).toHaveBeenCalledWith(expect.stringContaining(RECONCILIATION_APPROVAL_ENV));
+      expect(error.mock.calls.flat().join(" ")).not.toContain(target || "value-that-is-not-present");
+    }
   });
 });

@@ -118,6 +118,19 @@ describe("Admin SMS OTP schema readiness", () => {
     }
   });
 
+  it("is ready when Prisma keeps failed history alongside a successfully resolved row", async () => {
+    const results = readyResults();
+    results[0] = [
+      { name: SMS_OTP_SCHEMA_MIGRATION, finished: 0, rolledBack: 0 },
+      { name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 0 }
+    ];
+
+    const result = await getSmsOtpSchemaReadiness(createClient(results) as never);
+
+    expect(result.status).toBe("ready");
+    expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATION}`)).toBe("ready");
+  });
+
   it.each([
     ["table", 2, [], "PhoneVerificationChallenge.table"],
     ["User column", 1, userColumns.slice(0, -1), "User.columns"],
