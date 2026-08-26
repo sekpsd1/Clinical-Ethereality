@@ -7,6 +7,9 @@ const {
   MIGRATION_APPROVAL_ENV,
   getCurrentMigrationTarget
 } = require("./plesk-runtime-migration-runner.cjs");
+const {
+  writePleskSmsOtpReconciliationStatus
+} = require("./plesk-sms-otp-reconciliation-status.cjs");
 
 const SMS_OTP_SCHEMA_MIGRATION = "20260814090000_add_patient_phone_verification";
 const RECONCILIATION_APPROVAL_ENV = "PLESK_SMS_OTP_SCHEMA_RECONCILIATION_TARGET";
@@ -384,6 +387,7 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
     createSchema = createPhoneVerificationChallengeSchema,
     validateSource = validateReconciliationSource,
     spawnSync = childProcess.spawnSync,
+    writeStatus = writePleskSmsOtpReconciliationStatus,
     log = console.log,
     error = console.error
   }) {
@@ -391,31 +395,59 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       return safeResult("not_requested", { shouldStart: true });
     }
 
+    const recordStatus = (eventName, { reconciliationRun = false } = {}) => {
+      try {
+        writeStatus({ rootDir, eventName });
+        return null;
+      } catch {
+        error("[sms-otp-reconciliation] stage=diagnostics status=unavailable");
+        return safeResult("diagnostics_unavailable", { reconciliationRun });
+      }
+    };
+
+    let statusFailure = recordStatus("dispatch_started");
+    if (statusFailure) return statusFailure;
+
     if (attempted) {
+      statusFailure = recordStatus("dispatch_rejected_duplicate");
+      if (statusFailure) return statusFailure;
       error("[sms-otp-reconciliation] stage=dispatch status=rejected_duplicate");
       return safeResult("duplicate_rejected");
     }
     attempted = true;
 
     if (!isAllowedReconciliationTarget(env[RECONCILIATION_APPROVAL_ENV])) {
+      statusFailure = recordStatus("target_rejected");
+      if (statusFailure) return statusFailure;
       error("[sms-otp-reconciliation] stage=target status=rejected");
       return safeResult("target_rejected");
     }
 
     if (hasOwn(env, MIGRATION_APPROVAL_ENV)) {
+      statusFailure = recordStatus("target_conflict");
+      if (statusFailure) return statusFailure;
       error("[sms-otp-reconciliation] stage=target status=conflict");
       return safeResult("target_conflict");
     }
 
     if (!validateSource(rootDir)) {
+      statusFailure = recordStatus("source_rejected");
+      if (statusFailure) return statusFailure;
       error("[sms-otp-reconciliation] stage=source status=rejected");
       return safeResult("source_rejected");
     }
 
+    statusFailure = recordStatus("source_accepted");
+    if (statusFailure) return statusFailure;
+
     const prismaCli = path.join(rootDir, "node_modules", "prisma", "build", "index.js");
     let client;
+    let schemaMutationStarted = false;
 
     try {
+      statusFailure = recordStatus("inspection_started");
+      if (statusFailure) return statusFailure;
+
       client = createClient();
       const precondition = await inspectSchema(client);
       if (
@@ -423,18 +455,31 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
         precondition.user !== "ready" ||
         precondition.challenge !== "absent"
       ) {
+        statusFailure = recordStatus("precondition_rejected");
+        if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=precondition status=rejected");
         return safeResult("precondition_rejected");
       }
 
+      statusFailure = recordStatus("precondition_accepted");
+      if (statusFailure) return statusFailure;
       log("[sms-otp-reconciliation] stage=precondition status=accepted");
+
+      statusFailure = recordStatus("schema_creation_started");
+      if (statusFailure) return statusFailure;
+      schemaMutationStarted = true;
 
       try {
         await createSchema(client);
       } catch {
+        statusFailure = recordStatus("schema_creation_failed", { reconciliationRun: true });
+        if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=schema_creation status=failed");
         return safeResult("schema_creation_failed", { reconciliationRun: true });
       }
+
+      statusFailure = recordStatus("schema_creation_ready", { reconciliationRun: true });
+      if (statusFailure) return statusFailure;
 
       const parityBeforeResolve = await inspectSchema(client);
       if (
@@ -442,11 +487,18 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
         parityBeforeResolve.user !== "ready" ||
         parityBeforeResolve.challenge !== "ready"
       ) {
+        statusFailure = recordStatus("parity_before_resolve_failed", { reconciliationRun: true });
+        if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=parity_before_resolve status=failed");
         return safeResult("parity_failed", { reconciliationRun: true });
       }
 
+      statusFailure = recordStatus("parity_before_resolve_ready", { reconciliationRun: true });
+      if (statusFailure) return statusFailure;
       log("[sms-otp-reconciliation] stage=parity_before_resolve status=ready");
+
+      statusFailure = recordStatus("migration_resolve_started", { reconciliationRun: true });
+      if (statusFailure) return statusFailure;
 
       const resolveResult = spawnSync(
         process.execPath,
@@ -462,9 +514,14 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       );
 
       if (resolveResult.error || resolveResult.status !== 0) {
+        statusFailure = recordStatus("migration_resolve_failed", { reconciliationRun: true });
+        if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=migration_resolve status=failed");
         return safeResult("migration_resolve_failed", { reconciliationRun: true });
       }
+
+      statusFailure = recordStatus("migration_resolve_ready", { reconciliationRun: true });
+      if (statusFailure) return statusFailure;
 
       const finalParity = await inspectSchema(client);
       if (
@@ -472,15 +529,25 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
         finalParity.user !== "ready" ||
         finalParity.challenge !== "ready"
       ) {
+        statusFailure = recordStatus("final_parity_failed", { reconciliationRun: true });
+        if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=final_parity status=failed");
         return safeResult("final_parity_failed", { reconciliationRun: true });
       }
 
+      statusFailure = recordStatus("complete_ready", { reconciliationRun: true });
+      if (statusFailure) return statusFailure;
       log("[sms-otp-reconciliation] stage=complete status=ready action=remove_target_and_restart");
       return safeResult("completed", { reconciliationRun: true });
     } catch {
+      statusFailure = recordStatus("inspection_unavailable", {
+        reconciliationRun: schemaMutationStarted
+      });
+      if (statusFailure) return statusFailure;
       error("[sms-otp-reconciliation] stage=inspection status=unavailable");
-      return safeResult("inspection_unavailable");
+      return safeResult("inspection_unavailable", {
+        reconciliationRun: schemaMutationStarted
+      });
     } finally {
       if (client) {
         try {
@@ -507,5 +574,6 @@ module.exports = {
   inspectSmsOtpSchema,
   isAllowedReconciliationTarget,
   runPleskSmsOtpSchemaReconciliation,
-  validateReconciliationSource
+  validateReconciliationSource,
+  writePleskSmsOtpReconciliationStatus
 };

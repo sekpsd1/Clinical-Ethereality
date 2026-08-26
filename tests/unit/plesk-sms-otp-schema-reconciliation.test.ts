@@ -75,6 +75,7 @@ function createOptions(states: Array<SchemaState | Error>) {
   const spawnSync = vi.fn().mockReturnValue({ status: 0 });
   const createSchema = vi.fn(async (receivedClient) => receivedClient.$executeRaw("allowlisted-static-ddl"));
   const loggers = createLoggers();
+  const writeStatus = vi.fn();
   return {
     client,
     createSchema,
@@ -88,9 +89,11 @@ function createOptions(states: Array<SchemaState | Error>) {
       createSchema,
       validateSource: vi.fn(() => true),
       spawnSync,
+      writeStatus,
       ...loggers
     },
-    spawnSync
+    spawnSync,
+    writeStatus
   };
 }
 
@@ -295,6 +298,7 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
         rootDir: "C:/approved-runtime",
         env: { [RECONCILIATION_APPROVAL_ENV]: target },
         createClient: createClientMock,
+        writeStatus: vi.fn(),
         ...loggers
       });
 
@@ -312,7 +316,8 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       rootDir: "C:/approved-runtime",
       env: approvedEnv({ [MIGRATION_APPROVAL_ENV]: SMS_OTP_SCHEMA_MIGRATION }),
       createClient: createClientMock,
-      validateSource: vi.fn(() => true)
+      validateSource: vi.fn(() => true),
+      writeStatus: vi.fn()
     });
 
     expect(result.outcome).toBe("target_conflict");
@@ -328,7 +333,8 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       rootDir: "C:/approved-runtime",
       env: approvedEnv(),
       createClient: createClientMock,
-      validateSource: vi.fn(() => false)
+      validateSource: vi.fn(() => false),
+      writeStatus: vi.fn()
     });
 
     expect(result.outcome).toBe("source_rejected");
@@ -356,7 +362,67 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       ],
       expect.objectContaining({ shell: false, stdio: "ignore", env: bundle.options.env })
     );
+    expect(bundle.writeStatus.mock.calls.map(([status]) => status.eventName)).toEqual([
+      "dispatch_started",
+      "source_accepted",
+      "inspection_started",
+      "precondition_accepted",
+      "schema_creation_started",
+      "schema_creation_ready",
+      "parity_before_resolve_ready",
+      "migration_resolve_started",
+      "migration_resolve_ready",
+      "complete_ready"
+    ]);
     expect(bundle.client.$disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed before database access when private status diagnostics are unavailable", async () => {
+    const runner = createPleskSmsOtpSchemaReconciliationRunner();
+    const createClientMock = vi.fn();
+    const loggers = createLoggers();
+
+    const result = await runner({
+      rootDir: "C:/approved-runtime",
+      env: approvedEnv(),
+      createClient: createClientMock,
+      writeStatus: vi.fn(() => {
+        throw new Error("private-password private-host");
+      }),
+      ...loggers
+    });
+
+    expect(result).toEqual({
+      outcome: "diagnostics_unavailable",
+      shouldStart: false,
+      reconciliationRun: false
+    });
+    expect(createClientMock).not.toHaveBeenCalled();
+    expect(serializedLogs(loggers)).toBe(
+      "[sms-otp-reconciliation] stage=diagnostics status=unavailable"
+    );
+  });
+
+  it("stops before migrate resolve when diagnostics fail after schema creation", async () => {
+    const runner = createPleskSmsOtpSchemaReconciliationRunner();
+    const bundle = createOptions([exactPartialState]);
+    bundle.writeStatus.mockImplementation(({ eventName }) => {
+      if (eventName === "schema_creation_ready") {
+        throw new Error("private-password private-host");
+      }
+    });
+
+    const result = await runner(withInspector(bundle));
+
+    expect(result).toEqual({
+      outcome: "diagnostics_unavailable",
+      shouldStart: false,
+      reconciliationRun: true
+    });
+    expect(bundle.createSchema).toHaveBeenCalledTimes(1);
+    expect(bundle.spawnSync).not.toHaveBeenCalled();
+    expect(serializedLogs(bundle.loggers)).not.toContain("private-password");
+    expect(serializedLogs(bundle.loggers)).not.toContain("private-host");
   });
 
   it.each([
@@ -437,6 +503,27 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(result.outcome).toBe("inspection_unavailable");
     expect(result.shouldStart).toBe(false);
     expect(serializedLogs(bundle.loggers)).not.toContain("private-jwt-secret");
+    expect(serializedLogs(bundle.loggers)).not.toContain("private-host");
+  });
+
+  it("marks an inspection failure after DDL as a reconciliation run and never resolves", async () => {
+    const runner = createPleskSmsOtpSchemaReconciliationRunner();
+    const bundle = createOptions([exactPartialState, new Error("private-password private-host")]);
+
+    const result = await runner(withInspector(bundle));
+
+    expect(result).toEqual({
+      outcome: "inspection_unavailable",
+      shouldStart: false,
+      reconciliationRun: true
+    });
+    expect(bundle.createSchema).toHaveBeenCalledTimes(1);
+    expect(bundle.spawnSync).not.toHaveBeenCalled();
+    expect(bundle.writeStatus).toHaveBeenLastCalledWith({
+      rootDir: bundle.options.rootDir,
+      eventName: "inspection_unavailable"
+    });
+    expect(serializedLogs(bundle.loggers)).not.toContain("private-password");
     expect(serializedLogs(bundle.loggers)).not.toContain("private-host");
   });
 

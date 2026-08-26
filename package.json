@@ -8,6 +8,7 @@
     "build:plesk": "npm run build && node scripts/prepare-plesk-artifact.cjs",
     "build:plesk-host": "npm run build && node scripts/prepare-plesk-host-runtime.cjs",
     "preflight:plesk:non-migration": "node scripts/plesk-non-migration-preflight.cjs",
+    "check:plesk:sms-otp-reconciliation-status": "node scripts/plesk-sms-otp-reconciliation-status-probe.cjs",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint .",
