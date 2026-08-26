@@ -3,7 +3,15 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import { getAppEnv } from "@/lib/env/schema";
 import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 import { prisma } from "@/lib/db/prisma";
-import { getSmsOtpReadiness, requestSmsOtp, SmsOtpError, verifySmsOtp } from "@/lib/sms/otp";
+import {
+  getSmsOtpReadiness,
+  requestSmsOtp,
+  SmsOtpError,
+  verifySmsOtp,
+  writeSmsOtpDiagnostic,
+  type SmsOtpDiagnosticLogger,
+  type SmsOtpDiagnosticStage
+} from "@/lib/sms/otp";
 import type { RequestPhoneVerificationInput } from "@/features/identity-verification/schema";
 
 const otpTtlMs = 10 * 60 * 1000;
@@ -11,6 +19,10 @@ const resendDelayMs = 60 * 1000;
 const requestWindowMs = 60 * 60 * 1000;
 const maxRequestsPerWindow = 3;
 const maxAttempts = 5;
+
+type PatientVerificationRequestOptions = {
+  diagnosticLogger?: SmsOtpDiagnosticLogger;
+};
 
 export type PatientVerificationStatus = {
   fullName: string | null;
@@ -85,6 +97,32 @@ function mapOtpError(error: unknown): PatientVerificationError {
   return new PatientVerificationError("OTP_REJECTED");
 }
 
+async function runRequestPersistenceStage<T>(
+  stage: Extract<SmsOtpDiagnosticStage, "request_preflight" | "request_persistence">,
+  operation: () => Promise<T>,
+  diagnosticLogger?: SmsOtpDiagnosticLogger
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof PatientVerificationError) {
+      throw error;
+    }
+
+    writeSmsOtpDiagnostic(
+      {
+        stage,
+        applicationHttpStatus: 503,
+        providerHttpStatus: null,
+        providerErrorCode: null,
+        providerErrorCategory: "not_applicable"
+      },
+      diagnosticLogger
+    );
+    throw error;
+  }
+}
+
 function toDateOfBirth(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -131,7 +169,8 @@ export async function requireVerifiedPatientProfile(userId: string): Promise<voi
 
 export async function requestPatientPhoneVerification(
   userId: string,
-  input: RequestPhoneVerificationInput
+  input: RequestPhoneVerificationInput,
+  options: PatientVerificationRequestOptions = {}
 ): Promise<{ challengeId: string; phoneLabel: string; expiresAt: string } | { alreadyVerified: true }> {
   const env = getAppEnv();
   if (!getSmsOtpReadiness(env).isConfigured || !env.SMS_OTP_CHALLENGE_ENCRYPTION_KEY) {
@@ -141,16 +180,21 @@ export async function requestPatientPhoneVerification(
   const normalizedPhone = normalizeThaiMobileNumber(input.phone);
   const dateOfBirth = toDateOfBirth(input.dateOfBirth);
   const now = new Date();
-  const [user, existingPhoneOwner] = await Promise.all([
-    prisma.user.findUnique({
-    where: { id: userId },
-    select: { normalizedPhone: true, phoneVerifiedAt: true }
-    }),
-    prisma.user.findFirst({
-      where: { normalizedPhone: normalizedPhone.e164, id: { not: userId } },
-      select: { id: true }
-    })
-  ]);
+  const [user, existingPhoneOwner] = await runRequestPersistenceStage(
+    "request_preflight",
+    () =>
+      Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { normalizedPhone: true, phoneVerifiedAt: true }
+        }),
+        prisma.user.findFirst({
+          where: { normalizedPhone: normalizedPhone.e164, id: { not: userId } },
+          select: { id: true }
+        })
+      ]),
+    options.diagnosticLogger
+  );
 
   if (!user) {
     throw new PatientVerificationError("PROFILE_REQUIRED");
@@ -176,16 +220,21 @@ export async function requestPatientPhoneVerification(
     return { alreadyVerified: true };
   }
 
-  const [recentChallenge, requestCount] = await Promise.all([
-    prisma.phoneVerificationChallenge.findFirst({
-      where: { userId },
-      orderBy: { requestedAt: "desc" },
-      select: { requestedAt: true }
-    }),
-    prisma.phoneVerificationChallenge.count({
-      where: { userId, requestedAt: { gte: new Date(now.getTime() - requestWindowMs) } }
-    })
-  ]);
+  const [recentChallenge, requestCount] = await runRequestPersistenceStage(
+    "request_preflight",
+    () =>
+      Promise.all([
+        prisma.phoneVerificationChallenge.findFirst({
+          where: { userId },
+          orderBy: { requestedAt: "desc" },
+          select: { requestedAt: true }
+        }),
+        prisma.phoneVerificationChallenge.count({
+          where: { userId, requestedAt: { gte: new Date(now.getTime() - requestWindowMs) } }
+        })
+      ]),
+    options.diagnosticLogger
+  );
 
   if (recentChallenge && now.getTime() - recentChallenge.requestedAt.getTime() < resendDelayMs) {
     throw new PatientVerificationError("RATE_LIMITED");
@@ -196,46 +245,57 @@ export async function requestPatientPhoneVerification(
 
   let providerChallenge;
   try {
-    providerChallenge = await requestSmsOtp(normalizedPhone.local, { env });
+    providerChallenge = await requestSmsOtp(normalizedPhone.local, {
+      env,
+      diagnosticLogger: options.diagnosticLogger
+    });
   } catch (error) {
     throw mapOtpError(error);
   }
 
   const expiresAt = new Date(now.getTime() + otpTtlMs);
-  const challenge = await prisma.$transaction(async (tx) => {
-    await tx.phoneVerificationChallenge.updateMany({
-      where: { userId, verifiedAt: null, expiresAt: { gt: now } },
-      data: { expiresAt: now }
-    });
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        fullName: input.fullName,
-        dateOfBirth,
-        phone: normalizedPhone.local,
-        normalizedPhone: normalizedPhone.e164,
-        phoneVerifiedAt: null
-      }
-    });
-    const created = await tx.phoneVerificationChallenge.create({
-      data: {
-        userId,
-        normalizedPhone: normalizedPhone.e164,
-        providerChallengeCiphertext: encryptProviderChallenge(providerChallenge.providerChallengeId),
-        expiresAt,
-        requestedAt: now
-      },
-      select: { id: true }
-    });
-    await writeAuditLog(tx, {
-      actorId: userId,
-      action: "patient_verification.otp.request",
-      entityType: "user",
-      entityId: userId,
-      metadata: { provider: providerChallenge.provider, phoneChanged: user.normalizedPhone !== normalizedPhone.e164 }
-    });
-    return created;
-  });
+  const challenge = await runRequestPersistenceStage(
+    "request_persistence",
+    () =>
+      prisma.$transaction(async (tx) => {
+        await tx.phoneVerificationChallenge.updateMany({
+          where: { userId, verifiedAt: null, expiresAt: { gt: now } },
+          data: { expiresAt: now }
+        });
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            fullName: input.fullName,
+            dateOfBirth,
+            phone: normalizedPhone.local,
+            normalizedPhone: normalizedPhone.e164,
+            phoneVerifiedAt: null
+          }
+        });
+        const created = await tx.phoneVerificationChallenge.create({
+          data: {
+            userId,
+            normalizedPhone: normalizedPhone.e164,
+            providerChallengeCiphertext: encryptProviderChallenge(providerChallenge.providerChallengeId),
+            expiresAt,
+            requestedAt: now
+          },
+          select: { id: true }
+        });
+        await writeAuditLog(tx, {
+          actorId: userId,
+          action: "patient_verification.otp.request",
+          entityType: "user",
+          entityId: userId,
+          metadata: {
+            provider: providerChallenge.provider,
+            phoneChanged: user.normalizedPhone !== normalizedPhone.e164
+          }
+        });
+        return created;
+      }),
+    options.diagnosticLogger
+  );
 
   return { challengeId: challenge.id, phoneLabel: providerChallenge.phoneLabel, expiresAt: expiresAt.toISOString() };
 }

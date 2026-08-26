@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
+import { runSingleFlight } from "@/features/identity-verification/single-flight";
 
 type ApiResult = { ok: boolean; message?: string; challengeId?: string; phoneLabel?: string; alreadyVerified?: true };
 
@@ -27,28 +28,31 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const requestInFlight = useRef(false);
 
   async function requestOtp() {
-    setPending(true);
-    setMessage(null);
-    try {
-      const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, phone });
-      if (!result.ok) {
-        setMessage(result.message ?? "ยังไม่สามารถส่งรหัสได้");
-        return;
+    await runSingleFlight(requestInFlight, async () => {
+      setPending(true);
+      setMessage(null);
+      try {
+        const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, phone });
+        if (!result.ok) {
+          setMessage(result.message ?? "ยังไม่สามารถส่งรหัสได้");
+          return;
+        }
+        if (result.alreadyVerified) {
+          router.refresh();
+          return;
+        }
+        setChallengeId(result.challengeId ?? null);
+        setPhoneLabel(result.phoneLabel ?? null);
+        setMessage("ส่งรหัส OTP แล้ว กรุณากรอกรหัสเพื่อยืนยันเบอร์โทร");
+      } catch {
+        setMessage("ยังไม่สามารถขอรหัสได้ กรุณาลองใหม่");
+      } finally {
+        setPending(false);
       }
-      if (result.alreadyVerified) {
-        router.refresh();
-        return;
-      }
-      setChallengeId(result.challengeId ?? null);
-      setPhoneLabel(result.phoneLabel ?? null);
-      setMessage("ส่งรหัส OTP แล้ว กรุณากรอกรหัสเพื่อยืนยันเบอร์โทร");
-    } catch {
-      setMessage("ยังไม่สามารถขอรหัสได้ กรุณาลองใหม่");
-    } finally {
-      setPending(false);
-    }
+    });
   }
 
   async function verifyOtp() {

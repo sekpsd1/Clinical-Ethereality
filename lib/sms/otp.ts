@@ -38,7 +38,8 @@ export class SmsOtpError extends Error {
       | "CONFIGURATION_ERROR"
       | "INVALID_CODE"
       | "PROVIDER_REJECTED"
-      | "PROVIDER_UNAVAILABLE"
+      | "PROVIDER_UNAVAILABLE",
+    public readonly diagnostic?: SmsOtpSafeDiagnostic
   ) {
     super(code);
     this.name = "SmsOtpError";
@@ -48,7 +49,47 @@ export class SmsOtpError extends Error {
 type OtpRequestOptions = {
   env?: AppEnv;
   fetchImpl?: typeof fetch;
+  diagnosticLogger?: SmsOtpDiagnosticLogger;
 };
+
+export type SmsOtpDiagnosticStage =
+  | "request_schema"
+  | "request_preflight"
+  | "request_provider"
+  | "request_persistence"
+  | "verify_provider";
+
+export type SmsOtpProviderErrorCategory =
+  | "not_applicable"
+  | "provider_authentication"
+  | "provider_invalid_response"
+  | "provider_network"
+  | "provider_rate_limited"
+  | "provider_rejected"
+  | "provider_timeout"
+  | "provider_unavailable";
+
+export type SmsOtpSafeDiagnostic = {
+  stage: SmsOtpDiagnosticStage;
+  applicationHttpStatus: 400 | 503;
+  providerHttpStatus: number | null;
+  providerErrorCode: null;
+  providerErrorCategory: SmsOtpProviderErrorCategory;
+};
+
+export type SmsOtpDiagnosticLogger = (diagnostic: SmsOtpSafeDiagnostic) => void;
+
+export function writeSmsOtpDiagnostic(
+  diagnostic: SmsOtpSafeDiagnostic,
+  logger?: SmsOtpDiagnosticLogger
+): void {
+  if (logger) {
+    logger(diagnostic);
+    return;
+  }
+
+  console.error("[sms/otp] failed", diagnostic);
+}
 
 function hasValue(value: string | undefined): boolean {
   return Boolean(value && value.trim().length > 0);
@@ -85,14 +126,45 @@ function requireProviderConfig(env: AppEnv): { key: string; secret: string; time
   };
 }
 
+function getProviderErrorCategory(status: number): SmsOtpProviderErrorCategory {
+  if (status === 401 || status === 403) return "provider_authentication";
+  if (status === 429) return "provider_rate_limited";
+  if (status >= 500) return "provider_unavailable";
+  return "provider_rejected";
+}
+
+function isProviderUnavailableStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && error.name === "TimeoutError";
+}
+
+function createProviderDiagnostic(
+  stage: Extract<SmsOtpDiagnosticStage, "request_provider" | "verify_provider">,
+  applicationHttpStatus: 400 | 503,
+  providerHttpStatus: number | null,
+  providerErrorCategory: SmsOtpProviderErrorCategory
+): SmsOtpSafeDiagnostic {
+  return {
+    stage,
+    applicationHttpStatus,
+    providerHttpStatus,
+    providerErrorCode: null,
+    providerErrorCategory
+  };
+}
+
 async function postOtpForm(
+  stage: Extract<SmsOtpDiagnosticStage, "request_provider" | "verify_provider">,
   url: string,
   fields: Record<string, string>,
   options: OtpRequestOptions
 ): Promise<unknown> {
   const env = options.env ?? getAppEnv();
   const config = requireProviderConfig(env);
-  const form = new FormData();
+  const form = new URLSearchParams();
 
   form.set("key", config.key);
   form.set("secret", config.secret);
@@ -101,22 +173,52 @@ async function postOtpForm(
   try {
     const response = await (options.fetchImpl ?? fetch)(url, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
       body: form,
       cache: "no-store",
       signal: AbortSignal.timeout(config.timeoutMs)
     });
 
     if (!response.ok) {
-      throw new SmsOtpError("PROVIDER_REJECTED");
+      const providerErrorCategory = getProviderErrorCategory(response.status);
+      const unavailable = isProviderUnavailableStatus(response.status);
+      const diagnostic = createProviderDiagnostic(
+        stage,
+        unavailable ? 503 : 400,
+        response.status,
+        providerErrorCategory
+      );
+      writeSmsOtpDiagnostic(diagnostic, options.diagnosticLogger);
+      throw new SmsOtpError(unavailable ? "PROVIDER_UNAVAILABLE" : "PROVIDER_REJECTED", diagnostic);
     }
 
-    return await response.json();
+    try {
+      return await response.json();
+    } catch {
+      const diagnostic = createProviderDiagnostic(
+        stage,
+        503,
+        response.status,
+        "provider_invalid_response"
+      );
+      writeSmsOtpDiagnostic(diagnostic, options.diagnosticLogger);
+      throw new SmsOtpError("PROVIDER_UNAVAILABLE", diagnostic);
+    }
   } catch (error) {
     if (error instanceof SmsOtpError) {
       throw error;
     }
 
-    throw new SmsOtpError("PROVIDER_UNAVAILABLE");
+    const diagnostic = createProviderDiagnostic(
+      stage,
+      503,
+      null,
+      isTimeoutError(error) ? "provider_timeout" : "provider_network"
+    );
+    writeSmsOtpDiagnostic(diagnostic, options.diagnosticLogger);
+    throw new SmsOtpError("PROVIDER_UNAVAILABLE", diagnostic);
   }
 }
 
@@ -126,6 +228,7 @@ export async function requestSmsOtp(
 ): Promise<SmsOtpChallenge> {
   const normalizedPhone = normalizeThaiMobileNumber(phone);
   const payload = await postOtpForm(
+    "request_provider",
     thaiBulkSmsRequestUrl,
     { msisdn: normalizedPhone.local },
     options
@@ -133,7 +236,14 @@ export async function requestSmsOtp(
   const parsed = requestResponseSchema.safeParse(payload);
 
   if (!parsed.success) {
-    throw new SmsOtpError("PROVIDER_REJECTED");
+    const diagnostic = createProviderDiagnostic(
+      "request_provider",
+      400,
+      200,
+      "provider_invalid_response"
+    );
+    writeSmsOtpDiagnostic(diagnostic, options.diagnosticLogger);
+    throw new SmsOtpError("PROVIDER_REJECTED", diagnostic);
   }
 
   return {
@@ -154,6 +264,7 @@ export async function verifySmsOtp(
   }
 
   const payload = await postOtpForm(
+    "verify_provider",
     thaiBulkSmsVerifyUrl,
     { token: providerChallengeId, pin: code },
     options
@@ -161,7 +272,14 @@ export async function verifySmsOtp(
   const parsed = verifyResponseSchema.safeParse(payload);
 
   if (!parsed.success) {
-    throw new SmsOtpError("PROVIDER_REJECTED");
+    const diagnostic = createProviderDiagnostic(
+      "verify_provider",
+      400,
+      200,
+      "provider_invalid_response"
+    );
+    writeSmsOtpDiagnostic(diagnostic, options.diagnosticLogger);
+    throw new SmsOtpError("PROVIDER_REJECTED", diagnostic);
   }
 
   return { verified: true };
