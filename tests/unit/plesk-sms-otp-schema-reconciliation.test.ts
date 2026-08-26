@@ -6,6 +6,7 @@ const {
   RECONCILIATION_APPROVAL_ENV,
   SMS_OTP_SCHEMA_MIGRATION,
   SMS_OTP_SCHEMA_RECONCILIATION_TARGET,
+  classifyPreconditionReason,
   classifySmsOtpSchema,
   createPhoneVerificationChallengeSchema,
   createPleskSmsOtpSchemaReconciliationRunner,
@@ -16,6 +17,14 @@ type SchemaState = {
   migration: "applied" | "not_applied" | "unexpected";
   user: "ready" | "not_ready";
   challenge: "absent" | "ready" | "partial_or_unexpected";
+  reasonComponent?:
+    | "migration_state"
+    | "user_table"
+    | "user_columns"
+    | "user_indexes"
+    | "challenge_absence"
+    | "inspection"
+    | null;
 };
 
 const exactPartialState: SchemaState = {
@@ -426,11 +435,23 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
   });
 
   it.each([
-    ["already ready", fullyReadyState],
-    ["migration applied but challenge table missing", { ...exactPartialState, migration: "applied" }],
-    ["partial challenge table state", { ...exactPartialState, challenge: "partial_or_unexpected" }],
-    ["required User component missing", { ...exactPartialState, user: "not_ready" }]
-  ] as const)("fails closed for %s", async (_label, precondition) => {
+    ["already ready", { ...fullyReadyState, reasonComponent: "migration_state" }, "migration_state"],
+    [
+      "migration applied but challenge table missing",
+      { ...exactPartialState, migration: "applied", reasonComponent: "migration_state" },
+      "migration_state"
+    ],
+    [
+      "partial challenge table state",
+      { ...exactPartialState, challenge: "partial_or_unexpected", reasonComponent: "challenge_absence" },
+      "challenge_absence"
+    ],
+    [
+      "required User component missing",
+      { ...exactPartialState, user: "not_ready", reasonComponent: "user_columns" },
+      "user_columns"
+    ]
+  ] as const)("fails closed for %s", async (_label, precondition, expectedReason) => {
     const runner = createPleskSmsOtpSchemaReconciliationRunner();
     const bundle = createOptions([precondition as SchemaState]);
 
@@ -440,6 +461,11 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(result.shouldStart).toBe(false);
     expect(bundle.createSchema).not.toHaveBeenCalled();
     expect(bundle.spawnSync).not.toHaveBeenCalled();
+    expect(bundle.writeStatus).toHaveBeenCalledWith({
+      rootDir: bundle.options.rootDir,
+      eventName: "precondition_rejected",
+      reasonComponent: expectedReason
+    });
   });
 
   it("does not resolve migration history after DDL failure and redacts raw errors and secrets", async () => {
@@ -546,6 +572,41 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(classifySmsOtpSchema(rawSnapshot({ applied: true, challenge: true }))).toEqual(fullyReadyState);
   });
 
+  it.each([
+    [
+      "migration_state",
+      (snapshot: ReturnType<typeof rawSnapshot>) =>
+        snapshot.migrations.push({ name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 0 })
+    ],
+    [
+      "user_table",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userTables[0].databaseCollation = "utf8mb4_general_ci";
+      }
+    ],
+    [
+      "user_columns",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userColumns = snapshot.userColumns.filter((row) => row.name !== "fullName");
+      }
+    ],
+    [
+      "user_indexes",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userIndexes = snapshot.userIndexes.slice(0, 1);
+      }
+    ],
+    [
+      "challenge_absence",
+      (snapshot: ReturnType<typeof rawSnapshot>) => Object.assign(snapshot, rawSnapshot({ challenge: true }))
+    ]
+  ] as const)("classifies the closed precondition reason %s", (expectedReason, mutate) => {
+    const snapshot = rawSnapshot();
+    mutate(snapshot);
+
+    expect(classifyPreconditionReason(snapshot)).toBe(expectedReason);
+  });
+
   it("maps the static metadata-query results into the exact partial classification", async () => {
     const snapshot = rawSnapshot();
     const queryResults = [
@@ -562,7 +623,10 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       $queryRaw: vi.fn(async () => queryResults.shift())
     };
 
-    await expect(inspectSmsOtpSchema(client)).resolves.toEqual(exactPartialState);
+    await expect(inspectSmsOtpSchema(client)).resolves.toEqual({
+      ...exactPartialState,
+      reasonComponent: null
+    });
     expect(client.$queryRaw).toHaveBeenCalledTimes(8);
   });
 

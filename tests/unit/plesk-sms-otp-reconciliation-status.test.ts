@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const {
   RECONCILIATION_STATUS_RELATIVE_PATH,
   SAFE_RECONCILIATION_EVENTS,
+  SAFE_RECONCILIATION_REASON_COMPONENTS,
   getSafeReconciliationEvent,
   writePleskSmsOtpReconciliationStatus
 } = require("../../scripts/plesk-sms-otp-reconciliation-status.cjs");
@@ -84,6 +85,56 @@ describe("Plesk SMS OTP reconciliation private status", () => {
       expect(fs.readdirSync(path.dirname(destination))).toEqual([
         "sms-otp-schema-reconciliation-status.json"
       ]);
+    });
+  });
+
+  it("writes only a closed-enum precondition reason component", () => {
+    withTemporaryRoot((rootDir) => {
+      const destination = writePleskSmsOtpReconciliationStatus({
+        rootDir,
+        eventName: "precondition_rejected",
+        reasonComponent: "user_table",
+        now: () => new Date("2026-08-26T12:00:02.000Z")
+      });
+
+      expect(JSON.parse(fs.readFileSync(destination, "utf8"))).toEqual({
+        version: 1,
+        component: "sms_otp_schema_reconciliation",
+        stage: "precondition",
+        status: "rejected",
+        reasonComponent: "user_table",
+        updatedAt: "2026-08-26T12:00:02.000Z"
+      });
+      expect(SAFE_RECONCILIATION_REASON_COMPONENTS).toEqual([
+        "migration_state",
+        "user_table",
+        "user_columns",
+        "user_indexes",
+        "challenge_absence",
+        "inspection"
+      ]);
+    });
+  });
+
+  it("rejects arbitrary or misplaced reason components without persisting them", () => {
+    withTemporaryRoot((rootDir) => {
+      expect(() =>
+        writePleskSmsOtpReconciliationStatus({
+          rootDir,
+          eventName: "precondition_rejected",
+          reasonComponent: "private-password raw-sql"
+        })
+      ).toThrow("reason component is not allowlisted");
+      expect(fs.existsSync(path.join(rootDir, RECONCILIATION_STATUS_RELATIVE_PATH))).toBe(false);
+
+      expect(() =>
+        writePleskSmsOtpReconciliationStatus({
+          rootDir,
+          eventName: "complete_ready",
+          reasonComponent: "user_table"
+        })
+      ).toThrow("reason component is not allowlisted");
+      expect(fs.existsSync(path.join(rootDir, RECONCILIATION_STATUS_RELATIVE_PATH))).toBe(false);
     });
   });
 

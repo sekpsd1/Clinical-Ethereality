@@ -8,6 +8,7 @@ const {
   getCurrentMigrationTarget
 } = require("./plesk-runtime-migration-runner.cjs");
 const {
+  SAFE_RECONCILIATION_REASON_COMPONENTS,
   writePleskSmsOtpReconciliationStatus
 } = require("./plesk-sms-otp-reconciliation-status.cjs");
 
@@ -136,7 +137,7 @@ function migrationState(rows) {
     : "not_applied";
 }
 
-function userState(snapshot) {
+function userPreconditionReason(snapshot) {
   const tableReady =
     snapshot.userTables.length === 1 &&
     snapshot.userTables[0].name === "User" &&
@@ -148,7 +149,15 @@ function userState(snapshot) {
     snapshot.userIndexes.length === 2 &&
     hasExactIndex(snapshot.userIndexes, "User_normalizedPhone_key", ["normalizedPhone"], true) &&
     hasExactIndex(snapshot.userIndexes, "User_phoneVerifiedAt_idx", ["phoneVerifiedAt"], false);
-  return tableReady && columnsReady && indexesReady ? "ready" : "not_ready";
+
+  if (!tableReady) return "user_table";
+  if (!columnsReady) return "user_columns";
+  if (!indexesReady) return "user_indexes";
+  return null;
+}
+
+function userState(snapshot) {
+  return userPreconditionReason(snapshot) === null ? "ready" : "not_ready";
 }
 
 function challengeState(snapshot) {
@@ -202,6 +211,25 @@ function classifySmsOtpSchema(snapshot) {
     user: userState(snapshot),
     challenge: challengeState(snapshot)
   };
+}
+
+function classifyPreconditionReason(snapshot) {
+  if (migrationState(snapshot.migrations) !== "not_applied") return "migration_state";
+
+  const userReason = userPreconditionReason(snapshot);
+  if (userReason) return userReason;
+
+  if (challengeState(snapshot) !== "absent") return "challenge_absence";
+  return null;
+}
+
+function getPreconditionReasonComponent(precondition) {
+  if (SAFE_RECONCILIATION_REASON_COMPONENTS.includes(precondition.reasonComponent)) {
+    return precondition.reasonComponent;
+  }
+  if (precondition.migration !== "not_applied") return "migration_state";
+  if (precondition.challenge !== "absent") return "challenge_absence";
+  return "inspection";
 }
 
 async function inspectSmsOtpSchema(client) {
@@ -309,7 +337,7 @@ async function inspectSmsOtpSchema(client) {
     `)
   ]);
 
-  return classifySmsOtpSchema({
+  const snapshot = {
     migrations,
     userTables,
     userColumns,
@@ -318,7 +346,12 @@ async function inspectSmsOtpSchema(client) {
     challengeColumns,
     challengeIndexes,
     challengeForeignKeys
-  });
+  };
+
+  return {
+    ...classifySmsOtpSchema(snapshot),
+    reasonComponent: classifyPreconditionReason(snapshot)
+  };
 }
 
 async function createPhoneVerificationChallengeSchema(client) {
@@ -395,9 +428,16 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       return safeResult("not_requested", { shouldStart: true });
     }
 
-    const recordStatus = (eventName, { reconciliationRun = false } = {}) => {
+    const recordStatus = (
+      eventName,
+      { reconciliationRun = false, reasonComponent } = {}
+    ) => {
       try {
-        writeStatus({ rootDir, eventName });
+        writeStatus({
+          rootDir,
+          eventName,
+          ...(reasonComponent === undefined ? {} : { reasonComponent })
+        });
         return null;
       } catch {
         error("[sms-otp-reconciliation] stage=diagnostics status=unavailable");
@@ -455,7 +495,9 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
         precondition.user !== "ready" ||
         precondition.challenge !== "absent"
       ) {
-        statusFailure = recordStatus("precondition_rejected");
+        statusFailure = recordStatus("precondition_rejected", {
+          reasonComponent: getPreconditionReasonComponent(precondition)
+        });
         if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=precondition status=rejected");
         return safeResult("precondition_rejected");
@@ -568,6 +610,7 @@ module.exports = {
   SMS_OTP_SCHEMA_MIGRATION,
   SMS_OTP_SCHEMA_RECONCILIATION_TARGET,
   classifySmsOtpSchema,
+  classifyPreconditionReason,
   createPhoneVerificationChallengeSchema,
   createPleskSmsOtpSchemaReconciliationRunner,
   hasReconciliationTarget,
