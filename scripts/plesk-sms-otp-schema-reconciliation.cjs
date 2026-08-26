@@ -17,6 +17,12 @@ const SMS_OTP_SCHEMA_MIGRATION = "20260814090000_add_patient_phone_verification"
 const RECONCILIATION_APPROVAL_ENV = "PLESK_SMS_OTP_SCHEMA_RECONCILIATION_TARGET";
 const SMS_OTP_SCHEMA_RECONCILIATION_TARGET = `${SMS_OTP_SCHEMA_MIGRATION}:partial-schema-v1`;
 const EXPECTED_MIGRATION_SHA256 = "9e791f7de3090020269e4e357d969e0a3547fa5db194d132087fdbd3709f0000";
+const SUPPORTED_UTF8MB4_COLLATIONS = Object.freeze([
+  "utf8mb4_unicode_ci",
+  "utf8mb4_general_ci",
+  "utf8mb4_bin",
+  "utf8mb4_unicode_520_ci"
+]);
 
 const REQUIRED_USER_COLUMNS = {
   id: { dataType: "varchar", nullable: false, characterLength: 191, defaultValue: null },
@@ -138,6 +144,19 @@ function migrationState(rows) {
     : "not_applied";
 }
 
+function getUserIdColumn(snapshot) {
+  return snapshot.userColumns.find((row) => row.name === "id") ?? null;
+}
+
+function getSupportedUserIdCollation(snapshot) {
+  const userIdColumn = getUserIdColumn(snapshot);
+  const characterSet = normalizeText(userIdColumn?.characterSetName);
+  const collation = normalizeText(userIdColumn?.collationName);
+  return characterSet === "utf8mb4" && SUPPORTED_UTF8MB4_COLLATIONS.includes(collation)
+    ? collation
+    : null;
+}
+
 function userTableReasonDetail(snapshot) {
   if (snapshot.userTables.length !== 1 || snapshot.userTables[0].name !== "User") {
     return "missing";
@@ -145,10 +164,18 @@ function userTableReasonDetail(snapshot) {
 
   const table = snapshot.userTables[0];
   if (normalizeText(table.tableType) !== "base table") return "wrong_type";
-  if (typeof table.tableCollation !== "string" || typeof table.databaseCollation !== "string") {
+  const userIdColumn = getUserIdColumn(snapshot);
+  if (
+    typeof table.tableCollation !== "string" ||
+    typeof userIdColumn?.characterSetName !== "string" ||
+    typeof userIdColumn?.collationName !== "string"
+  ) {
     return "metadata_unavailable";
   }
-  if (table.tableCollation !== table.databaseCollation) return "collation_incompatible";
+  if (normalizeText(table.tableCollation) !== normalizeText(userIdColumn.collationName)) {
+    return "collation_incompatible";
+  }
+  if (!getSupportedUserIdCollation(snapshot)) return "unsupported_collation";
   return null;
 }
 
@@ -180,12 +207,22 @@ function challengeState(snapshot) {
 
   if (metadataCounts.every((count) => count === 0)) return "absent";
 
+  const userIdColumn = getUserIdColumn(snapshot);
+  const challengeUserIdColumn = snapshot.challengeColumns.find((row) => row.name === "userId");
   const tableReady =
     snapshot.challengeTables.length === 1 &&
     snapshot.challengeTables[0].name === "PhoneVerificationChallenge" &&
     normalizeText(snapshot.challengeTables[0].tableType) === "base table" &&
-    snapshot.userTables.length === 1 &&
-    snapshot.challengeTables[0].tableCollation === snapshot.userTables[0].tableCollation;
+    typeof userIdColumn?.collationName === "string" &&
+    normalizeText(snapshot.challengeTables[0].tableCollation) ===
+      normalizeText(userIdColumn.collationName);
+  const foreignKeyColumnsReady =
+    typeof userIdColumn?.characterSetName === "string" &&
+    typeof challengeUserIdColumn?.characterSetName === "string" &&
+    typeof challengeUserIdColumn?.collationName === "string" &&
+    normalizeText(challengeUserIdColumn.characterSetName) ===
+      normalizeText(userIdColumn.characterSetName) &&
+    normalizeText(challengeUserIdColumn.collationName) === normalizeText(userIdColumn.collationName);
   const columnsReady = hasExactColumns(snapshot.challengeColumns, REQUIRED_CHALLENGE_COLUMNS);
   const indexesReady =
     snapshot.challengeIndexes.length === 5 &&
@@ -212,7 +249,9 @@ function challengeState(snapshot) {
     normalizeText(snapshot.challengeForeignKeys[0].updateRule) === "cascade" &&
     normalizeText(snapshot.challengeForeignKeys[0].deleteRule) === "cascade";
 
-  return tableReady && columnsReady && indexesReady && foreignKeyReady ? "ready" : "partial_or_unexpected";
+  return tableReady && foreignKeyColumnsReady && columnsReady && indexesReady && foreignKeyReady
+    ? "ready"
+    : "partial_or_unexpected";
 }
 
 function classifySmsOtpSchema(snapshot) {
@@ -238,14 +277,23 @@ function getPreconditionReasonComponent(precondition) {
     return precondition.reasonComponent;
   }
   if (precondition.migration !== "not_applied") return "migration_state";
+  if (
+    precondition.user !== "ready" ||
+    !SUPPORTED_UTF8MB4_COLLATIONS.includes(precondition.userIdCollation)
+  ) {
+    return "user_table";
+  }
   if (precondition.challenge !== "absent") return "challenge_absence";
   return "inspection";
 }
 
 function getPreconditionReasonDetail(precondition, reasonComponent) {
   if (reasonComponent !== "user_table") return undefined;
-  return SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(precondition.reasonDetail)
-    ? precondition.reasonDetail
+  if (SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(precondition.reasonDetail)) {
+    return precondition.reasonDetail;
+  }
+  return typeof precondition.userIdCollation === "string"
+    ? "unsupported_collation"
     : "metadata_unavailable";
 }
 
@@ -265,11 +313,8 @@ async function inspectSmsOtpSchema(client) {
       SELECT
         tables.TABLE_NAME AS name,
         tables.TABLE_TYPE AS tableType,
-        tables.TABLE_COLLATION AS tableCollation,
-        schemata.DEFAULT_COLLATION_NAME AS databaseCollation
+        tables.TABLE_COLLATION AS tableCollation
       FROM INFORMATION_SCHEMA.TABLES AS tables
-      INNER JOIN INFORMATION_SCHEMA.SCHEMATA AS schemata
-        ON schemata.SCHEMA_NAME = tables.TABLE_SCHEMA
       WHERE tables.TABLE_SCHEMA = DATABASE()
         AND tables.TABLE_NAME = 'User'
     `),
@@ -288,7 +333,9 @@ async function inspectSmsOtpSchema(client) {
         IS_NULLABLE AS isNullable,
         CHARACTER_MAXIMUM_LENGTH AS characterLength,
         DATETIME_PRECISION AS datetimePrecision,
-        COLUMN_DEFAULT AS defaultValue
+        COLUMN_DEFAULT AS defaultValue,
+        CHARACTER_SET_NAME AS characterSetName,
+        COLLATION_NAME AS collationName
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'User'
@@ -319,7 +366,9 @@ async function inspectSmsOtpSchema(client) {
         IS_NULLABLE AS isNullable,
         CHARACTER_MAXIMUM_LENGTH AS characterLength,
         DATETIME_PRECISION AS datetimePrecision,
-        COLUMN_DEFAULT AS defaultValue
+        COLUMN_DEFAULT AS defaultValue,
+        CHARACTER_SET_NAME AS characterSetName,
+        COLLATION_NAME AS collationName
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'PhoneVerificationChallenge'
@@ -365,18 +414,40 @@ async function inspectSmsOtpSchema(client) {
     challengeForeignKeys
   };
 
+  const schemaState = classifySmsOtpSchema(snapshot);
   const reasonComponent = classifyPreconditionReason(snapshot);
   const reasonDetail = reasonComponent === "user_table" ? userTableReasonDetail(snapshot) : null;
+  const userIdCollation = schemaState.user === "ready" ? getSupportedUserIdCollation(snapshot) : null;
 
   return {
-    ...classifySmsOtpSchema(snapshot),
+    ...schemaState,
     reasonComponent,
-    ...(reasonDetail === null ? {} : { reasonDetail })
+    ...(reasonDetail === null ? {} : { reasonDetail }),
+    ...(userIdCollation === null ? {} : { userIdCollation })
   };
 }
 
-async function createPhoneVerificationChallengeSchema(client) {
+function getStaticChallengeTableOptions(Prisma, userIdCollation) {
+  switch (userIdCollation) {
+    case "utf8mb4_unicode_ci":
+      return Prisma.sql`DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`;
+    case "utf8mb4_general_ci":
+      return Prisma.sql`DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`;
+    case "utf8mb4_bin":
+      return Prisma.sql`DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`;
+    case "utf8mb4_unicode_520_ci":
+      return Prisma.sql`DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci`;
+    default:
+      return null;
+  }
+}
+
+async function createPhoneVerificationChallengeSchema(client, userIdCollation) {
   const { Prisma } = require("@prisma/client");
+  const tableOptions = getStaticChallengeTableOptions(Prisma, userIdCollation);
+  if (!tableOptions) {
+    throw new Error("SMS OTP reconciliation collation is not allowlisted.");
+  }
   await client.$executeRaw(Prisma.sql`
     CREATE TABLE \`PhoneVerificationChallenge\` (
       \`id\` VARCHAR(191) NOT NULL,
@@ -394,7 +465,7 @@ async function createPhoneVerificationChallengeSchema(client) {
       INDEX \`PhoneVerificationChallenge_userId_requestedAt_idx\` (\`userId\`, \`requestedAt\`),
       CONSTRAINT \`PhoneVerificationChallenge_userId_fkey\`
         FOREIGN KEY (\`userId\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
-    )
+    ) ${tableOptions}
   `);
 }
 
@@ -515,7 +586,8 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       if (
         precondition.migration !== "not_applied" ||
         precondition.user !== "ready" ||
-        precondition.challenge !== "absent"
+        precondition.challenge !== "absent" ||
+        !SUPPORTED_UTF8MB4_COLLATIONS.includes(precondition.userIdCollation)
       ) {
         const reasonComponent = getPreconditionReasonComponent(precondition);
         statusFailure = recordStatus("precondition_rejected", {
@@ -536,7 +608,7 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       schemaMutationStarted = true;
 
       try {
-        await createSchema(client);
+        await createSchema(client, precondition.userIdCollation);
       } catch {
         statusFailure = recordStatus("schema_creation_failed", { reconciliationRun: true });
         if (statusFailure) return statusFailure;
@@ -551,7 +623,8 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       if (
         parityBeforeResolve.migration !== "not_applied" ||
         parityBeforeResolve.user !== "ready" ||
-        parityBeforeResolve.challenge !== "ready"
+        parityBeforeResolve.challenge !== "ready" ||
+        parityBeforeResolve.userIdCollation !== precondition.userIdCollation
       ) {
         statusFailure = recordStatus("parity_before_resolve_failed", { reconciliationRun: true });
         if (statusFailure) return statusFailure;
@@ -593,7 +666,8 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
       if (
         finalParity.migration !== "applied" ||
         finalParity.user !== "ready" ||
-        finalParity.challenge !== "ready"
+        finalParity.challenge !== "ready" ||
+        finalParity.userIdCollation !== precondition.userIdCollation
       ) {
         statusFailure = recordStatus("final_parity_failed", { reconciliationRun: true });
         if (statusFailure) return statusFailure;
@@ -633,6 +707,7 @@ module.exports = {
   RECONCILIATION_APPROVAL_ENV,
   SMS_OTP_SCHEMA_MIGRATION,
   SMS_OTP_SCHEMA_RECONCILIATION_TARGET,
+  SUPPORTED_UTF8MB4_COLLATIONS,
   classifySmsOtpSchema,
   classifyPreconditionReason,
   userTableReasonDetail,

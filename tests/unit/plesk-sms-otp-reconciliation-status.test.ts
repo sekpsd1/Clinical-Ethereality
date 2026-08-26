@@ -120,7 +120,8 @@ describe("Plesk SMS OTP reconciliation private status", () => {
         "missing",
         "wrong_type",
         "metadata_unavailable",
-        "collation_incompatible"
+        "collation_incompatible",
+        "unsupported_collation"
       ]);
     });
   });

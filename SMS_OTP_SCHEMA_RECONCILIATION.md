@@ -36,11 +36,13 @@ The guarded runner proceeds only when all conditions match:
 2. `PLESK_MIGRATION_TARGET` is absent.
 3. The reviewed migration file is still the latest source migration and matches its pinned SHA-256 fingerprint.
 4. The named Prisma migration is not successfully applied.
-5. The four added `User` columns, the referenced `User.id`, both required `User` indexes, and table/database collation compatibility exactly match the committed schema requirements.
+5. The four added `User` columns, the referenced `User.id`, and both required `User` indexes exactly match the committed schema requirements. `User.id` must be `VARCHAR(191)` with `utf8mb4` and one closed-allowlist collation: `utf8mb4_unicode_ci`, `utf8mb4_general_ci`, `utf8mb4_bin`, or `utf8mb4_unicode_520_ci`.
 6. `PhoneVerificationChallenge` and all of its columns, indexes, and foreign key are completely absent.
 7. The Prisma CLI is present in the application root.
 
 Empty, arbitrary, stale, conflicting, already-ready, partially present, or otherwise unexpected states fail closed before DDL.
+
+For the string foreign key, `PhoneVerificationChallenge.userId` must match the character set and collation of `User.id`; the database default need not match. The runner selects only a static pre-reviewed `CREATE TABLE` option for the allowlisted `User.id` collation, never interpolates raw metadata into SQL, and verifies table plus FK-column parity before migration resolution and again afterward.
 
 ## Approved Execution Sequence
 

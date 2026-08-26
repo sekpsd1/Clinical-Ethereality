@@ -6,6 +6,7 @@ const {
   RECONCILIATION_APPROVAL_ENV,
   SMS_OTP_SCHEMA_MIGRATION,
   SMS_OTP_SCHEMA_RECONCILIATION_TARGET,
+  SUPPORTED_UTF8MB4_COLLATIONS,
   classifyPreconditionReason,
   classifySmsOtpSchema,
   createPhoneVerificationChallengeSchema,
@@ -13,6 +14,8 @@ const {
   inspectSmsOtpSchema,
   userTableReasonDetail
 } = require("../../scripts/plesk-sms-otp-schema-reconciliation.cjs");
+
+const supportedUtf8mb4Collations = [...SUPPORTED_UTF8MB4_COLLATIONS] as string[];
 
 type SchemaState = {
   migration: "applied" | "not_applied" | "unexpected";
@@ -26,23 +29,32 @@ type SchemaState = {
     | "challenge_absence"
     | "inspection"
     | null;
-  reasonDetail?: "missing" | "wrong_type" | "metadata_unavailable" | "collation_incompatible";
+  reasonDetail?:
+    | "missing"
+    | "wrong_type"
+    | "metadata_unavailable"
+    | "collation_incompatible"
+    | "unsupported_collation";
+  userIdCollation?: string;
 };
 
 const exactPartialState: SchemaState = {
   migration: "not_applied",
   user: "ready",
-  challenge: "absent"
+  challenge: "absent",
+  userIdCollation: "utf8mb4_unicode_ci"
 };
 const parityBeforeResolve: SchemaState = {
   migration: "not_applied",
   user: "ready",
-  challenge: "ready"
+  challenge: "ready",
+  userIdCollation: "utf8mb4_unicode_ci"
 };
 const fullyReadyState: SchemaState = {
   migration: "applied",
   user: "ready",
-  challenge: "ready"
+  challenge: "ready",
+  userIdCollation: "utf8mb4_unicode_ci"
 };
 
 function approvedEnv(extra: Record<string, string> = {}) {
@@ -116,7 +128,7 @@ function serializedLogs(loggers: ReturnType<typeof createLoggers>) {
   return [...loggers.logs, ...loggers.errors].join("\n");
 }
 
-function userColumns() {
+function userColumns(userIdCollation = "utf8mb4_unicode_ci") {
   return [
     {
       name: "id",
@@ -124,7 +136,9 @@ function userColumns() {
       isNullable: "NO",
       characterLength: 191,
       datetimePrecision: null,
-      defaultValue: null
+      defaultValue: null,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
     },
     {
       name: "fullName",
@@ -132,7 +146,9 @@ function userColumns() {
       isNullable: "YES",
       characterLength: 191,
       datetimePrecision: null,
-      defaultValue: null
+      defaultValue: null,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
     },
     {
       name: "dateOfBirth",
@@ -140,7 +156,9 @@ function userColumns() {
       isNullable: "YES",
       characterLength: null,
       datetimePrecision: null,
-      defaultValue: null
+      defaultValue: null,
+      characterSetName: null,
+      collationName: null
     },
     {
       name: "normalizedPhone",
@@ -148,7 +166,9 @@ function userColumns() {
       isNullable: "YES",
       characterLength: 20,
       datetimePrecision: null,
-      defaultValue: null
+      defaultValue: null,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
     },
     {
       name: "phoneVerifiedAt",
@@ -156,7 +176,9 @@ function userColumns() {
       isNullable: "YES",
       characterLength: null,
       datetimePrecision: 3,
-      defaultValue: null
+      defaultValue: null,
+      characterSetName: null,
+      collationName: null
     }
   ];
 }
@@ -180,25 +202,45 @@ function userIndexes() {
   ];
 }
 
-function challengeColumns() {
+function challengeColumns(userIdCollation = "utf8mb4_unicode_ci") {
   const column = (
     name: string,
     dataType: string,
     isNullable: "YES" | "NO",
-    options: { characterLength?: number; datetimePrecision?: number; defaultValue?: string | null } = {}
+    options: {
+      characterLength?: number;
+      datetimePrecision?: number;
+      defaultValue?: string | null;
+      characterSetName?: string;
+      collationName?: string;
+    } = {}
   ) => ({
     name,
     dataType,
     isNullable,
     characterLength: options.characterLength ?? null,
     datetimePrecision: options.datetimePrecision ?? null,
-    defaultValue: Object.prototype.hasOwnProperty.call(options, "defaultValue") ? options.defaultValue : null
+    defaultValue: Object.prototype.hasOwnProperty.call(options, "defaultValue") ? options.defaultValue : null,
+    characterSetName: options.characterSetName ?? null,
+    collationName: options.collationName ?? null
   });
 
   return [
-    column("id", "varchar", "NO", { characterLength: 191 }),
-    column("userId", "varchar", "NO", { characterLength: 191 }),
-    column("normalizedPhone", "varchar", "NO", { characterLength: 20 }),
+    column("id", "varchar", "NO", {
+      characterLength: 191,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
+    }),
+    column("userId", "varchar", "NO", {
+      characterLength: 191,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
+    }),
+    column("normalizedPhone", "varchar", "NO", {
+      characterLength: 20,
+      characterSetName: "utf8mb4",
+      collationName: userIdCollation
+    }),
     column("providerChallengeCiphertext", "text", "NO"),
     column("expiresAt", "datetime", "NO", { datetimePrecision: 3 }),
     column("attemptCount", "int", "NO", { defaultValue: "0" }),
@@ -243,29 +285,39 @@ function challengeIndexes() {
   ];
 }
 
-function rawSnapshot({ applied = false, challenge = false } = {}) {
+function rawSnapshot({
+  applied = false,
+  challenge = false,
+  userIdCollation = "utf8mb4_unicode_ci",
+  challengeCollation
+}: {
+  applied?: boolean;
+  challenge?: boolean;
+  userIdCollation?: string;
+  challengeCollation?: string;
+} = {}) {
+  const resolvedChallengeCollation = challengeCollation ?? userIdCollation;
   return {
     migrations: applied ? [{ name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 0 }] : [],
     userTables: [
       {
         name: "User",
         tableType: "BASE TABLE",
-        tableCollation: "utf8mb4_unicode_ci",
-        databaseCollation: "utf8mb4_unicode_ci"
+        tableCollation: userIdCollation
       }
     ],
-    userColumns: userColumns(),
+    userColumns: userColumns(userIdCollation),
     userIndexes: userIndexes(),
     challengeTables: challenge
       ? [
           {
             name: "PhoneVerificationChallenge",
             tableType: "BASE TABLE",
-            tableCollation: "utf8mb4_unicode_ci"
+            tableCollation: resolvedChallengeCollation
           }
         ]
       : [],
-    challengeColumns: challenge ? challengeColumns() : [],
+    challengeColumns: challenge ? challengeColumns(resolvedChallengeCollation) : [],
     challengeIndexes: challenge ? challengeIndexes() : [],
     challengeForeignKeys: challenge
       ? [
@@ -360,7 +412,7 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
 
     expect(result).toEqual({ outcome: "completed", shouldStart: false, reconciliationRun: true });
     expect(bundle.createSchema).toHaveBeenCalledTimes(1);
-    expect(bundle.createSchema).toHaveBeenCalledWith(bundle.client);
+    expect(bundle.createSchema).toHaveBeenCalledWith(bundle.client, "utf8mb4_unicode_ci");
     expect(bundle.spawnSync).toHaveBeenCalledTimes(1);
     expect(bundle.spawnSync).toHaveBeenCalledWith(
       process.execPath,
@@ -481,6 +533,33 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     });
   });
 
+  it("fails closed for unsupported injection-shaped metadata without emitting the raw value", async () => {
+    const runner = createPleskSmsOtpSchemaReconciliationRunner();
+    const rawCollation = "utf8mb4_unicode_ci; DROP TABLE User";
+    const bundle = createOptions([
+      {
+        ...exactPartialState,
+        user: "not_ready",
+        reasonComponent: "user_table",
+        reasonDetail: "unsupported_collation",
+        userIdCollation: rawCollation
+      }
+    ]);
+
+    const result = await runner(withInspector(bundle));
+
+    expect(result.outcome).toBe("precondition_rejected");
+    expect(bundle.createSchema).not.toHaveBeenCalled();
+    expect(bundle.spawnSync).not.toHaveBeenCalled();
+    expect(bundle.writeStatus).toHaveBeenCalledWith({
+      rootDir: bundle.options.rootDir,
+      eventName: "precondition_rejected",
+      reasonComponent: "user_table",
+      reasonDetail: "unsupported_collation"
+    });
+    expect(serializedLogs(bundle.loggers)).not.toContain(rawCollation);
+  });
+
   it("does not resolve migration history after DDL failure and redacts raw errors and secrets", async () => {
     const runner = createPleskSmsOtpSchemaReconciliationRunner();
     const bundle = createOptions([exactPartialState]);
@@ -581,8 +660,16 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
   });
 
   it("classifies the exact Production partial shape and the fully ready shape", () => {
-    expect(classifySmsOtpSchema(rawSnapshot())).toEqual(exactPartialState);
-    expect(classifySmsOtpSchema(rawSnapshot({ applied: true, challenge: true }))).toEqual(fullyReadyState);
+    expect(classifySmsOtpSchema(rawSnapshot())).toEqual({
+      migration: "not_applied",
+      user: "ready",
+      challenge: "absent"
+    });
+    expect(classifySmsOtpSchema(rawSnapshot({ applied: true, challenge: true }))).toEqual({
+      migration: "applied",
+      user: "ready",
+      challenge: "ready"
+    });
   });
 
   it.each([
@@ -594,7 +681,7 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     [
       "user_table",
       (snapshot: ReturnType<typeof rawSnapshot>) => {
-        snapshot.userTables[0].databaseCollation = "utf8mb4_general_ci";
+        snapshot.userTables[0].tableCollation = "utf8mb4_general_ci";
       }
     ],
     [
@@ -631,13 +718,20 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     [
       "metadata_unavailable",
       (snapshot: ReturnType<typeof rawSnapshot>) => {
-        snapshot.userTables[0].databaseCollation = null as unknown as string;
+        snapshot.userColumns[0].collationName = null as unknown as string;
       }
     ],
     [
       "collation_incompatible",
       (snapshot: ReturnType<typeof rawSnapshot>) => {
-        snapshot.userTables[0].databaseCollation = "utf8mb4_general_ci";
+        snapshot.userTables[0].tableCollation = "utf8mb4_general_ci";
+      }
+    ],
+    [
+      "unsupported_collation",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userTables[0].tableCollation = "utf8mb4_injection_ci";
+        snapshot.userColumns[0].collationName = "utf8mb4_injection_ci";
       }
     ]
   ] as const)("classifies the closed User table reason detail %s", (expectedReason, mutate) => {
@@ -671,21 +765,65 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(client.$queryRaw).toHaveBeenCalledTimes(8);
   });
 
-  it("uses one static DDL statement for only the empty challenge table dependency stack", async () => {
+  it("retains the allowlisted User.id collation for post-create and final parity inspection", async () => {
+    const snapshot = rawSnapshot({ challenge: true });
+    const queryResults = [
+      snapshot.userTables,
+      snapshot.migrations,
+      snapshot.userColumns,
+      snapshot.userIndexes,
+      snapshot.challengeTables,
+      snapshot.challengeColumns,
+      snapshot.challengeIndexes,
+      snapshot.challengeForeignKeys
+    ];
+    const client = {
+      $queryRaw: vi.fn(async () => queryResults.shift())
+    };
+
+    await expect(inspectSmsOtpSchema(client)).resolves.toEqual({
+      ...parityBeforeResolve,
+      reasonComponent: "challenge_absence"
+    });
+    expect(client.$queryRaw).toHaveBeenCalledTimes(8);
+  });
+
+  it("ignores the database default when the supported User and User.id collations match", () => {
+    const snapshot = rawSnapshot();
+    Object.assign(snapshot.userTables[0], { databaseCollation: "utf8mb4_general_ci" });
+
+    expect(userTableReasonDetail(snapshot)).toBeNull();
+    expect(classifyPreconditionReason(snapshot)).toBeNull();
+  });
+
+  it.each(supportedUtf8mb4Collations)(
+    "uses a static %s DDL statement for only the empty challenge table dependency stack",
+    async (collation) => {
+      const client = { $executeRaw: vi.fn().mockResolvedValue(0) };
+
+      await createPhoneVerificationChallengeSchema(client, collation);
+
+      expect(client.$executeRaw).toHaveBeenCalledTimes(1);
+      const query = client.$executeRaw.mock.calls[0][0] as { sql: string; values: unknown[] };
+      expect(query.values).toEqual([]);
+      expect(query.sql).toContain("CREATE TABLE `PhoneVerificationChallenge`");
+      expect(query.sql).toContain(`DEFAULT CHARACTER SET utf8mb4 COLLATE ${collation}`);
+      expect(query.sql).toContain("PhoneVerificationChallenge_userId_expiresAt_idx");
+      expect(query.sql).toContain("PhoneVerificationChallenge_userId_requestedAt_idx");
+      expect(query.sql).toContain("PhoneVerificationChallenge_userId_fkey");
+      expect(query.sql).not.toContain("ALTER TABLE `User`");
+      expect(query.sql).not.toContain("INSERT INTO");
+      expect(query.sql).not.toContain("UPDATE `User`");
+    }
+  );
+
+  it("rejects injection-shaped collation metadata before executing DDL", async () => {
     const client = { $executeRaw: vi.fn().mockResolvedValue(0) };
 
-    await createPhoneVerificationChallengeSchema(client);
-
-    expect(client.$executeRaw).toHaveBeenCalledTimes(1);
-    const query = client.$executeRaw.mock.calls[0][0] as { sql: string; values: unknown[] };
-    expect(query.values).toEqual([]);
-    expect(query.sql).toContain("CREATE TABLE `PhoneVerificationChallenge`");
-    expect(query.sql).toContain("PhoneVerificationChallenge_userId_expiresAt_idx");
-    expect(query.sql).toContain("PhoneVerificationChallenge_userId_requestedAt_idx");
-    expect(query.sql).toContain("PhoneVerificationChallenge_userId_fkey");
-    expect(query.sql).not.toContain("ALTER TABLE `User`");
-    expect(query.sql).not.toContain("INSERT INTO");
-    expect(query.sql).not.toContain("UPDATE `User`");
+    await expect(
+      createPhoneVerificationChallengeSchema(client, "utf8mb4_unicode_ci; DROP TABLE User")
+    ).rejects.toThrow("collation is not allowlisted");
+    expect(client.$executeRaw).not.toHaveBeenCalled();
   });
 
   it("accepts Prisma failed history when a later supported resolve row is successfully applied", () => {
@@ -698,6 +836,15 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
   it("classifies any partially present challenge dependency as unexpected", () => {
     const snapshot = rawSnapshot({ challenge: true });
     snapshot.challengeIndexes.pop();
+
+    expect(classifySmsOtpSchema(snapshot).challenge).toBe("partial_or_unexpected");
+  });
+
+  it("fails parity when the challenge FK column collation differs from User.id", () => {
+    const snapshot = rawSnapshot({ applied: true, challenge: true });
+    const challengeUserId = snapshot.challengeColumns.find((row) => row.name === "userId");
+    if (!challengeUserId) throw new Error("test fixture is missing challenge userId");
+    challengeUserId.collationName = "utf8mb4_general_ci";
 
     expect(classifySmsOtpSchema(snapshot).challenge).toBe("partial_or_unexpected");
   });

@@ -48,7 +48,8 @@ const SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS = Object.freeze([
   "missing",
   "wrong_type",
   "metadata_unavailable",
-  "collation_incompatible"
+  "collation_incompatible",
+  "unsupported_collation"
 ]);
 
 function getSafeReconciliationEvent(eventName) {
