@@ -9,6 +9,7 @@ const {
 } = require("./plesk-runtime-migration-runner.cjs");
 const {
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   writePleskSmsOtpReconciliationStatus
 } = require("./plesk-sms-otp-reconciliation-status.cjs");
 
@@ -137,20 +138,29 @@ function migrationState(rows) {
     : "not_applied";
 }
 
+function userTableReasonDetail(snapshot) {
+  if (snapshot.userTables.length !== 1 || snapshot.userTables[0].name !== "User") {
+    return "missing";
+  }
+
+  const table = snapshot.userTables[0];
+  if (normalizeText(table.tableType) !== "base table") return "wrong_type";
+  if (typeof table.tableCollation !== "string" || typeof table.databaseCollation !== "string") {
+    return "metadata_unavailable";
+  }
+  if (table.tableCollation !== table.databaseCollation) return "collation_incompatible";
+  return null;
+}
+
 function userPreconditionReason(snapshot) {
-  const tableReady =
-    snapshot.userTables.length === 1 &&
-    snapshot.userTables[0].name === "User" &&
-    normalizeText(snapshot.userTables[0].tableType) === "base table" &&
-    typeof snapshot.userTables[0].tableCollation === "string" &&
-    snapshot.userTables[0].tableCollation === snapshot.userTables[0].databaseCollation;
+  const tableReasonDetail = userTableReasonDetail(snapshot);
   const columnsReady = hasExactColumns(snapshot.userColumns, REQUIRED_USER_COLUMNS);
   const indexesReady =
     snapshot.userIndexes.length === 2 &&
     hasExactIndex(snapshot.userIndexes, "User_normalizedPhone_key", ["normalizedPhone"], true) &&
     hasExactIndex(snapshot.userIndexes, "User_phoneVerifiedAt_idx", ["phoneVerifiedAt"], false);
 
-  if (!tableReady) return "user_table";
+  if (tableReasonDetail) return "user_table";
   if (!columnsReady) return "user_columns";
   if (!indexesReady) return "user_indexes";
   return null;
@@ -230,6 +240,13 @@ function getPreconditionReasonComponent(precondition) {
   if (precondition.migration !== "not_applied") return "migration_state";
   if (precondition.challenge !== "absent") return "challenge_absence";
   return "inspection";
+}
+
+function getPreconditionReasonDetail(precondition, reasonComponent) {
+  if (reasonComponent !== "user_table") return undefined;
+  return SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(precondition.reasonDetail)
+    ? precondition.reasonDetail
+    : "metadata_unavailable";
 }
 
 async function inspectSmsOtpSchema(client) {
@@ -348,9 +365,13 @@ async function inspectSmsOtpSchema(client) {
     challengeForeignKeys
   };
 
+  const reasonComponent = classifyPreconditionReason(snapshot);
+  const reasonDetail = reasonComponent === "user_table" ? userTableReasonDetail(snapshot) : null;
+
   return {
     ...classifySmsOtpSchema(snapshot),
-    reasonComponent: classifyPreconditionReason(snapshot)
+    reasonComponent,
+    ...(reasonDetail === null ? {} : { reasonDetail })
   };
 }
 
@@ -430,13 +451,14 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
 
     const recordStatus = (
       eventName,
-      { reconciliationRun = false, reasonComponent } = {}
+      { reconciliationRun = false, reasonComponent, reasonDetail } = {}
     ) => {
       try {
         writeStatus({
           rootDir,
           eventName,
-          ...(reasonComponent === undefined ? {} : { reasonComponent })
+          ...(reasonComponent === undefined ? {} : { reasonComponent }),
+          ...(reasonDetail === undefined ? {} : { reasonDetail })
         });
         return null;
       } catch {
@@ -495,8 +517,10 @@ function createPleskSmsOtpSchemaReconciliationRunner() {
         precondition.user !== "ready" ||
         precondition.challenge !== "absent"
       ) {
+        const reasonComponent = getPreconditionReasonComponent(precondition);
         statusFailure = recordStatus("precondition_rejected", {
-          reasonComponent: getPreconditionReasonComponent(precondition)
+          reasonComponent,
+          reasonDetail: getPreconditionReasonDetail(precondition, reasonComponent)
         });
         if (statusFailure) return statusFailure;
         error("[sms-otp-reconciliation] stage=precondition status=rejected");
@@ -611,6 +635,7 @@ module.exports = {
   SMS_OTP_SCHEMA_RECONCILIATION_TARGET,
   classifySmsOtpSchema,
   classifyPreconditionReason,
+  userTableReasonDetail,
   createPhoneVerificationChallengeSchema,
   createPleskSmsOtpSchemaReconciliationRunner,
   hasReconciliationTarget,

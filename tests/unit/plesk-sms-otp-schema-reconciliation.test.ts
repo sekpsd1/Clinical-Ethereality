@@ -10,7 +10,8 @@ const {
   classifySmsOtpSchema,
   createPhoneVerificationChallengeSchema,
   createPleskSmsOtpSchemaReconciliationRunner,
-  inspectSmsOtpSchema
+  inspectSmsOtpSchema,
+  userTableReasonDetail
 } = require("../../scripts/plesk-sms-otp-schema-reconciliation.cjs");
 
 type SchemaState = {
@@ -25,6 +26,7 @@ type SchemaState = {
     | "challenge_absence"
     | "inspection"
     | null;
+  reasonDetail?: "missing" | "wrong_type" | "metadata_unavailable" | "collation_incompatible";
 };
 
 const exactPartialState: SchemaState = {
@@ -450,6 +452,16 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
       "required User component missing",
       { ...exactPartialState, user: "not_ready", reasonComponent: "user_columns" },
       "user_columns"
+    ],
+    [
+      "User table collation mismatch",
+      {
+        ...exactPartialState,
+        user: "not_ready",
+        reasonComponent: "user_table",
+        reasonDetail: "collation_incompatible"
+      },
+      "user_table"
     ]
   ] as const)("fails closed for %s", async (_label, precondition, expectedReason) => {
     const runner = createPleskSmsOtpSchemaReconciliationRunner();
@@ -464,7 +476,8 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     expect(bundle.writeStatus).toHaveBeenCalledWith({
       rootDir: bundle.options.rootDir,
       eventName: "precondition_rejected",
-      reasonComponent: expectedReason
+      reasonComponent: expectedReason,
+      ...(expectedReason === "user_table" ? { reasonDetail: "collation_incompatible" } : {})
     });
   });
 
@@ -605,6 +618,34 @@ describe("Plesk SMS OTP partial-schema reconciliation", () => {
     mutate(snapshot);
 
     expect(classifyPreconditionReason(snapshot)).toBe(expectedReason);
+  });
+
+  it.each([
+    ["missing", (snapshot: ReturnType<typeof rawSnapshot>) => (snapshot.userTables = [])],
+    [
+      "wrong_type",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userTables[0].tableType = "VIEW";
+      }
+    ],
+    [
+      "metadata_unavailable",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userTables[0].databaseCollation = null as unknown as string;
+      }
+    ],
+    [
+      "collation_incompatible",
+      (snapshot: ReturnType<typeof rawSnapshot>) => {
+        snapshot.userTables[0].databaseCollation = "utf8mb4_general_ci";
+      }
+    ]
+  ] as const)("classifies the closed User table reason detail %s", (expectedReason, mutate) => {
+    const snapshot = rawSnapshot();
+    mutate(snapshot);
+
+    expect(userTableReasonDetail(snapshot)).toBe(expectedReason);
+    expect(classifyPreconditionReason(snapshot)).toBe("user_table");
   });
 
   it("maps the static metadata-query results into the exact partial classification", async () => {

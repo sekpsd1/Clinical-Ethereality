@@ -44,6 +44,13 @@ const SAFE_RECONCILIATION_REASON_COMPONENTS = Object.freeze([
   "inspection"
 ]);
 
+const SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS = Object.freeze([
+  "missing",
+  "wrong_type",
+  "metadata_unavailable",
+  "collation_incompatible"
+]);
+
 function getSafeReconciliationEvent(eventName) {
   if (!Object.prototype.hasOwnProperty.call(SAFE_RECONCILIATION_EVENTS, eventName)) {
     throw new Error("SMS OTP reconciliation status event is not allowlisted.");
@@ -56,6 +63,7 @@ function writePleskSmsOtpReconciliationStatus({
   rootDir,
   eventName,
   reasonComponent,
+  reasonDetail,
   now = () => new Date()
 }) {
   if (typeof rootDir !== "string" || !path.isAbsolute(rootDir)) {
@@ -70,6 +78,14 @@ function writePleskSmsOtpReconciliationStatus({
   ) {
     throw new Error("SMS OTP reconciliation status reason component is not allowlisted.");
   }
+  if (
+    reasonDetail !== undefined &&
+    (eventName !== "precondition_rejected" ||
+      reasonComponent !== "user_table" ||
+      !SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS.includes(reasonDetail))
+  ) {
+    throw new Error("SMS OTP reconciliation status reason detail is not allowlisted.");
+  }
   const updatedAt = now();
   if (!(updatedAt instanceof Date) || Number.isNaN(updatedAt.getTime())) {
     throw new Error("SMS OTP reconciliation status time is invalid.");
@@ -83,6 +99,7 @@ function writePleskSmsOtpReconciliationStatus({
     component: "sms_otp_schema_reconciliation",
     ...event,
     ...(reasonComponent === undefined ? {} : { reasonComponent }),
+    ...(reasonDetail === undefined ? {} : { reasonDetail }),
     updatedAt: updatedAt.toISOString()
   };
 
@@ -113,6 +130,7 @@ module.exports = {
   RECONCILIATION_STATUS_RELATIVE_PATH,
   SAFE_RECONCILIATION_EVENTS,
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   getSafeReconciliationEvent,
   writePleskSmsOtpReconciliationStatus
 };

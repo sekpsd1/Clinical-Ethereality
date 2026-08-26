@@ -7,6 +7,7 @@ const {
   RECONCILIATION_STATUS_RELATIVE_PATH,
   SAFE_RECONCILIATION_EVENTS,
   SAFE_RECONCILIATION_REASON_COMPONENTS,
+  SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS,
   getSafeReconciliationEvent,
   writePleskSmsOtpReconciliationStatus
 } = require("../../scripts/plesk-sms-otp-reconciliation-status.cjs");
@@ -94,6 +95,7 @@ describe("Plesk SMS OTP reconciliation private status", () => {
         rootDir,
         eventName: "precondition_rejected",
         reasonComponent: "user_table",
+        reasonDetail: "collation_incompatible",
         now: () => new Date("2026-08-26T12:00:02.000Z")
       });
 
@@ -103,6 +105,7 @@ describe("Plesk SMS OTP reconciliation private status", () => {
         stage: "precondition",
         status: "rejected",
         reasonComponent: "user_table",
+        reasonDetail: "collation_incompatible",
         updatedAt: "2026-08-26T12:00:02.000Z"
       });
       expect(SAFE_RECONCILIATION_REASON_COMPONENTS).toEqual([
@@ -112,6 +115,12 @@ describe("Plesk SMS OTP reconciliation private status", () => {
         "user_indexes",
         "challenge_absence",
         "inspection"
+      ]);
+      expect(SAFE_RECONCILIATION_USER_TABLE_REASON_DETAILS).toEqual([
+        "missing",
+        "wrong_type",
+        "metadata_unavailable",
+        "collation_incompatible"
       ]);
     });
   });
@@ -134,6 +143,30 @@ describe("Plesk SMS OTP reconciliation private status", () => {
           reasonComponent: "user_table"
         })
       ).toThrow("reason component is not allowlisted");
+      expect(fs.existsSync(path.join(rootDir, RECONCILIATION_STATUS_RELATIVE_PATH))).toBe(false);
+    });
+  });
+
+  it("rejects arbitrary or misplaced User table reason details without persisting them", () => {
+    withTemporaryRoot((rootDir) => {
+      expect(() =>
+        writePleskSmsOtpReconciliationStatus({
+          rootDir,
+          eventName: "precondition_rejected",
+          reasonComponent: "user_table",
+          reasonDetail: "private-collation raw-sql"
+        })
+      ).toThrow("reason detail is not allowlisted");
+      expect(fs.existsSync(path.join(rootDir, RECONCILIATION_STATUS_RELATIVE_PATH))).toBe(false);
+
+      expect(() =>
+        writePleskSmsOtpReconciliationStatus({
+          rootDir,
+          eventName: "precondition_rejected",
+          reasonComponent: "user_columns",
+          reasonDetail: "missing"
+        })
+      ).toThrow("reason detail is not allowlisted");
       expect(fs.existsSync(path.join(rootDir, RECONCILIATION_STATUS_RELATIVE_PATH))).toBe(false);
     });
   });
