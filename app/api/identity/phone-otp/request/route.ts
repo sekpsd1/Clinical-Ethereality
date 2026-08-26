@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { assertRole } from "@/lib/permissions";
 import { requestPhoneVerificationSchema } from "@/features/identity-verification/schema";
+import { writeSmsOtpDiagnostic } from "@/lib/sms/otp";
 import {
   getPatientVerificationMessage,
   requestPatientPhoneVerification
@@ -15,6 +16,13 @@ export async function POST(request: Request) {
     assertRole(session, ["customer"]);
     const parsed = requestPhoneVerificationSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
+      writeSmsOtpDiagnostic({
+        stage: "request_schema",
+        applicationHttpStatus: 400,
+        providerHttpStatus: null,
+        providerErrorCode: null,
+        providerErrorCategory: "not_applicable"
+      });
       return NextResponse.json({ ok: false, message: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
     }
 
