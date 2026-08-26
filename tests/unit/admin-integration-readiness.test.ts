@@ -12,6 +12,11 @@ vi.mock("@/lib/storage/provider", () => ({ getStorageReadiness: mocks.getStorage
 
 import { getIntegrationReadiness } from "@/features/admin/integrations/readiness";
 
+const schemaNotReady = {
+  status: "not_ready" as const,
+  components: [{ name: "PhoneVerificationChallenge.table" as const, status: "not_ready" as const }]
+};
+
 describe("provider-specific Admin payment readiness", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,5 +55,19 @@ describe("provider-specific Admin payment readiness", () => {
     expect(slipReadiness?.status).toBe("ยังไม่ครบ");
     expect(slipReadiness?.missing).toContain("SLIP_VERIFICATION_EXPECTED_RECEIVER_NAME");
     expect(slipReadiness?.missing).not.toContain("SLIPOK_BRANCH_ID");
+  });
+
+  it("keeps SMS environment readiness separate from database schema readiness", () => {
+    mocks.getAppEnv.mockReturnValue({
+      SMS_OTP_CHALLENGE_ENCRYPTION_KEY: "fixture-encryption-value"
+    });
+
+    const readiness = getIntegrationReadiness(schemaNotReady);
+    const smsEnvironment = readiness.items.find((item) => item.label === "SMS OTP — Environment");
+
+    expect(smsEnvironment?.status).toBe("พร้อม");
+    expect(readiness.smsOtpSchema.status).toBe("not_ready");
+    expect(readiness.summary.partial).toBeGreaterThan(0);
+    expect(JSON.stringify(readiness)).not.toContain("fixture-encryption-value");
   });
 });

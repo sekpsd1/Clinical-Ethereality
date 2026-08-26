@@ -1,6 +1,10 @@
 import { getAppEnv } from "@/lib/env/schema";
 import { getStorageReadiness } from "@/lib/storage/provider";
 import { getSmsOtpReadiness } from "@/lib/sms/otp";
+import {
+  SMS_OTP_SCHEMA_COMPONENTS,
+  type SmsOtpSchemaReadiness
+} from "@/features/admin/integrations/sms-otp-schema-readiness";
 
 export type IntegrationReadinessItem = {
   label: string;
@@ -13,10 +17,12 @@ export type IntegrationReadinessItem = {
 
 export type IntegrationReadinessData = {
   items: IntegrationReadinessItem[];
+  smsOtpSchema: SmsOtpSchemaReadiness;
   summary: {
     ready: number;
     partial: number;
     missing: number;
+    unavailable: number;
     total: number;
   };
 };
@@ -40,7 +46,14 @@ function buildItem(label: string, detail: string, checks: Array<[string, boolean
   };
 }
 
-export function getIntegrationReadiness(): IntegrationReadinessData {
+const DEFAULT_SMS_OTP_SCHEMA_READINESS: SmsOtpSchemaReadiness = {
+  status: "unavailable",
+  components: SMS_OTP_SCHEMA_COMPONENTS.map((name) => ({ name, status: "unavailable" }))
+};
+
+export function getIntegrationReadiness(
+  smsOtpSchema: SmsOtpSchemaReadiness = DEFAULT_SMS_OTP_SCHEMA_READINESS
+): IntegrationReadinessData {
   const env = getAppEnv();
   const isSlipOk = env.SLIP_VERIFICATION_PROVIDER === "slipok";
   const storageReadiness = getStorageReadiness(env);
@@ -48,8 +61,8 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
 
   const items = [
     buildItem(
-      "SMS OTP",
-      "ยืนยันการเข้าถึงเบอร์โทรของบัญชี LINE เท่านั้น ไม่ใช่การพิสูจน์ตัวตนตามเอกสาร",
+      "SMS OTP — Environment",
+      "ตรวจเฉพาะค่าตั้งค่า SMS OTP; สถานะนี้ไม่รวมความพร้อมของ database schema",
       [
         ["SMS_OTP_PROVIDER", !smsOtpReadiness.missingKeys.includes("SMS_OTP_PROVIDER")],
         ["SMS_OTP_API_KEY", !smsOtpReadiness.missingKeys.includes("SMS_OTP_API_KEY")],
@@ -87,13 +100,19 @@ export function getIntegrationReadiness(): IntegrationReadinessData {
     ])
   ];
 
+  const schemaReady = smsOtpSchema.status === "ready" ? 1 : 0;
+  const schemaPartial = smsOtpSchema.status === "not_ready" ? 1 : 0;
+  const schemaUnavailable = smsOtpSchema.status === "unavailable" ? 1 : 0;
+
   return {
     items,
+    smsOtpSchema,
     summary: {
-      ready: items.filter((item) => item.status === "พร้อม").length,
-      partial: items.filter((item) => item.status === "ยังไม่ครบ").length,
+      ready: items.filter((item) => item.status === "พร้อม").length + schemaReady,
+      partial: items.filter((item) => item.status === "ยังไม่ครบ").length + schemaPartial,
       missing: items.filter((item) => item.status === "ยังไม่ตั้งค่า").length,
-      total: items.length
+      unavailable: schemaUnavailable,
+      total: items.length + 1
     }
   };
 }
