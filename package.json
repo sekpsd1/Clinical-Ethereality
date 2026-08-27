@@ -10,6 +10,7 @@
     "preflight:plesk:non-migration": "node scripts/plesk-non-migration-preflight.cjs",
     "check:plesk:sms-otp-reconciliation-status": "node scripts/plesk-sms-otp-reconciliation-status-probe.cjs",
     "check:plesk:sms-otp-request-status": "node scripts/plesk-sms-otp-request-status-probe.cjs",
+    "check:plesk:migration-status": "node scripts/plesk-migration-status-artifact-probe.cjs",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint .",
