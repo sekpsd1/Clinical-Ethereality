@@ -28,6 +28,7 @@ export type ConsultationPaymentEvidence = {
   attachmentId?: string;
   qrPayload?: string;
   slipImageUrl?: string;
+  source?: "provider_webhook";
 };
 
 const consultationPaymentVerificationTransitions: Record<
@@ -155,7 +156,7 @@ export async function claimConsultationProviderVerification(
 export async function applyConsultationPaymentVerification(
   tx: Prisma.TransactionClient,
   input: {
-    actorId: string;
+    actorId: string | null;
     consultation: ConsultationPaymentSnapshot;
     evidence: ConsultationPaymentEvidence;
     result: SlipVerificationResult;
@@ -246,11 +247,14 @@ export async function applyConsultationPaymentVerification(
     reviewedAt: reviewedAt.toISOString(),
     source: input.result.provider,
     result: toJsonValue(getPersistableProviderResult(input.result)),
-    submittedEvidence: input.evidence.attachmentId
-      ? { type: "private_file", attachmentId: input.evidence.attachmentId }
-      : input.evidence.qrPayload
-        ? { type: "qr_payload" }
-        : { type: "image_url" }
+    submittedEvidence:
+      input.evidence.source === "provider_webhook"
+        ? { type: "provider_webhook" }
+        : input.evidence.attachmentId
+          ? { type: "private_file", attachmentId: input.evidence.attachmentId }
+          : input.evidence.qrPayload
+            ? { type: "qr_payload" }
+            : { type: "image_url" }
   });
 
   try {

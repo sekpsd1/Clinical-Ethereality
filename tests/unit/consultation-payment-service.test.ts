@@ -239,6 +239,38 @@ describe("consultation payment verification service", () => {
     );
   });
 
+  it("records provider-webhook evidence without attributing the provider event to the patient", async () => {
+    const tx = txMock();
+
+    await applyConsultationPaymentVerification(tx as never, {
+      actorId: null,
+      consultation: consultation(),
+      evidence: {
+        amount: 900,
+        source: "provider_webhook"
+      },
+      result: result()
+    });
+
+    expect(tx.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          verificationPayload: expect.objectContaining({
+            submittedEvidence: { type: "provider_webhook" }
+          })
+        })
+      })
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorId: null,
+          action: "consultation.payment_verified"
+        })
+      })
+    );
+  });
+
   it("keeps pending consultations unchanged when provider rejects the slip", async () => {
     const tx = txMock();
 
