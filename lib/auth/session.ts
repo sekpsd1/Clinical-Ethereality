@@ -216,7 +216,16 @@ export async function rotateSessionFromToken(refreshToken: string): Promise<Rota
       id: sessionId
     },
     include: {
-      user: true
+      user: {
+        select: {
+          id: true,
+          lineUserId: true,
+          role: true,
+          status: true,
+          displayName: true,
+          avatarUrl: true
+        }
+      }
     }
   });
 

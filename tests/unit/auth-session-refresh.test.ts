@@ -128,6 +128,27 @@ describe("refresh session rotation", () => {
   it("uses the current database role and rotates the refresh hash with compare-and-swap", async () => {
     const rotation = await rotateSessionFromToken(oldRefreshToken);
 
+    expect(mocks.authSessionFindUnique).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: "session-1"
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            lineUserId: true,
+            role: true,
+            status: true,
+            displayName: true,
+            avatarUrl: true
+          }
+        }
+      }
+    });
+    expect(mocks.authSessionFindUnique.mock.calls[0]?.[0]).not.toHaveProperty(
+      "include.user.select.phoneOtpDispatchClaimedUntil"
+    );
+
     expect(rotation.session).toMatchObject({
       userId: "user-1",
       lineUserId: "line-1",
