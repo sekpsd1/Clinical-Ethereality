@@ -49,6 +49,23 @@ const verifiedEvent = {
   transactionReference: "transfer-1"
 } as const;
 
+// This mirrors only the public field shape of a successful SlipOK Check Slip
+// response. It deliberately contains no real transaction, account, or
+// customer data. Native provider responses are not the app's canonical event
+// contract and must never be accepted by this endpoint.
+const nativeSlipOkCheckSlipResponse = {
+  success: true,
+  data: {
+    success: true,
+    message: "verified",
+    transRef: "SLIPOK-REFERENCE-1",
+    amount: 900,
+    receiver: {
+      displayName: "masked receiver"
+    }
+  }
+} as const;
+
 function request(body: unknown, secret = "payment-webhook-secret") {
   return new NextRequest("http://localhost/api/webhooks/payments", {
     method: "POST",
@@ -94,8 +111,7 @@ describe("consultation payment webhook route", () => {
     { ...verifiedEvent, receiverVerified: false },
     { ...verifiedEvent, amount: 900.001 },
     { ...verifiedEvent, transactionReference: "invalid reference !" },
-    { ...verifiedEvent, raw: { account: "must-not-be-accepted" } },
-    { event: "native.slipok.shape", data: { paymentId: "payment-1" } }
+    { ...verifiedEvent, raw: { account: "must-not-be-accepted" } }
   ])("rejects malformed, unknown, or non-canonical input without persistence", async (body) => {
     const response = await POST(request(body));
     const responseBody = await response.json();
@@ -104,6 +120,15 @@ describe("consultation payment webhook route", () => {
     expect(responseBody).toEqual({ ok: false, error: "Payment webhook payload is invalid." });
     expect(JSON.stringify(responseBody)).not.toContain("must-not-be-accepted");
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a native SlipOK Check Slip response even with the internal secret", async () => {
+    const response = await POST(request(nativeSlipOkCheckSlipResponse));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: "Payment webhook payload is invalid." });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.persistWebhookEvent).not.toHaveBeenCalled();
   });
 
   it("rejects an oversized body before persistence", async () => {

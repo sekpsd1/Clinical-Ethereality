@@ -610,11 +610,13 @@ This section is the current handoff for the next Project Controller and supersed
 - Durable OTP idempotency is deployed and applied once through migration `20260827113000_add_phone_otp_dispatch_claim`. The per-user dispatch claim/cooldown prevents concurrent duplicate provider dispatch while retaining the existing challenge and rate-limit defenses.
 - Controlled Production OTP UAT completed: one visible UI request produced one application POST and one ThaiBulkSMS provider transaction; Verify was one request with HTTP 200; phone verification succeeded and the booking gate opened. No resend/retry occurred, and no Booking, Consultation, Payment, or Zoom record was created.
 - Health remained HTTP 200 with `status: ok`; bounded checks found no application HTTP 500. Migration/reconciliation target keys were removed after their controlled runs and are absent in the normal runtime.
+- Controlled Consultation payment UAT passed through the direct private-slip → synchronous SlipOK verification path: one approved low-value payment reached verified/scheduled, with the expected audit and notification outcome. This is the active Production payment behavior and supersedes older notes that describe this direct verification UAT as pending.
+- Payment-provider delivery discovery confirms that SlipOK's active Check Slip API has no verified outbound merchant callback contract. Its separate LINE OA Webhook is LINE → SlipOK, not SlipOK → this application. Therefore `/api/webhooks/payments` is a strict canonical internal-only/dormant endpoint and must not be registered directly with SlipOK or LINE. It remains dormant until SlipOK publishes a documented signed callback contract or the Controller separately approves an app-owned durable worker; no native payload, signature, event ID, retry behavior, adapter, or worker is inferred from the current provider documentation.
 - Auto Model Routing is recorded in `AI_WORKFLOW.md` at origin commit `a63a655`; routing remains a default selected by the Project Controller, with Ultra/Max requiring separate owner approval. The pre-existing untracked root `AI_WORKFLOW.md` was preserved and not overwritten.
 
 ### True remaining backlog (ordered)
 
-1. Controlled Consultation Real-slip UAT, then the remaining Full Doctor Flow UAT, using the already approved payment/privacy boundaries and no duplicate provider attempt.
+1. Complete the remaining Full Doctor Flow UAT after the passed direct Consultation payment verification, with no additional provider payment attempt unless separately approved.
 2. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
 3. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
 4. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
@@ -626,10 +628,10 @@ This section is the current handoff for the next Project Controller and supersed
 
 **Owner chat:** `Customer Flow` (coordinate with `Doctor ระบบ 4` only if the consultation fixture or doctor-side assertion needs it).
 
-**Task:** Controlled Consultation Real-slip UAT readiness and one approved real-slip verification, stopping before any later Full Doctor Flow mutation.
+**Task:** Plan the remaining Full Doctor Flow UAT from the already verified/scheduled Consultation state; do not repeat the passed direct SlipOK payment verification.
 
-**Acceptance:** health 200/ok and Admin payment/SMS readiness are confirmed; an existing approved consultation/test path is used; PromptPay display, private slip upload, one SlipOK verification, persisted verified/scheduled result, ownership/privacy boundaries, audit/notification outcome, and mobile/Console/Network checks pass; no retry, duplicate provider call, or unrelated record is created.
+**Acceptance:** the existing verified/scheduled Consultation state is used without a new payment/provider call; downstream Doctor-flow permissions, status gates, mobile, Console, and Network checks pass with no unrelated mutation.
 
 **Checks:** bounded `/api/health` and Admin readiness read-only checks; `npm run lint` and `npm run typecheck` if code changes are proposed (otherwise no code change); browser UAT at the approved mobile viewport with a fresh backup/rollback check before any Production mutation.
 
-**Production boundary:** requires a separate Controller approval for the low-value real transfer/provider call and any fixture/payment mutation; no deploy, restart, migration, environment edit, OTP resend/verify, Booking/Consultation creation beyond the approved fixture, refund, Zoom, or unrelated database action.
+**Production boundary:** requires a separate Controller approval for any downstream fixture or status mutation; no repeat payment/provider call, deploy, restart, migration, environment edit, OTP resend/verify, refund, Zoom, or unrelated database action.
