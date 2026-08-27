@@ -47,6 +47,7 @@ vi.mock("@/lib/sms/otp", async (importOriginal) => {
 });
 
 import { requestPatientPhoneVerification } from "@/features/identity-verification/service";
+import { classifySmsOtpDatabaseError } from "@/lib/sms/otp";
 
 describe("patient phone verification diagnostics", () => {
   beforeEach(() => {
@@ -100,5 +101,88 @@ describe("patient phone verification diagnostics", () => {
     ]) {
       expect(serializedDiagnostics).not.toContain(forbidden);
     }
+  });
+
+  it.each([
+    ["user_lookup", "userFindUnique", "P2021", "table_missing"],
+    ["phone_owner_lookup", "userFindFirst", "P2022", "column_missing"],
+    ["latest_challenge_lookup", "challengeFindFirst", "P1001", "connection_unavailable"],
+    ["request_count_lookup", "challengeCount", "P1008", "timeout"]
+  ] as const)(
+    "records only the allowlisted %s preflight component and never calls the provider",
+    async (component, mockName, code, databaseErrorCategory) => {
+      const rawError = Object.assign(new Error("phone=0812345678 password=must-not-log"), { code });
+      mocks[mockName].mockRejectedValue(rawError);
+      const diagnosticLogger = vi.fn();
+
+      await expect(
+        requestPatientPhoneVerification(
+          "customer-secret-id",
+          {
+            fullName: "patient-name-must-not-log",
+            dateOfBirth: "1990-01-02",
+            phone: "0812345678"
+          },
+          { diagnosticLogger }
+        )
+      ).rejects.toBe(rawError);
+
+      expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+      expect(diagnosticLogger).toHaveBeenCalledTimes(1);
+      expect(diagnosticLogger).toHaveBeenCalledWith({
+        stage: "request_preflight",
+        preflightComponent: component,
+        databaseErrorCategory,
+        applicationHttpStatus: 503,
+        providerHttpStatus: null,
+        providerErrorCode: null,
+        providerErrorCategory: "not_applicable"
+      });
+      const serializedDiagnostics = JSON.stringify(diagnosticLogger.mock.calls);
+      for (const forbidden of [
+        "customer-secret-id",
+        "must-not-log",
+        "patient-name",
+        "0812345678",
+        "1990-01-02"
+      ]) {
+        expect(serializedDiagnostics).not.toContain(forbidden);
+      }
+    }
+  );
+
+  it("selects simultaneous rejected preflight checks in a fixed component order", async () => {
+    mocks.userFindUnique.mockRejectedValue(Object.assign(new Error("first raw error"), { code: "P2021" }));
+    mocks.userFindFirst.mockRejectedValue(Object.assign(new Error("second raw error"), { code: "P2022" }));
+    const diagnosticLogger = vi.fn();
+
+    await expect(
+      requestPatientPhoneVerification(
+        "customer-1",
+        { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" },
+        { diagnosticLogger }
+      )
+    ).rejects.toThrow("first raw error");
+
+    expect(mocks.userFindUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.userFindFirst).toHaveBeenCalledTimes(1);
+    expect(diagnosticLogger).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preflightComponent: "user_lookup",
+        databaseErrorCategory: "table_missing"
+      })
+    );
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [Object.assign(new Error("raw"), { code: "P2021" }), "table_missing"],
+    [Object.assign(new Error("raw"), { code: "P2022" }), "column_missing"],
+    [Object.assign(new Error("raw"), { code: "P1017" }), "connection_unavailable"],
+    [Object.assign(new Error("raw"), { code: "P2024" }), "timeout"],
+    [Object.assign(new Error("raw"), { code: "P2002" }), "query_rejected"],
+    [new Error("raw"), "unknown"]
+  ] as const)("classifies a database failure as the closed enum %s", (error, expected) => {
+    expect(classifySmsOtpDatabaseError(error)).toBe(expected);
   });
 });

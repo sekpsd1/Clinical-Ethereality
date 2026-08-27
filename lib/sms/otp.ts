@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AppEnv } from "@/lib/env/schema";
 import { getAppEnv } from "@/lib/env/schema";
 import { maskThaiMobileNumber, normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
+import { writePleskSmsOtpRequestStatus } from "../../scripts/plesk-sms-otp-request-status.cjs";
 
 const thaiBulkSmsRequestUrl = "https://otp.thaibulksms.com/v2/otp/request";
 const thaiBulkSmsVerifyUrl = "https://otp.thaibulksms.com/v2/otp/verify";
@@ -69,12 +70,28 @@ export type SmsOtpProviderErrorCategory =
   | "provider_timeout"
   | "provider_unavailable";
 
+export type SmsOtpPreflightComponent =
+  | "user_lookup"
+  | "phone_owner_lookup"
+  | "latest_challenge_lookup"
+  | "request_count_lookup";
+
+export type SmsOtpDatabaseErrorCategory =
+  | "table_missing"
+  | "column_missing"
+  | "connection_unavailable"
+  | "timeout"
+  | "query_rejected"
+  | "unknown";
+
 export type SmsOtpSafeDiagnostic = {
   stage: SmsOtpDiagnosticStage;
   applicationHttpStatus: 400 | 503;
   providerHttpStatus: number | null;
   providerErrorCode: null;
   providerErrorCategory: SmsOtpProviderErrorCategory;
+  preflightComponent?: SmsOtpPreflightComponent;
+  databaseErrorCategory?: SmsOtpDatabaseErrorCategory;
 };
 
 export type SmsOtpDiagnosticLogger = (diagnostic: SmsOtpSafeDiagnostic) => void;
@@ -88,7 +105,48 @@ export function writeSmsOtpDiagnostic(
     return;
   }
 
+  if (process.env.NODE_ENV === "production") {
+    try {
+      writePleskSmsOtpRequestStatus({
+        rootDir: process.cwd(),
+        eventName: "request_failed",
+        diagnostic
+      });
+    } catch {
+      console.error("[sms/otp] status", {
+        stage: diagnostic.stage,
+        status: "unavailable"
+      });
+    }
+  }
+
   console.error("[sms/otp] failed", diagnostic);
+}
+
+export function classifySmsOtpDatabaseError(error: unknown): SmsOtpDatabaseErrorCategory {
+  if (!error || typeof error !== "object") {
+    return "unknown";
+  }
+
+  const code = "code" in error && typeof error.code === "string" ? error.code : null;
+  if (code === "P2021") return "table_missing";
+  if (code === "P2022") return "column_missing";
+  if (["P1000", "P1001", "P1003", "P1017"].includes(code ?? "")) {
+    return "connection_unavailable";
+  }
+  if (["P1002", "P1008", "P2024"].includes(code ?? "")) {
+    return "timeout";
+  }
+  if (code && /^P\d{4}$/.test(code)) {
+    return "query_rejected";
+  }
+
+  const name = "name" in error && typeof error.name === "string" ? error.name : null;
+  if (name === "TimeoutError" || name === "AbortError") return "timeout";
+  if (name === "PrismaClientInitializationError") return "connection_unavailable";
+  if (name === "PrismaClientKnownRequestError") return "query_rejected";
+
+  return "unknown";
 }
 
 function hasValue(value: string | undefined): boolean {

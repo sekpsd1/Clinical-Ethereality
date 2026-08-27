@@ -4,13 +4,15 @@ import { getAppEnv } from "@/lib/env/schema";
 import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 import { prisma } from "@/lib/db/prisma";
 import {
+  classifySmsOtpDatabaseError,
   getSmsOtpReadiness,
   requestSmsOtp,
   SmsOtpError,
   verifySmsOtp,
   writeSmsOtpDiagnostic,
   type SmsOtpDiagnosticLogger,
-  type SmsOtpDiagnosticStage
+  type SmsOtpDiagnosticStage,
+  type SmsOtpPreflightComponent
 } from "@/lib/sms/otp";
 import type { RequestPhoneVerificationInput } from "@/features/identity-verification/schema";
 
@@ -123,6 +125,43 @@ async function runRequestPersistenceStage<T>(
   }
 }
 
+async function runRequestPreflightBatch<A, B>(
+  first: { component: SmsOtpPreflightComponent; operation: () => Promise<A> },
+  second: { component: SmsOtpPreflightComponent; operation: () => Promise<B> },
+  diagnosticLogger?: SmsOtpDiagnosticLogger
+): Promise<[A, B]> {
+  const results = await Promise.allSettled([first.operation(), second.operation()] as const);
+  const checks = [first, second] as const;
+
+  for (let index = 0; index < results.length; index += 1) {
+    const result = results[index];
+    if (result.status === "rejected") {
+      if (result.reason instanceof PatientVerificationError) {
+        throw result.reason;
+      }
+
+      writeSmsOtpDiagnostic(
+        {
+          stage: "request_preflight",
+          preflightComponent: checks[index].component,
+          databaseErrorCategory: classifySmsOtpDatabaseError(result.reason),
+          applicationHttpStatus: 503,
+          providerHttpStatus: null,
+          providerErrorCode: null,
+          providerErrorCategory: "not_applicable"
+        },
+        diagnosticLogger
+      );
+      throw result.reason;
+    }
+  }
+
+  return [
+    (results[0] as PromiseFulfilledResult<A>).value,
+    (results[1] as PromiseFulfilledResult<B>).value
+  ];
+}
+
 function toDateOfBirth(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -180,19 +219,23 @@ export async function requestPatientPhoneVerification(
   const normalizedPhone = normalizeThaiMobileNumber(input.phone);
   const dateOfBirth = toDateOfBirth(input.dateOfBirth);
   const now = new Date();
-  const [user, existingPhoneOwner] = await runRequestPersistenceStage(
-    "request_preflight",
-    () =>
-      Promise.all([
+  const [user, existingPhoneOwner] = await runRequestPreflightBatch(
+    {
+      component: "user_lookup",
+      operation: () =>
         prisma.user.findUnique({
           where: { id: userId },
           select: { normalizedPhone: true, phoneVerifiedAt: true }
-        }),
+        })
+    },
+    {
+      component: "phone_owner_lookup",
+      operation: () =>
         prisma.user.findFirst({
           where: { normalizedPhone: normalizedPhone.e164, id: { not: userId } },
           select: { id: true }
         })
-      ]),
+    },
     options.diagnosticLogger
   );
 
@@ -220,19 +263,23 @@ export async function requestPatientPhoneVerification(
     return { alreadyVerified: true };
   }
 
-  const [recentChallenge, requestCount] = await runRequestPersistenceStage(
-    "request_preflight",
-    () =>
-      Promise.all([
+  const [recentChallenge, requestCount] = await runRequestPreflightBatch(
+    {
+      component: "latest_challenge_lookup",
+      operation: () =>
         prisma.phoneVerificationChallenge.findFirst({
           where: { userId },
           orderBy: { requestedAt: "desc" },
           select: { requestedAt: true }
-        }),
+        })
+    },
+    {
+      component: "request_count_lookup",
+      operation: () =>
         prisma.phoneVerificationChallenge.count({
           where: { userId, requestedAt: { gte: new Date(now.getTime() - requestWindowMs) } }
         })
-      ]),
+    },
     options.diagnosticLogger
   );
 

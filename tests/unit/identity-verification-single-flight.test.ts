@@ -14,9 +14,11 @@ describe("identity verification request single-flight guard", () => {
 
     const first = runSingleFlight(lock, operation);
     const second = runSingleFlight(lock, operation);
+    const third = runSingleFlight(lock, operation);
 
     expect(operation).toHaveBeenCalledTimes(1);
     await expect(second).resolves.toBeUndefined();
+    await expect(third).resolves.toBeUndefined();
 
     release?.();
     await expect(first).resolves.toBeUndefined();
