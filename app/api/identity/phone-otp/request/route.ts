@@ -1,5 +1,13 @@
-import { NextResponse } from "next/server";
-import { requireCurrentSession } from "@/lib/auth/session";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getCurrentSession,
+  InvalidRefreshSessionError,
+  RefreshSessionConflictError,
+  rotateSessionFromToken,
+  setRotatedSessionCookies,
+  type RotatedSession
+} from "@/lib/auth/session";
+import { authCookieNames } from "@/lib/auth/cookies";
 import { assertRole } from "@/lib/permissions";
 import { requestPhoneVerificationSchema } from "@/features/identity-verification/schema";
 import {
@@ -15,9 +23,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function requireOtpSession(request: NextRequest) {
+  const currentSession = await getCurrentSession();
+
+  if (currentSession) {
+    return { session: currentSession, rotation: null };
+  }
+
+  const refreshToken = request.cookies.get(authCookieNames.refresh)?.value;
+
+  if (!refreshToken) {
+    throw new InvalidRefreshSessionError();
+  }
+
+  const rotation = await rotateSessionFromToken(refreshToken);
+  return { session: rotation.session, rotation };
+}
+
+export async function POST(request: NextRequest) {
   let routeComponent: SmsOtpRouteComponent = "session_lookup";
   let serviceDiagnosticWritten = false;
+  let refreshedSession: RotatedSession | null = null;
+  const finalizeResponse = (response: NextResponse) =>
+    refreshedSession ? setRotatedSessionCookies(response, refreshedSession) : response;
   const writeRouteStatus = (
     status: "started" | "ready" | "failed",
     applicationHttpStatus?: 400 | 401 | 403 | 404 | 409 | 410 | 429 | 503
@@ -34,7 +62,9 @@ export async function POST(request: Request) {
 
   try {
     writeRouteStatus("started");
-    const session = await requireCurrentSession();
+    const resolvedSession = await requireOtpSession(request);
+    const { session } = resolvedSession;
+    refreshedSession = resolvedSession.rotation;
     writeRouteStatus("ready");
 
     routeComponent = "role_check";
@@ -51,7 +81,7 @@ export async function POST(request: Request) {
     } catch {
       const parsedBody = requestPhoneVerificationSchema.safeParse(null);
       writeRouteStatus("failed", 400);
-      return NextResponse.json(
+      return finalizeResponse(NextResponse.json(
         {
           ok: false,
           message: parsedBody.success
@@ -59,7 +89,7 @@ export async function POST(request: Request) {
             : parsedBody.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง"
         },
         { status: 400 }
-      );
+      ));
     }
 
     routeComponent = "request_schema";
@@ -67,7 +97,9 @@ export async function POST(request: Request) {
     const parsed = requestPhoneVerificationSchema.safeParse(body);
     if (!parsed.success) {
       writeRouteStatus("failed", 400);
-      return NextResponse.json({ ok: false, message: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
+      return finalizeResponse(
+        NextResponse.json({ ok: false, message: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, { status: 400 })
+      );
     }
     writeRouteStatus("ready");
 
@@ -77,15 +109,25 @@ export async function POST(request: Request) {
       diagnosticLogger: serviceDiagnosticLogger
     });
     writeRouteStatus("ready");
-    return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
+    return finalizeResponse(NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } }));
   } catch (error) {
-    const response = getPatientVerificationMessage(error);
+    const response =
+      error instanceof InvalidRefreshSessionError
+        ? { status: 401, message: "กรุณาเข้าสู่ระบบอีกครั้ง" }
+        : error instanceof RefreshSessionConflictError
+          ? { status: 409, message: "ระบบกำลังปรับปรุงสถานะการเข้าสู่ระบบ กรุณาลองใหม่" }
+          : getPatientVerificationMessage(error);
     if (!serviceDiagnosticWritten) {
       const applicationHttpStatus = [400, 401, 403, 404, 409, 410, 429, 503].includes(response.status)
         ? (response.status as 400 | 401 | 403 | 404 | 409 | 410 | 429 | 503)
         : 503;
       writeRouteStatus("failed", applicationHttpStatus);
     }
-    return NextResponse.json({ ok: false, message: response.message }, { status: response.status, headers: { "Cache-Control": "no-store" } });
+    return finalizeResponse(
+      NextResponse.json(
+        { ok: false, message: response.message },
+        { status: response.status, headers: { "Cache-Control": "no-store" } }
+      )
+    );
   }
 }

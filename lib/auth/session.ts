@@ -18,7 +18,7 @@ type SessionTokenPair = {
 };
 
 export type RotatedSession = {
-  session: AuthSession;
+  session: PublicSession;
   tokens: SessionTokenPair;
 };
 
@@ -238,13 +238,14 @@ export async function rotateSessionFromToken(refreshToken: string): Promise<Rota
     throw new InvalidRefreshSessionError();
   }
 
-  const session: AuthSession = {
+  const session: PublicSession = {
     userId: authSession.user.id,
     lineUserId: authSession.user.lineUserId,
     role: authSession.user.role,
     sessionId: authSession.id,
     displayName: authSession.user.displayName ?? undefined,
-    pictureUrl: authSession.user.avatarUrl ?? undefined
+    pictureUrl: authSession.user.avatarUrl ?? undefined,
+    expiresAt: new Date(now.getTime() + getSessionTtlSeconds("access") * 1000).toISOString()
   };
   const tokens = await issueSessionTokens(session);
   const rotation = await prisma.authSession.updateMany({

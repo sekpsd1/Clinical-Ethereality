@@ -103,6 +103,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 describe("refresh session rotation", () => {
@@ -165,11 +166,25 @@ describe("refresh session rotation", () => {
   });
 
   it("applies the rotated cookies with the unchanged access and refresh TTL values", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const rotation = await rotateSessionFromToken(oldRefreshToken);
     const response = setRotatedSessionCookies(NextResponse.json({ ok: true }), rotation);
+    const setCookieHeaders = (
+      response.headers as Headers & { getSetCookie: () => string[] }
+    ).getSetCookie();
+    const accessCookie = setCookieHeaders.find((value) => value.startsWith("ce_access_token="));
+    const refreshCookie = setCookieHeaders.find((value) => value.startsWith("ce_refresh_token="));
 
     expect(response.cookies.get("ce_access_token")?.value).toBe("new-access-token");
     expect(response.cookies.get("ce_refresh_token")?.value).toBe("new-refresh-token");
+    expect(accessCookie).toEqual(expect.stringContaining("Max-Age=900"));
+    expect(refreshCookie).toEqual(expect.stringContaining("Max-Age=2592000"));
+    for (const cookie of [accessCookie, refreshCookie]) {
+      expect(cookie).toEqual(expect.stringContaining("Path=/"));
+      expect(cookie).toEqual(expect.stringContaining("HttpOnly"));
+      expect(cookie).toEqual(expect.stringContaining("Secure"));
+      expect(cookie).toEqual(expect.stringContaining("SameSite=lax"));
+    }
     expect(mocks.getSessionTtlSeconds).toHaveBeenCalledWith("access");
     expect(mocks.getSessionTtlSeconds).toHaveBeenCalledWith("refresh");
   });
