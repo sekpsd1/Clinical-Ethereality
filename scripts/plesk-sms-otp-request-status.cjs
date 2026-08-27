@@ -20,6 +20,15 @@ const SAFE_SMS_OTP_PREFLIGHT_COMPONENTS = Object.freeze([
   "latest_challenge_lookup",
   "request_count_lookup"
 ]);
+const SAFE_SMS_OTP_ROUTE_COMPONENTS = Object.freeze([
+  "session_lookup",
+  "role_check",
+  "request_body",
+  "request_schema",
+  "service_dispatch"
+]);
+const SAFE_SMS_OTP_ROUTE_STATUSES = Object.freeze(["started", "ready", "failed"]);
+const SAFE_SMS_OTP_ROUTE_HTTP_STATUSES = Object.freeze([400, 401, 403, 404, 409, 410, 429, 503]);
 const SAFE_SMS_OTP_DATABASE_ERROR_CATEGORIES = Object.freeze([
   "table_missing",
   "column_missing",
@@ -113,10 +122,44 @@ function getSafeFailurePayload(diagnostic) {
   };
 }
 
+function getSafeRoutePayload(routeStatus) {
+  if (!routeStatus || typeof routeStatus !== "object" || Array.isArray(routeStatus)) {
+    throw new Error("SMS OTP request route status is invalid.");
+  }
+  if (
+    Object.keys(routeStatus).some(
+      (key) => !["routeComponent", "status", "applicationHttpStatus"].includes(key)
+    )
+  ) {
+    throw new Error("SMS OTP request route status field is not allowlisted.");
+  }
+  if (!SAFE_SMS_OTP_ROUTE_COMPONENTS.includes(routeStatus.routeComponent)) {
+    throw new Error("SMS OTP request route component is not allowlisted.");
+  }
+  if (!SAFE_SMS_OTP_ROUTE_STATUSES.includes(routeStatus.status)) {
+    throw new Error("SMS OTP request route status is not allowlisted.");
+  }
+
+  const failed = routeStatus.status === "failed";
+  if (
+    failed !== SAFE_SMS_OTP_ROUTE_HTTP_STATUSES.includes(routeStatus.applicationHttpStatus)
+  ) {
+    throw new Error("SMS OTP request route HTTP status is invalid.");
+  }
+
+  return {
+    stage: "request_route",
+    status: routeStatus.status,
+    routeComponent: routeStatus.routeComponent,
+    ...(failed ? { applicationHttpStatus: routeStatus.applicationHttpStatus } : {})
+  };
+}
+
 function writePleskSmsOtpRequestStatus({
   rootDir,
   eventName,
   diagnostic,
+  routeStatus,
   now = () => new Date()
 }) {
   if (typeof rootDir !== "string" || !path.isAbsolute(rootDir)) {
@@ -128,6 +171,8 @@ function writePleskSmsOtpRequestStatus({
     event = { stage: "diagnostics_probe", status: "ready" };
   } else if (eventName === "request_failed") {
     event = getSafeFailurePayload(diagnostic);
+  } else if (eventName === "request_route_status" && diagnostic === undefined) {
+    event = getSafeRoutePayload(routeStatus);
   } else {
     throw new Error("SMS OTP request status event is not allowlisted.");
   }
@@ -174,6 +219,8 @@ module.exports = {
   SAFE_SMS_OTP_DATABASE_ERROR_CATEGORIES,
   SAFE_SMS_OTP_PREFLIGHT_COMPONENTS,
   SAFE_SMS_OTP_PROVIDER_ERROR_CATEGORIES,
+  SAFE_SMS_OTP_ROUTE_COMPONENTS,
+  SAFE_SMS_OTP_ROUTE_STATUSES,
   SAFE_SMS_OTP_REQUEST_STAGES,
   SMS_OTP_REQUEST_STATUS_RELATIVE_PATH,
   writePleskSmsOtpRequestStatus

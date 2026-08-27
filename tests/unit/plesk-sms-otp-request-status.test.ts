@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 const {
   SAFE_SMS_OTP_DATABASE_ERROR_CATEGORIES,
   SAFE_SMS_OTP_PREFLIGHT_COMPONENTS,
+  SAFE_SMS_OTP_ROUTE_COMPONENTS,
+  SAFE_SMS_OTP_ROUTE_STATUSES,
   SMS_OTP_REQUEST_STATUS_RELATIVE_PATH,
   writePleskSmsOtpRequestStatus
 } = require("../../scripts/plesk-sms-otp-request-status.cjs");
@@ -105,6 +107,52 @@ describe("Plesk SMS OTP request private status", () => {
     });
   });
 
+  it("writes only closed-enum route progress and failure metadata", () => {
+    withTemporaryRoot((rootDir) => {
+      const destination = writePleskSmsOtpRequestStatus({
+        rootDir,
+        eventName: "request_route_status",
+        routeStatus: {
+          routeComponent: "session_lookup",
+          status: "started"
+        },
+        now: () => new Date("2026-08-27T01:03:00.000Z")
+      });
+
+      expect(JSON.parse(fs.readFileSync(destination, "utf8"))).toEqual({
+        version: 1,
+        component: "sms_otp_request",
+        stage: "request_route",
+        status: "started",
+        routeComponent: "session_lookup",
+        updatedAt: "2026-08-27T01:03:00.000Z"
+      });
+
+      writePleskSmsOtpRequestStatus({
+        rootDir,
+        eventName: "request_route_status",
+        routeStatus: {
+          routeComponent: "service_dispatch",
+          status: "failed",
+          applicationHttpStatus: 503
+        },
+        now: () => new Date("2026-08-27T01:03:01.000Z")
+      });
+      const serialized = fs.readFileSync(destination, "utf8");
+
+      expect(JSON.parse(serialized)).toEqual({
+        version: 1,
+        component: "sms_otp_request",
+        stage: "request_route",
+        status: "failed",
+        routeComponent: "service_dispatch",
+        applicationHttpStatus: 503,
+        updatedAt: "2026-08-27T01:03:01.000Z"
+      });
+      expect(serialized).not.toMatch(/userId|fullName|dateOfBirth|phone|cookie|raw|SQL|secret|token|refno|header|body/i);
+    });
+  });
+
   it("rejects unexpected fields and values before creating an artifact", () => {
     withTemporaryRoot((rootDir) => {
       expect(() =>
@@ -142,5 +190,42 @@ describe("Plesk SMS OTP request private status", () => {
       "query_rejected",
       "unknown"
     ]);
+    expect(SAFE_SMS_OTP_ROUTE_COMPONENTS).toEqual([
+      "session_lookup",
+      "role_check",
+      "request_body",
+      "request_schema",
+      "service_dispatch"
+    ]);
+    expect(SAFE_SMS_OTP_ROUTE_STATUSES).toEqual(["started", "ready", "failed"]);
+  });
+
+  it("rejects non-allowlisted route fields and statuses", () => {
+    withTemporaryRoot((rootDir) => {
+      expect(() =>
+        writePleskSmsOtpRequestStatus({
+          rootDir,
+          eventName: "request_route_status",
+          routeStatus: {
+            routeComponent: "session_lookup",
+            status: "failed",
+            applicationHttpStatus: 503,
+            rawError: "private-session-error"
+          }
+        })
+      ).toThrow("field is not allowlisted");
+      expect(() =>
+        writePleskSmsOtpRequestStatus({
+          rootDir,
+          eventName: "request_route_status",
+          routeStatus: {
+            routeComponent: "unexpected_component",
+            status: "failed",
+            applicationHttpStatus: 503
+          }
+        })
+      ).toThrow("component is not allowlisted");
+      expect(fs.existsSync(path.join(rootDir, SMS_OTP_REQUEST_STATUS_RELATIVE_PATH))).toBe(false);
+    });
   });
 });

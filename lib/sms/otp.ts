@@ -60,6 +60,21 @@ export type SmsOtpDiagnosticStage =
   | "request_persistence"
   | "verify_provider";
 
+export type SmsOtpRouteComponent =
+  | "session_lookup"
+  | "role_check"
+  | "request_body"
+  | "request_schema"
+  | "service_dispatch";
+
+export type SmsOtpRouteStatus = "started" | "ready" | "failed";
+
+export type SmsOtpRouteStatusEvent = {
+  routeComponent: SmsOtpRouteComponent;
+  status: SmsOtpRouteStatus;
+  applicationHttpStatus?: 400 | 401 | 403 | 404 | 409 | 410 | 429 | 503;
+};
+
 export type SmsOtpProviderErrorCategory =
   | "not_applicable"
   | "provider_authentication"
@@ -121,6 +136,25 @@ export function writeSmsOtpDiagnostic(
   }
 
   console.error("[sms/otp] failed", diagnostic);
+}
+
+export function writeSmsOtpRouteStatus(event: SmsOtpRouteStatusEvent): void {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  try {
+    writePleskSmsOtpRequestStatus({
+      rootDir: process.cwd(),
+      eventName: "request_route_status",
+      routeStatus: event
+    });
+  } catch {
+    console.error("[sms/otp] route-status", {
+      routeComponent: event.routeComponent,
+      status: "unavailable"
+    });
+  }
 }
 
 export function classifySmsOtpDatabaseError(error: unknown): SmsOtpDatabaseErrorCategory {
