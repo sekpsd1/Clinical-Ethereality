@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require("node:fs");
 const path = require("node:path");
+const {
+  resolvePleskApplicationRoot,
+  resolveRuntimePrivateDestination
+} = require("./plesk-runtime-private-root.cjs");
 
 const SMS_OTP_REQUEST_STATUS_RELATIVE_PATH = path.join(
   "runtime-private",
@@ -157,14 +161,20 @@ function getSafeRoutePayload(routeStatus) {
 
 function writePleskSmsOtpRequestStatus({
   rootDir,
+  env = process.env,
+  nodeEnv = env?.NODE_ENV,
+  fallbackRootDir = process.cwd(),
   eventName,
   diagnostic,
   routeStatus,
   now = () => new Date()
 }) {
-  if (typeof rootDir !== "string" || !path.isAbsolute(rootDir)) {
-    throw new Error("SMS OTP request status root must be absolute.");
-  }
+  const applicationRoot = resolvePleskApplicationRoot({
+    rootDir,
+    env,
+    nodeEnv,
+    fallbackRootDir
+  });
 
   let event;
   if (eventName === "diagnostics_probe_ready" && diagnostic === undefined) {
@@ -182,8 +192,10 @@ function writePleskSmsOtpRequestStatus({
     throw new Error("SMS OTP request status time is invalid.");
   }
 
-  const directory = path.join(rootDir, path.dirname(SMS_OTP_REQUEST_STATUS_RELATIVE_PATH));
-  const destination = path.join(rootDir, SMS_OTP_REQUEST_STATUS_RELATIVE_PATH);
+  const { directory, destination } = resolveRuntimePrivateDestination({
+    applicationRoot,
+    relativePath: SMS_OTP_REQUEST_STATUS_RELATIVE_PATH
+  });
   const temporary = `${destination}.${process.pid}.tmp`;
   const payload = {
     version: 1,

@@ -9,7 +9,10 @@ export const SAFE_SMS_OTP_ROUTE_COMPONENTS: readonly string[];
 export const SAFE_SMS_OTP_ROUTE_STATUSES: readonly string[];
 
 export function writePleskSmsOtpRequestStatus(input: {
-  rootDir: string;
+  rootDir?: string;
+  env?: NodeJS.ProcessEnv;
+  nodeEnv?: string;
+  fallbackRootDir?: string;
   eventName: "diagnostics_probe_ready" | "request_failed" | "request_route_status";
   diagnostic?: SmsOtpSafeDiagnostic;
   routeStatus?: SmsOtpRouteStatusEvent;

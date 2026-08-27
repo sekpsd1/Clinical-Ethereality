@@ -123,7 +123,6 @@ export function writeSmsOtpDiagnostic(
   if (process.env.NODE_ENV === "production") {
     try {
       writePleskSmsOtpRequestStatus({
-        rootDir: process.cwd(),
         eventName: "request_failed",
         diagnostic
       });
@@ -145,7 +144,6 @@ export function writeSmsOtpRouteStatus(event: SmsOtpRouteStatusEvent): void {
 
   try {
     writePleskSmsOtpRequestStatus({
-      rootDir: process.cwd(),
       eventName: "request_route_status",
       routeStatus: event
     });
