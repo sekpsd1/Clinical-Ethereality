@@ -1,12 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   challengeCount: vi.fn(),
+  challengeCreate: vi.fn(),
   challengeFindFirst: vi.fn(),
+  challengeUpdateMany: vi.fn(),
   requestSmsOtp: vi.fn(),
   transaction: vi.fn(),
   userFindFirst: vi.fn(),
   userFindUnique: vi.fn(),
+  userUpdate: vi.fn(),
+  userUpdateMany: vi.fn(),
   writeAuditLog: vi.fn()
 }));
 
@@ -18,7 +22,8 @@ vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     user: {
       findFirst: mocks.userFindFirst,
-      findUnique: mocks.userFindUnique
+      findUnique: mocks.userFindUnique,
+      updateMany: mocks.userUpdateMany
     },
     phoneVerificationChallenge: {
       count: mocks.challengeCount,
@@ -47,21 +52,238 @@ vi.mock("@/lib/sms/otp", async (importOriginal) => {
 });
 
 import { requestPatientPhoneVerification } from "@/features/identity-verification/service";
-import { classifySmsOtpDatabaseError } from "@/lib/sms/otp";
+import {
+  classifySmsOtpDatabaseError,
+  SmsOtpError,
+  type SmsOtpSafeDiagnostic
+} from "@/lib/sms/otp";
+
+type ClaimState = {
+  get: () => Date | null;
+};
+
+function configureAtomicClaim(initial: Date | null = null): ClaimState {
+  let claimedUntil = initial;
+
+  mocks.userUpdateMany.mockImplementation(async (args: {
+    where: Record<string, unknown> & {
+      OR?: Array<Record<string, unknown>>;
+      phoneOtpDispatchClaimedUntil?: Date;
+    };
+    data: { phoneOtpDispatchClaimedUntil: Date | null };
+  }) => {
+    if (args.data.phoneOtpDispatchClaimedUntil === null) {
+      const expected = args.where.phoneOtpDispatchClaimedUntil;
+      if (claimedUntil && expected && claimedUntil.getTime() === expected.getTime()) {
+        claimedUntil = null;
+        return { count: 1 };
+      }
+      return { count: 0 };
+    }
+
+    const staleBefore = (
+      args.where.OR?.[1]?.phoneOtpDispatchClaimedUntil as { lte?: Date } | undefined
+    )?.lte;
+    if (!claimedUntil || (staleBefore && claimedUntil <= staleBefore)) {
+      claimedUntil = args.data.phoneOtpDispatchClaimedUntil;
+      return { count: 1 };
+    }
+    return { count: 0 };
+  });
+
+  return { get: () => claimedUntil };
+}
+
+function providerDiagnostic(
+  providerHttpStatus: number | null,
+  providerErrorCategory: SmsOtpSafeDiagnostic["providerErrorCategory"]
+): SmsOtpSafeDiagnostic {
+  return {
+    stage: "request_provider",
+    applicationHttpStatus: providerHttpStatus === null || providerHttpStatus >= 500 ? 503 : 400,
+    providerHttpStatus,
+    providerErrorCode: null,
+    providerErrorCategory
+  };
+}
 
 describe("patient phone verification diagnostics", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-27T04:00:00.000Z"));
     mocks.userFindUnique.mockResolvedValue({ normalizedPhone: null, phoneVerifiedAt: null });
     mocks.userFindFirst.mockResolvedValue(null);
     mocks.challengeFindFirst.mockResolvedValue(null);
     mocks.challengeCount.mockResolvedValue(0);
+    mocks.challengeUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.userUpdate.mockResolvedValue({});
+    mocks.challengeCreate.mockResolvedValue({ id: "challenge-1" });
+    configureAtomicClaim();
+    mocks.transaction.mockImplementation(async (operation: (tx: unknown) => Promise<unknown>) =>
+      operation({
+        phoneVerificationChallenge: {
+          create: mocks.challengeCreate,
+          updateMany: mocks.challengeUpdateMany
+        },
+        user: { update: mocks.userUpdate }
+      })
+    );
     mocks.requestSmsOtp.mockResolvedValue({
       provider: "thaibulksms",
       providerChallengeId: "provider-token-must-not-log",
       reference: "provider-refno-must-not-log",
       phoneLabel: "masked-phone-must-not-log"
     });
+  });
+
+  it("allows only one provider dispatch for two concurrent requests", async () => {
+    let resolveProvider: ((value: {
+      provider: "thaibulksms";
+      providerChallengeId: string;
+      reference: string;
+      phoneLabel: string;
+    }) => void) | undefined;
+    mocks.requestSmsOtp.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveProvider = resolve;
+        })
+    );
+
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+    const first = requestPatientPhoneVerification("customer-1", input);
+    const second = requestPatientPhoneVerification("customer-1", input);
+
+    await expect(second).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
+
+    resolveProvider?.({
+      provider: "thaibulksms",
+      providerChallengeId: "provider-token-must-not-log",
+      reference: "provider-refno-must-not-log",
+      phoneLabel: "masked-phone-must-not-log"
+    });
+    await expect(first).resolves.toMatchObject({ challengeId: "challenge-1" });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("claims atomically and recovers an expired stale claim", async () => {
+    const stale = new Date("2026-08-27T03:59:59.999Z");
+    const claim = configureAtomicClaim(stale);
+
+    await expect(
+      requestPatientPhoneVerification("customer-1", {
+        fullName: "Test Patient",
+        dateOfBirth: "1990-01-02",
+        phone: "0812345678"
+      })
+    ).resolves.toMatchObject({ challengeId: "challenge-1" });
+
+    expect(claim.get()).toEqual(new Date("2026-08-27T04:01:00.000Z"));
+    expect(mocks.userUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: "customer-1",
+        OR: [
+          { phoneOtpDispatchClaimedUntil: null },
+          { phoneOtpDispatchClaimedUntil: { lte: new Date("2026-08-27T04:00:00.000Z") } }
+        ]
+      },
+      data: { phoneOtpDispatchClaimedUntil: new Date("2026-08-27T04:01:00.000Z") }
+    });
+  });
+
+  it("releases a definitively rejected provider claim for a controlled retry", async () => {
+    const claim = configureAtomicClaim();
+    mocks.requestSmsOtp.mockRejectedValueOnce(
+      new SmsOtpError("PROVIDER_REJECTED", providerDiagnostic(400, "provider_rejected"))
+    );
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
+      code: "OTP_REJECTED"
+    });
+    expect(claim.get()).toBeNull();
+
+    await expect(requestPatientPhoneVerification("customer-1", input)).resolves.toMatchObject({
+      challengeId: "challenge-1"
+    });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["provider_timeout", "provider_network"] as const)(
+    "retains an ambiguous %s claim until the cooldown expires",
+    async (category) => {
+    mocks.requestSmsOtp.mockRejectedValueOnce(
+      new SmsOtpError("PROVIDER_UNAVAILABLE", providerDiagnostic(null, category))
+    );
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
+      code: "OTP_UNAVAILABLE"
+    });
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
+      code: "RATE_LIMITED"
+    });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60_000);
+    await expect(requestPatientPhoneVerification("customer-1", input)).resolves.toMatchObject({
+      challengeId: "challenge-1"
+    });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it("retains the claim after post-provider persistence failure", async () => {
+    mocks.transaction.mockRejectedValueOnce(new Error("private persistence failure"));
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toThrow(
+      "private persistence failure"
+    );
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
+      code: "RATE_LIMITED"
+    });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60_000);
+    await expect(requestPatientPhoneVerification("customer-1", input)).resolves.toMatchObject({
+      challengeId: "challenge-1"
+    });
+    expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails before the provider and emits only a safe dispatch-claim diagnostic", async () => {
+    const rawError = Object.assign(new Error("phone=0812345678 password=must-not-log"), { code: "P2022" });
+    mocks.userUpdateMany.mockRejectedValueOnce(rawError);
+    const diagnosticLogger = vi.fn();
+
+    await expect(
+      requestPatientPhoneVerification(
+        "customer-secret-id",
+        { fullName: "patient-name-must-not-log", dateOfBirth: "1990-01-02", phone: "0812345678" },
+        { diagnosticLogger }
+      )
+    ).rejects.toBe(rawError);
+
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+    expect(diagnosticLogger).toHaveBeenCalledWith({
+      stage: "request_preflight",
+      preflightComponent: "dispatch_claim",
+      databaseErrorCategory: "column_missing",
+      applicationHttpStatus: 503,
+      providerHttpStatus: null,
+      providerErrorCode: null,
+      providerErrorCategory: "not_applicable"
+    });
+    expect(JSON.stringify(diagnosticLogger.mock.calls)).not.toMatch(
+      /0812345678|must-not-log|patient-name|customer-secret-id/
+    );
   });
 
   it("classifies an unexpected persistence error without logging raw error or patient/provider data", async () => {

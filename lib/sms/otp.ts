@@ -89,7 +89,8 @@ export type SmsOtpPreflightComponent =
   | "user_lookup"
   | "phone_owner_lookup"
   | "latest_challenge_lookup"
-  | "request_count_lookup";
+  | "request_count_lookup"
+  | "dispatch_claim";
 
 export type SmsOtpDatabaseErrorCategory =
   | "table_missing"

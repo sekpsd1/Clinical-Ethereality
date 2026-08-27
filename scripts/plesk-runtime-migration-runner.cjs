@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const MIGRATION_APPROVAL_ENV = "PLESK_MIGRATION_TARGET";
-const SMS_OTP_MIGRATION_TARGET = "20260814090000_add_patient_phone_verification";
+const SMS_OTP_MIGRATION_TARGET = "20260827113000_add_phone_otp_dispatch_claim";
 
 function hasPleskMigrationTarget(env = process.env) {
   return Object.prototype.hasOwnProperty.call(env, MIGRATION_APPROVAL_ENV);

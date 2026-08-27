@@ -1,19 +1,33 @@
 export type SingleFlightLock = {
-  current: boolean;
+  current: "idle" | "pending" | "succeeded";
+};
+
+type SingleFlightOptions<T> = {
+  retainWhen?: (result: T) => boolean;
 };
 
 export async function runSingleFlight<T>(
   lock: SingleFlightLock,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
+  options: SingleFlightOptions<T> = {}
 ): Promise<T | undefined> {
-  if (lock.current) {
+  if (lock.current !== "idle") {
     return undefined;
   }
 
-  lock.current = true;
+  lock.current = "pending";
   try {
-    return await operation();
-  } finally {
-    lock.current = false;
+    const result = await operation();
+    lock.current = options.retainWhen?.(result) ? "succeeded" : "idle";
+    return result;
+  } catch (error) {
+    lock.current = "idle";
+    throw error;
+  }
+}
+
+export function resetCompletedSingleFlight(lock: SingleFlightLock): void {
+  if (lock.current === "succeeded") {
+    lock.current = "idle";
   }
 }

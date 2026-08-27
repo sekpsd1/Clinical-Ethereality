@@ -4,7 +4,11 @@ import { useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
-import { runSingleFlight } from "@/features/identity-verification/single-flight";
+import {
+  resetCompletedSingleFlight,
+  runSingleFlight,
+  type SingleFlightLock
+} from "@/features/identity-verification/single-flight";
 
 type ApiResult = { ok: boolean; message?: string; challengeId?: string; phoneLabel?: string; alreadyVerified?: true };
 
@@ -28,7 +32,12 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const requestInFlight = useRef(false);
+  const requestInFlight = useRef<SingleFlightLock["current"]>("idle");
+
+  function updateIdentityInput(setter: (value: string) => void, value: string) {
+    resetCompletedSingleFlight(requestInFlight);
+    setter(value);
+  }
 
   async function requestOtp() {
     await runSingleFlight(requestInFlight, async () => {
@@ -38,21 +47,23 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, phone });
         if (!result.ok) {
           setMessage(result.message ?? "ยังไม่สามารถส่งรหัสได้");
-          return;
+          return result;
         }
         if (result.alreadyVerified) {
           router.refresh();
-          return;
+          return result;
         }
         setChallengeId(result.challengeId ?? null);
         setPhoneLabel(result.phoneLabel ?? null);
         setMessage("ส่งรหัส OTP แล้ว กรุณากรอกรหัสเพื่อยืนยันเบอร์โทร");
+        return result;
       } catch {
         setMessage("ยังไม่สามารถขอรหัสได้ กรุณาลองใหม่");
+        return undefined;
       } finally {
         setPending(false);
       }
-    });
+    }, { retainWhen: (result) => result?.ok === true });
   }
 
   async function verifyOtp() {
@@ -88,13 +99,13 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
 
       <div className="mt-4 grid gap-3">
         <label className="text-xs font-bold text-text">ชื่อ-นามสกุล
-          <input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
+          <input value={fullName} onChange={(event) => updateIdentityInput(setFullName, event.target.value)} autoComplete="name" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
         </label>
         <label className="text-xs font-bold text-text">วันเดือนปีเกิด
-          <input value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
+          <input value={dateOfBirth} onChange={(event) => updateIdentityInput(setDateOfBirth, event.target.value)} type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
         </label>
         <label className="text-xs font-bold text-text">เบอร์มือถือ
-          <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="0812345678" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
+          <input value={phone} onChange={(event) => updateIdentityInput(setPhone, event.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="0812345678" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
         </label>
       </div>
 

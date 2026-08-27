@@ -93,7 +93,7 @@ describe("Plesk runtime migration runner", () => {
     const spawnSync = vi.fn();
     const loggers = createLoggers();
     const result = runPleskRuntimeMigration({
-      rootDir: createRunnerWorkspace([SMS_OTP_MIGRATION_TARGET, "20260815000000_future_migration"]),
+      rootDir: createRunnerWorkspace([SMS_OTP_MIGRATION_TARGET, "20260828000000_future_migration"]),
       env: { [MIGRATION_APPROVAL_ENV]: SMS_OTP_MIGRATION_TARGET },
       spawnSync,
       ...loggers

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   SMS_OTP_SCHEMA_COMPONENTS,
-  SMS_OTP_SCHEMA_MIGRATION,
+  SMS_OTP_SCHEMA_MIGRATIONS,
   getSmsOtpSchemaReadiness
 } from "@/features/admin/integrations/sms-otp-schema-readiness";
 
@@ -18,8 +18,14 @@ function createClient(results: readonly QueryResult[]) {
   };
 }
 
-const appliedMigration = [{ name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 0 }];
-const userColumns = ["fullName", "dateOfBirth", "normalizedPhone", "phoneVerifiedAt"].map((name) => ({ name }));
+const appliedMigrations = SMS_OTP_SCHEMA_MIGRATIONS.map((name) => ({ name, finished: 1, rolledBack: 0 }));
+const userColumns = [
+  "fullName",
+  "dateOfBirth",
+  "normalizedPhone",
+  "phoneVerifiedAt",
+  "phoneOtpDispatchClaimedUntil"
+].map((name) => ({ name }));
 const challengeTables = [{ name: "PhoneVerificationChallenge" }];
 const challengeColumns = [
   "id",
@@ -79,7 +85,7 @@ const foreignKeys = [
 ];
 
 function readyResults(): QueryResult[] {
-  return [appliedMigration, userColumns, challengeTables, challengeColumns, indexes, foreignKeys];
+  return [appliedMigrations, userColumns, challengeTables, challengeColumns, indexes, foreignKeys];
 }
 
 function componentStatus(result: Awaited<ReturnType<typeof getSmsOtpSchemaReadiness>>, name: string) {
@@ -102,33 +108,39 @@ describe("Admin SMS OTP schema readiness", () => {
     const result = await getSmsOtpSchemaReadiness(createClient(results) as never);
 
     expect(result.status).toBe("not_ready");
-    expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATION}`)).toBe("not_ready");
+    for (const migration of SMS_OTP_SCHEMA_MIGRATIONS) {
+      expect(componentStatus(result, `migration:${migration}`)).toBe("not_ready");
+    }
   });
 
   it("is not ready when the migration is unfinished or rolled back", async () => {
-    for (const migration of [
-      [{ name: SMS_OTP_SCHEMA_MIGRATION, finished: 0, rolledBack: 0 }],
-      [{ name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 1 }]
+    for (const migrationState of [
+      { finished: 0, rolledBack: 0 },
+      { finished: 1, rolledBack: 1 }
     ]) {
       const results = readyResults();
-      results[0] = migration;
+      results[0] = [
+        appliedMigrations[0],
+        { name: SMS_OTP_SCHEMA_MIGRATIONS[1], ...migrationState }
+      ];
 
       const result = await getSmsOtpSchemaReadiness(createClient(results) as never);
-      expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATION}`)).toBe("not_ready");
+      expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATIONS[1]}`)).toBe("not_ready");
     }
   });
 
   it("is ready when Prisma keeps failed history alongside a successfully resolved row", async () => {
     const results = readyResults();
     results[0] = [
-      { name: SMS_OTP_SCHEMA_MIGRATION, finished: 0, rolledBack: 0 },
-      { name: SMS_OTP_SCHEMA_MIGRATION, finished: 1, rolledBack: 0 }
+      appliedMigrations[0],
+      { name: SMS_OTP_SCHEMA_MIGRATIONS[1], finished: 0, rolledBack: 0 },
+      { name: SMS_OTP_SCHEMA_MIGRATIONS[1], finished: 1, rolledBack: 0 }
     ];
 
     const result = await getSmsOtpSchemaReadiness(createClient(results) as never);
 
     expect(result.status).toBe("ready");
-    expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATION}`)).toBe("ready");
+    expect(componentStatus(result, `migration:${SMS_OTP_SCHEMA_MIGRATIONS[1]}`)).toBe("ready");
   });
 
   it.each([

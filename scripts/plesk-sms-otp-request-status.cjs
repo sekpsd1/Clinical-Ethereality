@@ -22,7 +22,8 @@ const SAFE_SMS_OTP_PREFLIGHT_COMPONENTS = Object.freeze([
   "user_lookup",
   "phone_owner_lookup",
   "latest_challenge_lookup",
-  "request_count_lookup"
+  "request_count_lookup",
+  "dispatch_claim"
 ]);
 const SAFE_SMS_OTP_ROUTE_COMPONENTS = Object.freeze([
   "session_lookup",

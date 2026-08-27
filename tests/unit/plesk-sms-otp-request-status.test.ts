@@ -180,7 +180,8 @@ describe("Plesk SMS OTP request private status", () => {
       "user_lookup",
       "phone_owner_lookup",
       "latest_challenge_lookup",
-      "request_count_lookup"
+      "request_count_lookup",
+      "dispatch_claim"
     ]);
     expect(SAFE_SMS_OTP_DATABASE_ERROR_CATEGORIES).toEqual([
       "table_missing",

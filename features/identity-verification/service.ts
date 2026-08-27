@@ -99,6 +99,25 @@ function mapOtpError(error: unknown): PatientVerificationError {
   return new PatientVerificationError("OTP_REJECTED");
 }
 
+function writeRequestPreflightFailure(
+  component: SmsOtpPreflightComponent,
+  error: unknown,
+  diagnosticLogger?: SmsOtpDiagnosticLogger
+): void {
+  writeSmsOtpDiagnostic(
+    {
+      stage: "request_preflight",
+      preflightComponent: component,
+      databaseErrorCategory: classifySmsOtpDatabaseError(error),
+      applicationHttpStatus: 503,
+      providerHttpStatus: null,
+      providerErrorCode: null,
+      providerErrorCategory: "not_applicable"
+    },
+    diagnosticLogger
+  );
+}
+
 async function runRequestPersistenceStage<T>(
   stage: Extract<SmsOtpDiagnosticStage, "request_preflight" | "request_persistence">,
   operation: () => Promise<T>,
@@ -140,18 +159,7 @@ async function runRequestPreflightBatch<A, B>(
         throw result.reason;
       }
 
-      writeSmsOtpDiagnostic(
-        {
-          stage: "request_preflight",
-          preflightComponent: checks[index].component,
-          databaseErrorCategory: classifySmsOtpDatabaseError(result.reason),
-          applicationHttpStatus: 503,
-          providerHttpStatus: null,
-          providerErrorCode: null,
-          providerErrorCategory: "not_applicable"
-        },
-        diagnosticLogger
-      );
+      writeRequestPreflightFailure(checks[index].component, result.reason, diagnosticLogger);
       throw result.reason;
     }
   }
@@ -160,6 +168,59 @@ async function runRequestPreflightBatch<A, B>(
     (results[0] as PromiseFulfilledResult<A>).value,
     (results[1] as PromiseFulfilledResult<B>).value
   ];
+}
+
+async function claimPhoneOtpDispatch(
+  userId: string,
+  claimedAt: Date,
+  diagnosticLogger?: SmsOtpDiagnosticLogger
+): Promise<Date> {
+  const claimedUntil = new Date(claimedAt.getTime() + resendDelayMs);
+  let claimed: { count: number };
+
+  try {
+    // One conditional UPDATE is the cross-request serialization boundary.
+    claimed = await prisma.user.updateMany({
+      where: {
+        id: userId,
+        OR: [
+          { phoneOtpDispatchClaimedUntil: null },
+          { phoneOtpDispatchClaimedUntil: { lte: claimedAt } }
+        ]
+      },
+      data: { phoneOtpDispatchClaimedUntil: claimedUntil }
+    });
+  } catch (error) {
+    writeRequestPreflightFailure("dispatch_claim", error, diagnosticLogger);
+    throw error;
+  }
+
+  if (claimed.count !== 1) {
+    throw new PatientVerificationError("RATE_LIMITED");
+  }
+
+  return claimedUntil;
+}
+
+function mayReleaseDispatchClaim(error: unknown): boolean {
+  if (!(error instanceof SmsOtpError)) return false;
+  if (error.code === "CONFIGURATION_ERROR") return true;
+  if (error.code !== "PROVIDER_REJECTED") return false;
+
+  const status = error.diagnostic?.providerHttpStatus;
+  // A provider 2xx/timeout/network/5xx outcome may already have sent an OTP, so its claim expires naturally.
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
+async function releasePhoneOtpDispatchClaim(userId: string, claimedUntil: Date): Promise<void> {
+  try {
+    await prisma.user.updateMany({
+      where: { id: userId, phoneOtpDispatchClaimedUntil: claimedUntil },
+      data: { phoneOtpDispatchClaimedUntil: null }
+    });
+  } catch {
+    // Fail closed: the bounded claim expires without exposing provider or database details.
+  }
 }
 
 function toDateOfBirth(value: string): Date {
@@ -218,7 +279,7 @@ export async function requestPatientPhoneVerification(
 
   const normalizedPhone = normalizeThaiMobileNumber(input.phone);
   const dateOfBirth = toDateOfBirth(input.dateOfBirth);
-  const now = new Date();
+  const requestStartedAt = new Date();
   const [user, existingPhoneOwner] = await runRequestPreflightBatch(
     {
       component: "user_lookup",
@@ -277,19 +338,21 @@ export async function requestPatientPhoneVerification(
       component: "request_count_lookup",
       operation: () =>
         prisma.phoneVerificationChallenge.count({
-          where: { userId, requestedAt: { gte: new Date(now.getTime() - requestWindowMs) } }
+          where: { userId, requestedAt: { gte: new Date(requestStartedAt.getTime() - requestWindowMs) } }
         })
     },
     options.diagnosticLogger
   );
 
-  if (recentChallenge && now.getTime() - recentChallenge.requestedAt.getTime() < resendDelayMs) {
+  if (recentChallenge && requestStartedAt.getTime() - recentChallenge.requestedAt.getTime() < resendDelayMs) {
     throw new PatientVerificationError("RATE_LIMITED");
   }
   if (requestCount >= maxRequestsPerWindow) {
     throw new PatientVerificationError("RATE_LIMITED");
   }
 
+  const claimedAt = new Date();
+  const claimedUntil = await claimPhoneOtpDispatch(userId, claimedAt, options.diagnosticLogger);
   let providerChallenge;
   try {
     providerChallenge = await requestSmsOtp(normalizedPhone.local, {
@@ -297,17 +360,20 @@ export async function requestPatientPhoneVerification(
       diagnosticLogger: options.diagnosticLogger
     });
   } catch (error) {
+    if (mayReleaseDispatchClaim(error)) {
+      await releasePhoneOtpDispatchClaim(userId, claimedUntil);
+    }
     throw mapOtpError(error);
   }
 
-  const expiresAt = new Date(now.getTime() + otpTtlMs);
+  const expiresAt = new Date(claimedAt.getTime() + otpTtlMs);
   const challenge = await runRequestPersistenceStage(
     "request_persistence",
     () =>
       prisma.$transaction(async (tx) => {
         await tx.phoneVerificationChallenge.updateMany({
-          where: { userId, verifiedAt: null, expiresAt: { gt: now } },
-          data: { expiresAt: now }
+          where: { userId, verifiedAt: null, expiresAt: { gt: claimedAt } },
+          data: { expiresAt: claimedAt }
         });
         await tx.user.update({
           where: { id: userId },
@@ -325,7 +391,7 @@ export async function requestPatientPhoneVerification(
             normalizedPhone: normalizedPhone.e164,
             providerChallengeCiphertext: encryptProviderChallenge(providerChallenge.providerChallengeId),
             expiresAt,
-            requestedAt: now
+            requestedAt: claimedAt
           },
           select: { id: true }
         });

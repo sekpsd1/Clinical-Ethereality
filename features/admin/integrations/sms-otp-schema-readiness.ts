@@ -1,9 +1,18 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
-export const SMS_OTP_SCHEMA_MIGRATION = "20260814090000_add_patient_phone_verification" as const;
+export const SMS_OTP_SCHEMA_MIGRATIONS = [
+  "20260814090000_add_patient_phone_verification",
+  "20260827113000_add_phone_otp_dispatch_claim"
+] as const;
 
-const REQUIRED_USER_COLUMNS = ["fullName", "dateOfBirth", "normalizedPhone", "phoneVerifiedAt"] as const;
+const REQUIRED_USER_COLUMNS = [
+  "fullName",
+  "dateOfBirth",
+  "normalizedPhone",
+  "phoneVerifiedAt",
+  "phoneOtpDispatchClaimedUntil"
+] as const;
 const REQUIRED_CHALLENGE_COLUMNS = [
   "id",
   "userId",
@@ -18,7 +27,7 @@ const REQUIRED_CHALLENGE_COLUMNS = [
 ] as const;
 
 export const SMS_OTP_SCHEMA_COMPONENTS = [
-  `migration:${SMS_OTP_SCHEMA_MIGRATION}`,
+  ...SMS_OTP_SCHEMA_MIGRATIONS.map((migration) => `migration:${migration}` as const),
   "User.columns",
   "User.normalizedPhone.unique",
   "User.phoneVerifiedAt.index",
@@ -126,7 +135,7 @@ export async function getSmsOtpSchemaReadiness(
             finished_at IS NOT NULL AS finished,
             rolled_back_at IS NOT NULL AS rolledBack
           FROM _prisma_migrations
-          WHERE migration_name = ${SMS_OTP_SCHEMA_MIGRATION}
+          WHERE migration_name IN (${Prisma.join(SMS_OTP_SCHEMA_MIGRATIONS)})
         `),
         client.$queryRaw<NameRow[]>(Prisma.sql`
           SELECT COLUMN_NAME AS name
@@ -188,12 +197,10 @@ export async function getSmsOtpSchemaReadiness(
         `)
       ]);
 
-    const migrationReady = migrations.some(
-      (row) =>
-        row.name === SMS_OTP_SCHEMA_MIGRATION &&
-        asBoolean(row.finished) &&
-        !asBoolean(row.rolledBack)
-    );
+    const migrationReady = (migration: (typeof SMS_OTP_SCHEMA_MIGRATIONS)[number]) =>
+      migrations.some(
+        (row) => row.name === migration && asBoolean(row.finished) && !asBoolean(row.rolledBack)
+      );
     const foreignKeyReady = foreignKeys.some(
       (row) =>
         row.constraintName === "PhoneVerificationChallenge_userId_fkey" &&
@@ -206,9 +213,8 @@ export async function getSmsOtpSchemaReadiness(
     );
 
     const components: SmsOtpSchemaReadinessComponent[] = [
-      component(
-        `migration:${SMS_OTP_SCHEMA_MIGRATION}`,
-        migrationReady
+      ...SMS_OTP_SCHEMA_MIGRATIONS.map((migration) =>
+        component(`migration:${migration}`, migrationReady(migration))
       ),
       component("User.columns", includesAll(userColumns, REQUIRED_USER_COLUMNS)),
       component(

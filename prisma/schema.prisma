@@ -183,6 +183,7 @@ model User {
   phone         String?
   normalizedPhone String?     @unique @db.VarChar(20)
   phoneVerifiedAt DateTime?
+  phoneOtpDispatchClaimedUntil DateTime? @db.DateTime(3)
   avatarUrl     String?
   role          UserRole      @default(customer)
   status        AccountStatus @default(active)
