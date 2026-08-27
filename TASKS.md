@@ -445,3 +445,29 @@
 - [ ] Activate the non-chrooted, host-authoritative five-minute Store reservation-cleanup schedule and verify one natural run plus the 15-minute readiness check.
 - [ ] Complete Controlled Consultation Real-slip UAT, then Full Doctor Flow UAT, after SMS OTP UAT passes.
 - [ ] Replace external-prescription hosted URLs with private upload plus approved review gate; add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint; connect real carrier tracking.
+
+## Project 6 Closeout (2026-08-27)
+
+The entries below are the current production handoff and supersede earlier SMS OTP pending entries where they conflict. `CHAT_HANDOFF.md` remains historical only.
+
+- [x] Complete ThaiBulkSMS OTP setup: OTP Application, approved Sender, contact configuration, IP whitelist, and owner-managed environment key names are ready; secret values remain outside source and chat.
+- [x] Complete SMS schema reconciliation and readiness: `20260814090000_add_patient_phone_verification` is applied and all patient OTP schema components are ready.
+- [x] Deploy and validate the stale-session refresh fix for the OTP request route without weakening auth, role, CSRF/origin, rate-limit, or booking gates.
+- [x] Apply durable OTP idempotency migration `20260827113000_add_phone_otp_dispatch_claim`; concurrent dispatch is claim-protected and the 60-second cooldown remains enforced.
+- [x] Complete Controlled Production OTP UAT: 1 UI request → 1 application POST → 1 provider transaction; Verify 1/1 HTTP 200; phone verified; booking gate open; resend/retry 0; Booking/Consultation/Payment/Zoom records created 0.
+- [x] Confirm bounded Production health HTTP 200/`status: ok`, no application HTTP 500, and normal runtime migration/reconciliation target keys absent.
+- [x] Record Auto Model Routing in `AI_WORKFLOW.md` (origin commit `a63a655`); the pre-existing untracked root copy was preserved.
+
+### True remaining backlog (ordered)
+
+- [ ] Complete Controlled Consultation Real-slip UAT, then Full Doctor Flow UAT, after the completed OTP gate and with separate payment/provider approval.
+- [ ] Activate a non-chroot, host-authoritative Store reservation-cleanup schedule (or safe equivalent) and verify one natural run plus the readiness check.
+- [ ] Connect real carrier tracking if required beyond internal shipment statuses.
+- [ ] Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
+- [ ] Add explicit prescription-to-product mapping and the owner-approved one-active-order constraint.
+- [ ] Back up and run the Production test-flow cleanup/reset only after exact target verification and separate approval; preserve real user/product/order/audit history.
+- [ ] Resolve remaining documented launch decisions and deferred UAT (regulated catalog guidance/stock readiness, legal/consent inputs, storage provider, realtime chat, and approved staff/feature sessions) in the owning chats.
+
+### Recommended next single task
+
+- [ ] `Customer Flow`: run the separately approved Controlled Consultation Real-slip UAT readiness check and one real-slip verification, stopping before any later Full Doctor Flow mutation. Acceptance is health/readiness pass, approved existing consultation path, PromptPay display, one private slip upload, one SlipOK verification, verified/scheduled outcome, ownership/privacy/audit/notification checks, and clean mobile/Console/Network results with no retry or duplicate provider call. Use bounded read-only health/Admin checks plus `npm run lint`/`npm run typecheck` only if code changes are proposed; require a fresh backup/rollback check and Controller approval before any Production payment/fixture mutation. No deploy, restart, migration, environment edit, OTP resend/verify, refund, Zoom, or unrelated DB action.

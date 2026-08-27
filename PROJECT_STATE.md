@@ -598,3 +598,37 @@ Phase 12 quality work, the non-recording Zoom Basic Controlled Production UAT, t
 - The fail-closed reconciliation was deployed at `4e2c08a` after a non-migration Phase A. Production Phase B created and verified a fresh database-focused Plesk backup plus restore availability, set the exact one-time application-runtime target, and restarted once. The app stopped fail-closed, but the safe completion console line was unavailable through the customer-level Plesk Log Browser. Recovery removed the target entirely, confirmed `PLESK_MIGRATION_TARGET` absent, restarted normally once, restored HTTP 200/`status: ok`, and confirmed the exact original partial schema state. This is classification C: no challenge-table DDL occurred, so no restore or retry was performed.
 - Read-only RCA confirmed that Plesk calls the root `/app.bccgroup-thailand.com/server.js` wrapper in production mode, the wrapper passes `__dirname` into the guarded startup integration before `.next/standalone/server.js`, and deployed commit `4e2c08a` contains the reconciliation runner, the pinned reviewed migration hash, the expected latest migration, Prisma CLI, and standalone runtime. The confirmed defect is observability: commit `4e2c08a` writes safe stages only to `console.log`/`console.error`; Plesk lists the global `/var/log/passenger/passenger.log` but exposes zero readable Passenger rows in its Log Browser, so the exact pre-DDL rejection stage cannot be reconstructed. The follow-up deployed at `0703212` adds an atomic private `runtime-private/sms-otp-schema-reconciliation-status.json` outside the configured `public` document root, contains only allowlisted stage/status/action metadata, fails closed before DB access when that artifact cannot be written, preserves `reconciliationRun=true` after schema creation starts, and provides a no-environment/no-database status-path probe.
 - The collation-safe reconciliation fix was deployed at `2cf1815`; its approved run passed the prior table-collation gate but rejected before DDL at `user_columns`, and emergency recovery restored HTTP 200/`status: ok` with the exact original partial schema and no DB mutation. Local source comparison confirms Admin checks User-column presence only, while the runner checks exact definitions; it also confirms MariaDB represents an implicit nullable default as unquoted `NULL`. The code-only follow-up pending review adds closed-enum per-column mismatch details and accepts that documented nullable-default representation while keeping non-null and quoted literal defaults fail-closed.
+
+## Project 6 Closeout (2026-08-27)
+
+This section is the current handoff for the next Project Controller and supersedes earlier SMS OTP pending notes and intermediate UAT failure records where they conflict. It is based on the reviewed production handoffs and does not use `CHAT_HANDOFF.md` as current state.
+
+- ThaiBulkSMS OTP is configured for the owner account: the OTP Application, approved Sender, contact configuration, IP whitelist, and four owner-managed environment key names are ready. Secret values remain owner-managed and are not recorded here.
+- SMS schema reconciliation completed successfully. The patient-profile OTP columns, `PhoneVerificationChallenge` table/dependencies, and the schema readiness checks are ready; migration `20260814090000_add_patient_phone_verification` is applied.
+- The stale-session refresh fix is deployed and working. The OTP request route reuses the existing refresh-cookie rotation contract when an access session is stale, while preserving role, CSRF/origin, rate-limit, and fail-closed behavior.
+- Durable OTP idempotency is deployed and applied once through migration `20260827113000_add_phone_otp_dispatch_claim`. The per-user dispatch claim/cooldown prevents concurrent duplicate provider dispatch while retaining the existing challenge and rate-limit defenses.
+- Controlled Production OTP UAT completed: one visible UI request produced one application POST and one ThaiBulkSMS provider transaction; Verify was one request with HTTP 200; phone verification succeeded and the booking gate opened. No resend/retry occurred, and no Booking, Consultation, Payment, or Zoom record was created.
+- Health remained HTTP 200 with `status: ok`; bounded checks found no application HTTP 500. Migration/reconciliation target keys were removed after their controlled runs and are absent in the normal runtime.
+- Auto Model Routing is recorded in `AI_WORKFLOW.md` at origin commit `a63a655`; routing remains a default selected by the Project Controller, with Ultra/Max requiring separate owner approval. The pre-existing untracked root `AI_WORKFLOW.md` was preserved and not overwritten.
+
+### True remaining backlog (ordered)
+
+1. Controlled Consultation Real-slip UAT, then the remaining Full Doctor Flow UAT, using the already approved payment/privacy boundaries and no duplicate provider attempt.
+2. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
+3. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
+4. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
+5. Add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint.
+6. Run the Production test-flow cleanup/reset only after a fresh backup, exact target verification, and separate approval; preserve real user/product/order/audit history.
+7. Resolve other documented unfinished product/compliance decisions (regulated catalog fields/stock readiness, legal/consent inputs, storage provider choice, realtime chat choice, and deferred staff/feature UAT) through their owning chats.
+
+### Recommended next single task
+
+**Owner chat:** `Customer Flow` (coordinate with `Doctor ระบบ 4` only if the consultation fixture or doctor-side assertion needs it).
+
+**Task:** Controlled Consultation Real-slip UAT readiness and one approved real-slip verification, stopping before any later Full Doctor Flow mutation.
+
+**Acceptance:** health 200/ok and Admin payment/SMS readiness are confirmed; an existing approved consultation/test path is used; PromptPay display, private slip upload, one SlipOK verification, persisted verified/scheduled result, ownership/privacy boundaries, audit/notification outcome, and mobile/Console/Network checks pass; no retry, duplicate provider call, or unrelated record is created.
+
+**Checks:** bounded `/api/health` and Admin readiness read-only checks; `npm run lint` and `npm run typecheck` if code changes are proposed (otherwise no code change); browser UAT at the approved mobile viewport with a fresh backup/rollback check before any Production mutation.
+
+**Production boundary:** requires a separate Controller approval for the low-value real transfer/provider call and any fixture/payment mutation; no deploy, restart, migration, environment edit, OTP resend/verify, Booking/Consultation creation beyond the approved fixture, refund, Zoom, or unrelated database action.
