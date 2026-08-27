@@ -3,6 +3,11 @@ export type AdminDoctorOption = {
   name: string;
   specialty: string;
   status: string;
+  userStatus: string;
+  consultationFeeInput: string;
+  consultationFeeLabel: string;
+  feeEligible: boolean;
+  updatedAtIso: string;
 };
 
 export type AdminDoctorAvailabilitySlot = {

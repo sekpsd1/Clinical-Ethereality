@@ -20,7 +20,8 @@ function getApprovedDoctors() {
       user: {
         select: {
           displayName: true,
-          lineUserId: true
+          lineUserId: true,
+          status: true
         }
       }
     }
@@ -77,16 +78,27 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-function getDoctorName(doctor: Pick<DoctorRecord, "user">): string {
+function getDoctorName(doctor: { user: { displayName: string | null; lineUserId: string } }): string {
   return doctor.user.displayName ?? doctor.user.lineUserId;
 }
 
 function mapDoctor(doctor: DoctorRecord): AdminDoctorOption {
+  const consultationFeeInput = doctor.consultationFee === null ? "" : `${doctor.consultationFee}.00`;
+  const consultationFeeLabel =
+    doctor.consultationFee === null
+      ? "ยังไม่ตั้งค่า"
+      : `${new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(doctor.consultationFee)} บาท`;
+
   return {
     id: doctor.id,
     name: getDoctorName(doctor),
     specialty: doctor.specialty ?? "ยังไม่ระบุสาขา",
-    status: doctor.status
+    status: doctor.status,
+    userStatus: doctor.user.status,
+    consultationFeeInput,
+    consultationFeeLabel,
+    feeEligible: doctor.status === "approved" && doctor.user.status === "active",
+    updatedAtIso: doctor.updatedAt.toISOString()
   };
 }
 

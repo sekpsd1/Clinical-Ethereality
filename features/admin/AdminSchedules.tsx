@@ -4,6 +4,7 @@ import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminBulkScheduleEditor } from "@/features/admin/AdminBulkScheduleEditor";
+import { AdminConsultationFeeSettings } from "@/features/admin/AdminConsultationFeeSettings";
 import { AdminDateScheduleEditor } from "@/features/admin/AdminDateScheduleEditor";
 import { AdminDateScheduleCalendar } from "@/features/admin/AdminDateScheduleCalendar";
 import { AdminDateScheduleDeleteButton } from "@/features/admin/AdminDateScheduleDeleteButton";
@@ -38,6 +39,8 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
       ) : null}
 
       <AdminDateScheduleCalendar overrides={data.dateOverrides} slots={data.slots} />
+
+      <AdminConsultationFeeSettings doctors={data.doctors} />
 
       <AdminBulkScheduleEditor doctors={data.doctors} />
 
