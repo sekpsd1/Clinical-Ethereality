@@ -4,9 +4,13 @@ import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 import { issueZoomMeetingSdkSignature } from "@/lib/zoom/meeting-sdk";
 import { getZoomHostZakIfConfigured } from "@/lib/zoom/meetings";
+import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
 import type { ZoomMeetingFrameAccess, ZoomMeetingJoinData } from "@/features/consultations/zoom/types";
 
-export async function getZoomMeetingFrameAccess(consultationId?: string): Promise<ZoomMeetingFrameAccess> {
+export async function getZoomMeetingFrameAccess(
+  consultationId?: string,
+  now = new Date()
+): Promise<ZoomMeetingFrameAccess> {
   noStore();
 
   const session = await getCurrentSession();
@@ -22,7 +26,7 @@ export async function getZoomMeetingFrameAccess(consultationId?: string): Promis
     };
   }
 
-  if (session.role !== "customer" && session.role !== "doctor" && session.role !== "admin") {
+  if (session.role !== "customer" && session.role !== "doctor") {
     return {
       available: false,
       consultationId,
@@ -40,37 +44,37 @@ export async function getZoomMeetingFrameAccess(consultationId?: string): Promis
               doctor: {
                 userId: session.userId
               },
-              status: {
-                in: ["scheduled", "live"]
+              status: "live",
+              scheduledAt: {
+                lte: now
               }
             }
-          : session.role === "admin"
-            ? {
-                id: consultationId,
-                status: {
-                  in: ["scheduled", "live"]
-                }
-              }
-            : {
-                id: consultationId,
-                patientId: session.userId,
-                patient: {
-                  fullName: { not: null },
-                  dateOfBirth: { not: null },
-                  normalizedPhone: { not: null },
-                  phoneVerifiedAt: { not: null }
-                },
-                status: {
-                  in: ["scheduled", "live"]
-                }
+          : {
+              id: consultationId,
+              patientId: session.userId,
+              patient: {
+                fullName: { not: null },
+                dateOfBirth: { not: null },
+                normalizedPhone: { not: null },
+                phoneVerifiedAt: { not: null }
               },
+              status: "live",
+              scheduledAt: {
+                lte: now
+              }
+            },
       select: {
         id: true,
+        status: true,
+        scheduledAt: true,
         zoomMeetingId: true
       }
     });
 
-    if (!consultation?.zoomMeetingId) {
+    if (
+      !consultation?.zoomMeetingId ||
+      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+    ) {
       return {
         available: false,
         consultationId: consultation?.id ?? consultationId,
@@ -94,7 +98,10 @@ export async function getZoomMeetingFrameAccess(consultationId?: string): Promis
   }
 }
 
-export async function getZoomMeetingJoinData(consultationId?: string): Promise<ZoomMeetingJoinData> {
+export async function getZoomMeetingJoinData(
+  consultationId?: string,
+  now = new Date()
+): Promise<ZoomMeetingJoinData> {
   noStore();
 
   const session = await getCurrentSession();
@@ -110,7 +117,7 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
     };
   }
 
-  if (session.role !== "customer" && session.role !== "doctor" && session.role !== "admin") {
+  if (session.role !== "customer" && session.role !== "doctor") {
     return {
       available: false,
       consultationId,
@@ -128,38 +135,38 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
               doctor: {
                 userId: session.userId
               },
-              status: {
-                in: ["scheduled", "live"]
+              status: "live",
+              scheduledAt: {
+                lte: now
               }
             }
-          : session.role === "admin"
-            ? {
-                id: consultationId,
-                status: {
-                  in: ["scheduled", "live"]
-                }
-              }
-            : {
-                id: consultationId,
-                patientId: session.userId,
-                patient: {
-                  fullName: { not: null },
-                  dateOfBirth: { not: null },
-                  normalizedPhone: { not: null },
-                  phoneVerifiedAt: { not: null }
-                },
-                status: {
-                  in: ["scheduled", "live"]
-                }
+          : {
+              id: consultationId,
+              patientId: session.userId,
+              patient: {
+                fullName: { not: null },
+                dateOfBirth: { not: null },
+                normalizedPhone: { not: null },
+                phoneVerifiedAt: { not: null }
               },
+              status: "live",
+              scheduledAt: {
+                lte: now
+              }
+            },
       select: {
         id: true,
+        status: true,
+        scheduledAt: true,
         zoomMeetingId: true,
         zoomPassword: true
       }
     });
 
-    if (!consultation?.zoomMeetingId) {
+    if (
+      !consultation?.zoomMeetingId ||
+      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+    ) {
       return {
         available: false,
         consultationId: consultation?.id ?? consultationId,
@@ -168,7 +175,7 @@ export async function getZoomMeetingJoinData(consultationId?: string): Promise<Z
       };
     }
 
-    const isHost = session.role === "doctor" || session.role === "admin";
+    const isHost = session.role === "doctor";
     const signature = await issueZoomMeetingSdkSignature(consultation.zoomMeetingId, isHost ? 1 : 0);
 
     if (!signature) {

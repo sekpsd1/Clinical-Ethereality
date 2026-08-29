@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
+import { canParticipantAccessLiveConsultation } from "@/features/consultations/waiting-room/access";
 
 export type SendConsultationMessageActionState = {
   status: "idle" | "success" | "error";
@@ -40,6 +41,7 @@ export async function sendConsultationMessageAction(
           patientId: true,
           doctorId: true,
           status: true,
+          scheduledAt: true,
           doctor: {
             select: {
               userId: true
@@ -53,16 +55,22 @@ export async function sendConsultationMessageAction(
       }
 
       const canAccess =
-        session.role === "admin" ||
-        consultation.patientId === session.userId ||
-        (session.role === "doctor" && consultation.doctor.userId === session.userId);
+        (session.role === "customer" || session.role === "doctor") &&
+        canParticipantAccessLiveConsultation(
+          {
+            userId: session.userId,
+            role: session.role
+          },
+          {
+            patientId: consultation.patientId,
+            doctorUserId: consultation.doctor.userId,
+            status: consultation.status,
+            scheduledAt: consultation.scheduledAt
+          }
+        );
 
       if (!canAccess) {
         throw new Error("User cannot access this consultation chat.");
-      }
-
-      if (consultation.status !== "scheduled" && consultation.status !== "live") {
-        throw new Error("Consultation chat is not open for new messages.");
       }
 
       const message = await tx.consultationMessage.create({
@@ -96,7 +104,10 @@ export async function sendConsultationMessageAction(
             body: parsed.data.body,
             metadataJson: {
               consultationId: consultation.id,
-              href: session.role === "doctor" ? "/consult/live" : "/doctor/consultations"
+              href:
+                session.role === "doctor"
+                  ? `/consult/live?consultation=${encodeURIComponent(consultation.id)}`
+                  : "/doctor/consultations"
             }
           }
         });

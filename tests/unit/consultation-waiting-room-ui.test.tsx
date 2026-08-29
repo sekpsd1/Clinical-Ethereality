@@ -34,8 +34,9 @@ describe("ConsultWaitingRoom", () => {
     const html = renderToStaticMarkup(
       <ConsultWaitingRoom
         data={waitingRoomData({
+          consultationStatus: "live",
           canEnterLive: true,
-          countdownTitle: "ถึงเวลานัดแล้ว",
+          countdownTitle: "แพทย์เปิดห้องแล้ว",
           countdownValue: "พร้อม",
           liveHref: "/consult/live?consultation=consultation-uat"
         })}

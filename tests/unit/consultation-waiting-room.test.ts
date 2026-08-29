@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getWaitingRoomTiming } from "@/features/consultations/waiting-room/access";
+import {
+  canParticipantAccessLiveConsultation,
+  getWaitingRoomTiming
+} from "@/features/consultations/waiting-room/access";
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
@@ -83,10 +86,7 @@ describe("getConsultationWaitingRoom", () => {
     mocks.getCurrentSession.mockResolvedValue(session("doctor", "doctor-user-1"));
     mocks.findFirst.mockResolvedValue(consultationRecord("live"));
 
-    const result = await getConsultationWaitingRoom(
-      "consultation-uat",
-      new Date("2029-12-31T00:00:00.000Z")
-    );
+    const result = await getConsultationWaitingRoom("consultation-uat", scheduledAt);
 
     expect(mocks.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -145,7 +145,7 @@ describe("getConsultationWaitingRoom", () => {
     });
   });
 
-  it("opens the server-authorized live route at appointment time", async () => {
+  it("waits for the server-authorized live transition even at appointment time", async () => {
     mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
     mocks.findFirst.mockResolvedValue(consultationRecord("scheduled"));
 
@@ -153,6 +153,21 @@ describe("getConsultationWaitingRoom", () => {
 
     expect(result).toMatchObject({
       consultationId: "consultation-uat",
+      canEnterLive: false,
+      countdownTitle: "รอแพทย์เปิดห้อง",
+      liveHref: null
+    });
+  });
+
+  it("opens the server-authorized live route after transition and appointment time", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
+    mocks.findFirst.mockResolvedValue(consultationRecord("live"));
+
+    const result = await getConsultationWaitingRoom("consultation-uat", scheduledAt);
+
+    expect(result).toMatchObject({
+      consultationId: "consultation-uat",
+      consultationStatus: "live",
       canEnterLive: true,
       liveHref: "/consult/live?consultation=consultation-uat"
     });
@@ -160,7 +175,7 @@ describe("getConsultationWaitingRoom", () => {
 });
 
 describe("getWaitingRoomTiming", () => {
-  it("enforces scheduled time and permits an already-live consultation", () => {
+  it("requires both appointment time and an already-live consultation", () => {
     expect(
       getWaitingRoomTiming(
         "scheduled",
@@ -169,11 +184,74 @@ describe("getWaitingRoomTiming", () => {
       )
     ).toMatchObject({ canEnterLive: false, countdownValue: "00:01" });
     expect(getWaitingRoomTiming("scheduled", scheduledAt, scheduledAt)).toMatchObject({
-      canEnterLive: true,
-      countdownValue: "พร้อม"
+      canEnterLive: false,
+      countdownValue: "รอสักครู่"
     });
     expect(
       getWaitingRoomTiming("live", scheduledAt, new Date("2029-12-31T00:00:00.000Z"))
-    ).toMatchObject({ canEnterLive: true, countdownValue: "พร้อม" });
+    ).toMatchObject({ canEnterLive: false });
+    expect(getWaitingRoomTiming("live", scheduledAt, scheduledAt)).toMatchObject({
+      canEnterLive: true,
+      countdownValue: "พร้อม"
+    });
+  });
+});
+
+describe("canParticipantAccessLiveConsultation", () => {
+  const liveConsultation = {
+    patientId: "patient-1",
+    doctorUserId: "doctor-user-1",
+    status: "live",
+    scheduledAt
+  };
+
+  it("permits only the owning customer or assigned doctor after the live/time gate", () => {
+    expect(
+      canParticipantAccessLiveConsultation(
+        { userId: "patient-1", role: "customer" },
+        liveConsultation,
+        scheduledAt
+      )
+    ).toBe(true);
+    expect(
+      canParticipantAccessLiveConsultation(
+        { userId: "doctor-user-1", role: "doctor" },
+        liveConsultation,
+        scheduledAt
+      )
+    ).toBe(true);
+    expect(
+      canParticipantAccessLiveConsultation(
+        { userId: "patient-other", role: "customer" },
+        liveConsultation,
+        scheduledAt
+      )
+    ).toBe(false);
+  });
+
+  it("denies scheduled, completed, and live-before-time records", () => {
+    const participant = { userId: "patient-1", role: "customer" } as const;
+
+    expect(
+      canParticipantAccessLiveConsultation(
+        participant,
+        { ...liveConsultation, status: "scheduled" },
+        scheduledAt
+      )
+    ).toBe(false);
+    expect(
+      canParticipantAccessLiveConsultation(
+        participant,
+        { ...liveConsultation, status: "completed" },
+        scheduledAt
+      )
+    ).toBe(false);
+    expect(
+      canParticipantAccessLiveConsultation(
+        participant,
+        liveConsultation,
+        new Date("2030-01-01T09:59:59.000Z")
+      )
+    ).toBe(false);
   });
 });

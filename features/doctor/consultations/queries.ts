@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireDoctorSession } from "@/lib/auth/guards";
 import { getDoctorPatientReference } from "@/features/doctor/patient-reference";
 import { parsePrescriptionItems } from "@/features/prescriptions/items";
+import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
 import {
   formatDoctorConsultationDuration,
   getLegacyDurationAvailabilityIds,
@@ -156,10 +157,13 @@ function getWorkflowStatus(
     return {
       readinessLabel: status === "live" ? "กำลังปรึกษา" : "พร้อมตรวจ",
       readinessTitle: status === "live" ? "กำลังอยู่ใน consult" : "พร้อมเริ่ม consult",
-      readinessDescription: "ชำระเงินแล้ว ตรวจแบบประเมินก่อน consult แล้วเข้าแชทหรือออกใบสั่งยาได้ตามความเหมาะสม",
+      readinessDescription:
+        status === "live"
+          ? "ห้องปรึกษาเปิดแล้ว สามารถเข้าแชทหรือออกใบสั่งยาได้ตามความเหมาะสม"
+          : "ชำระเงินแล้ว ตรวจแบบประเมินก่อน consult และเริ่มการปรึกษาเมื่อถึงเวลานัด",
       readinessTone: "success",
       ...paymentCopy,
-      canOpenConsultRoom: true,
+      canOpenConsultRoom: status === "live",
       consultRoomHref: null
     };
   }
@@ -171,7 +175,7 @@ function getWorkflowStatus(
       readinessDescription: "ตรวจย้อนหลัง บันทึกคำแนะนำ หรือทบทวนใบสั่งยาได้",
       readinessTone: "neutral",
       ...paymentCopy,
-      canOpenConsultRoom: true,
+      canOpenConsultRoom: false,
       consultRoomHref: null
     };
   }
@@ -337,6 +341,9 @@ function mapConsultation(consultation: ConsultationWithDetails, durationByConsul
   const latestPrescription = consultation.prescriptions[0] ?? null;
   const latestMessage = consultation.messages[0] ?? null;
   const workflow = getWorkflowStatus(consultation.status, consultation.payment);
+  const canOpenConsultRoom =
+    workflow.canOpenConsultRoom &&
+    isLiveConsultationOpen(consultation.status, consultation.scheduledAt);
 
   return {
     id: consultation.id,
@@ -352,8 +359,8 @@ function mapConsultation(consultation: ConsultationWithDetails, durationByConsul
     paymentStatus: consultation.payment?.status ?? null,
     paymentEvidenceSummary: getPaymentEvidenceSummary(consultation.payment),
     paymentReviewedAt: formatDate(consultation.payment?.reviewedAt ?? null),
-    canOpenConsultRoom: workflow.canOpenConsultRoom,
-    consultRoomHref: workflow.canOpenConsultRoom ? `/consult/live?consultation=${consultation.id}` : null,
+    canOpenConsultRoom,
+    consultRoomHref: canOpenConsultRoom ? `/consult/live?consultation=${consultation.id}` : null,
     scheduledAt: formatDate(consultation.scheduledAt),
     durationLabel: formatDoctorConsultationDuration(durationByConsultationId.get(consultation.id)),
     summary: consultation.summary,

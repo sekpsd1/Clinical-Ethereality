@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { isZoomMeetingSdkConfigured } from "@/lib/zoom/meeting-sdk";
+import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
 import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
 
 const emptyChatData: LiveConsultationChatData = {
@@ -25,12 +26,15 @@ function formatMessageTime(date: Date): string {
   }).format(date);
 }
 
-export async function getLiveConsultationChat(consultationId?: string): Promise<LiveConsultationChatData> {
+export async function getLiveConsultationChat(
+  consultationId?: string,
+  now = new Date()
+): Promise<LiveConsultationChatData> {
   noStore();
 
   const session = await getCurrentSession();
 
-  if (!session) {
+  if (!session || !consultationId) {
     return emptyChatData;
   }
 
@@ -41,67 +45,35 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
     returnHref: session.role === "doctor" || session.role === "admin" ? "/doctor/consultations" : "/consult"
   };
 
-  if (session.userId.startsWith("dev:")) {
+  if (
+    session.userId.startsWith("dev:") ||
+    (session.role !== "customer" && session.role !== "doctor")
+  ) {
     return sessionEmptyData;
   }
 
   try {
     const consultation = await prisma.consultation.findFirst({
       where:
-        consultationId
-          ? session.role === "doctor"
-            ? {
-                id: consultationId,
-                doctor: {
-                  userId: session.userId
-                },
-                status: {
-                  in: ["scheduled", "live", "completed"]
-                }
-              }
-            : session.role === "admin"
-              ? {
-                  id: consultationId,
-                  status: {
-                    in: ["scheduled", "live", "completed"]
-                  }
-                }
-              : {
-                  id: consultationId,
-                  patientId: session.userId,
-                  status: {
-                    in: ["scheduled", "live", "completed"]
-                  }
-                }
-          : session.role === "doctor"
+        session.role === "doctor"
           ? {
+              id: consultationId,
               doctor: {
                 userId: session.userId
               },
-              status: {
-                in: ["scheduled", "live", "completed"]
+              status: "live",
+              scheduledAt: {
+                lte: now
               }
             }
-          : session.role === "admin"
-            ? {
-                status: {
-                  in: ["scheduled", "live", "completed"]
-                }
+          : {
+              id: consultationId,
+              patientId: session.userId,
+              status: "live",
+              scheduledAt: {
+                lte: now
               }
-            : {
-                patientId: session.userId,
-                status: {
-                  in: ["scheduled", "live", "completed"]
-                }
-              },
-      orderBy: [
-        {
-          scheduledAt: "desc"
-        },
-        {
-          updatedAt: "desc"
-        }
-      ],
+            },
       include: {
         patient: true,
         doctor: {
@@ -124,7 +96,10 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
       }
     });
 
-    if (!consultation) {
+    if (
+      !consultation ||
+      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+    ) {
       return sessionEmptyData;
     }
 
@@ -138,19 +113,17 @@ export async function getLiveConsultationChat(consultationId?: string): Promise<
       doctorName: consultation.doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
       doctorImageUrl: consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-profile.png",
       patientImageUrl: consultation.patient.avatarUrl ?? "/images/profiles/current-user.png",
-      statusLabel: consultation.status === "live" ? "Live" : consultation.status === "completed" ? "เสร็จสิ้น" : "นัดหมายแล้ว",
-      canSend: consultation.status === "scheduled" || consultation.status === "live",
+      statusLabel: "Live",
+      canSend: true,
       videoHref,
       videoMode:
         consultation.zoomMeetingId && sdkConfigured
           ? "meeting_sdk"
           : "unavailable",
       returnHref:
-        session.role === "doctor" || session.role === "admin"
+        session.role === "doctor"
           ? "/doctor/consultations"
-          : consultation.status === "completed"
-            ? "/consult/advice-log"
-            : `/consult/appointments/${consultation.id}`,
+          : `/consult/appointments/${consultation.id}`,
       messages: consultation.messages.map((message) => ({
         id: message.id,
         body: message.body,
