@@ -2,7 +2,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireDoctorSession } from "@/lib/auth/guards";
-import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { getDoctorPatientReference } from "@/features/doctor/patient-reference";
 import { parsePrescriptionItems } from "@/features/prescriptions/items";
 import {
@@ -390,7 +389,6 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
 
   try {
     const session = await requireDoctorSession();
-    await releaseExpiredConsultationSlotLocks();
     const doctorId = await getDoctorScope(session.userId, session.role);
 
     if (doctorId === null) {

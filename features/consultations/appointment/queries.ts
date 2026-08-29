@@ -3,7 +3,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
-import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import type { CustomerAppointmentData, CustomerAppointmentDetail } from "@/features/consultations/appointment/types";
 
 type ConsultationRecord = NonNullable<Awaited<ReturnType<typeof getConsultationRecord>>>;
@@ -186,7 +185,6 @@ export async function getCustomerAppointmentDetail(
   assertPermission(session, "consultation:read:self");
 
   try {
-    await releaseExpiredConsultationSlotLocks();
     const consultation = await getConsultationRecord(consultationId, session.userId);
 
     return {

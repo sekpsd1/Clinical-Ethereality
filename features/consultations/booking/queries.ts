@@ -1,6 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
@@ -138,8 +137,6 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
 
   try {
     const now = new Date();
-    await releaseExpiredConsultationSlotLocks(now);
-
     const doctor = await getPrimaryBookingDoctor();
 
     if (!doctor) {
