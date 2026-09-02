@@ -352,8 +352,8 @@
 - [x] Add the Admin Bulk Schedule Editor using the existing `DoctorAvailability` model: one-doctor multi-day selection, multiple mixed-duration blocks, preview/copy-before-save workflow, serializable all-or-nothing batch creation, overlap/duplicate protection, and per-record audit logs while retaining legacy edit and enable/disable controls
 - [x] Add date-specific doctor availability overrides and Schedule calendar: special times extend recurring availability, holidays close the selected date, booking-slot deduplication/locking is preserved, and Admin cannot deactivate or delete an override with an appointment. Manual Local UAT passed for Websthai on 8–9 August 2026, including Customer booking, duplicate booking prevention, mobile `390×844`, Console, and Network checks. Production migration/deployment and controlled UAT passed on 2026-08-08 at commit `6359451`; owner approved retaining the 17 August 17:00–18:00 special override and 18 August holiday as Production example schedules.
 - [x] Add the code-only audited Admin consultation fee-setting path on `/admin/schedules`: active approved-doctor enforcement, exact satang-based parsing for the existing whole-baht `.00` field, ฿1.00–฿100,000.00 bounds, Serializable version/value CAS, old/new amount audit metadata, mobile UI, and focused authorization/validation/conflict/unchanged-data tests. No migration, deployment, or fee/data mutation occurred; deployment and intentional price changes remain separately gated.
-- [x] Complete the controlled Consultation direct private-slip → synchronous SlipOK UAT: one approved low-value payment reached verified/scheduled and produced the expected audit/notification outcome. No provider outbound merchant webhook was used or proven; the canonical webhook remains internal-only/dormant. Remaining work is the separately scoped Full Doctor Flow UAT, without repeating this payment verification.
-- [x] Make Doctor/customer consultation reads non-mutating by removing expired-slot cleanup from query/render paths while retaining the existing authenticated mutation cleanup, and bind the Consultation Waiting Room to a server-authorized consultation ID with owner/assigned-doctor and minimum-data gates. Require both the server-owned `live` transition and appointment time at the Waiting Room link and again at the destination live page, chat mutation, Zoom frame, and join-data query; deny Admin/missing-ID fallback and completed live chat/video while preserving the separate advice route. Code-only remediation and focused direct-URL regression coverage are complete; merge/deploy and the remaining Full Doctor Flow Production UAT require separate Controller approval.
+- [x] Complete the controlled Consultation direct private-slip → synchronous SlipOK UAT: one approved low-value payment reached verified/scheduled and produced the expected audit/notification outcome. No provider outbound merchant webhook was used or proven; the canonical webhook remains internal-only/dormant.
+- [x] Deploy the consultation live-room safeguards in `b749e22` and `f929e49`, then complete Full Doctor Zoom UAT: one scheduled consultation started once, one Zoom meeting was created, Customer and Doctor joined the same room and left once each, and no duplicate meeting, terminal transition, payment, prescription, recording, chat/share/invite, or unrelated mutation occurred. The exact fixture was subsequently completed once through the normal `live` → `completed` lifecycle with the expected audit/notification outcome.
 
 ## Phase 11: Articles, Community, And Notifications
 
@@ -446,7 +446,7 @@
 - [x] Deploy the collation-safe reconciliation fix at `2cf1815`; the approved target run rejected before DDL at `user_columns`, recovery restored health and the exact original partial schema, and no DB mutation occurred.
 - [ ] Review the minimal code-only User-column follow-up: emit only closed-enum column/mismatch diagnostics and treat MariaDB's documented unquoted `NULL` metadata as the implicit default only for nullable columns; keep quoted literals and non-null columns fail-closed.
 - [ ] Activate the non-chrooted, host-authoritative five-minute Store reservation-cleanup schedule and verify one natural run plus the 15-minute readiness check.
-- [ ] Complete Controlled Consultation Real-slip UAT, then Full Doctor Flow UAT, after SMS OTP UAT passes.
+- [x] Complete Controlled Consultation Real-slip UAT, Full Doctor Zoom UAT, and the approved closure of the exact live UAT consultation; do not repeat the payment/provider verification.
 - [ ] Replace external-prescription hosted URLs with private upload plus approved review gate; add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint; connect real carrier tracking.
 
 ## Project 6 Closeout (2026-08-27)
@@ -460,10 +460,10 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Complete Controlled Production OTP UAT: 1 UI request → 1 application POST → 1 provider transaction; Verify 1/1 HTTP 200; phone verified; booking gate open; resend/retry 0; Booking/Consultation/Payment/Zoom records created 0.
 - [x] Confirm bounded Production health HTTP 200/`status: ok`, no application HTTP 500, and normal runtime migration/reconciliation target keys absent.
 - [x] Record Auto Model Routing in `AI_WORKFLOW.md` (origin commit `a63a655`); the pre-existing untracked root copy was preserved.
+- [x] Deploy consultation live-room safeguards (`b749e22`, `f929e49`), complete Full Doctor Zoom UAT, and close the exact UAT consultation once through `live` → `completed`; audit/notification verification found no duplicate terminal transition or new payment/prescription/order/Zoom meeting.
 
 ### True remaining backlog (ordered)
 
-- [ ] Complete Controlled Consultation Real-slip UAT, then Full Doctor Flow UAT, after the completed OTP gate and with separate payment/provider approval.
 - [ ] Activate a non-chroot, host-authoritative Store reservation-cleanup schedule (or safe equivalent) and verify one natural run plus the readiness check.
 - [ ] Connect real carrier tracking if required beyond internal shipment statuses.
 - [ ] Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
