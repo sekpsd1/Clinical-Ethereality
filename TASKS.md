@@ -446,6 +446,7 @@
 - [x] Deploy the collation-safe reconciliation fix at `2cf1815`; the approved target run rejected before DDL at `user_columns`, recovery restored health and the exact original partial schema, and no DB mutation occurred.
 - [ ] Review the minimal code-only User-column follow-up: emit only closed-enum column/mismatch diagnostics and treat MariaDB's documented unquoted `NULL` metadata as the implicit default only for nullable columns; keep quoted literals and non-null columns fail-closed.
 - [ ] Activate the non-chrooted, host-authoritative five-minute Store reservation-cleanup schedule and verify one natural run plus the 15-minute readiness check.
+- [ ] Implement the owner-approved Store self-healing cleanup: when an authenticated checkout/reservation mutation runs, release only expired `pending_payment` reservations after 45 minutes and `payment_review` reservations after 24 hours; keep render/read paths non-mutating, preserve idempotent inventory/payment/audit/notification behavior, and do not deploy without separate approval.
 - [x] Complete Controlled Consultation Real-slip UAT, Full Doctor Zoom UAT, and the approved closure of the exact live UAT consultation; do not repeat the payment/provider verification.
 - [ ] Replace external-prescription hosted URLs with private upload plus approved review gate; add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint; connect real carrier tracking.
 
