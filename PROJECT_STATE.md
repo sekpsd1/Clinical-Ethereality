@@ -612,26 +612,28 @@ This section is the current handoff for the next Project Controller and supersed
 - Health remained HTTP 200 with `status: ok`; bounded checks found no application HTTP 500. Migration/reconciliation target keys were removed after their controlled runs and are absent in the normal runtime.
 - Controlled Consultation payment UAT passed through the direct private-slip → synchronous SlipOK verification path: one approved low-value payment reached verified/scheduled, with the expected audit and notification outcome. This is the active Production payment behavior and supersedes older notes that describe this direct verification UAT as pending.
 - Payment-provider delivery discovery confirms that SlipOK's active Check Slip API has no verified outbound merchant callback contract. Its separate LINE OA Webhook is LINE → SlipOK, not SlipOK → this application. Therefore `/api/webhooks/payments` is a strict canonical internal-only/dormant endpoint and must not be registered directly with SlipOK or LINE. It remains dormant until SlipOK publishes a documented signed callback contract or the Controller separately approves an app-owned durable worker; no native payload, signature, event ID, retry behavior, adapter, or worker is inferred from the current provider documentation.
+- **Store reservation decision (2026-09-02):** `pending_payment` expires after 45 minutes; `payment_review` remains 24 hours. Until a host-authoritative scheduler is available, Store will use a separately reviewed self-healing cleanup only inside an authenticated checkout/reservation mutation, never in a render/read path. This improves later-customer availability but does not guarantee expiry at the exact 45-minute mark when the Store is idle.
 - The Full Doctor Flow Phase 1 remediation is merged and deployed in `b749e22` and `f929e49`. It removes expired-slot cleanup from Doctor/customer query and render paths, gates the Consultation Waiting Room, live page, chat, Zoom frame, and join-data query by participant/state/time, and denies Admin/missing-ID fallback and completed live chat/video while retaining post-completion advice on its separate route. Controlled Production UAT passed: the Doctor started the scheduled consultation once, one Zoom meeting was created, Customer and Doctor joined the same room, both left once, and the meeting lifecycle/audit/notifications had no duplicate or terminal-transition error. The exact fixture was then completed once through the normal `live` → `completed` lifecycle; no new payment, prescription, order, or Zoom meeting was created.
 - Auto Model Routing is recorded in `AI_WORKFLOW.md` at origin commit `a63a655`; routing remains a default selected by the Project Controller, with Ultra/Max requiring separate owner approval. The pre-existing untracked root `AI_WORKFLOW.md` was preserved and not overwritten.
 
 ### True remaining backlog (ordered)
 
-1. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
-2. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
-3. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
-4. Add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint.
-5. Run the Production test-flow cleanup/reset only after a fresh backup, exact target verification, and separate approval; preserve real user/product/order/audit history.
-6. Resolve other documented unfinished product/compliance decisions (regulated catalog fields/stock readiness, legal/consent inputs, storage provider choice, realtime chat choice, and deferred staff/feature UAT) through their owning chats.
+1. Add the approved Store checkout/reservation self-healing cleanup using the 45-minute `pending_payment` threshold and 24-hour `payment_review` threshold, with inventory/payment concurrency regression coverage; deploy remains separately gated.
+2. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
+3. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
+4. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
+5. Add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint.
+6. Run the Production test-flow cleanup/reset only after a fresh backup, exact target verification, and separate approval; preserve real user/product/order/audit history.
+7. Resolve other documented unfinished product/compliance decisions (regulated catalog fields/stock readiness, legal/consent inputs, storage provider choice, realtime chat choice, and deferred staff/feature UAT) through their owning chats.
 
 ### Recommended next single task
 
-**Owner chat:** `Store ระบบ 6` (coordinate with the hosting operator; no Production mutation until the runtime boundary is approved).
+**Owner chat:** `Store ระบบ 6`.
 
-**Task:** Plan activation of the host-authoritative non-chroot Store reservation-cleanup schedule (or a safe equivalent runtime bridge) and its one natural-run/readiness verification.
+**Task:** Implement the approved self-healing cleanup inside the authenticated Store checkout/reservation mutation: expire only eligible `pending_payment` reservations after 45 minutes and `payment_review` reservations after 24 hours. Do not run cleanup in reads/renders, and do not deploy without separate approval.
 
-**Acceptance:** the approved runtime boundary keeps the secret out of commands/logs, invokes only the existing authenticated cleanup endpoint on the intended five-minute cadence, and proves one natural run plus the 15-minute readiness check without changing unrelated data.
+**Acceptance:** cleanup is bounded, idempotent, serialized with reservation/payment transitions, preserves audit/notification behavior, does not affect verified/paid/refunded records, and allows the subsequent valid reservation to proceed without stale stock blocking it.
 
-**Checks:** read-only runtime/path preflight, bounded `/api/health`, safe scheduler configuration review, one natural scheduled run, and the existing readiness check. Run `npm run lint` and `npm run typecheck` only if a code change is proposed.
+**Checks:** focused unit/integration concurrency and expiry-boundary coverage, `npm run lint`, `npm run typecheck`, and any established Store test suite. No Production UAT in this task.
 
-**Production boundary:** requires separate Controller approval before saving/activating a host task or safe runtime bridge. Do not put the secret in a command or log, and do not run payment/provider, Zoom, OTP, migration, deploy, restart, refund, or unrelated database actions.
+**Production boundary:** no deploy, restart, migration, environment edit, payment/provider action, Zoom, OTP, refund, or unrelated database mutation. A later deployment and controlled Store UAT require separate Controller approval.
