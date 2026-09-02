@@ -6,7 +6,7 @@ Clinical Ethereality
 
 ## Phase
 
-Production Doctor smoke UAT and the non-recording Zoom Basic Controlled Production UAT passed. SlipOK key-name readiness is confirmed and the owner approved `log=true` privacy handling for Controlled UAT on 2026-08-13; Full Doctor Flow UAT remains paused until its separately approved Controlled Real-slip UAT is complete.
+Production Doctor smoke UAT, the non-recording Zoom Basic Controlled Production UAT, the direct Consultation Real-slip UAT, and the Full Doctor Zoom UAT all passed. The exact approved Consultation fixture was subsequently closed from `live` to `completed` once through the normal lifecycle. SlipOK key-name readiness remains confirmed and the owner-approved `log=true` privacy handling was used only for the controlled UAT.
 
 The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS modular monolith with the reviewed Stitch screens, LINE LIFF/JWT authentication, Prisma/MySQL persistence, and role-protected customer, doctor, pharmacist, and admin workflows. The Doctor flow now includes assigned-patient detail access, full linked pre-consult assessments, persisted consultation payments, guarded appointment lifecycle transitions, audited structured prescriptions, in-app messages and notifications, and a Production-validated Zoom Meeting SDK room.
 
@@ -580,7 +580,7 @@ Phase 12 quality work, the non-recording Zoom Basic Controlled Production UAT, t
 - The 9 approved physical SKUs are now set to quantity `500` with low-stock threshold `80`; LBC, Test/UAT, and archived products remain excluded. The owner-approved Excel catalog content is in Production.
 - SMS OTP schema and server-side booking/Zoom verification gates are deployed. ThaiBulkSMS is intentionally still fail-closed until the owner configures all four owner-managed keys: `SMS_OTP_PROVIDER`, `SMS_OTP_API_KEY`, `SMS_OTP_API_SECRET`, and `SMS_OTP_CHALLENGE_ENCRYPTION_KEY`. No real OTP message or Controlled OTP UAT has occurred.
 - The host-authoritative five-minute Store reservation-cleanup schedule remains blocked by the Plesk customer-task chroot. Hosting must provide a non-chrooted task or approved equivalent Node-runtime boundary; no secret may be put in a command or log.
-- The next customer/doctor payment milestone is Controlled Consultation Real-slip UAT, followed by Full Doctor Flow UAT, only after SMS OTP credentials and Controlled OTP UAT pass. Other later Store work remains private external-prescription upload/review, explicit prescription-to-product relational mapping with the one-active-order rule, and carrier tracking integration.
+- The direct Consultation Real-slip and Full Doctor Zoom UAT milestones are complete; the exact UAT consultation was closed to `completed`. Other later Store work remains private external-prescription upload/review, explicit prescription-to-product relational mapping with the one-active-order rule, carrier tracking integration, and host-authoritative reservation-cleanup scheduling.
 
 ## ThaiBulkSMS OTP UAT Attempt #1 RCA And Code-Only Fix (2026-08-26)
 
@@ -612,27 +612,26 @@ This section is the current handoff for the next Project Controller and supersed
 - Health remained HTTP 200 with `status: ok`; bounded checks found no application HTTP 500. Migration/reconciliation target keys were removed after their controlled runs and are absent in the normal runtime.
 - Controlled Consultation payment UAT passed through the direct private-slip → synchronous SlipOK verification path: one approved low-value payment reached verified/scheduled, with the expected audit and notification outcome. This is the active Production payment behavior and supersedes older notes that describe this direct verification UAT as pending.
 - Payment-provider delivery discovery confirms that SlipOK's active Check Slip API has no verified outbound merchant callback contract. Its separate LINE OA Webhook is LINE → SlipOK, not SlipOK → this application. Therefore `/api/webhooks/payments` is a strict canonical internal-only/dormant endpoint and must not be registered directly with SlipOK or LINE. It remains dormant until SlipOK publishes a documented signed callback contract or the Controller separately approves an app-owned durable worker; no native payload, signature, event ID, retry behavior, adapter, or worker is inferred from the current provider documentation.
-- The Full Doctor Flow Phase 1 code-only remediation removes expired-slot cleanup from Doctor/customer query and render paths, leaving that cleanup on the existing authenticated booking/payment mutation actions. The Consultation Waiting Room requires an authenticated consultation ID, scopes access to the owning customer or assigned doctor, accepts only `scheduled`/`live`, and selects only minimum doctor-facing display data. A live-room URL is emitted only after both the server-owned transition to `live` and the appointment-time gate; the destination live page, chat mutation, Zoom frame, and Zoom join-data query repeat those participant/state/time checks server-side, deny Admin and missing-ID fallback access, and never expose live chat/video for `completed`. Post-completion advice remains on its existing separate route. Focused coverage includes non-mutating reads, participant ownership, anonymous/Admin/cross-owner denial, lifecycle/time denial, direct-live-URL denial, and authorized owner/assigned-doctor access after transition. This change has not been merged or deployed; Controller review and a separately approved Production release/read-only Full Doctor Flow readiness recheck remain required.
+- The Full Doctor Flow Phase 1 remediation is merged and deployed in `b749e22` and `f929e49`. It removes expired-slot cleanup from Doctor/customer query and render paths, gates the Consultation Waiting Room, live page, chat, Zoom frame, and join-data query by participant/state/time, and denies Admin/missing-ID fallback and completed live chat/video while retaining post-completion advice on its separate route. Controlled Production UAT passed: the Doctor started the scheduled consultation once, one Zoom meeting was created, Customer and Doctor joined the same room, both left once, and the meeting lifecycle/audit/notifications had no duplicate or terminal-transition error. The exact fixture was then completed once through the normal `live` → `completed` lifecycle; no new payment, prescription, order, or Zoom meeting was created.
 - Auto Model Routing is recorded in `AI_WORKFLOW.md` at origin commit `a63a655`; routing remains a default selected by the Project Controller, with Ultra/Max requiring separate owner approval. The pre-existing untracked root `AI_WORKFLOW.md` was preserved and not overwritten.
 
 ### True remaining backlog (ordered)
 
-1. Complete the remaining Full Doctor Flow UAT after the passed direct Consultation payment verification, with no additional provider payment attempt unless separately approved.
-2. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
-3. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
-4. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
-5. Add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint.
-6. Run the Production test-flow cleanup/reset only after a fresh backup, exact target verification, and separate approval; preserve real user/product/order/audit history.
-7. Resolve other documented unfinished product/compliance decisions (regulated catalog fields/stock readiness, legal/consent inputs, storage provider choice, realtime chat choice, and deferred staff/feature UAT) through their owning chats.
+1. Activate a host-authoritative non-chroot scheduler (or an equivalently safe runtime bridge) for Store reservation cleanup and verify one natural run plus readiness monitoring.
+2. Replace internal shipment statuses with a real carrier-tracking integration if required for launch.
+3. Replace external-prescription hosted URLs with private upload/storage and an approved review gate.
+4. Add explicit prescription-to-product relational mapping and the owner-approved one-active-order constraint.
+5. Run the Production test-flow cleanup/reset only after a fresh backup, exact target verification, and separate approval; preserve real user/product/order/audit history.
+6. Resolve other documented unfinished product/compliance decisions (regulated catalog fields/stock readiness, legal/consent inputs, storage provider choice, realtime chat choice, and deferred staff/feature UAT) through their owning chats.
 
 ### Recommended next single task
 
-**Owner chat:** `Customer Flow` (coordinate with `Doctor ระบบ 4` only if the consultation fixture or doctor-side assertion needs it).
+**Owner chat:** `Store ระบบ 6` (coordinate with the hosting operator; no Production mutation until the runtime boundary is approved).
 
-**Task:** Plan the remaining Full Doctor Flow UAT from the already verified/scheduled Consultation state; do not repeat the passed direct SlipOK payment verification.
+**Task:** Plan activation of the host-authoritative non-chroot Store reservation-cleanup schedule (or a safe equivalent runtime bridge) and its one natural-run/readiness verification.
 
-**Acceptance:** the existing verified/scheduled Consultation state is used without a new payment/provider call; downstream Doctor-flow permissions, status gates, mobile, Console, and Network checks pass with no unrelated mutation.
+**Acceptance:** the approved runtime boundary keeps the secret out of commands/logs, invokes only the existing authenticated cleanup endpoint on the intended five-minute cadence, and proves one natural run plus the 15-minute readiness check without changing unrelated data.
 
-**Checks:** bounded `/api/health` and Admin readiness read-only checks; `npm run lint` and `npm run typecheck` if code changes are proposed (otherwise no code change); browser UAT at the approved mobile viewport with a fresh backup/rollback check before any Production mutation.
+**Checks:** read-only runtime/path preflight, bounded `/api/health`, safe scheduler configuration review, one natural scheduled run, and the existing readiness check. Run `npm run lint` and `npm run typecheck` only if a code change is proposed.
 
-**Production boundary:** requires a separate Controller approval for any downstream fixture or status mutation; no repeat payment/provider call, deploy, restart, migration, environment edit, OTP resend/verify, refund, Zoom, or unrelated database action.
+**Production boundary:** requires separate Controller approval before saving/activating a host task or safe runtime bridge. Do not put the secret in a command or log, and do not run payment/provider, Zoom, OTP, migration, deploy, restart, refund, or unrelated database actions.
