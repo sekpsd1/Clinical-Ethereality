@@ -5,7 +5,6 @@ import type { PublicSession } from "@/lib/auth/types";
 import { getQrDataUrlFromPayload } from "@/lib/payments/promptpay";
 import { isPaymentReadyForProviderVerification } from "@/features/payments/service";
 import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
-import { releaseExpiredStoreOrderReservations } from "@/features/orders/reservations";
 
 type CustomerOrderRecord = Awaited<ReturnType<typeof getOrdersForCustomer>>[number];
 type ExternalPrescriptionAttachmentSummary = {
@@ -228,10 +227,6 @@ export async function getCustomerOrders(session: PublicSession): Promise<Custome
   noStore();
 
   try {
-    await releaseExpiredStoreOrderReservations({
-      userId: session.userId
-    });
-
     const orders = await getOrdersForCustomer(session.userId);
     const orderIds = orders.map((order) => order.id);
     const attachments = orderIds.length > 0

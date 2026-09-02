@@ -127,17 +127,17 @@ describe("Store reservation lifecycle", () => {
     });
   });
 
-  it("expires a pending Store reservation at the 30-minute boundary", () => {
+  it("expires a pending Store reservation at the 45-minute boundary", () => {
     const createdAt = new Date("2026-07-30T08:00:00.000Z");
 
     expect(getStoreReservationExpiresAt(createdAt)).toEqual(
-      new Date("2026-07-30T08:30:00.000Z")
+      new Date("2026-07-30T08:45:00.000Z")
     );
     expect(
-      isStoreReservationExpired(createdAt, new Date("2026-07-30T08:29:59.999Z"))
+      isStoreReservationExpired(createdAt, new Date("2026-07-30T08:44:59.999Z"))
     ).toBe(false);
     expect(
-      isStoreReservationExpired(createdAt, new Date("2026-07-30T08:30:00.000Z"))
+      isStoreReservationExpired(createdAt, new Date("2026-07-30T08:45:00.000Z"))
     ).toBe(true);
   });
 
@@ -161,7 +161,7 @@ describe("Store reservation lifecycle", () => {
 
     await expect(
       releaseExpiredStoreOrderReservations({
-        now: new Date("2026-07-30T08:30:00.000Z"),
+        now: new Date("2026-07-30T08:45:00.000Z"),
         userId: "customer-1"
       })
     ).resolves.toEqual({
@@ -260,7 +260,7 @@ describe("Store reservation lifecycle", () => {
           {
             status: "payment_review",
             createdAt: {
-              lte: new Date("2026-07-29T08:30:00.000Z")
+              lte: new Date("2026-07-29T08:45:00.000Z")
             }
           }
         ]
@@ -327,7 +327,7 @@ describe("Store reservation lifecycle", () => {
 
     await expect(
       releaseExpiredStoreOrderReservations({
-        now: new Date("2026-07-30T08:30:00.000Z")
+        now: new Date("2026-07-30T08:45:00.000Z")
       })
     ).resolves.toEqual({
       candidates: 1,
@@ -350,7 +350,7 @@ describe("Store reservation lifecycle", () => {
 
     await expect(
       releaseExpiredStoreOrderReservations({
-        now: new Date("2026-07-30T08:30:00.000Z")
+        now: new Date("2026-07-30T08:45:00.000Z")
       })
     ).resolves.toEqual({
       candidates: 1,
@@ -387,13 +387,13 @@ describe("Store reservation lifecycle", () => {
 
     await expect(
       releaseExpiredStoreOrderReservations({
-        now: new Date("2026-07-30T08:30:00.000Z")
+        now: new Date("2026-07-30T08:45:00.000Z")
       })
     ).resolves.toMatchObject({ released: 1, skipped: 0 });
 
     await expect(
       releaseExpiredStoreOrderReservations({
-        now: new Date("2026-07-30T08:30:00.000Z")
+        now: new Date("2026-07-30T08:45:00.000Z")
       })
     ).resolves.toMatchObject({ released: 0, skipped: 1 });
 
@@ -416,8 +416,8 @@ describe("Store reservation lifecycle", () => {
     useReleaseTransaction(tx);
 
     const results = await Promise.all([
-      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") }),
-      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") })
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:45:00.000Z") }),
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:45:00.000Z") })
     ]);
 
     expect(results.reduce((total, result) => total + result.released, 0)).toBe(1);
@@ -644,7 +644,7 @@ describe("Customer cancellation of unpaid Store orders", () => {
 
     const [customerResult, cleanupResult] = await Promise.all([
       cancelCustomerPendingStoreOrder({ orderId: "order-1", userId: "customer-1" }),
-      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:30:00.000Z") })
+      releaseExpiredStoreOrderReservations({ now: new Date("2026-07-30T08:45:00.000Z") })
     ]);
 
     expect(["cancelled", "already_cancelled"]).toContain(customerResult);

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { prisma } from "@/lib/db/prisma";
 
-export const STORE_RESERVATION_TTL_MINUTES = 30;
+export const STORE_RESERVATION_TTL_MINUTES = 45;
 export const STORE_PAYMENT_REVIEW_TTL_HOURS = 24;
 export const MAX_ACTIVE_STORE_ORDERS_PER_CUSTOMER = 3;
 export const STORE_RESERVATION_TTL_MS = STORE_RESERVATION_TTL_MINUTES * 60 * 1000;
@@ -262,7 +262,7 @@ async function releaseStoreOrderReservation(
           source === "customer_cancellation"
             ? "คำสั่งซื้อที่ยังไม่ได้ชำระเงินถูกยกเลิก และระบบคืนสต็อกที่สำรองไว้แล้ว"
             : candidate.status === "pending_payment"
-              ? "ระบบยกเลิกคำสั่งซื้อที่ยังไม่ได้ชำระภายใน 30 นาทีและคืนสต็อกแล้ว กรุณาสร้างคำสั่งซื้อใหม่หากยังต้องการสินค้า"
+              ? "ระบบยกเลิกคำสั่งซื้อที่ยังไม่ได้ชำระภายใน 45 นาทีและคืนสต็อกแล้ว กรุณาสร้างคำสั่งซื้อใหม่หากยังต้องการสินค้า"
               : "ระบบยกเลิกคำสั่งซื้อที่ไม่สามารถตรวจสอบการชำระเงินให้เสร็จภายใน 24 ชั่วโมงและคืนสต็อกแล้ว กรุณาติดต่อเจ้าหน้าที่หากได้ชำระเงินแล้ว",
         metadataJson: {
           orderId: order.id,
