@@ -176,7 +176,8 @@ function mapExternalPrescriptionAttachments(
 
 async function mapOrder(
   order: CustomerOrderRecord,
-  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>
+  attachmentSummary: Map<string, ExternalPrescriptionAttachmentSummary>,
+  canCancelAsCustomer: boolean
 ): Promise<CustomerOrderItem> {
   const payment = order.payments[0] ?? null;
   const shipment = order.shipments[0] ?? null;
@@ -199,6 +200,7 @@ async function mapOrder(
     paymentQrDataUrl,
     paymentVerificationRequired: payment ? isPaymentReadyForProviderVerification(payment.status) : false,
     canCancel:
+      canCancelAsCustomer &&
       order.status === "pending_payment" &&
       !order.payments.some((orderPayment) => ["verified", "refunded"].includes(orderPayment.status)),
     externalPrescriptionFileName: externalPrescription.fileName,
@@ -247,7 +249,9 @@ export async function getCustomerOrders(session: PublicSession): Promise<Custome
         })
       : [];
     const attachmentSummary = mapExternalPrescriptionAttachments(attachments);
-    const orderItems = await Promise.all(orders.map((order) => mapOrder(order, attachmentSummary)));
+    const orderItems = await Promise.all(
+      orders.map((order) => mapOrder(order, attachmentSummary, session.role === "customer"))
+    );
 
     return {
       orders: orderItems,

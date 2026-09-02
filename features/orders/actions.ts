@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { assertPermission, assertRole } from "@/lib/permissions";
+import type { PublicSession } from "@/lib/auth/types";
 import { actionError, actionSuccess, formDataToObject, type FormActionState } from "@/lib/actions/server-actions";
 import { cancelCustomerOrderSchema } from "@/features/orders/schema";
 import { cancelCustomerPendingStoreOrder } from "@/features/orders/reservations";
@@ -13,9 +14,15 @@ export async function cancelCustomerOrderAction(
   _previousState: CustomerOrderCancellationActionState,
   formData: FormData
 ): Promise<CustomerOrderCancellationActionState> {
-  const session = await requireCurrentSession();
-  assertRole(session, ["customer"]);
-  assertPermission(session, "order:read:self");
+  let session: PublicSession;
+
+  try {
+    session = await requireCurrentSession();
+    assertRole(session, ["customer"]);
+    assertPermission(session, "order:read:self");
+  } catch {
+    return actionError("ยกเลิกคำสั่งซื้อได้จากบัญชีลูกค้าเจ้าของรายการเท่านั้น");
+  }
 
   const parsed = cancelCustomerOrderSchema.safeParse(formDataToObject(formData));
 

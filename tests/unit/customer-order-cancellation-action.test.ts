@@ -114,4 +114,20 @@ describe("Customer order cancellation Server Action", () => {
 
     expect(actionMocks.cancelCustomerPendingStoreOrder).not.toHaveBeenCalled();
   });
+
+  it("returns a safe action error instead of throwing when a non-customer submits the action", async () => {
+    actionMocks.assertRole.mockImplementation(() => {
+      throw new Error("This role is not allowed to perform this action.");
+    });
+
+    await expect(
+      cancelCustomerOrderAction(initialState, cancellationFormData())
+    ).resolves.toEqual({
+      status: "error",
+      message: "ยกเลิกคำสั่งซื้อได้จากบัญชีลูกค้าเจ้าของรายการเท่านั้น"
+    });
+
+    expect(actionMocks.cancelCustomerPendingStoreOrder).not.toHaveBeenCalled();
+    expect(actionMocks.revalidatePath).not.toHaveBeenCalled();
+  });
 });
