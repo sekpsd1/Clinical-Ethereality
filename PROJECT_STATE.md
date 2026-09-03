@@ -637,3 +637,7 @@ This section is the current handoff for the next Project Controller and supersed
 **Checks:** confirm the focused local checks remain green, take a fresh backup/rollback readiness check, run bounded health/readiness checks, then perform only the separately approved controlled Store UAT.
 
 **Production boundary:** no deploy, restart, migration, environment edit, payment/provider action, Zoom, OTP, refund, or unrelated database mutation. A later deployment and controlled Store UAT require separate Controller approval.
+
+### OTP resend UI readiness (2026-09-03)
+
+- [x] Added the customer-facing `ส่ง OTP อีกครั้ง` control to the booking identity-verification screen. It stays disabled for 60 seconds after every successful request, reuses the existing authenticated request route, and does not auto-dispatch. Server-side safeguards remain authoritative: one atomic dispatch claim per 60 seconds, no more than three requests per user per hour, invalidation of prior unverified challenges when a new request succeeds, and per-request audit logging. No schema, environment, provider, Production, or deployment change is included in this code-only update.

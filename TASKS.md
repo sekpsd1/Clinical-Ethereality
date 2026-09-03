@@ -475,3 +475,7 @@ The entries below are the current production handoff and supersede earlier SMS O
 ### Latest completed payment task
 
 - [x] `Customer Flow`: completed the approved direct Consultation Real-slip UAT with one private slip upload and one synchronous SlipOK verification reaching verified/scheduled, including ownership/privacy/audit/notification and mobile/Console/Network checks. Do not repeat this payment/provider call; any remaining Full Doctor Flow UAT requires its own Controller brief.
+
+## OTP resend UI (2026-09-03)
+
+- [x] Add the customer-facing `ส่ง OTP อีกครั้ง` control with a 60-second UI cooldown while preserving the existing server-authoritative 60-second atomic dispatch claim, three-requests-per-hour limit, prior-challenge invalidation, and audit logging. Code verification is complete; Production deployment requires separate approval.

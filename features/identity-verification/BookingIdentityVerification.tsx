@@ -32,7 +32,20 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [resendReady, setResendReady] = useState(false);
   const requestInFlight = useRef<SingleFlightLock["current"]>("idle");
+  const resendCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function startResendCooldown() {
+    setResendReady(false);
+    if (resendCooldownTimer.current) {
+      clearTimeout(resendCooldownTimer.current);
+    }
+    resendCooldownTimer.current = setTimeout(() => {
+      resendCooldownTimer.current = null;
+      setResendReady(true);
+    }, 60_000);
+  }
 
   function updateIdentityInput(setter: (value: string) => void, value: string) {
     resetCompletedSingleFlight(requestInFlight);
@@ -55,6 +68,7 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         }
         setChallengeId(result.challengeId ?? null);
         setPhoneLabel(result.phoneLabel ?? null);
+        startResendCooldown();
         setMessage("ส่งรหัส OTP แล้ว กรุณากรอกรหัสเพื่อยืนยันเบอร์โทร");
         return result;
       } catch {
@@ -64,6 +78,11 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         setPending(false);
       }
     }, { retainWhen: (result) => result?.ok === true });
+  }
+
+  async function resendOtp() {
+    resetCompletedSingleFlight(requestInFlight);
+    await requestOtp();
   }
 
   async function verifyOtp() {
@@ -117,6 +136,12 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
           <button type="button" disabled={pending || code.length < 4} onClick={verifyOtp} className="mt-3 flex h-11 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white disabled:opacity-50">
             {pending ? "กำลังยืนยัน..." : "ยืนยันรหัส OTP"}
           </button>
+          <button type="button" disabled={pending || !resendReady} onClick={resendOtp} className="mt-3 flex h-11 w-full items-center justify-center rounded-full border border-primary/30 bg-white text-sm font-bold text-primary disabled:opacity-50">
+            {resendReady ? "ส่ง OTP อีกครั้ง" : "ส่ง OTP อีกครั้ง (รอ 60 วินาที)"}
+          </button>
+          <p className="mt-2 text-center text-[11px] leading-5 text-muted">
+            {resendReady ? "ไม่ได้รับรหัส? กดส่ง OTP อีกครั้งได้" : "เพื่อความปลอดภัย สามารถส่ง OTP อีกครั้งได้หลัง 60 วินาที"}
+          </p>
         </div>
       ) : (
         <button type="button" disabled={pending} onClick={requestOtp} className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white disabled:opacity-50">

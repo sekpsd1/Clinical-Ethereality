@@ -13,6 +13,8 @@ describe("booking identity OTP dispatch contract", () => {
 
     expect(identitySource.match(/\bfetch\(/g)).toHaveLength(1);
     expect(identitySource).toContain('<button type="button" disabled={pending} onClick={requestOtp}');
+    expect(identitySource).toContain('disabled={pending || !resendReady} onClick={resendOtp}');
+    expect(identitySource).toContain('setTimeout(() => {');
     expect(identitySource).not.toContain("useEffect");
     expect(identitySource).not.toContain("<form");
     expect(bookingSource).toContain('<form action={createConsultationBookingAction}');
@@ -27,5 +29,7 @@ describe("booking identity OTP dispatch contract", () => {
     expect(challengeStateIndex).toBeGreaterThan(0);
     expect(retainedSuccessIndex).toBeGreaterThan(challengeStateIndex);
     expect(source).toContain("resetCompletedSingleFlight(requestInFlight)");
+    expect(source).toContain("async function resendOtp()");
+    expect(source).toContain("startResendCooldown()");
   });
 });
