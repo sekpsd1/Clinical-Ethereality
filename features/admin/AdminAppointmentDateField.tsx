@@ -8,7 +8,21 @@ function formatDayMonthYear(value: string): string {
   return year && month && day ? `${day}/${month}/${year}` : "เลือกวัน/เดือน/ปี";
 }
 
-export function AdminAppointmentDateField({ initialValue }: { initialValue: string }) {
+export function AdminDayMonthYearDateField({
+  initialValue,
+  name = "date",
+  label = "วันที่",
+  disabled = false,
+  required = false,
+  onValueChange
+}: {
+  initialValue: string;
+  name?: string;
+  label?: string;
+  disabled?: boolean;
+  required?: boolean;
+  onValueChange?: (value: string) => void;
+}) {
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -18,12 +32,16 @@ export function AdminAppointmentDateField({ initialValue }: { initialValue: stri
 
   return (
     <label className="text-xs font-bold text-text">
-      วันที่
-      <input ref={inputRef} name="date" type="date" value={value} onChange={(event) => setValue(event.target.value)} className="sr-only" tabIndex={-1} />
-      <button type="button" onClick={openPicker} className="mt-1 flex h-10 w-full items-center justify-between rounded-[8px] border border-border bg-white px-3 text-left text-sm font-semibold text-text" aria-label="เลือกวัน เดือน ปี">
+      {label}
+      <input ref={inputRef} name={name} type="date" value={value} onChange={(event) => { setValue(event.target.value); onValueChange?.(event.target.value); }} className="sr-only" tabIndex={-1} disabled={disabled} required={required} />
+      <button type="button" onClick={openPicker} disabled={disabled} className="mt-1 flex h-10 w-full items-center justify-between rounded-[8px] border border-border bg-white px-3 text-left text-sm font-semibold text-text disabled:opacity-50" aria-label="เลือกวัน เดือน ปี">
         <span>{formatDayMonthYear(value)}</span>
         <CalendarDays aria-hidden="true" className="size-4 text-primary" />
       </button>
     </label>
   );
+}
+
+export function AdminAppointmentDateField({ initialValue }: { initialValue: string }) {
+  return <AdminDayMonthYearDateField initialValue={initialValue} />;
 }
