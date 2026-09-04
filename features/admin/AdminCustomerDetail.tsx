@@ -14,6 +14,8 @@ import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminCustomerAssessmentResetButton } from "@/features/admin/AdminCustomerAssessmentResetButton";
+import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
+import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import type { AdminCustomerDetailData } from "@/features/admin/customers/types";
 
 const accountStatusLabels = {
@@ -23,7 +25,7 @@ const accountStatusLabels = {
   suspended: "ระงับใช้งาน"
 } as const;
 
-export function AdminCustomerDetail({ data }: { data: AdminCustomerDetailData }) {
+export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustomerDetailData; currentUserId: string }) {
   if (data.unavailable) {
     return (
       <DetailEmptyState
@@ -98,6 +100,43 @@ export function AdminCustomerDetail({ data }: { data: AdminCustomerDetailData })
           icon={<ShoppingBag aria-hidden="true" className="size-3.5" strokeWidth={2.1} />}
           density="comfortable"
         />
+      </section>
+
+      <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card lg:p-5">
+        <div className="flex flex-col gap-3 border-b border-border/70 pb-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-label font-bold uppercase text-primary">สิทธิ์ผู้ใช้งาน</p>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">เปลี่ยนสิทธิ์ผู้ใช้</h2>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              เลือกได้ทุกบทบาท ยกเว้นบัญชีผู้ดูแลที่กำลังใช้งานอยู่ และผู้ดูแลระบบคนสุดท้าย
+            </p>
+          </div>
+          <AdminUserActionButtons
+            isCurrentUser={customer.id === currentUserId}
+            redirectOnRoleChange="/admin/users?status=approved"
+            user={{
+              id: customer.id,
+              name: customer.name,
+              currentRole: customer.role,
+              requestedRole: customer.role,
+              status: customer.accountStatus
+            }}
+          />
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-bold text-text">เอกสารสำหรับสิทธิ์วิชาชีพ</p>
+          <p className="mt-1 text-[11px] font-semibold leading-5 text-muted">
+            หากกำหนดสิทธิ์เป็นแพทย์หรือเภสัชกร ต้องอัปโหลดรูปโปรไฟล์ทางการและเอกสารใบอนุญาตให้ครบก่อนกดบันทึกสิทธิ์
+          </p>
+          <AdminStaffFileControls
+            licenseProofName={customer.licenseProofName}
+            licenseProofUrl={customer.licenseProofUrl}
+            profilePhotoName={customer.profilePhotoName}
+            profilePhotoUrl={customer.profilePhotoUrl}
+            userId={customer.id}
+            userName={customer.name}
+          />
+        </div>
       </section>
 
       <section className="rounded-[8px] border border-primary/15 bg-primary/5 p-4">

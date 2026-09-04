@@ -24,12 +24,16 @@ const staffScopeWhere: Prisma.UserWhereInput = {
     },
     {
       doctorProfile: {
-        isNot: null
+        is: {
+          status: "pending_review"
+        }
       }
     },
     {
       pharmacistProfile: {
-        isNot: null
+        is: {
+          status: "pending_review"
+        }
       }
     },
     {
@@ -47,22 +51,32 @@ const inactiveStaffWhere: Prisma.UserWhereInput = {
       }
     },
     {
-      doctorProfile: {
-        is: {
-          status: {
-            in: ["rejected", "suspended", "archived"]
+      AND: [
+        { role: "doctor" },
+        {
+          doctorProfile: {
+            is: {
+              status: {
+                in: ["rejected", "suspended", "archived"]
+              }
+            }
           }
         }
-      }
+      ]
     },
     {
-      pharmacistProfile: {
-        is: {
-          status: {
-            in: ["rejected", "suspended", "archived"]
+      AND: [
+        { role: "pharmacist" },
+        {
+          pharmacistProfile: {
+            is: {
+              status: {
+                in: ["rejected", "suspended", "archived"]
+              }
+            }
           }
         }
-      }
+      ]
     }
   ]
 };
@@ -186,15 +200,22 @@ function toRole(value: string): Role {
 }
 
 function getRequestedRole(user: UserWithStaffProfiles): Role {
-  if (user.doctorProfile) {
+  const hasPendingStaffRequest =
+    user.doctorProfile?.status === "pending_review" || user.pharmacistProfile?.status === "pending_review";
+
+  if (!hasPendingStaffRequest && !(user.status === "pending_review" && user.role === "customer")) {
+    return toRole(user.role);
+  }
+
+  if (user.doctorProfile?.status === "pending_review") {
     return "doctor";
   }
 
-  if (user.pharmacistProfile) {
+  if (user.pharmacistProfile?.status === "pending_review") {
     return "pharmacist";
   }
 
-  if (user.status === "pending_review" && user.role === "customer") {
+  if (user.role === "customer") {
     return "admin";
   }
 
@@ -202,13 +223,13 @@ function getRequestedRole(user: UserWithStaffProfiles): Role {
 }
 
 function getStaffProfileText(user: UserWithStaffProfiles): string {
-  if (user.doctorProfile) {
+  if (user.role === "doctor" && user.doctorProfile) {
     return user.doctorProfile.licenseNumber
       ? `ใบอนุญาตแพทย์ ${user.doctorProfile.licenseNumber}`
       : "โปรไฟล์แพทย์รอข้อมูลใบอนุญาต";
   }
 
-  if (user.pharmacistProfile) {
+  if (user.role === "pharmacist" && user.pharmacistProfile) {
     return user.pharmacistProfile.licenseNumber
       ? `ใบอนุญาตเภสัชกร ${user.pharmacistProfile.licenseNumber}`
       : "โปรไฟล์เภสัชกรรอข้อมูลใบอนุญาต";
@@ -218,7 +239,7 @@ function getStaffProfileText(user: UserWithStaffProfiles): string {
     return "คำขอสิทธิ์ผู้ดูแลระบบจากลิงก์เชิญ รอผู้ดูแลระบบเดิมตรวจสอบ";
   }
 
-  return "บัญชีบุคลากรที่เชื่อมต่อ LINE";
+  return user.role === "admin" ? "บัญชีผู้ดูแลระบบที่เชื่อมต่อ LINE" : "บัญชีบุคลากรที่เชื่อมต่อ LINE";
 }
 
 function formatSubmittedAt(date: Date): string {
@@ -243,7 +264,12 @@ function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
     currentRole: toRole(user.role),
     requestedRole: getRequestedRole(user),
     status: user.status,
-    staffStatus: user.doctorProfile?.status ?? user.pharmacistProfile?.status,
+    staffStatus:
+      user.role === "doctor"
+        ? user.doctorProfile?.status
+        : user.role === "pharmacist"
+          ? user.pharmacistProfile?.status
+          : user.doctorProfile?.status ?? user.pharmacistProfile?.status,
     profile: getStaffProfileText(user),
     profilePhotoUrl: profilePhoto?.storageUrl ?? null,
     profilePhotoName: profilePhoto?.fileName ?? null,

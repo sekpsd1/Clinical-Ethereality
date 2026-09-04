@@ -1,5 +1,6 @@
 import type { AccountStatus, ConsultationStatus } from "@prisma/client";
 import type { AdminCustomerJourneyTone } from "@/features/admin/customers/status";
+import type { Role } from "@/lib/permissions/roles";
 
 export type AdminCustomerAssessment = {
   id: string;
@@ -60,9 +61,14 @@ export type AdminCustomerDetail = {
   id: string;
   name: string;
   reference: string;
+  role: Role;
   email: string | null;
   phone: string | null;
   accountStatus: AccountStatus;
+  profilePhotoUrl: string | null;
+  profilePhotoName: string | null;
+  licenseProofUrl: string | null;
+  licenseProofName: string | null;
   rewardBalance: number;
   createdAt: string;
   lastLoginAt: string | null;

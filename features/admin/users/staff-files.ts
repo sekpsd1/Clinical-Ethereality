@@ -11,30 +11,11 @@ export async function uploadAdminStaffFile(input: {
   const target = await prisma.user.findUnique({
     where: {
       id: input.ownerId
-    },
-    select: {
-      role: true,
-      doctorProfile: {
-        select: {
-          id: true
-        }
-      },
-      pharmacistProfile: {
-        select: {
-          id: true
-        }
-      }
     }
   });
 
-  if (
-    !target ||
-    (!target.doctorProfile &&
-      !target.pharmacistProfile &&
-      target.role !== "doctor" &&
-      target.role !== "pharmacist")
-  ) {
-    throw new Error("STAFF_PROFILE_REQUIRED");
+  if (!target) {
+    throw new Error("USER_NOT_FOUND");
   }
 
   await storeStaffFiles({

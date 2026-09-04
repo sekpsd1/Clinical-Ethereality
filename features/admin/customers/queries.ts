@@ -12,6 +12,7 @@ import type {
   AdminCustomerListItem,
   AdminCustomersData
 } from "@/features/admin/customers/types";
+import { staffFileEntityTypes } from "@/features/staff-files/types";
 
 type CustomerListRecord = Awaited<ReturnType<typeof getCustomerListRecords>>[number];
 type CustomerDetailRecord = NonNullable<Awaited<ReturnType<typeof getCustomerDetailRecord>>>;
@@ -28,6 +29,7 @@ function getRecommendedDoctor() {
     where: {
       status: "approved",
       user: {
+        role: "doctor",
         status: "active"
       }
     },
@@ -64,12 +66,6 @@ function getCustomerListRecords() {
       role: "customer",
       status: {
         in: ["active", "suspended", "archived"]
-      },
-      doctorProfile: {
-        is: null
-      },
-      pharmacistProfile: {
-        is: null
       }
     },
     orderBy: {
@@ -117,12 +113,6 @@ function getCustomerDetailRecord(customerId: string) {
       role: "customer",
       status: {
         in: ["active", "suspended", "archived"]
-      },
-      doctorProfile: {
-        is: null
-      },
-      pharmacistProfile: {
-        is: null
       }
     },
     include: {
@@ -151,6 +141,22 @@ function getCustomerDetailRecord(customerId: string) {
       _count: {
         select: {
           orders: true
+        }
+      },
+      fileAttachments: {
+        where: {
+          status: "attached",
+          entityType: {
+            in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        select: {
+          entityType: true,
+          storageUrl: true,
+          fileName: true
         }
       }
     }
@@ -294,14 +300,26 @@ export async function getAdminCustomerDetail(customerId: string): Promise<AdminC
       };
     }
 
+    const profilePhoto = customer.fileAttachments.find(
+      (attachment) => attachment.entityType === staffFileEntityTypes.profilePhoto
+    );
+    const licenseProof = customer.fileAttachments.find(
+      (attachment) => attachment.entityType === staffFileEntityTypes.licenseProof
+    );
+
     return {
       customer: {
         id: customer.id,
         name: customer.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
         reference: formatCustomerReference(customer.lineUserId),
+        role: "customer",
         email: customer.email,
         phone: customer.phone,
         accountStatus: customer.status,
+        profilePhotoUrl: profilePhoto?.storageUrl ?? null,
+        profilePhotoName: profilePhoto?.fileName ?? null,
+        licenseProofUrl: licenseProof?.storageUrl ?? null,
+        licenseProofName: licenseProof?.fileName ?? null,
         rewardBalance: customer.rewardBalance,
         createdAt: formatDate(customer.createdAt) ?? "",
         lastLoginAt: formatDate(customer.lastLoginAt),

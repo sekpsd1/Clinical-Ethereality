@@ -13,5 +13,5 @@ export const updateUserStatusSchema = adminUserIdSchema.extend({
 });
 
 export const updateUserRoleSchema = adminUserIdSchema.extend({
-  role: z.enum(["customer", "admin"])
+  role: z.enum(["customer", "doctor", "pharmacist", "admin"])
 });

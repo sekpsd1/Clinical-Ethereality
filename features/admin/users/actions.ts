@@ -51,7 +51,7 @@ export async function approveStaffRoleAction(
   try {
     await prisma.$transaction(async (tx) => {
       if (parsed.data.role === "doctor" || parsed.data.role === "pharmacist") {
-        const requiredFileCount = await tx.fileAttachment.count({
+        const requiredFiles = await tx.fileAttachment.findMany({
           where: {
             ownerId: parsed.data.userId,
             entityId: parsed.data.userId,
@@ -59,10 +59,18 @@ export async function approveStaffRoleAction(
               in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
             },
             status: "attached"
+          },
+          select: {
+            entityType: true
           }
         });
 
-        if (requiredFileCount < 2) {
+        const attachedKinds = new Set(requiredFiles.map((file) => file.entityType));
+
+        if (
+          !attachedKinds.has(staffFileEntityTypes.profilePhoto) ||
+          !attachedKinds.has(staffFileEntityTypes.licenseProof)
+        ) {
           throw new Error("STAFF_FILES_REQUIRED");
         }
       }
@@ -197,10 +205,10 @@ export async function uploadStaffFileAction(
       };
     }
 
-    if (error instanceof Error && error.message === "STAFF_PROFILE_REQUIRED") {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return {
         status: "error",
-        message: "อัปโหลดไฟล์บุคลากรได้เฉพาะบัญชีแพทย์หรือเภสัชกร"
+        message: "ไม่พบบัญชีผู้ใช้ที่ต้องการอัปโหลดเอกสาร"
       };
     }
 
@@ -211,6 +219,7 @@ export async function uploadStaffFileAction(
   }
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/customers");
 
   return {
     status: "success",
@@ -269,6 +278,7 @@ export async function updateUserStatusAction(
   }
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/customers");
 
   return {
     status: "success",
@@ -314,10 +324,6 @@ export async function updateUserRoleAction(
         throw new Error("USER_NOT_FOUND");
       }
 
-      if (target.role !== "customer" && target.role !== "admin") {
-        throw new Error("STAFF_ROLE_REQUIRES_APPROVAL");
-      }
-
       if (target.role === parsed.data.role) {
         return {
           unchanged: true
@@ -337,6 +343,53 @@ export async function updateUserRoleAction(
         }
       }
 
+      if (parsed.data.role === "doctor" || parsed.data.role === "pharmacist") {
+        const requiredFiles = await tx.fileAttachment.findMany({
+          where: {
+            ownerId: parsed.data.userId,
+            entityId: parsed.data.userId,
+            entityType: {
+              in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
+            },
+            status: "attached"
+          },
+          select: {
+            entityType: true
+          }
+        });
+
+        const attachedKinds = new Set(requiredFiles.map((file) => file.entityType));
+
+        if (
+          !attachedKinds.has(staffFileEntityTypes.profilePhoto) ||
+          !attachedKinds.has(staffFileEntityTypes.licenseProof)
+        ) {
+          throw new Error("STAFF_FILES_REQUIRED");
+        }
+      }
+
+      if (target.role === "doctor" && parsed.data.role !== "doctor") {
+        await tx.doctor.updateMany({
+          where: {
+            userId: parsed.data.userId
+          },
+          data: {
+            status: "archived"
+          }
+        });
+      }
+
+      if (target.role === "pharmacist" && parsed.data.role !== "pharmacist") {
+        await tx.pharmacist.updateMany({
+          where: {
+            userId: parsed.data.userId
+          },
+          data: {
+            status: "archived"
+          }
+        });
+      }
+
       await tx.user.update({
         where: {
           id: parsed.data.userId
@@ -345,6 +398,40 @@ export async function updateUserRoleAction(
           role: parsed.data.role
         }
       });
+
+      if (parsed.data.role === "doctor") {
+        await tx.doctor.upsert({
+          where: {
+            userId: parsed.data.userId
+          },
+          create: {
+            userId: parsed.data.userId,
+            status: "approved",
+            approvedAt: new Date()
+          },
+          update: {
+            status: "approved",
+            approvedAt: new Date()
+          }
+        });
+      }
+
+      if (parsed.data.role === "pharmacist") {
+        await tx.pharmacist.upsert({
+          where: {
+            userId: parsed.data.userId
+          },
+          create: {
+            userId: parsed.data.userId,
+            status: "approved",
+            approvedAt: new Date()
+          },
+          update: {
+            status: "approved",
+            approvedAt: new Date()
+          }
+        });
+      }
 
       await writeAuditLog(tx, {
         actorId: session.userId,
@@ -364,6 +451,7 @@ export async function updateUserRoleAction(
     });
 
     revalidatePath("/admin/users");
+    revalidatePath("/admin/customers");
 
     return {
       status: "success",
@@ -377,10 +465,10 @@ export async function updateUserRoleAction(
       };
     }
 
-    if (error instanceof Error && error.message === "STAFF_ROLE_REQUIRES_APPROVAL") {
+    if (error instanceof Error && error.message === "STAFF_FILES_REQUIRED") {
       return {
         status: "error",
-        message: "แพทย์และเภสัชกรต้องเปลี่ยนสิทธิ์ผ่านขั้นตอนตรวจใบอนุญาต"
+        message: "ต้องมีรูปโปรไฟล์ทางการและเอกสารใบอนุญาตครบก่อนกำหนดสิทธิ์แพทย์หรือเภสัชกร"
       };
     }
 

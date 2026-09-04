@@ -275,10 +275,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
                 <InfoTile label="สิทธิ์ที่ขอ" value={formatRole(user.requestedRole)} />
               </div>
 
-              {user.requestedRole === "doctor" ||
-              user.requestedRole === "pharmacist" ||
-              user.currentRole === "doctor" ||
-              user.currentRole === "pharmacist" ? (
+              {user.requestedRole !== "customer" || user.currentRole !== "customer" ? (
                 <AdminStaffFileControls
                   userId={user.id}
                   userName={user.name}
