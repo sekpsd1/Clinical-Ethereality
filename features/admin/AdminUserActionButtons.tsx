@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { CheckCircle2, Save, XCircle } from "lucide-react";
 import {
   updateUserRoleAction,
@@ -15,7 +16,7 @@ import type { AdminUserApprovalItem } from "@/features/admin/users/types";
 type AdminUserActionButtonsProps = {
   user: Pick<AdminUserApprovalItem, "id" | "name" | "currentRole" | "requestedRole" | "status" | "staffStatus">;
   isCurrentUser: boolean;
-  redirectOnRoleChange?: string;
+  redirectOnRoleChange?: Route;
 };
 
 const initialActionState: AdminUserActionState = {
