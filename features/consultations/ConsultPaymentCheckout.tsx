@@ -6,7 +6,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  Download,
   Info,
   RotateCcw,
   ShieldAlert
@@ -15,6 +14,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
 import { getPromptPayQrDownloadUrl } from "@/features/consultations/payment/qr-download";
+import { PromptPayQrSaveButton } from "@/features/consultations/payment/PromptPayQrSaveButton";
 import { PrivateSlipUpload } from "@/features/payments/PrivateSlipUpload";
 import type {
   ConsultationPaymentData,
@@ -350,14 +350,7 @@ function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDeta
       <p className="pb-4 pt-1 text-center text-xl font-bold leading-7 text-primary">ยอดชำระ: {consultation.feeLabel}</p>
 
       {qrDownloadUrl ? (
-        <a
-          href={qrDownloadUrl}
-          download="promptpay-qr.png"
-          className="mb-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-5 text-sm font-bold text-primary transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <Download aria-hidden="true" className="size-4" strokeWidth={2.25} />
-          บันทึก QR Code
-        </a>
+        <PromptPayQrSaveButton qrDataUrl={qrDownloadUrl} />
       ) : null}
 
       <div className="mb-4 flex w-full flex-col items-center gap-1 rounded-lg bg-[#f2f4f6] px-4 py-3 text-center">

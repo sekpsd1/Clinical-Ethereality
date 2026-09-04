@@ -59,7 +59,7 @@ describe("ConsultPaymentCheckout doctor avatar", () => {
       />
     );
 
-    expect(html).toContain("บันทึก QR Code");
-    expect(html).toContain('download="promptpay-qr.png"');
+    expect(html).toContain("บันทึก/แชร์ QR Code");
+    expect(html).toContain('type="button"');
   });
 });
