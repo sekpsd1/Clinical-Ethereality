@@ -7,6 +7,7 @@ import { AdminBulkScheduleEditor } from "@/features/admin/AdminBulkScheduleEdito
 import { AdminConsultationFeeSettings } from "@/features/admin/AdminConsultationFeeSettings";
 import { AdminDateScheduleEditor } from "@/features/admin/AdminDateScheduleEditor";
 import { AdminDateScheduleCalendar } from "@/features/admin/AdminDateScheduleCalendar";
+import { AdminAppointmentCalendar } from "@/features/admin/AdminAppointmentCalendar";
 import { AdminDateScheduleDeleteButton } from "@/features/admin/AdminDateScheduleDeleteButton";
 import { AdminDateScheduleToggleButton } from "@/features/admin/AdminDateScheduleToggleButton";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
@@ -39,6 +40,8 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
       ) : null}
 
       <AdminDateScheduleCalendar overrides={data.dateOverrides} slots={data.slots} />
+
+      <AdminAppointmentCalendar data={data.appointmentCalendar} />
 
       <AdminConsultationFeeSettings doctors={data.doctors} />
 

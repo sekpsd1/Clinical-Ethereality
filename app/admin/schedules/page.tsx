@@ -6,10 +6,12 @@ export default async function AdminSchedulesPage({
 }: {
   searchParams: Promise<{
     edit?: string;
+    date?: string;
+    doctor?: string;
   }>;
 }) {
-  const { edit } = await searchParams;
-  const data = await getAdminSchedules();
+  const params = await searchParams;
+  const data = await getAdminSchedules({ date: params.date, doctorId: params.doctor });
 
-  return <AdminSchedules data={data} editSlotId={edit} />;
+  return <AdminSchedules data={data} editSlotId={params.edit} />;
 }

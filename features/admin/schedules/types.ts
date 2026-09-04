@@ -44,10 +44,30 @@ export type AdminSchedulesData = {
   doctors: AdminDoctorOption[];
   slots: AdminDoctorAvailabilitySlot[];
   dateOverrides: AdminDoctorAvailabilityDateOverride[];
+  appointmentCalendar: AdminAppointmentCalendarData;
   summary: {
     activeDoctors: number;
     activeSlots: number;
     inactiveSlots: number;
   };
   unavailable?: boolean;
+};
+
+export type AdminAppointmentCalendarSlot = {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  timeLabel: string;
+  status: "available" | "pending_payment" | "scheduled" | "live";
+  statusLabel: string;
+  patientName: string | null;
+  lockExpiresAt: string | null;
+};
+
+export type AdminAppointmentCalendarData = {
+  dateLabel: string;
+  dateValue: string;
+  doctors: Array<Pick<AdminDoctorOption, "id" | "name">>;
+  selectedDoctorId: string;
+  slots: AdminAppointmentCalendarSlot[];
 };
