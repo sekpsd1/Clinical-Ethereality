@@ -24,6 +24,7 @@ const initialActionState: AdminUserActionState = {
 
 export function AdminUserActionButtons({ user, isCurrentUser }: AdminUserActionButtonsProps) {
   const router = useRouter();
+  const isStaffRoleRequest = user.requestedRole === "doctor" || user.requestedRole === "pharmacist";
   const [suspendState, suspendAction] = useActionState(updateUserStatusAction, initialActionState);
   const [approveState, setApproveState] = useState<AdminUserActionState>(initialActionState);
   const [approvePending, setApprovePending] = useState(false);
@@ -74,46 +75,57 @@ export function AdminUserActionButtons({ user, isCurrentUser }: AdminUserActionB
         </p>
       ) : (
         <>
-          {user.status === "active" && (user.currentRole === "customer" || user.currentRole === "admin") ? (
-            <form action={roleAction} className="flex w-full max-w-[320px] items-end gap-2">
-              <input type="hidden" name="userId" value={user.id} />
-              <label className="min-w-0 flex-1">
-                <span className="mb-1 block text-left text-[11px] font-bold text-muted">เปลี่ยนสิทธิ์</span>
-                <select
-                  name="role"
-                  defaultValue={user.currentRole === "admin" ? "admin" : "customer"}
-                  className="h-9 w-full rounded-[8px] border border-border bg-white px-2 text-xs font-semibold text-text outline-none focus:border-primary"
-                  aria-label={`เลือกสิทธิ์ของ ${user.name}`}
-                >
-                  <option value="customer">ลูกค้า</option>
-                  <option value="admin">ผู้ดูแลระบบ</option>
-                </select>
-              </label>
-              <SaveRoleButton userName={user.name} />
-            </form>
-          ) : null}
-
-          <div className="flex gap-2">
-            <form action={suspendAction}>
-              <input type="hidden" name="userId" value={user.id} />
-              <input type="hidden" name="status" value="suspended" />
-              <ActionIconButton
-                ariaLabel={`ระงับบัญชี ${user.name}`}
-                className="border border-danger/20 bg-danger/10 text-danger"
-                icon="suspend"
-              />
-            </form>
-            {user.requestedRole !== "customer" ? (
-              <ActionIconButton
-                ariaLabel={`อนุมัติ ${user.name}`}
-                className="bg-primary text-white"
-                icon="approve"
-                onClick={handleApprove}
-                pendingOverride={approvePending}
-                type="button"
-              />
+          <div className="flex w-full max-w-[480px] flex-wrap items-end justify-end gap-2">
+            {user.status === "active" && (user.currentRole === "customer" || user.currentRole === "admin") ? (
+              <form action={roleAction} className="flex min-w-[240px] flex-1 items-end gap-2">
+                <input type="hidden" name="userId" value={user.id} />
+                <label className="min-w-0 flex-1">
+                  <span className="mb-1 block text-left text-[11px] font-bold text-muted">เปลี่ยนสิทธิ์</span>
+                  <select
+                    name="role"
+                    defaultValue={user.currentRole === "admin" ? "admin" : "customer"}
+                    className="h-9 w-full rounded-[8px] border border-border bg-white px-2 text-xs font-semibold text-text outline-none focus:border-primary"
+                    aria-label={`เลือกสิทธิ์ของ ${user.name}`}
+                  >
+                    <option value="customer">ลูกค้า</option>
+                    <option value="admin">ผู้ดูแลระบบ</option>
+                  </select>
+                </label>
+                <SaveRoleButton userName={user.name} />
+              </form>
             ) : null}
+
+            <div className="flex gap-2">
+              <form action={suspendAction}>
+                <input type="hidden" name="userId" value={user.id} />
+                <input type="hidden" name="status" value="suspended" />
+                <ActionIconButton
+                  ariaLabel={
+                    isStaffRoleRequest ? `ไม่อนุมัติคำขอสิทธิ์ของ ${user.name}` : `ระงับบัญชี ${user.name}`
+                  }
+                  className="border border-danger/20 bg-danger/10 text-danger"
+                  icon="suspend"
+                  title={isStaffRoleRequest ? "ไม่อนุมัติคำขอสิทธิ์" : "ระงับบัญชี"}
+                />
+              </form>
+              {user.requestedRole !== "customer" ? (
+                <ActionIconButton
+                  ariaLabel={`อนุมัติ ${user.name}`}
+                  className="bg-primary text-white"
+                  icon="approve"
+                  onClick={handleApprove}
+                  pendingOverride={approvePending}
+                  title="อนุมัติการเปลี่ยนสิทธิ์"
+                  type="button"
+                />
+              ) : null}
+            </div>
           </div>
+          {isStaffRoleRequest ? (
+            <p className="max-w-[480px] text-right text-[11px] font-semibold leading-5 text-muted">
+              สำหรับคำขอสิทธิ์แพทย์หรือเภสัชกร: ปุ่มกากบาทสีแดงคือไม่อนุมัติคำขอ และปุ่มเครื่องหมายถูกสีเขียวคืออนุมัติการเปลี่ยนสิทธิ์ตาม “สิทธิ์ที่ขอ”
+            </p>
+          ) : null}
         </>
       )}
       {actionState.status !== "idle" ? (
@@ -153,6 +165,7 @@ function ActionIconButton({
   icon,
   onClick,
   pendingOverride,
+  title,
   type = "submit"
 }: {
   ariaLabel: string;
@@ -160,6 +173,7 @@ function ActionIconButton({
   icon: "approve" | "suspend";
   onClick?: () => void;
   pendingOverride?: boolean;
+  title: string;
   type?: "button" | "submit";
 }) {
   const { pending } = useFormStatus();
@@ -172,6 +186,7 @@ function ActionIconButton({
       aria-label={ariaLabel}
       disabled={pendingOverride ?? pending}
       onClick={onClick}
+      title={title}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
     </button>
