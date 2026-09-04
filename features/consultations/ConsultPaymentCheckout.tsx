@@ -11,6 +11,7 @@ import {
   ShieldAlert
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
 import { PrivateSlipUpload } from "@/features/payments/PrivateSlipUpload";
 import type {
@@ -295,7 +296,7 @@ function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymen
     <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-[21px] shadow-payment-card backdrop-blur-topbar">
       <div className="flex items-start gap-4">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-full border-2 border-primary/10 p-0.5">
-          <Image src={consultation.doctorAvatarUrl} alt={consultation.doctorName} fill sizes="56px" className="object-cover" />
+          <DoctorAvatar src={consultation.doctorAvatarUrl} alt={consultation.doctorName} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
