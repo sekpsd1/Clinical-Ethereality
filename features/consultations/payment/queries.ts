@@ -84,12 +84,14 @@ function normalizePaymentStatus(value?: string): ConsultationPaymentStatus {
   return "idle";
 }
 
+export function getPaymentDoctorAvatarUrl(avatarUrl: string | null): string {
+  return avatarUrl ?? "/images/doctors/somchai-payment.png";
+}
+
 async function mapConsultation(consultation: ConsultationRecord): Promise<ConsultationPaymentDetail> {
   const feeAmount = consultation.doctor.consultationFee ?? 1000;
   const promptPay = await getPromptPayInstruction(feeAmount);
-  const doctorAvatarUrl = consultation.doctor.user.avatarUrl?.startsWith("/")
-    ? consultation.doctor.user.avatarUrl
-    : "/images/doctors/somchai-payment.png";
+  const doctorAvatarUrl = getPaymentDoctorAvatarUrl(consultation.doctor.user.avatarUrl);
   const privateSlipAttachment =
     consultation.payment?.status === "pending_review"
       ? await prisma.fileAttachment.findFirst({
