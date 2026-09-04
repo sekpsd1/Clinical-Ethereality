@@ -86,9 +86,7 @@ export async function getConsultationWaitingRoom(
       viewerRole: session.role,
       consultationStatus: consultation.status,
       doctorName: consultation.doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
-      doctorImageUrl: consultation.doctor.user.avatarUrl?.startsWith("/")
-        ? consultation.doctor.user.avatarUrl
-        : "/images/doctors/waiting-avatar.png",
+      doctorImageUrl: consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-avatar.png",
       scheduledLabel: formatScheduledAt(consultation.scheduledAt),
       statusMessage:
         consultation.status === "live"

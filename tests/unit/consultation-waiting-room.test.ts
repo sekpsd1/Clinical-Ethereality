@@ -172,6 +172,23 @@ describe("getConsultationWaitingRoom", () => {
       liveHref: "/consult/live?consultation=consultation-uat"
     });
   });
+
+  it("keeps the selected doctor's current avatar URL for the waiting room", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
+    mocks.findFirst.mockResolvedValue({
+      ...consultationRecord("scheduled"),
+      doctor: {
+        user: {
+          displayName: "Websthai",
+          avatarUrl: "https://app.bccgroup-thailand.com/api/staff-files/websthai-profile"
+        }
+      }
+    });
+
+    const result = await getConsultationWaitingRoom("consultation-uat", new Date("2030-01-01T09:59:00.000Z"));
+
+    expect(result?.doctorImageUrl).toBe("https://app.bccgroup-thailand.com/api/staff-files/websthai-profile");
+  });
 });
 
 describe("getWaitingRoomTiming", () => {

@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 
 const fallbackDoctorImage = "/images/doctors/kamonpat.jpg";
 
-export function DoctorAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
+export function DoctorAvatar({
+  src,
+  alt,
+  fallbackSrc = fallbackDoctorImage
+}: {
+  src: string | null | undefined;
+  alt: string;
+  fallbackSrc?: string;
+}) {
   const [isMounted, setIsMounted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -13,7 +21,7 @@ export function DoctorAvatar({ src, alt }: { src: string | null | undefined; alt
     setIsMounted(true);
   }, [src]);
 
-  const imageSrc = !isMounted || !src || imageFailed ? fallbackDoctorImage : src;
+  const imageSrc = !isMounted || !src || imageFailed ? fallbackSrc : src;
 
   return (
     // Staff profile photos can be served by the private host route. A native image

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -10,6 +9,7 @@ import {
   Wifi
 } from "lucide-react";
 import type { ConsultationWaitingRoomData } from "@/features/consultations/waiting-room/types";
+import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 
 export function ConsultWaitingRoom({ data }: { data: ConsultationWaitingRoomData }) {
   return (
@@ -32,12 +32,10 @@ function WaitingRoomTopBar({ data }: { data: ConsultationWaitingRoomData }) {
     <header className="fixed inset-x-0 top-0 z-header mx-auto flex h-[72px] max-w-[480px] items-center justify-between bg-white/70 px-7 shadow-waiting-top backdrop-blur-payment">
       <div className="flex items-center gap-3">
         <div className="relative size-10 overflow-hidden rounded-full border-2 border-[#7ad5dd] p-0.5 shadow-chip">
-          <Image
+          <DoctorAvatar
             src={data.doctorImageUrl}
             alt={data.doctorName}
-            fill
-            sizes="40px"
-            className="object-cover"
+            fallbackSrc="/images/doctors/waiting-avatar.png"
           />
         </div>
         <h1 className="font-display text-xl font-bold leading-7 tracking-normal text-[#134e4a]">
@@ -88,12 +86,10 @@ function DoctorBrief({ data }: { data: ConsultationWaitingRoomData }) {
     <section className="flex items-center gap-4 px-2">
       <div className="relative shrink-0">
         <div className="relative size-14 overflow-hidden rounded-full border-2 border-white p-0.5 shadow-avatar">
-          <Image
+          <DoctorAvatar
             src={data.doctorImageUrl}
             alt={data.doctorName}
-            fill
-            sizes="56px"
-            className="object-cover"
+            fallbackSrc="/images/doctors/waiting-avatar.png"
           />
         </div>
         <span className="absolute bottom-0 right-0 size-4 rounded-full border-2 border-white bg-primary" />

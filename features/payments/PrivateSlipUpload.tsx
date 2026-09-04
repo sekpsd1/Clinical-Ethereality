@@ -102,7 +102,11 @@ export function PrivateSlipUpload({ consultationId, paymentId, referenceLabel }:
             ? "สลิปไม่ผ่านการตรวจสอบ กรุณาตรวจสอบยอดและส่งสลิปใหม่อีกครั้ง"
             : "ได้รับสลิปแล้ว ผู้ให้บริการยังตรวจอัตโนมัติไม่ได้ และส่งเข้าคิวให้ทีมงานตรวจสอบแล้ว"
       );
-      router.refresh();
+      if (consultationId) {
+        router.replace(`/consult/payment?consultation=${encodeURIComponent(consultationId)}&verify=1`);
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "ไม่สามารถส่งสลิปได้");

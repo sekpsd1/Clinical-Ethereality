@@ -8,10 +8,11 @@ export default async function ConsultPaymentPage({
   searchParams: Promise<{
     consultation?: string;
     payment?: string;
+    verify?: string;
   }>;
 }) {
   const [session, params] = await Promise.all([requireCurrentSession(), searchParams]);
   const data = await getConsultationPaymentData(session, params.consultation, params.payment);
 
-  return <ConsultPaymentCheckout data={data} />;
+  return <ConsultPaymentCheckout data={data} autoVerifySlip={params.verify === "1"} />;
 }
