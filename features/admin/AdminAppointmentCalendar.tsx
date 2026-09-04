@@ -1,5 +1,6 @@
 import { CalendarDays, Clock3, UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AdminAppointmentDateField } from "@/features/admin/AdminAppointmentDateField";
 import type { AdminAppointmentCalendarData } from "@/features/admin/schedules/types";
 
 const statusTones = {
@@ -29,10 +30,7 @@ export function AdminAppointmentCalendar({ data }: { data: AdminAppointmentCalen
             {data.doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
           </select>
         </label>
-        <label className="text-xs font-bold text-text">
-          วันที่
-          <input name="date" type="date" defaultValue={data.dateValue} className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text" />
-        </label>
+        <AdminAppointmentDateField initialValue={data.dateValue} />
         <button type="submit" className="min-h-10 rounded-[8px] bg-primary px-4 text-sm font-bold text-white sm:col-span-2">ดูตารางนัดหมาย</button>
       </form>
 

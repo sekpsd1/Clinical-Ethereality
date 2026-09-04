@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+const calendarDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function timeToMinutes(value: string): number {
   const [hours, minutes] = value.split(":").map(Number);
@@ -61,15 +62,17 @@ export const upsertDoctorAvailabilitySchema = z
     startTime: z.string().regex(timePattern),
     endTime: z.string().regex(timePattern),
     slotMinutes: z.coerce.number().int().min(10).max(240),
+    effectiveFrom: z.string().regex(calendarDatePattern).optional().or(z.literal("")),
+    effectiveTo: z.string().regex(calendarDatePattern).optional().or(z.literal("")),
     isActive: z
       .enum(["on", "true", "false"])
       .optional()
       .transform((value) => value === "on" || value === "true"),
     notes: z.string().max(500).optional()
   })
-  .refine((value) => value.startTime < value.endTime, {
-    message: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม",
-    path: ["endTime"]
+  .superRefine((value, context) => {
+    if (value.startTime >= value.endTime) context.addIssue({ code: z.ZodIssueCode.custom, message: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม", path: ["endTime"] });
+    if (value.effectiveFrom && value.effectiveTo && value.effectiveFrom > value.effectiveTo) context.addIssue({ code: z.ZodIssueCode.custom, message: "วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม", path: ["effectiveTo"] });
   });
 
 export const toggleDoctorAvailabilitySchema = z.object({
@@ -86,7 +89,9 @@ export const createDoctorAvailabilityBatchSchema = z
       .enum(["on", "true", "false"])
       .optional()
       .transform((value) => value === "on" || value === "true"),
-    notes: z.string().max(500).optional()
+    notes: z.string().max(500).optional(),
+    effectiveFrom: z.string().regex(calendarDatePattern).optional().or(z.literal("")),
+    effectiveTo: z.string().regex(calendarDatePattern).optional().or(z.literal(""))
   })
   .superRefine((value, context) => {
     if (new Set(value.weekdays).size !== value.weekdays.length) {
@@ -117,6 +122,10 @@ export const createDoctorAvailabilityBatchSchema = z
           path: ["blocks", index, "slotMinutes"]
         });
       }
+    }
+
+    if (value.effectiveFrom && value.effectiveTo && value.effectiveFrom > value.effectiveTo) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม", path: ["effectiveTo"] });
     }
 
     for (let left = 0; left < value.blocks.length; left += 1) {

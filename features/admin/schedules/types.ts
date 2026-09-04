@@ -21,6 +21,9 @@ export type AdminDoctorAvailabilitySlot = {
   endTime: string;
   timeRange: string;
   slotMinutes: number;
+  effectiveFromValue: string | null;
+  effectiveToValue: string | null;
+  effectiveRangeLabel: string;
   isActive: boolean;
   notes: string;
   updatedAt: string;

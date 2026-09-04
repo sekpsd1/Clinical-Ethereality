@@ -10,6 +10,10 @@ function toDateValue(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function isEffectiveOn(slot: AdminDoctorAvailabilitySlot, dateValue: string) {
+  return (!slot.effectiveFromValue || dateValue >= slot.effectiveFromValue) && (!slot.effectiveToValue || dateValue <= slot.effectiveToValue);
+}
+
 export function AdminDateScheduleCalendar({ overrides, slots }: { overrides: AdminDoctorAvailabilityDateOverride[]; slots: AdminDoctorAvailabilitySlot[] }) {
   const today = new Date();
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -22,7 +26,7 @@ export function AdminDateScheduleCalendar({ overrides, slots }: { overrides: Adm
   const selectedOverrides = selectedDate ? overrides.filter((item) => item.scheduleDateValue === selectedDate && item.isActive) : [];
   const selectedDateObject = selectedDate ? new Date(`${selectedDate}T00:00:00`) : null;
   const selectedIsClosed = selectedOverrides.some((item) => item.type === "closed");
-  const selectedRegular = selectedDateObject && !selectedIsClosed ? slots.filter((slot) => slot.isActive && slot.weekday === selectedDateObject.getDay()) : [];
+  const selectedRegular = selectedDateObject && selectedDate && !selectedIsClosed ? slots.filter((slot) => slot.isActive && slot.weekday === selectedDateObject.getDay() && isEffectiveOn(slot, selectedDate)) : [];
 
   return (
     <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
@@ -34,7 +38,7 @@ export function AdminDateScheduleCalendar({ overrides, slots }: { overrides: Adm
         const dateValue = toDateValue(month.getFullYear(), month.getMonth(), day);
         const items = overrides.filter((item) => item.scheduleDateValue === dateValue && item.isActive);
         const date = new Date(month.getFullYear(), month.getMonth(), day);
-        const regular = slots.filter((slot) => slot.isActive && slot.weekday === date.getDay());
+        const regular = slots.filter((slot) => slot.isActive && slot.weekday === date.getDay() && isEffectiveOn(slot, dateValue));
         const hasClosed = items.some((item) => item.type === "closed");
         const hasSpecial = items.some((item) => item.type === "available");
         const hasRegular = !hasClosed && regular.length > 0;

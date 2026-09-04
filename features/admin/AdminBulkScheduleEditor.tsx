@@ -167,6 +167,12 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
           </select>
         </label>
 
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">มีผลตั้งแต่</span><input name="effectiveFrom" type="date" lang="en-GB" disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text" /></label>
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ถึงวันที่</span><input name="effectiveTo" type="date" lang="en-GB" disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text" /></label>
+        </div>
+        <p className="-mt-2 text-[11px] leading-5 text-muted">ไม่บังคับ: ใช้เมื่อต้องการตั้งตารางประจำเพียงหลายสัปดาห์</p>
+
         <fieldset>
           <legend className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">เลือกวัน</legend>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">

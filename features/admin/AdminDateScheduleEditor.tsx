@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { CalendarOff } from "lucide-react";
-import { createDoctorAvailabilityDateOverrideAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
+import { createDoctorAvailabilityDateOverrideAction, getDoctorScheduleDateCheck, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import type { AdminDoctorOption } from "@/features/admin/schedules/types";
 
 const initialState: AdminScheduleActionState = { status: "idle", message: "" };
@@ -14,7 +14,17 @@ const timeOptions = Array.from({ length: 48 }, (_, index) => {
 export function AdminDateScheduleEditor({ doctors }: { doctors: AdminDoctorOption[] }) {
   const [state, action, isPending] = useActionState(createDoctorAvailabilityDateOverrideAction, initialState);
   const [type, setType] = useState<"available" | "closed">("available");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [doctorId, setDoctorId] = useState("");
+  const [hasBooking, setHasBooking] = useState(false);
+  const [isChecking, startChecking] = useTransition();
   const isDisabled = doctors.length === 0 || isPending;
+  const selectedDayLabel = useMemo(() => scheduleDate ? new Intl.DateTimeFormat("th-TH", { weekday: "long", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${scheduleDate}T00:00:00.000Z`)) : null, [scheduleDate]);
+
+  useEffect(() => {
+    if (!doctorId || !scheduleDate) { setHasBooking(false); return; }
+    startChecking(async () => setHasBooking((await getDoctorScheduleDateCheck({ doctorId, scheduleDate })).hasBooking));
+  }, [doctorId, scheduleDate]);
 
   return (
     <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
@@ -32,14 +42,16 @@ export function AdminDateScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
       <form action={action} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-[11px] font-bold text-muted">แพทย์</span>
-          <select name="doctorId" required disabled={isDisabled} defaultValue="" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50">
+          <select name="doctorId" required disabled={isDisabled} value={doctorId} onChange={(event) => setDoctorId(event.target.value)} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50">
             <option value="" disabled>กรุณาเลือกแพทย์</option>
             {doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name} / {doctor.specialty}</option>)}
           </select>
         </label>
+        {doctorId && scheduleDate ? <p className={`sm:col-span-2 rounded-[8px] px-3 py-2 text-xs font-semibold ${hasBooking ? "bg-[#ba1a1a]/10 text-[#93000a]" : "bg-primary/10 text-primary"}`}>{isChecking ? "กำลังตรวจสอบนัดหมาย..." : hasBooking ? "มีนัดลูกค้าในวันที่เลือกแล้ว ระบบจะตรวจสอบความปลอดภัยอีกครั้งก่อนบันทึก" : "ยังไม่พบนัดลูกค้าในวันที่เลือก"}</p> : null}
         <label className="block">
-          <span className="text-[11px] font-bold text-muted">วันที่</span>
-          <input name="scheduleDate" type="date" required disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50" />
+          <span className="text-[11px] font-bold text-muted">วันที่ (วัน/เดือน/ปี)</span>
+          <input name="scheduleDate" type="date" lang="en-GB" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} required disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50" />
+          <span className="mt-1 block text-[11px] font-semibold text-primary">{selectedDayLabel ? `เลือก: ${selectedDayLabel}` : "เลือกวันที่เพื่อยืนยันวันในสัปดาห์"}</span>
         </label>
         <label className="block sm:col-span-2">
           <span className="text-[11px] font-bold text-muted">กำหนดเป็น</span>

@@ -248,6 +248,7 @@
 - [x] Connect admin user and role approval screen to Prisma query structure
 - [x] Add admin role approval and user suspension Server Action boundaries
 - [x] Add an Admin date-and-doctor appointment calendar showing available, held, confirmed, and live consultation slots
+- [x] Separate Admin recurring weekly schedules from date-specific overrides and add optional effective date ranges for recurring schedules (migration required before release)
 - [x] Add an Admin personnel reactivation control for suspended staff, retaining their existing role and historical records
 - [x] Add inline success/error feedback for admin role approval actions
 - [x] Filter the Admin personnel screen to staff only and add pending/approved/inactive tabs, name/LINE ID search, database-wide counts, and 20-record server-side pagination

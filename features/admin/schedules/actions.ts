@@ -21,6 +21,18 @@ export type AdminScheduleActionState = {
   message: string;
 };
 
+export async function getDoctorScheduleDateCheck(input: { doctorId: string; scheduleDate: string }): Promise<{ hasBooking: boolean }> {
+  await requireAdminSession();
+  if (!input.doctorId || !/^\d{4}-\d{2}-\d{2}$/.test(input.scheduleDate)) return { hasBooking: false };
+
+  const { start, end } = getBangkokDayRange(parseScheduleDate(input.scheduleDate));
+  const booking = await prisma.consultation.findFirst({
+    where: { doctorId: input.doctorId, scheduledAt: { gte: start, lt: end }, status: { notIn: ["requested", "cancelled"] } },
+    select: { id: true }
+  });
+  return { hasBooking: Boolean(booking) };
+}
+
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
@@ -42,7 +54,9 @@ function formDataToBatchObject(formData: FormData) {
     weekdays: formData.getAll("weekdays"),
     blocks,
     isActive: formData.get("isActive"),
-    notes: formData.get("notes")
+    notes: formData.get("notes"),
+    effectiveFrom: formData.get("effectiveFrom"),
+    effectiveTo: formData.get("effectiveTo")
   };
 }
 
@@ -75,7 +89,11 @@ export async function upsertDoctorAvailabilityAction(
     };
   }
 
-  const { availabilityId, ...data } = parsed.data;
+  const { availabilityId, effectiveFrom, effectiveTo, ...data } = parsed.data;
+  const effectiveDates = {
+    effectiveFrom: effectiveFrom ? parseScheduleDate(effectiveFrom) : null,
+    effectiveTo: effectiveTo ? parseScheduleDate(effectiveTo) : null
+  };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -100,12 +118,14 @@ export async function upsertDoctorAvailabilityAction(
             },
             data: {
               ...data,
+              ...effectiveDates,
               notes: data.notes || null
             }
           })
         : await tx.doctorAvailability.create({
             data: {
               ...data,
+              ...effectiveDates,
               notes: data.notes || null
             }
           });
@@ -121,6 +141,8 @@ export async function upsertDoctorAvailabilityAction(
           startTime: data.startTime,
           endTime: data.endTime,
           slotMinutes: data.slotMinutes,
+          effectiveFrom: effectiveFrom || null,
+          effectiveTo: effectiveTo || null,
           isActive: data.isActive
         }
       });

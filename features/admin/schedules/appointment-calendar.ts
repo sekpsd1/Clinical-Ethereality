@@ -7,6 +7,8 @@ export type AppointmentCalendarAvailability = {
   startTime: string;
   endTime: string;
   slotMinutes: number;
+  effectiveFrom?: Date | null;
+  effectiveTo?: Date | null;
   notes: string | null;
 };
 
@@ -53,6 +55,11 @@ export function buildAdminAppointmentCalendarSlots(input: {
   const blocks = [
     ...input.availabilities
       .filter((availability) => availability.weekday === scheduleDate.getUTCDay() && !closedDoctorIds.has(availability.doctorId))
+      .filter((availability) => {
+        const effectiveFrom = availability.effectiveFrom?.toISOString().slice(0, 10);
+        const effectiveTo = availability.effectiveTo?.toISOString().slice(0, 10);
+        return (!effectiveFrom || input.dateValue >= effectiveFrom) && (!effectiveTo || input.dateValue <= effectiveTo);
+      })
       .map((availability) => ({
         doctorId: availability.doctorId,
         startTime: availability.startTime,

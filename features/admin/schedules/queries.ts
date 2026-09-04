@@ -125,6 +125,11 @@ function mapSlot(slot: AvailabilityRecord): AdminDoctorAvailabilitySlot {
     endTime: slot.endTime,
     timeRange: `${slot.startTime}-${slot.endTime}`,
     slotMinutes: slot.slotMinutes,
+    effectiveFromValue: slot.effectiveFrom?.toISOString().slice(0, 10) ?? null,
+    effectiveToValue: slot.effectiveTo?.toISOString().slice(0, 10) ?? null,
+    effectiveRangeLabel: slot.effectiveFrom || slot.effectiveTo
+      ? `${slot.effectiveFrom ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(slot.effectiveFrom) : "ทันที"} – ${slot.effectiveTo ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(slot.effectiveTo) : "ไม่กำหนด"}`
+      : "ใช้ต่อเนื่อง",
     isActive: slot.isActive,
     notes: slot.notes ?? "-",
     updatedAt: formatDate(slot.updatedAt)
@@ -162,7 +167,7 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
       : await Promise.all([
           prisma.doctorAvailability.findMany({
             where: { doctorId: { in: doctorIds }, isActive: true },
-            select: { id: true, doctorId: true, weekday: true, startTime: true, endTime: true, slotMinutes: true, notes: true }
+            select: { id: true, doctorId: true, weekday: true, startTime: true, endTime: true, slotMinutes: true, effectiveFrom: true, effectiveTo: true, notes: true }
           }),
           prisma.doctorAvailabilityDateOverride.findMany({
             where: { doctorId: { in: doctorIds }, scheduleDate: overrideScheduleDate, isActive: true },

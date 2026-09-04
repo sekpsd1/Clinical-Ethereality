@@ -9,7 +9,7 @@ import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
-import { getActiveConsultationSlotWhere, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import { PatientVerificationError, requireVerifiedPatientProfile } from "@/features/identity-verification/service";
 
 function formDataToObject(formData: FormData) {
@@ -106,6 +106,13 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       }
 
       const scheduledAt = new Date(parsed.data.scheduledAt);
+      const scheduledDate = getBangkokCalendarDateKey(scheduledAt);
+      const effectiveFrom = availability?.effectiveFrom?.toISOString().slice(0, 10);
+      const effectiveTo = availability?.effectiveTo?.toISOString().slice(0, 10);
+
+      if (availability && ((effectiveFrom && scheduledDate < effectiveFrom) || (effectiveTo && scheduledDate > effectiveTo))) {
+        throw new Error("Availability is not open for booking.");
+      }
       const validSlotTimes = getScheduledSlotTimes(
         sourceScheduledAt,
         startTime,

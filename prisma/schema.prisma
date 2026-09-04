@@ -311,6 +311,8 @@ model DoctorAvailability {
   startTime   String   @db.VarChar(5)
   endTime     String   @db.VarChar(5)
   slotMinutes Int      @default(30)
+  effectiveFrom DateTime? @db.Date
+  effectiveTo   DateTime? @db.Date
   isActive    Boolean  @default(true)
   notes       String?  @db.Text
   createdAt   DateTime @default(now())
@@ -321,6 +323,7 @@ model DoctorAvailability {
   @@index([doctorId])
   @@index([weekday])
   @@index([isActive])
+  @@index([doctorId, weekday, isActive, effectiveFrom, effectiveTo], map: "DoctorAvail_effective_range_idx")
 }
 
 model DoctorAvailabilityDateOverride {

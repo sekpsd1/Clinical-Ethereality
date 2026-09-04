@@ -35,6 +35,16 @@ describe("admin schedule schema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects a recurring availability range that ends before it starts", () => {
+    const result = upsertDoctorAvailabilitySchema.safeParse({
+      ...validSchedule,
+      effectiveFrom: "2026-09-30",
+      effectiveTo: "2026-09-01"
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("accepts multiple days with mixed slot durations when every block divides exactly", () => {
     const result = createDoctorAvailabilityBatchSchema.safeParse({
       doctorId: "doctor-1",

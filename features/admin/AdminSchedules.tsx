@@ -53,7 +53,7 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-headline text-lg font-bold text-text">เวลาว่างที่ตั้งไว้</h2>
+          <div><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ตารางประจำ</p><h2 className="mt-1 font-headline text-lg font-bold text-text">เวลาว่างที่ตั้งไว้</h2><p className="mt-1 text-xs text-muted">ใช้ซ้ำตามวันในสัปดาห์ และกำหนดช่วงวันที่มีผลได้</p></div>
           <StatusBadge tone={data.slots.length > 0 ? "success" : "neutral"}>{data.slots.length} รายการ</StatusBadge>
         </div>
 
@@ -71,7 +71,7 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-headline text-lg font-bold text-text">ตารางพิเศษตามวันที่</h2>
+          <div><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ตารางรายวัน</p><h2 className="mt-1 font-headline text-lg font-bold text-text">ตารางพิเศษตามวันที่</h2><p className="mt-1 text-xs text-muted">ใช้เพิ่มเวลาพิเศษหรือปิดทั้งวัน โดยมีผลเหนือกว่าตารางประจำ</p></div>
           <StatusBadge tone={data.dateOverrides.length > 0 ? "success" : "neutral"}>{data.dateOverrides.length} รายการ</StatusBadge>
         </div>
         {data.dateOverrides.length === 0 ? <div className="rounded-[8px] border border-dashed border-border bg-white/65 p-5 text-center text-xs font-semibold text-muted">ยังไม่มีวันหยุดหรือเวลาพิเศษ</div> : null}
@@ -144,6 +144,7 @@ function ScheduleSlotCard({ slot }: { slot: AdminDoctorAvailabilitySlot }) {
           labelClassName="tracking-[0.08em]"
           valueClassName="mt-1 text-sm text-text"
         />
+        <InfoTile label="ช่วงวันที่มีผล" value={slot.effectiveRangeLabel} density="comfortable" labelClassName="tracking-[0.08em]" valueClassName="mt-1 text-xs text-text" />
         <InfoTile
           label="อัปเดต"
           value={slot.updatedAt}

@@ -6,6 +6,8 @@ export type BatchAvailabilityRecord = {
   startTime: string;
   endTime: string;
   slotMinutes: number;
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
   isActive: boolean;
   notes: string | null;
 };
@@ -27,6 +29,8 @@ export function buildBatchAvailabilityRecords(input: CreateDoctorAvailabilityBat
       startTime: block.startTime,
       endTime: block.endTime,
       slotMinutes: block.slotMinutes,
+      effectiveFrom: input.effectiveFrom ? new Date(`${input.effectiveFrom}T00:00:00.000Z`) : null,
+      effectiveTo: input.effectiveTo ? new Date(`${input.effectiveTo}T00:00:00.000Z`) : null,
       isActive: input.isActive,
       notes: input.notes?.trim() || null
     }))

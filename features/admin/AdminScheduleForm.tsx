@@ -118,6 +118,12 @@ export function AdminScheduleForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">มีผลตั้งแต่ (ไม่บังคับ)</span><input name="effectiveFrom" type="date" lang="en-GB" disabled={isDisabled} defaultValue={editSlot?.effectiveFromValue ?? ""} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary" /></label>
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ถึงวันที่ (ไม่บังคับ)</span><input name="effectiveTo" type="date" lang="en-GB" disabled={isDisabled} defaultValue={editSlot?.effectiveToValue ?? ""} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary" /></label>
+        </div>
+        <p className="-mt-1 text-[11px] leading-5 text-muted">เว้นว่างเพื่อใช้ตารางประจำต่อเนื่อง</p>
+
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">เริ่ม (24 ชั่วโมง)</span>
             <select

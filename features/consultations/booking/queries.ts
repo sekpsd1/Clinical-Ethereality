@@ -6,7 +6,7 @@ import type { BookingSlot, DoctorBookingData } from "@/features/consultations/bo
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getPrimaryBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
 type DateOverrideRecord = DoctorRecord["dateOverrides"][number];
-type BookingSource = { id: string; scheduledAt: Date; startTime: string; endTime: string; slotMinutes: number; notes: string | null; weekdayLabel: string };
+type BookingSource = { id: string; scheduledAt: Date; startTime: string; endTime: string; slotMinutes: number; notes: string | null; weekdayLabel: string; effectiveFrom?: Date | null; effectiveTo?: Date | null };
 
 const weekdayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
@@ -66,6 +66,13 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
+function isAvailabilityEffectiveOn(slot: Pick<BookingSource, "effectiveFrom" | "effectiveTo">, scheduledAt: Date): boolean {
+  const calendarDate = getBangkokCalendarDateKey(scheduledAt);
+  const effectiveFrom = slot.effectiveFrom?.toISOString().slice(0, 10);
+  const effectiveTo = slot.effectiveTo?.toISOString().slice(0, 10);
+  return (!effectiveFrom || calendarDate >= effectiveFrom) && (!effectiveTo || calendarDate <= effectiveTo);
+}
+
 function mapSlot(slot: BookingSource, lockedSlotTimes: Set<number>): BookingSlot {
   const isBooked = lockedSlotTimes.has(getSlotTimestamp(slot.scheduledAt));
 
@@ -97,9 +104,12 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
       endTime: slot.endTime,
       slotMinutes: slot.slotMinutes,
       notes: slot.notes,
+      effectiveFrom: slot.effectiveFrom,
+      effectiveTo: slot.effectiveTo,
       weekdayLabel: weekdayLabels[slot.weekday] ?? String(slot.weekday)
     }))
-    .filter((slot) => !closedDates.has(getBangkokCalendarDateKey(slot.scheduledAt)));
+    .filter((slot) => !closedDates.has(getBangkokCalendarDateKey(slot.scheduledAt)))
+    .filter((slot) => isAvailabilityEffectiveOn(slot, slot.scheduledAt));
   const special = dateOverrides
     .filter((override) => override.type === "available" && override.startTime && override.endTime && override.slotMinutes)
     .map((override) => ({
