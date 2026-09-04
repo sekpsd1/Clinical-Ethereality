@@ -1,18 +1,22 @@
 import { unstable_noStore as noStore } from "next/cache";
+import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
-type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getPrimaryBookingDoctor>>>;
+type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
 type DateOverrideRecord = DoctorRecord["dateOverrides"][number];
 type BookingSource = { id: string; scheduledAt: Date; startTime: string; endTime: string; slotMinutes: number; notes: string | null; weekdayLabel: string; effectiveFrom?: Date | null; effectiveTo?: Date | null };
 
 const weekdayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
-function getPrimaryBookingDoctor() {
+const doctorIdSchema = z.string().cuid();
+
+function getBookingDoctor(doctorId?: string) {
   return prisma.doctor.findFirst({
     where: {
+      ...(doctorId ? { id: doctorId } : {}),
       status: "approved",
       user: {
         status: "active"
@@ -142,12 +146,20 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
     });
 }
 
-export async function getDoctorBookingData(): Promise<DoctorBookingData> {
+export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBookingData> {
   noStore();
 
   try {
     const now = new Date();
-    const doctor = await getPrimaryBookingDoctor();
+    const selectedDoctorId = doctorId?.trim();
+
+    // A requested doctor must be a valid ID and must pass the same approval and
+    // active-account gate as the list. Do not silently substitute another doctor.
+    if (selectedDoctorId && !doctorIdSchema.safeParse(selectedDoctorId).success) {
+      return { doctor: null, slots: [] };
+    }
+
+    const doctor = await getBookingDoctor(selectedDoctorId);
 
     if (!doctor) {
       return {
@@ -209,7 +221,7 @@ export async function getDoctorBookingData(): Promise<DoctorBookingData> {
         name: doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
         specialty: doctor.specialty ?? "ปรึกษาออนไลน์",
         fee: formatMoney(doctor.consultationFee),
-        avatarUrl: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg"
+        avatarUrl: doctor.user.avatarUrl ?? "/images/doctors/kamonpat.jpg"
       },
       slots: bookingSources.map((slot) => mapSlot(slot, lockedSlotTimes))
     };

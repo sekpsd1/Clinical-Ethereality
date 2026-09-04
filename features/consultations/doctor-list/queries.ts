@@ -51,8 +51,10 @@ function mapDoctor(doctor: ApprovedDoctorRecord, recommendedDoctorId: string | n
     tags: ["#Telemedicine", "#VideoChat"],
     price: `${formatMoney(doctor.consultationFee)} / 15 นาที`,
     rating: "4.9",
-    imageSrc: doctor.user.avatarUrl?.startsWith("/") ? doctor.user.avatarUrl : "/images/doctors/kamonpat.jpg",
-    bookingHref: "/consult/booking/somchai",
+    // DoctorAvatar owns the loading fallback. Staff attachments may be stored as
+    // either a private app route or a permitted absolute storage URL.
+    imageSrc: doctor.user.avatarUrl ?? "/images/doctors/kamonpat.jpg",
+    bookingHref: `/consult/booking/somchai?doctorId=${encodeURIComponent(doctor.id)}`,
     isRecommended: doctor.id === recommendedDoctorId
   };
 }

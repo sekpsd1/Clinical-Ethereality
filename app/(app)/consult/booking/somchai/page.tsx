@@ -8,12 +8,13 @@ export default async function DoctorBookingPage({
 }: {
   searchParams: Promise<{
     booking?: string;
+    doctorId?: string;
   }>;
 }) {
   const session = await requireCurrentSession();
-  const [data, params, verification] = await Promise.all([
-    getDoctorBookingData(),
-    searchParams,
+  const params = await searchParams;
+  const [data, verification] = await Promise.all([
+    getDoctorBookingData(params.doctorId),
     getPatientVerificationStatus(session.userId)
   ]);
 

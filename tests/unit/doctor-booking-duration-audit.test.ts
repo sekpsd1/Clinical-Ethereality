@@ -52,6 +52,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
             consultationFee: 800,
             id: "doctor-1",
             status: "approved",
+            user: { status: "active" },
           },
           doctorId: "doctor-1",
           endTime: "10:00",
@@ -113,5 +114,48 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       }),
     });
     expect(mocks.prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a selected doctor when the submitted availability belongs to another doctor", async () => {
+    const selectedDoctorId = "ckz1a2b3c4d5e6f7g8h9i0j1";
+    const tx = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue({
+          fullName: "Patient Example",
+          dateOfBirth: new Date("1990-01-30T00:00:00.000Z"),
+          phone: "0812345678",
+          normalizedPhone: "+66812345678",
+          phoneVerifiedAt: new Date("2026-08-13T16:00:00.000Z")
+        })
+      },
+      doctorAvailability: {
+        findUnique: vi.fn().mockResolvedValue({
+          doctor: { id: "doctor-other", status: "approved", user: { status: "active" } },
+          doctorId: "doctor-other",
+          id: "availability-1",
+          isActive: true
+        })
+      },
+      doctorAvailabilityDateOverride: { findUnique: vi.fn() }
+    };
+
+    mocks.requireCurrentSession.mockResolvedValue({ userId: "patient-1" });
+    mocks.assertPermission.mockReturnValue(undefined);
+    mocks.requireVerifiedPatientProfile.mockResolvedValue(undefined);
+    mocks.releaseExpiredConsultationSlotLocks.mockResolvedValue(undefined);
+    mocks.prisma.$transaction.mockImplementationOnce(
+      async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)
+    );
+
+    const formData = new FormData();
+    formData.set("availabilityId", "availability-1");
+    formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
+    formData.set("doctorId", selectedDoctorId);
+
+    await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
+
+    expect(mocks.redirect).toHaveBeenLastCalledWith(
+      `/consult/booking/somchai?doctorId=${selectedDoctorId}&booking=failed`
+    );
   });
 });

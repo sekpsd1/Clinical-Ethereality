@@ -6,7 +6,7 @@ export type ConsultDoctorListDoctor = {
   price: string;
   rating: string;
   imageSrc: string;
-  bookingHref: "/consult/booking/somchai";
+  bookingHref: string;
   isRecommended: boolean;
 };
 

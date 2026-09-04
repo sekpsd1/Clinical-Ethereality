@@ -83,6 +83,7 @@ export function BookingTimeSlotForm({ data, verification, bookingError }: { data
 
         <input type="hidden" name="availabilityId" value={hasRealSlots ? selectedSlot?.id ?? "" : ""} />
         <input type="hidden" name="scheduledAt" value={hasRealSlots ? selectedSlot?.scheduledAt ?? "" : ""} />
+        <input type="hidden" name="doctorId" value={data.doctor?.id ?? ""} />
 
         <div className="grid grid-cols-2 gap-3">
           {filteredSlots.map((slot) => {

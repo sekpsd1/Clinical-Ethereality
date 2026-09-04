@@ -16,6 +16,14 @@ function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
 
+function getBookingPath(doctorId?: string, bookingStatus?: string): string {
+  const params = new URLSearchParams();
+  if (doctorId) params.set("doctorId", doctorId);
+  if (bookingStatus) params.set("booking", bookingStatus);
+  const query = params.toString();
+  return query ? `/consult/booking/somchai?${query}` : "/consult/booking/somchai";
+}
+
 export async function createConsultationBookingAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
   assertPermission(session, "consultation:create:self");
@@ -30,7 +38,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     await requireVerifiedPatientProfile(session.userId);
   } catch (error) {
     if (error instanceof PatientVerificationError) {
-      redirect("/consult/booking/somchai?booking=identity_required");
+      redirect(getBookingPath(parsed.data.doctorId, "identity_required"));
     }
     throw error;
   }
@@ -64,7 +72,8 @@ export async function createConsultationBookingAction(formData: FormData): Promi
             select: {
               id: true,
               status: true,
-              consultationFee: true
+              consultationFee: true,
+              user: { select: { status: true } }
             }
           }
         }
@@ -74,12 +83,12 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         ? null
         : await tx.doctorAvailabilityDateOverride.findUnique({
             where: { id: parsed.data.availabilityId },
-            include: { doctor: { select: { id: true, status: true, consultationFee: true } } }
+            include: { doctor: { select: { id: true, status: true, consultationFee: true, user: { select: { status: true } } } } }
           });
 
       const scheduleSource = availability ?? dateOverride;
 
-      if (!scheduleSource?.isActive || scheduleSource.doctor.status !== "approved") {
+      if (!scheduleSource?.isActive || scheduleSource.doctor.status !== "approved" || scheduleSource.doctor.user.status !== "active" || (parsed.data.doctorId && scheduleSource.doctorId !== parsed.data.doctorId)) {
         throw new Error("Availability is not open for booking.");
       }
 
@@ -230,14 +239,14 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     consultationId = result.id;
   } catch (error) {
     if (error instanceof PatientVerificationError) {
-      redirect("/consult/booking/somchai?booking=identity_required");
+      redirect(getBookingPath(parsed.data.doctorId, "identity_required"));
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       await releaseExpiredConsultationSlotLocks();
-      redirect("/consult/booking/somchai?booking=locked");
+      redirect(getBookingPath(parsed.data.doctorId, "locked"));
     }
 
-    redirect("/consult/booking/somchai?booking=failed");
+    redirect(getBookingPath(parsed.data.doctorId, "failed"));
   }
 
   revalidatePath("/consult/booking/somchai");
