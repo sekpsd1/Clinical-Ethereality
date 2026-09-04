@@ -5,13 +5,15 @@ const path = require("node:path");
 
 const MIGRATION_APPROVAL_ENV = "PLESK_MIGRATION_TARGET";
 const SMS_OTP_MIGRATION_TARGET = "20260827113000_add_phone_otp_dispatch_claim";
+const DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET = "20260904163000_add_doctor_availability_effective_dates";
+const ALLOWED_MIGRATION_TARGETS = new Set([SMS_OTP_MIGRATION_TARGET, DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET]);
 
 function hasPleskMigrationTarget(env = process.env) {
   return Object.prototype.hasOwnProperty.call(env, MIGRATION_APPROVAL_ENV);
 }
 
 function isAllowedPleskMigrationTarget(target) {
-  return target === SMS_OTP_MIGRATION_TARGET;
+  return ALLOWED_MIGRATION_TARGETS.has(target);
 }
 
 function getCurrentMigrationTarget(rootDir) {
@@ -103,6 +105,7 @@ function runPleskRuntimeMigration({
 module.exports = {
   MIGRATION_APPROVAL_ENV,
   SMS_OTP_MIGRATION_TARGET,
+  DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   hasPleskMigrationTarget,
   isAllowedPleskMigrationTarget,

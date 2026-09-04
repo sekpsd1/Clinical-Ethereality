@@ -5,6 +5,7 @@ const path = require("node:path");
 import { afterEach, describe, expect, it, vi } from "vitest";
 const {
   MIGRATION_APPROVAL_ENV,
+  DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
   SMS_OTP_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
@@ -129,6 +130,20 @@ describe("Plesk runtime migration runner", () => {
       })
     );
     expect(loggers.logs.join("\n")).not.toContain(env.DATABASE_URL);
+  });
+
+  it("allows the reviewed doctor-availability effective-date migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([SMS_OTP_MIGRATION_TARGET, DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
   });
 
   it("fails closed and never logs secrets when Prisma migration fails", () => {

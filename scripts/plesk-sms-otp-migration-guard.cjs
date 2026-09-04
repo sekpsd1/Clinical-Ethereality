@@ -14,7 +14,7 @@ function assertPleskSmsOtpMigrationTarget({
     return true;
   }
 
-  error(`[plesk-migration] ${MIGRATION_APPROVAL_ENV} is only permitted for the approved SMS OTP migration target.`);
+  error(`[plesk-migration] ${MIGRATION_APPROVAL_ENV} is not an approved migration target.`);
   return false;
 }
 
