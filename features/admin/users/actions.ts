@@ -282,7 +282,12 @@ export async function updateUserStatusAction(
 
   return {
     status: "success",
-    message: parsed.data.status === "suspended" ? "ระงับบัญชีเรียบร้อยแล้ว" : "อัปเดตสถานะเรียบร้อยแล้ว"
+    message:
+      parsed.data.status === "suspended"
+        ? "ระงับบัญชีเรียบร้อยแล้ว"
+        : parsed.data.status === "active"
+          ? "เปิดใช้งานบัญชีอีกครั้งเรียบร้อยแล้ว"
+          : "อัปเดตสถานะเรียบร้อยแล้ว"
   };
 }
 

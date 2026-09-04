@@ -291,7 +291,11 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
                   <Clock3 aria-hidden="true" className="size-3.5 shrink-0" />
                   <span className="truncate">{user.submittedAt}</span>
                 </div>
-                <AdminUserActionButtons user={user} isCurrentUser={user.id === currentUserId} />
+                <AdminUserActionButtons
+                  allowReactivation
+                  user={user}
+                  isCurrentUser={user.id === currentUserId}
+                />
               </div>
             </article>
           );

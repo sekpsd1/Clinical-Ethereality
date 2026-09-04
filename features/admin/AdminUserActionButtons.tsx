@@ -16,6 +16,7 @@ import type { AdminUserApprovalItem } from "@/features/admin/users/types";
 type AdminUserActionButtonsProps = {
   user: Pick<AdminUserApprovalItem, "id" | "name" | "currentRole" | "requestedRole" | "status" | "staffStatus">;
   isCurrentUser: boolean;
+  allowReactivation?: boolean;
   redirectOnRoleChange?: Route;
 };
 
@@ -24,7 +25,12 @@ const initialActionState: AdminUserActionState = {
   message: ""
 };
 
-export function AdminUserActionButtons({ user, isCurrentUser, redirectOnRoleChange }: AdminUserActionButtonsProps) {
+export function AdminUserActionButtons({
+  user,
+  isCurrentUser,
+  allowReactivation = false,
+  redirectOnRoleChange
+}: AdminUserActionButtonsProps) {
   const router = useRouter();
   const isStaffRoleRequest = user.requestedRole === "doctor" || user.requestedRole === "pharmacist";
   const isPendingApproval = user.status === "pending_review" || user.staffStatus === "pending_review";
@@ -131,6 +137,18 @@ export function AdminUserActionButtons({ user, isCurrentUser, redirectOnRoleChan
                 ) : null}
               </div>
             ) : null}
+            {allowReactivation && user.status === "suspended" ? (
+              <form action={suspendAction}>
+                <input type="hidden" name="userId" value={user.id} />
+                <input type="hidden" name="status" value="active" />
+                <ActionIconButton
+                  ariaLabel={`เปิดใช้งานบัญชี ${user.name} อีกครั้ง`}
+                  className="border border-success/20 bg-success/10 text-success"
+                  icon="reactivate"
+                  title="เปิดใช้งานอีกครั้ง"
+                />
+              </form>
+            ) : null}
           </div>
           {isPendingApproval && isStaffRoleRequest ? (
             <p className="max-w-[480px] text-right text-[11px] font-semibold leading-5 text-muted">
@@ -181,14 +199,14 @@ function ActionIconButton({
 }: {
   ariaLabel: string;
   className: string;
-  icon: "approve" | "suspend";
+  icon: "approve" | "reactivate" | "suspend";
   onClick?: () => void;
   pendingOverride?: boolean;
   title: string;
   type?: "button" | "submit";
 }) {
   const { pending } = useFormStatus();
-  const Icon = icon === "approve" ? CheckCircle2 : XCircle;
+  const Icon = icon === "suspend" ? XCircle : CheckCircle2;
 
   return (
     <button
