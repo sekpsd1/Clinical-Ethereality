@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireCurrentSession } from "@/lib/auth/session";
@@ -16,12 +17,12 @@ function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
 
-function getBookingPath(doctorId?: string, bookingStatus?: string): string {
+function getBookingPath(doctorId?: string, bookingStatus?: string): Route {
   const params = new URLSearchParams();
   if (doctorId) params.set("doctorId", doctorId);
   if (bookingStatus) params.set("booking", bookingStatus);
   const query = params.toString();
-  return query ? `/consult/booking/somchai?${query}` : "/consult/booking/somchai";
+  return (query ? `/consult/booking/somchai?${query}` : "/consult/booking/somchai") as Route;
 }
 
 export async function createConsultationBookingAction(formData: FormData): Promise<void> {

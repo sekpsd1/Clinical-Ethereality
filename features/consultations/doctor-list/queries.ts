@@ -54,7 +54,7 @@ function mapDoctor(doctor: ApprovedDoctorRecord, recommendedDoctorId: string | n
     // DoctorAvatar owns the loading fallback. Staff attachments may be stored as
     // either a private app route or a permitted absolute storage URL.
     imageSrc: doctor.user.avatarUrl ?? "/images/doctors/kamonpat.jpg",
-    bookingHref: `/consult/booking/somchai?doctorId=${encodeURIComponent(doctor.id)}`,
+    bookingHref: `/consult/booking/somchai?doctorId=${encodeURIComponent(doctor.id)}` as ConsultDoctorListDoctor["bookingHref"],
     isRecommended: doctor.id === recommendedDoctorId
   };
 }

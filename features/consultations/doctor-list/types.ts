@@ -1,3 +1,5 @@
+import type { Route } from "next";
+
 export type ConsultDoctorListDoctor = {
   id: string;
   name: string;
@@ -6,7 +8,7 @@ export type ConsultDoctorListDoctor = {
   price: string;
   rating: string;
   imageSrc: string;
-  bookingHref: string;
+  bookingHref: Route;
   isRecommended: boolean;
 };
 
