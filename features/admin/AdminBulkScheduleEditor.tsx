@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { CalendarDays, CopyPlus, Plus, Trash2 } from "lucide-react";
 import { createDoctorAvailabilityBatchAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
+import { AdminDayMonthYearDateField } from "@/features/admin/AdminAppointmentDateField";
 import type { AdminDoctorOption } from "@/features/admin/schedules/types";
 
 type DraftBlock = {
@@ -168,8 +169,8 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">มีผลตั้งแต่</span><input name="effectiveFrom" type="date" lang="en-GB" disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text" /></label>
-          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ถึงวันที่</span><input name="effectiveTo" type="date" lang="en-GB" disabled={isDisabled} className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text" /></label>
+          <AdminDayMonthYearDateField initialValue="" name="effectiveFrom" label="มีผลตั้งแต่" labelClassName="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted" disabled={isDisabled} />
+          <AdminDayMonthYearDateField initialValue="" name="effectiveTo" label="ถึงวันที่" labelClassName="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted" disabled={isDisabled} />
         </div>
         <p className="-mt-2 text-[11px] leading-5 text-muted">ไม่บังคับ: ใช้เมื่อต้องการตั้งตารางประจำเพียงหลายสัปดาห์</p>
 
