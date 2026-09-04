@@ -7,6 +7,7 @@ export type PromptPayInstruction = {
   payload: string | null;
   qrDataUrl: string | null;
   promptPayIdLabel: string;
+  accountName: string | null;
   isConfigured: boolean;
 };
 
@@ -120,13 +121,15 @@ export function buildPromptPayPayload(promptPayId: string, amount: number): stri
 
 export async function getPromptPayInstruction(amount: number): Promise<PromptPayInstruction> {
   const promptPayId = getAppEnv().THAI_QR_PROMPTPAY_ID;
-  const promptPayIdLabel = maskPromptPayId(promptPayId);
+  const promptPayIdLabel = promptPayId?.replace(/\D/g, "") || "PromptPay ID not configured";
+  const accountName = getAppEnv().THAI_QR_PROMPTPAY_ACCOUNT_NAME ?? null;
 
   if (!isSupportedPromptPayId(promptPayId) || !Number.isFinite(amount) || amount <= 0) {
     return {
       payload: null,
       qrDataUrl: null,
       promptPayIdLabel,
+      accountName,
       isConfigured: false
     };
   }
@@ -142,6 +145,7 @@ export async function getPromptPayInstruction(amount: number): Promise<PromptPay
     payload,
     qrDataUrl,
     promptPayIdLabel,
+    accountName,
     isConfigured: true
   };
 }

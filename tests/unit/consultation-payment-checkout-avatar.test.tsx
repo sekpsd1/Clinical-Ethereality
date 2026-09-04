@@ -27,6 +27,7 @@ const data: ConsultationPaymentData = {
       payload: null,
       qrDataUrl: null,
       promptPayIdLabel: "PromptPay ID not configured",
+      accountName: null,
       isConfigured: false
     },
     verificationRetryAfterSeconds: 0
@@ -43,23 +44,4 @@ describe("ConsultPaymentCheckout doctor avatar", () => {
     expect(html).not.toContain("/_next/image");
   });
 
-  it("offers the download action only for the rendered PromptPay QR", () => {
-    const html = renderToStaticMarkup(
-      <ConsultPaymentCheckout
-        data={{
-          ...data,
-          consultation: {
-            ...data.consultation!,
-            promptPay: {
-              ...data.consultation!.promptPay,
-              qrDataUrl: "data:image/png;base64,cHJvbXB0cGF5LXFy"
-            }
-          }
-        }}
-      />
-    );
-
-    expect(html).toContain("บันทึก/แชร์ QR Code");
-    expect(html).toContain('type="button"');
-  });
 });

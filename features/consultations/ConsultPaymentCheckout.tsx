@@ -13,8 +13,6 @@ import {
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import { verifyConsultationSlipAction } from "@/features/consultations/payment/actions";
-import { getPromptPayQrDownloadUrl } from "@/features/consultations/payment/qr-download";
-import { PromptPayQrSaveButton } from "@/features/consultations/payment/PromptPayQrSaveButton";
 import { PrivateSlipUpload } from "@/features/payments/PrivateSlipUpload";
 import type {
   ConsultationPaymentData,
@@ -326,8 +324,6 @@ function BookingSummaryCard({ consultation }: { consultation: ConsultationPaymen
 }
 
 function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDetail }) {
-  const qrDownloadUrl = getPromptPayQrDownloadUrl(consultation.promptPay.qrDataUrl);
-
   return (
     <article className="flex flex-col items-center rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 p-[25px] shadow-promptpay backdrop-blur-topbar">
       <div className="rounded-2xl border border-[#bdc9ca]/30 bg-white p-[17px] shadow-qr-inset">
@@ -349,13 +345,12 @@ function PromptPayCard({ consultation }: { consultation: ConsultationPaymentDeta
       <p className="pt-4 text-center text-sm leading-5 text-[#3e494a]">สแกนเพื่อชำระเงิน</p>
       <p className="pb-4 pt-1 text-center text-xl font-bold leading-7 text-primary">ยอดชำระ: {consultation.feeLabel}</p>
 
-      {qrDownloadUrl ? (
-        <PromptPayQrSaveButton qrDataUrl={qrDownloadUrl} />
-      ) : null}
-
       <div className="mb-4 flex w-full flex-col items-center gap-1 rounded-lg bg-[#f2f4f6] px-4 py-3 text-center">
         <p className="text-xs font-bold uppercase leading-4 tracking-normal text-[#3e494a]">บัญชีพร้อมเพย์</p>
         <p className="text-sm font-bold leading-5 tracking-[1.4px] text-primary">{consultation.promptPay.promptPayIdLabel}</p>
+        {consultation.promptPay.accountName ? (
+          <p className="text-sm font-bold leading-5 text-[#191c1e]">{consultation.promptPay.accountName}</p>
+        ) : null}
       </div>
 
       <div className="flex gap-2 rounded-lg bg-primary/5 p-3">

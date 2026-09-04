@@ -41,4 +41,31 @@ describe("PromptPay runtime configuration", () => {
       }
     }
   });
+
+  it("exposes the configured full PromptPay ID and account name for the customer payment instruction", async () => {
+    const previousId = process.env.THAI_QR_PROMPTPAY_ID;
+    const previousName = process.env.THAI_QR_PROMPTPAY_ACCOUNT_NAME;
+    process.env.THAI_QR_PROMPTPAY_ID = "1-2345-67890-12-3";
+    process.env.THAI_QR_PROMPTPAY_ACCOUNT_NAME = "บจก.มีเดีย ดีไซน์";
+
+    try {
+      await expect(getPromptPayInstruction(1)).resolves.toMatchObject({
+        accountName: "บจก.มีเดีย ดีไซน์",
+        isConfigured: true,
+        promptPayIdLabel: "1234567890123"
+      });
+    } finally {
+      if (previousId === undefined) {
+        delete process.env.THAI_QR_PROMPTPAY_ID;
+      } else {
+        process.env.THAI_QR_PROMPTPAY_ID = previousId;
+      }
+
+      if (previousName === undefined) {
+        delete process.env.THAI_QR_PROMPTPAY_ACCOUNT_NAME;
+      } else {
+        process.env.THAI_QR_PROMPTPAY_ACCOUNT_NAME = previousName;
+      }
+    }
+  });
 });
