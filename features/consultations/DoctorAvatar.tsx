@@ -13,15 +13,15 @@ export function DoctorAvatar({
   alt: string;
   fallbackSrc?: string;
 }) {
-  const [isMounted, setIsMounted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     setImageFailed(false);
-    setIsMounted(true);
   }, [src]);
 
-  const imageSrc = !isMounted || !src || imageFailed ? fallbackSrc : src;
+  // Render the chosen doctor's URL immediately. Waiting for hydration made the
+  // server fallback avatar visible on slower mobile connections.
+  const imageSrc = !src || imageFailed ? fallbackSrc : src;
 
   return (
     // Staff profile photos can be served by the private host route. A native image
