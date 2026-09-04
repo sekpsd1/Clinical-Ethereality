@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { CLINIC_TIME_ZONE } from "@/features/consultations/booking/slots";
+import { staffFileEntityTypes } from "@/features/staff-files/types";
 import { getWaitingRoomTiming } from "@/features/consultations/waiting-room/access";
 import type { ConsultationWaitingRoomData } from "@/features/consultations/waiting-room/types";
 
@@ -60,6 +61,7 @@ export async function getConsultationWaitingRoom(
         scheduledAt: true,
         doctor: {
           select: {
+            userId: true,
             user: {
               select: {
                 displayName: true,
@@ -75,6 +77,23 @@ export async function getConsultationWaitingRoom(
       return null;
     }
 
+    // The staff profile attachment is the authoritative photo uploaded in Admin.
+    // Prefer it when a legacy User.avatarUrl still points to a seeded placeholder.
+    const profilePhoto = await prisma.fileAttachment.findFirst({
+      where: {
+        ownerId: consultation.doctor.userId,
+        entityType: staffFileEntityTypes.profilePhoto,
+        status: "attached",
+        storageKey: { not: null }
+      },
+      select: {
+        storageUrl: true
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
     const timing = getWaitingRoomTiming(consultation.status, consultation.scheduledAt, now);
 
     if (!timing) {
@@ -86,7 +105,8 @@ export async function getConsultationWaitingRoom(
       viewerRole: session.role,
       consultationStatus: consultation.status,
       doctorName: consultation.doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
-      doctorImageUrl: consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-avatar.png",
+      doctorImageUrl:
+        profilePhoto?.storageUrl ?? consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-avatar.png",
       scheduledLabel: formatScheduledAt(consultation.scheduledAt),
       statusMessage:
         consultation.status === "live"

@@ -6,6 +6,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
+  findProfilePhoto: vi.fn(),
   getCurrentSession: vi.fn(),
   noStore: vi.fn()
 }));
@@ -16,6 +17,9 @@ vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     consultation: {
       findFirst: mocks.findFirst
+    },
+    fileAttachment: {
+      findFirst: mocks.findProfilePhoto
     }
   }
 }));
@@ -32,6 +36,7 @@ function consultationRecord(status: "scheduled" | "live" | "completed" = "schedu
     status,
     scheduledAt,
     doctor: {
+      userId: "doctor-user-1",
       user: {
         displayName: "Doctor UAT",
         avatarUrl: null
@@ -51,6 +56,7 @@ function session(role: "customer" | "doctor" | "admin", userId: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.findProfilePhoto.mockResolvedValue(null);
 });
 
 describe("getConsultationWaitingRoom", () => {
@@ -173,21 +179,33 @@ describe("getConsultationWaitingRoom", () => {
     });
   });
 
-  it("keeps the selected doctor's current avatar URL for the waiting room", async () => {
+  it("uses the official Admin profile photo ahead of a legacy avatar URL", async () => {
     mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
     mocks.findFirst.mockResolvedValue({
       ...consultationRecord("scheduled"),
       doctor: {
         user: {
           displayName: "Websthai",
-          avatarUrl: "https://app.bccgroup-thailand.com/api/staff-files/websthai-profile"
+          avatarUrl: "/images/doctors/waiting-avatar.png"
         }
       }
     });
 
-    const result = await getConsultationWaitingRoom("consultation-uat", new Date("2030-01-01T09:59:00.000Z"));
+    mocks.findProfilePhoto.mockResolvedValue({
+      storageUrl: "/api/staff-files/websthai-profile"
+    });
 
-    expect(result?.doctorImageUrl).toBe("https://app.bccgroup-thailand.com/api/staff-files/websthai-profile");
+    const updatedResult = await getConsultationWaitingRoom("consultation-uat", new Date("2030-01-01T09:59:00.000Z"));
+
+    expect(updatedResult?.doctorImageUrl).toBe("/api/staff-files/websthai-profile");
+    expect(mocks.findProfilePhoto).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          entityType: "staff_profile_photo",
+          status: "attached"
+        })
+      })
+    );
   });
 });
 
