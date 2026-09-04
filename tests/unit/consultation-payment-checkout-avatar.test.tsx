@@ -42,4 +42,24 @@ describe("ConsultPaymentCheckout doctor avatar", () => {
     expect(html).toContain("<img");
     expect(html).not.toContain("/_next/image");
   });
+
+  it("offers the download action only for the rendered PromptPay QR", () => {
+    const html = renderToStaticMarkup(
+      <ConsultPaymentCheckout
+        data={{
+          ...data,
+          consultation: {
+            ...data.consultation!,
+            promptPay: {
+              ...data.consultation!.promptPay,
+              qrDataUrl: "data:image/png;base64,cHJvbXB0cGF5LXFy"
+            }
+          }
+        }}
+      />
+    );
+
+    expect(html).toContain("บันทึก QR Code");
+    expect(html).toContain('download="promptpay-qr.png"');
+  });
 });
