@@ -111,11 +111,14 @@ export function getActiveConsultationSlotWhere(now = new Date()): Prisma.Consult
   };
 }
 
-export function getUpcomingDateForWeekday(weekday: number, startTime: string, now = new Date()): Date {
+export function getUpcomingDateForWeekday(weekday: number, availabilityEndTime: string, now = new Date()): Date {
   const today = getBangkokCalendarDateKey(now);
   const currentWeekday = getBangkokWeekday(now);
-  const daysAhead = (weekday - currentWeekday + 7) % 7 || 7;
-  return getScheduledAtForCalendarDate(addDaysToCalendarDate(today, daysAhead), startTime);
+  const endsToday =
+    weekday === currentWeekday &&
+    getScheduledAtForCalendarDate(today, availabilityEndTime).getTime() > now.getTime();
+  const daysAhead = endsToday ? 0 : (weekday - currentWeekday + 7) % 7 || 7;
+  return getScheduledAtForCalendarDate(addDaysToCalendarDate(today, daysAhead), availabilityEndTime);
 }
 
 export function getScheduledAtForDate(scheduleDate: Date, startTime: string): Date {

@@ -10,11 +10,18 @@ import {
 } from "@/features/consultations/booking/slots";
 
 describe("booking slot helpers", () => {
-  it("calculates the next upcoming weekday slot without using the current day", () => {
-    const now = new Date("2026-06-10T08:00:00.000+07:00"); // Wednesday
-    const scheduledAt = getUpcomingDateForWeekday(3, "17:00", now);
+  it("keeps the current weekday while the availability still has time remaining", () => {
+    const now = new Date("2026-09-05T15:00:00.000+07:00"); // Saturday
+    const scheduledAt = getUpcomingDateForWeekday(6, "22:00", now);
 
-    expect(scheduledAt.toISOString()).toBe("2026-06-17T10:00:00.000Z");
+    expect(scheduledAt.toISOString()).toBe("2026-09-05T15:00:00.000Z");
+  });
+
+  it("moves to the following week only after the current weekday availability ends", () => {
+    const now = new Date("2026-09-05T22:00:00.000+07:00"); // Saturday
+    const scheduledAt = getUpcomingDateForWeekday(6, "22:00", now);
+
+    expect(scheduledAt.toISOString()).toBe("2026-09-12T15:00:00.000Z");
   });
 
   it("locks only active consultation states that reserve a doctor slot", () => {

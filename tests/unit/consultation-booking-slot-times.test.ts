@@ -28,4 +28,20 @@ describe("consultation booking slots", () => {
     ]);
     expect(getBookingSources(recurring as never, closed as never, now)).toEqual([]);
   });
+
+  it("shows only remaining slots for a recurring availability on the current Bangkok day", () => {
+    const recurring = [{ id: "websthai-saturday", weekday: 6, startTime: "09:00", endTime: "22:00", slotMinutes: 60, notes: null }];
+    const now = new Date("2026-09-05T15:00:00.000+07:00");
+
+    const slots = getBookingSources(recurring as never, [] as never, now);
+
+    expect(slots.map((slot) => [getBangkokCalendarDateKey(slot.scheduledAt), slot.startTime])).toEqual([
+      ["2026-09-05", "16:00"],
+      ["2026-09-05", "17:00"],
+      ["2026-09-05", "18:00"],
+      ["2026-09-05", "19:00"],
+      ["2026-09-05", "20:00"],
+      ["2026-09-05", "21:00"]
+    ]);
+  });
 });

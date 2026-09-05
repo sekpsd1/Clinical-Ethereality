@@ -164,7 +164,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         startTime = dateOverride.startTime;
         endTime = dateOverride.endTime;
       } else {
-        sourceScheduledAt = getUpcomingDateForWeekday(availability!.weekday, availability!.startTime);
+        sourceScheduledAt = getUpcomingDateForWeekday(availability!.weekday, availability!.endTime);
         slotMinutes = availability!.slotMinutes;
         startTime = availability!.startTime;
         endTime = availability!.endTime;

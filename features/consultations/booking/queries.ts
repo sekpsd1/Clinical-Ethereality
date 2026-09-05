@@ -1,7 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForCalendarDate, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
@@ -103,7 +103,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
   const recurring = availability
     .map((slot) => ({
       id: slot.id,
-      scheduledAt: getUpcomingDateForWeekday(slot.weekday, slot.startTime, now),
+      scheduledAt: getUpcomingDateForWeekday(slot.weekday, slot.endTime, now),
       startTime: slot.startTime,
       endTime: slot.endTime,
       slotMinutes: slot.slotMinutes,
@@ -125,7 +125,9 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
       notes: override.notes,
       weekdayLabel: weekdayLabels[override.scheduleDate.getUTCDay()] ?? "วันที่เลือก"
     }))
-    .filter((slot) => slot.scheduledAt > now);
+    .filter((slot) =>
+      getScheduledAtForCalendarDate(getBangkokCalendarDateKey(slot.scheduledAt), slot.endTime) > now
+    );
 
   const expanded = [...recurring, ...special].flatMap((source) =>
     getScheduledSlotTimes(source.scheduledAt, source.startTime, source.endTime, source.slotMinutes).map((scheduledAt) => ({
@@ -138,6 +140,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
   const seen = new Set<number>();
   return expanded
     .sort((left, right) => left.scheduledAt.getTime() - right.scheduledAt.getTime())
+    .filter((slot) => slot.scheduledAt > now)
     .filter((slot) => {
       const timestamp = slot.scheduledAt.getTime();
       if (seen.has(timestamp)) return false;
