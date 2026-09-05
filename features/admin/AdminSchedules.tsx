@@ -40,7 +40,7 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
         selectedDoctorId={data.appointmentCalendar.selectedDoctorId}
       />
 
-      <AdminAppointmentCalendar data={data.appointmentCalendar} />
+      <AdminAppointmentCalendar data={data.appointmentCalendar} manualAppointmentPatients={data.manualAppointmentPatients} />
 
       <AdminDateScheduleEditor
         doctors={data.doctors}

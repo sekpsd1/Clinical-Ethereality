@@ -29,6 +29,11 @@ export type AdminDoctorAvailabilitySlot = {
   updatedAt: string;
 };
 
+export type AdminManualAppointmentPatient = {
+  id: string;
+  name: string;
+};
+
 export type AdminDoctorAvailabilityDateOverride = {
   id: string;
   doctorId: string;
@@ -48,6 +53,7 @@ export type AdminSchedulesData = {
   slots: AdminDoctorAvailabilitySlot[];
   dateOverrides: AdminDoctorAvailabilityDateOverride[];
   appointmentCalendar: AdminAppointmentCalendarData;
+  manualAppointmentPatients: AdminManualAppointmentPatient[];
   summary: {
     activeDoctors: number;
     activeSlots: number;
@@ -60,17 +66,25 @@ export type AdminAppointmentCalendarSlot = {
   id: string;
   doctorId: string;
   doctorName: string;
+  availabilityId: string;
+  scheduledAtIso: string;
   timeLabel: string;
   status: "available" | "pending_payment" | "scheduled" | "live";
   statusLabel: string;
-  patientName: string | null;
   lockExpiresAt: string | null;
+};
+
+export type AdminAppointmentCalendarDay = {
+  dateLabel: string;
+  dateValue: string;
+  slots: AdminAppointmentCalendarSlot[];
 };
 
 export type AdminAppointmentCalendarData = {
   dateLabel: string;
   dateValue: string;
+  view: "day" | "week" | "month";
   doctors: Array<Pick<AdminDoctorOption, "id" | "name">>;
   selectedDoctorId: string;
-  slots: AdminAppointmentCalendarSlot[];
+  days: AdminAppointmentCalendarDay[];
 };

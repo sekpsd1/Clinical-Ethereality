@@ -8,10 +8,11 @@ export default async function AdminSchedulesPage({
     edit?: string;
     date?: string;
     doctor?: string;
+    view?: string;
   }>;
 }) {
   const params = await searchParams;
-  const data = await getAdminSchedules({ date: params.date, doctorId: params.doctor });
+  const data = await getAdminSchedules({ date: params.date, doctorId: params.doctor, view: params.view });
 
   return <AdminSchedules data={data} editSlotId={params.edit} />;
 }

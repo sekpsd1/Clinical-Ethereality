@@ -26,11 +26,11 @@ export type AppointmentCalendarConsultation = {
   doctorId: string;
   scheduledAt: Date | null;
   status: "pending_payment" | "scheduled" | "live";
-  patientName: string;
   slotLockExpiresAt: Date | null;
 };
 
 export type BuiltAppointmentCalendarSlot = {
+  availabilityId: string;
   doctorId: string;
   scheduledAt: Date;
   timeLabel: string;
@@ -61,6 +61,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
         return (!effectiveFrom || input.dateValue >= effectiveFrom) && (!effectiveTo || input.dateValue <= effectiveTo);
       })
       .map((availability) => ({
+        availabilityId: availability.id,
         doctorId: availability.doctorId,
         startTime: availability.startTime,
         endTime: availability.endTime,
@@ -73,6 +74,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
           override.type === "available" && Boolean(override.startTime && override.endTime && override.slotMinutes)
       )
       .map((override) => ({
+        availabilityId: override.id,
         doctorId: override.doctorId,
         startTime: override.startTime,
         endTime: override.endTime,
@@ -96,6 +98,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
         block.endTime,
         block.slotMinutes
       ).map((scheduledAt) => ({
+        availabilityId: block.availabilityId,
         doctorId: block.doctorId,
         scheduledAt,
         timeLabel: formatBangkokTime(scheduledAt),

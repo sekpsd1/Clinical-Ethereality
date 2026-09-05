@@ -89,6 +89,29 @@ function normalizeScheduleDate(value: string | undefined, now: Date): string {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : getTodayDateValue(now);
 }
 
+function normalizeCalendarView(value: string | undefined): "day" | "week" | "month" {
+  return value === "week" || value === "month" ? value : "day";
+}
+
+function addCalendarDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getCalendarDateValues(dateValue: string, view: "day" | "week" | "month"): string[] {
+  if (view === "day") return [dateValue];
+  if (view === "week") {
+    const weekday = new Date(`${dateValue}T12:00:00+07:00`).getUTCDay();
+    const start = addCalendarDays(dateValue, -((weekday + 6) % 7));
+    return Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index));
+  }
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  const start = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  return Array.from({ length: lastDay }, (_, index) => addCalendarDays(start, index));
+}
+
 function getDoctorName(doctor: { user: { displayName: string | null; lineUserId: string } }): string {
   return doctor.user.displayName ?? doctor.user.lineUserId;
 }
@@ -154,95 +177,75 @@ function mapDateOverride(override: DateOverrideRecord): AdminDoctorAvailabilityD
   };
 }
 
-async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValue: string; doctorId?: string; now: Date }): Promise<AdminAppointmentCalendarData> {
+async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValue: string; doctorId?: string; view?: string; now: Date }): Promise<AdminAppointmentCalendarData> {
   const eligibleDoctors = input.doctors.filter((doctor) => doctor.user.status === "active");
   const selectedDoctorId = eligibleDoctors.some((doctor) => doctor.id === input.doctorId) ? input.doctorId! : "";
-  const doctorIds = selectedDoctorId ? [selectedDoctorId] : eligibleDoctors.map((doctor) => doctor.id);
-  const dayStart = getScheduledAtForCalendarDate(input.dateValue, "00:00");
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-  const overrideScheduleDate = new Date(`${input.dateValue}T00:00:00.000Z`);
+  const view = normalizeCalendarView(input.view);
+  const dateValues = getCalendarDateValues(input.dateValue, view);
+  const lastDateValue = dateValues[dateValues.length - 1];
+  const dayStart = getScheduledAtForCalendarDate(dateValues[0], "00:00");
+  const dayEnd = getScheduledAtForCalendarDate(addCalendarDays(lastDateValue, 1), "00:00");
+  const overrideStart = new Date(`${dateValues[0]}T00:00:00.000Z`);
+  const overrideEnd = new Date(`${addCalendarDays(lastDateValue, 1)}T00:00:00.000Z`);
   const [availabilities, overrides, consultations] =
-    doctorIds.length === 0
+    !selectedDoctorId
       ? [[], [], []]
       : await Promise.all([
           prisma.doctorAvailability.findMany({
-            where: { doctorId: { in: doctorIds }, isActive: true },
+            where: { doctorId: selectedDoctorId, isActive: true },
             select: { id: true, doctorId: true, weekday: true, startTime: true, endTime: true, slotMinutes: true, effectiveFrom: true, effectiveTo: true, notes: true }
           }),
           prisma.doctorAvailabilityDateOverride.findMany({
-            where: { doctorId: { in: doctorIds }, scheduleDate: overrideScheduleDate, isActive: true },
-            select: { id: true, doctorId: true, type: true, startTime: true, endTime: true, slotMinutes: true, notes: true }
+            where: { doctorId: selectedDoctorId, scheduleDate: { gte: overrideStart, lt: overrideEnd }, isActive: true },
+            select: { id: true, doctorId: true, scheduleDate: true, type: true, startTime: true, endTime: true, slotMinutes: true, notes: true }
           }),
           prisma.consultation.findMany({
-            where: { doctorId: { in: doctorIds }, scheduledAt: { gte: dayStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
+            where: { doctorId: selectedDoctorId, scheduledAt: { gte: dayStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
             select: {
               doctorId: true,
               scheduledAt: true,
               status: true,
-              patient: { select: { displayName: true } },
               slotLock: { select: { expiresAt: true } }
             }
           })
         ]);
-  const namesByDoctorId = new Map(eligibleDoctors.map((doctor) => [doctor.id, getDoctorName(doctor)]));
-  const slots = buildAdminAppointmentCalendarSlots({
-    availabilities,
-    overrides,
-    consultations: consultations.flatMap((consultation) => {
-      if (consultation.status !== "pending_payment" && consultation.status !== "scheduled" && consultation.status !== "live") {
-        return [];
-      }
-
-      return [{
-        doctorId: consultation.doctorId,
-        scheduledAt: consultation.scheduledAt,
-        status: consultation.status,
-        patientName: consultation.patient.displayName ?? "ลูกค้า LINE ยังไม่ระบุชื่อ",
-        slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null
-      }];
-    }),
-    dateValue: input.dateValue,
-    now: input.now
-  });
+  const doctorName = selectedDoctorId ? getDoctorName(eligibleDoctors.find((doctor) => doctor.id === selectedDoctorId)!) : "แพทย์ผู้ให้คำปรึกษา";
+  const calendarConsultations = consultations.flatMap((consultation) => consultation.status === "pending_payment" || consultation.status === "scheduled" || consultation.status === "live" ? [{ doctorId: consultation.doctorId, scheduledAt: consultation.scheduledAt, status: consultation.status, slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null }] : []);
 
   return {
     dateValue: input.dateValue,
     dateLabel: new Intl.DateTimeFormat("th-TH", { timeZone: CLINIC_TIME_ZONE, dateStyle: "medium" }).format(dayStart),
+    view,
     doctors: eligibleDoctors.map((doctor) => ({ id: doctor.id, name: getDoctorName(doctor) })),
     selectedDoctorId,
-    slots: slots.map((slot) => {
-      const consultation = slot.consultation;
-      const status = consultation?.status ?? "available";
-      return {
-        id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`,
-        doctorId: slot.doctorId,
-        doctorName: namesByDoctorId.get(slot.doctorId) ?? "แพทย์ผู้ให้คำปรึกษา",
-        timeLabel: slot.timeLabel,
-        status,
-        statusLabel:
-          status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : "ว่าง",
-        patientName: consultation?.patientName ?? null,
-        lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null
-      };
-    })
+    days: dateValues.map((dateValue) => ({
+      dateValue,
+      dateLabel: new Intl.DateTimeFormat("th-TH", { timeZone: CLINIC_TIME_ZONE, dateStyle: "medium" }).format(getScheduledAtForCalendarDate(dateValue, "00:00")),
+      slots: buildAdminAppointmentCalendarSlots({ availabilities, overrides: overrides.filter((override) => override.scheduleDate.toISOString().slice(0, 10) === dateValue), consultations: calendarConsultations.filter((consultation) => consultation.scheduledAt && getBangkokCalendarDateKey(consultation.scheduledAt) === dateValue), dateValue, now: input.now }).map((slot) => {
+        const consultation = slot.consultation;
+        const status = consultation?.status ?? "available";
+        return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : "ว่าง", lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };
+      })
+    }))
   };
 }
 
-export async function getAdminSchedules(input: { date?: string; doctorId?: string } = {}): Promise<AdminSchedulesData> {
+export async function getAdminSchedules(input: { date?: string; doctorId?: string; view?: string } = {}): Promise<AdminSchedulesData> {
   noStore();
 
   try {
     const now = new Date();
     const dateValue = normalizeScheduleDate(input.date, now);
-    const [doctors, slots, dateOverrides] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots(), getDateOverrides()]);
+    const [doctors, slots, dateOverrides, manualAppointmentPatients] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots(), getDateOverrides(), prisma.user.findMany({ where: { role: "customer", status: "active", fullName: { not: null }, dateOfBirth: { not: null }, phone: { not: null }, normalizedPhone: { not: null }, phoneVerifiedAt: { not: null } }, orderBy: { fullName: "asc" }, take: 100, select: { id: true, fullName: true } })]);
     const slotItems = slots.map(mapSlot);
-    const appointmentCalendar = await getAppointmentCalendar({ doctors, dateValue, doctorId: input.doctorId, now });
+    const appointmentCalendar = await getAppointmentCalendar({ doctors, dateValue, doctorId: input.doctorId, view: input.view, now });
 
     return {
       doctors: doctors.map(mapDoctor),
       slots: slotItems,
       dateOverrides: dateOverrides.map(mapDateOverride),
       appointmentCalendar,
+      manualAppointmentPatients: manualAppointmentPatients.map((patient) => ({ id: patient.id, name: patient.fullName! })),
       summary: {
         activeDoctors: doctors.length,
         activeSlots: slotItems.filter((slot) => slot.isActive).length,
@@ -257,10 +260,12 @@ export async function getAdminSchedules(input: { date?: string; doctorId?: strin
       appointmentCalendar: {
         dateLabel: "-",
         dateValue: normalizeScheduleDate(input.date, new Date()),
+        view: normalizeCalendarView(input.view),
         doctors: [],
         selectedDoctorId: "",
-        slots: []
+        days: []
       },
+      manualAppointmentPatients: [],
       summary: {
         activeDoctors: 0,
         activeSlots: 0,
