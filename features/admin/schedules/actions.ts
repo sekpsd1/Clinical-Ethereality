@@ -7,7 +7,7 @@ import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from "@/features/admin/schedules/bulk";
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
-import { getDoctorScheduleDeactivateConflict, isCancelledTestResetPayment } from "@/features/admin/schedules/bulk-deactivate";
+import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
@@ -83,17 +83,12 @@ async function getDoctorScheduleDeactivatePreflight(tx: Prisma.TransactionClient
     select: { id: true }
   });
   const doctorIds = doctors.map((doctor) => doctor.id);
-  const [activeConsultations, pendingPaymentRows, activeSlotLocks] = await Promise.all([
-    tx.consultation.count({ where: { doctorId: { in: doctorIds }, status: { notIn: ["completed", "cancelled"] } } }),
-    tx.payment.findMany({
-      where: { status: { in: ["pending_slip", "pending_review"] }, consultation: { doctorId: { in: doctorIds } } },
-      select: { id: true, verificationPayload: true, consultation: { select: { id: true, status: true } } }
-    }),
-    tx.consultationSlotLock.count({ where: { doctorId: { in: doctorIds }, expiresAt: { gt: now } } })
+  const today = parseScheduleDate(getBangkokScheduleDateValue(now));
+  const [activeRecurringAvailability, futureDateOverrides] = await Promise.all([
+    tx.doctorAvailability.count({ where: { doctorId: { in: doctorIds }, isActive: true } }),
+    tx.doctorAvailabilityDateOverride.count({ where: { doctorId: { in: doctorIds }, scheduleDate: { gte: today }, isActive: true } })
   ]);
-
-  const pendingPayments = pendingPaymentRows.filter((payment) => !isCancelledTestResetPayment(payment)).length;
-  return { doctorIds, activeConsultations, pendingPayments, activeSlotLocks };
+  return { doctorIds, activeRecurringAvailability, futureDateOverrides };
 }
 
 async function findActiveBookingOnScheduleDate(tx: Prisma.TransactionClient, doctorId: string, scheduleDate: Date) {
@@ -406,8 +401,8 @@ export async function deactivateAllDoctorSchedulesAction(
     const result = await prisma.$transaction(async (tx) => {
       const now = new Date();
       const today = parseScheduleDate(getBangkokScheduleDateValue(now));
-      const { doctorIds, activeConsultations, pendingPayments, activeSlotLocks } = await getDoctorScheduleDeactivatePreflight(tx, now);
-      const conflict = getDoctorScheduleDeactivateConflict({ targetDoctors: doctorIds.length, activeConsultations, pendingPayments, activeSlotLocks });
+      const { doctorIds, activeRecurringAvailability, futureDateOverrides } = await getDoctorScheduleDeactivatePreflight(tx, now);
+      const conflict = getDoctorScheduleDeactivateConflict({ targetDoctors: doctorIds.length, activeRecurringAvailability, futureDateOverrides });
       if (conflict) throw new ScheduleBookingSafetyError(conflict);
 
       const [availability, overrides] = await Promise.all([
@@ -445,12 +440,11 @@ export async function previewDeactivateAllDoctorSchedulesAction(
     const preflight = await prisma.$transaction((tx) => getDoctorScheduleDeactivatePreflight(tx, new Date()), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     const conflict = getDoctorScheduleDeactivateConflict({
       targetDoctors: preflight.doctorIds.length,
-      activeConsultations: preflight.activeConsultations,
-      pendingPayments: preflight.pendingPayments,
-      activeSlotLocks: preflight.activeSlotLocks
+      activeRecurringAvailability: preflight.activeRecurringAvailability,
+      futureDateOverrides: preflight.futureDateOverrides
     });
-    if (conflict) return { status: "error", message: `${conflict} (นัดหมาย ${preflight.activeConsultations}, ชำระเงินค้าง ${preflight.pendingPayments}, slot lock ${preflight.activeSlotLocks})` };
-    return { status: "success", message: `ผ่านการตรวจสอบ: แพทย์ ${preflight.doctorIds.length} คน, นัดหมายที่ยังไม่จบ 0, ชำระเงินค้าง 0, slot lock 0` };
+    if (conflict) return { status: "error", message: conflict };
+    return { status: "success", message: `พร้อมปิดตาราง: แพทย์ ${preflight.doctorIds.length} คน, ตารางประจำที่เปิดอยู่ ${preflight.activeRecurringAvailability} รายการ, เวลาพิเศษตั้งแต่วันนี้ ${preflight.futureDateOverrides} รายการ (นัดหมาย การชำระเงิน และ slot lock จะไม่ถูกเปลี่ยน)` };
   } catch {
     return { status: "error", message: "ไม่สามารถตรวจสอบก่อนปิดตารางได้" };
   }
