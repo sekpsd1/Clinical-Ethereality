@@ -50,7 +50,7 @@ export function AdminDateScheduleCalendar({
 
   return (
     <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
-      <div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ขั้นตอนที่ 1</p><h2 className="mt-1 font-headline text-lg font-bold text-text">เลือกวันที่จากปฏิทิน</h2><p className="mt-1 text-xs leading-5 text-muted">เลือกวันก่อน แล้วระบบจะแสดงตารางแพทย์ของวันนั้นด้านล่าง</p></div><div className="flex items-center gap-1"><button type="button" aria-label="เดือนก่อนหน้า" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} className="rounded-[8px] p-2 text-primary"><ChevronLeft className="size-4" /></button><button type="button" aria-label="เดือนถัดไป" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} className="rounded-[8px] p-2 text-primary"><ChevronRight className="size-4" /></button></div></div>
+      <div className="flex items-center justify-between gap-3"><div><h2 className="font-headline text-lg font-bold text-text">เปลี่ยนวันที่จากปฏิทิน</h2><p className="mt-1 text-xs leading-5 text-muted">เลือกแพทย์จากปฏิทินนัดหมายก่อน แล้วใช้ปฏิทินนี้เพื่อเปลี่ยนวันของแพทย์คนนั้น</p></div><div className="flex items-center gap-1"><button type="button" aria-label="เดือนก่อนหน้า" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} className="rounded-[8px] p-2 text-primary"><ChevronLeft className="size-4" /></button><button type="button" aria-label="เดือนถัดไป" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} className="rounded-[8px] p-2 text-primary"><ChevronRight className="size-4" /></button></div></div>
       <p className="mt-2 text-sm font-bold text-text">{new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric" }).format(month)}</p>
       <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-muted">{weekdays.map((day) => <span key={day}>{day}</span>)}</div>
       <div className="mt-1 grid grid-cols-7 gap-1">{days.map((day, index) => {
@@ -65,7 +65,8 @@ export function AdminDateScheduleCalendar({
         const className = `min-h-12 rounded-[8px] border p-1 text-xs font-bold ${selectedDate === dateValue ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-text"}`;
         const marker = hasClosed || hasSpecial || hasRegular ? <span className={`mx-auto mt-1 block h-1.5 w-1.5 rounded-full ${hasClosed ? "bg-[#ba1a1a]" : hasSpecial ? "bg-primary" : "bg-[#2e8b8b]"}`} /> : null;
         if (dateValue < todayDate) return <span key={dateValue} aria-label={`${day} วันย้อนหลัง`} className={`${className} cursor-not-allowed opacity-40`}><span>{day}</span>{marker}</span>;
-        const href = { pathname: "/admin/schedules", query: selectedDoctorId ? { date: dateValue, doctor: selectedDoctorId } : { date: dateValue }, hash: "doctor-schedule" };
+        if (!selectedDoctorId) return <span key={dateValue} aria-label={`${day} เลือกแพทย์ก่อน`} className={`${className} cursor-not-allowed opacity-40`}><span>{day}</span>{marker}</span>;
+        const href = { pathname: "/admin/schedules", query: { date: dateValue, doctor: selectedDoctorId }, hash: "doctor-schedule" };
         return <Link key={dateValue} href={href} className={className}><span>{day}</span>{marker}</Link>;
       })}</div>
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold text-muted"><span>● สีฟ้า: เวลาว่างประจำ</span><span className="text-primary">● สีเขียว: เวลาพิเศษ</span><span className="text-[#ba1a1a]">● สีแดง: วันหยุด</span></div>
