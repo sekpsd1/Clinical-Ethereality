@@ -1,9 +1,7 @@
 import { CalendarClock, Stethoscope, ToggleRight } from "lucide-react";
 import { AdminConsultationFeeSettings } from "@/features/admin/AdminConsultationFeeSettings";
 import { AdminAppointmentCalendar } from "@/features/admin/AdminAppointmentCalendar";
-import { AdminDateScheduleCalendar } from "@/features/admin/AdminDateScheduleCalendar";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
-import { AdminScheduleCrudWorkspace } from "@/features/admin/AdminScheduleCrudWorkspace";
 import type { AdminSchedulesData } from "@/features/admin/schedules/types";
 
 export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData; editSlotId?: string }) {
@@ -33,18 +31,10 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
 
       <AdminAppointmentCalendar data={data.appointmentCalendar} manualAppointmentPatients={data.manualAppointmentPatients} workingHoursDoctors={data.doctors} dateOverrides={data.dateOverrides} />
 
-      <AdminDateScheduleCalendar
-        overrides={data.dateOverrides}
-        slots={data.slots}
-        selectedDate={data.appointmentCalendar.dateValue}
-        selectedDoctorId={data.appointmentCalendar.selectedDoctorId}
-      />
-
       <AdminConsultationFeeSettings doctors={data.doctors} />
 
       {editSlot ? <AdminScheduleForm key={editSlot.id} doctors={data.doctors} editSlot={editSlot} /> : null}
 
-      <AdminScheduleCrudWorkspace slots={data.slots} overrides={data.dateOverrides} />
     </div>
   );
 }
