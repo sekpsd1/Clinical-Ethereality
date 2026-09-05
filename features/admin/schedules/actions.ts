@@ -77,6 +77,21 @@ class BatchAvailabilityConflictError extends Error {}
 class DateOverrideConflictError extends Error {}
 class ScheduleBookingSafetyError extends Error {}
 
+async function getDoctorScheduleDeactivatePreflight(tx: Prisma.TransactionClient, now: Date) {
+  const doctors = await tx.doctor.findMany({
+    where: { status: "approved", user: { status: "active" } },
+    select: { id: true }
+  });
+  const doctorIds = doctors.map((doctor) => doctor.id);
+  const [activeConsultations, pendingPayments, activeSlotLocks] = await Promise.all([
+    tx.consultation.count({ where: { doctorId: { in: doctorIds }, status: { notIn: ["completed", "cancelled"] } } }),
+    tx.payment.count({ where: { status: { in: ["pending_slip", "pending_review"] }, consultation: { doctorId: { in: doctorIds } } } }),
+    tx.consultationSlotLock.count({ where: { doctorId: { in: doctorIds }, expiresAt: { gt: now } } })
+  ]);
+
+  return { doctorIds, activeConsultations, pendingPayments, activeSlotLocks };
+}
+
 async function findActiveBookingOnScheduleDate(tx: Prisma.TransactionClient, doctorId: string, scheduleDate: Date) {
   const { start, end } = getBangkokDayRange(scheduleDate);
   return tx.consultation.findFirst({
@@ -387,26 +402,7 @@ export async function deactivateAllDoctorSchedulesAction(
     const result = await prisma.$transaction(async (tx) => {
       const now = new Date();
       const today = parseScheduleDate(getBangkokScheduleDateValue(now));
-      const doctors = await tx.doctor.findMany({
-        where: { status: "approved", user: { status: "active" } },
-        select: { id: true }
-      });
-      const doctorIds = doctors.map((doctor) => doctor.id);
-      const [activeConsultations, pendingPayments, activeSlotLocks] = await Promise.all([
-        tx.consultation.count({
-          where: {
-            doctorId: { in: doctorIds },
-            status: { notIn: ["completed", "cancelled"] }
-          }
-        }),
-        tx.payment.count({
-          where: {
-            status: { in: ["pending_slip", "pending_review"] },
-            consultation: { doctorId: { in: doctorIds } }
-          }
-        }),
-        tx.consultationSlotLock.count({ where: { doctorId: { in: doctorIds }, expiresAt: { gt: now } } })
-      ]);
+      const { doctorIds, activeConsultations, pendingPayments, activeSlotLocks } = await getDoctorScheduleDeactivatePreflight(tx, now);
       const conflict = getDoctorScheduleDeactivateConflict({ targetDoctors: doctorIds.length, activeConsultations, pendingPayments, activeSlotLocks });
       if (conflict) throw new ScheduleBookingSafetyError(conflict);
 
@@ -432,6 +428,27 @@ export async function deactivateAllDoctorSchedulesAction(
     return { status: "success", message: `ปิดตารางประจำ ${result.recurringAvailabilityCount} รายการ และเวลาพิเศษในอนาคต ${result.futureDateOverrideCount} รายการของแพทย์ ${result.doctorCount} คนแล้ว` };
   } catch (error) {
     return { status: "error", message: error instanceof ScheduleBookingSafetyError ? error.message : "ไม่สามารถปิดตารางทั้งหมดได้" };
+  }
+}
+
+export async function previewDeactivateAllDoctorSchedulesAction(
+  _previousState: AdminScheduleActionState
+): Promise<AdminScheduleActionState> {
+  void _previousState;
+  await requireAdminSession();
+
+  try {
+    const preflight = await prisma.$transaction((tx) => getDoctorScheduleDeactivatePreflight(tx, new Date()), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    const conflict = getDoctorScheduleDeactivateConflict({
+      targetDoctors: preflight.doctorIds.length,
+      activeConsultations: preflight.activeConsultations,
+      pendingPayments: preflight.pendingPayments,
+      activeSlotLocks: preflight.activeSlotLocks
+    });
+    if (conflict) return { status: "error", message: `${conflict} (นัดหมาย ${preflight.activeConsultations}, ชำระเงินค้าง ${preflight.pendingPayments}, slot lock ${preflight.activeSlotLocks})` };
+    return { status: "success", message: `ผ่านการตรวจสอบ: แพทย์ ${preflight.doctorIds.length} คน, นัดหมายที่ยังไม่จบ 0, ชำระเงินค้าง 0, slot lock 0` };
+  } catch {
+    return { status: "error", message: "ไม่สามารถตรวจสอบก่อนปิดตารางได้" };
   }
 }
 
