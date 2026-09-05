@@ -5,6 +5,7 @@ const path = require("node:path");
 import { afterEach, describe, expect, it, vi } from "vitest";
 const {
   MIGRATION_APPROVAL_ENV,
+  CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET,
   DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
   SMS_OTP_MIGRATION_TARGET,
   getCurrentMigrationTarget,
@@ -144,6 +145,46 @@ describe("Plesk runtime migration runner", () => {
 
     expect(result).toEqual({ shouldStart: true, migrationRun: true });
     expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("allows the reviewed consultation reschedule-status migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      SMS_OTP_MIGRATION_TARGET,
+      DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
+      CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when an older allowlisted target is used with the consultation migration present", () => {
+    const rootDir = createRunnerWorkspace([
+      DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
+      CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn();
+    const loggers = createLoggers();
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET },
+      spawnSync,
+      ...loggers
+    });
+
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
+    expect(spawnSync).not.toHaveBeenCalled();
+    expect(loggers.errors).toEqual([
+      "[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start."
+    ]);
   });
 
   it("fails closed and never logs secrets when Prisma migration fails", () => {
