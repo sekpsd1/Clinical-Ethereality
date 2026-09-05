@@ -158,4 +158,64 @@ describe("Doctor consultation duration after slot-lock expiry", () => {
       })
     );
   });
+
+  it("preserves an Admin manual-appointment review while releasing its expired slot", async () => {
+    const now = new Date("2026-09-05T06:00:00.000Z");
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "consultation-1" }]),
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      consultation: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            doctorId: "doctor-1",
+            id: "consultation-1",
+            patientId: "patient-1",
+            scheduledAt: new Date("2026-09-06T02:00:00.000Z"),
+            slotLockId: "slot-lock-1",
+            payment: {
+              status: "pending_review",
+              verificationPayload: {
+                manualAppointmentIntake: {
+                  version: 1,
+                  source: "admin_manual_appointment",
+                  attachmentId: "attachment-1",
+                  createdAt: "2026-09-05T05:00:00.000Z",
+                  createdById: "admin-1",
+                  reasonCode: "provider_unavailable",
+                  transferredAt: "2026-09-05T04:30:00.000Z"
+                }
+              }
+            }
+          }
+        ]),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      consultationSlotLock: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      notification: { createMany: vi.fn().mockResolvedValue({ count: 1 }) }
+    };
+    mocks.prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)
+    );
+
+    await releaseExpiredConsultationSlotLocks(now);
+
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: { in: ["consultation-1"] },
+        status: "pending_payment"
+      },
+      data: { status: "reschedule_required", slotLockId: null }
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            paymentReviewPreserved: true
+          })
+        })
+      })
+    );
+  });
 });

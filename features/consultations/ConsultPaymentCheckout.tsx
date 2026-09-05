@@ -80,6 +80,14 @@ export function ConsultPaymentCheckout({
                 href={consultation.appointmentHref}
                 cta="ดูนัดหมาย"
               />
+            ) : consultation.manualAppointmentReviewPending ? (
+              <PaymentStateCard
+                tone="neutral"
+                title="รอแอดมินตรวจรายการโอน"
+                body="ทีมงานได้รับหลักฐานแล้ว นัดหมายจะยืนยันหลังตรวจสอบรายการโอนสำเร็จ กรุณาไม่ส่งสลิปซ้ำ"
+                href={consultation.appointmentHref}
+                cta="ดูสถานะนัดหมาย"
+              />
             ) : (
               <>
                 <PromptPayCard consultation={consultation} />

@@ -16,6 +16,7 @@ export type ConsultationPaymentDetail = {
   feeLabel: string;
   appointmentHref: string;
   waitingRoomHref: string;
+  manualAppointmentReviewPending: boolean;
   privateSlipAttachmentId: string | null;
   promptPay: PromptPayInstruction;
   verificationRetryAfterSeconds: number;

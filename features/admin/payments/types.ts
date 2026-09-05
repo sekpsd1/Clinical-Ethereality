@@ -24,6 +24,7 @@ export type AdminPaymentQueueItem = {
   submittedAt: string;
   reviewedAt: string | null;
   consultationManualReview: {
+    kind: "provider_fallback" | "manual_appointment";
     eligible: boolean;
     reason: string;
     slipHref: string | null;

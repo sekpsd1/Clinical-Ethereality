@@ -23,6 +23,7 @@ const data: ConsultationPaymentData = {
     feeLabel: "1 บาท",
     appointmentHref: "/consult/appointments/consultation-1",
     waitingRoomHref: "/consult/waiting-room?consultation=consultation-1",
+    manualAppointmentReviewPending: false,
     privateSlipAttachmentId: null,
     promptPay: {
       payload: null,
@@ -43,6 +44,24 @@ describe("ConsultPaymentCheckout doctor avatar", () => {
     expect(html).toContain('alt="Websthai"');
     expect(html).toContain("<img");
     expect(html).not.toContain("/_next/image");
+  });
+
+  it("keeps admin-created manual appointments in the admin review flow", () => {
+    const html = renderToStaticMarkup(
+      <ConsultPaymentCheckout
+        data={{
+          ...data,
+          consultation: data.consultation
+            ? { ...data.consultation, manualAppointmentReviewPending: true }
+            : null
+        }}
+      />
+    );
+
+    expect(html).toContain("รอแอดมินตรวจรายการโอน");
+    expect(html).toContain("กรุณาไม่ส่งสลิปซ้ำ");
+    expect(html).not.toContain("อัปโหลดหลักฐานการโอน");
+    expect(html).not.toContain("พร้อมเพย์");
   });
 
 });

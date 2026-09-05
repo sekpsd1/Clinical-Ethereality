@@ -172,6 +172,27 @@ describe("consultation payment verification service", () => {
     expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
+  it("blocks provider verification claims for admin-created manual appointments", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "pending_review",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z"),
+      verificationPayload: {
+        manualAppointmentIntake: { version: 1, source: "admin_manual_appointment" }
+      }
+    });
+
+    await expect(
+      claimConsultationProviderVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
   it("allows the first private-slip attempt immediately and exposes only the later retry cooldown", () => {
     expect(
       getConsultationPaymentVerificationRetryAfterSeconds({
@@ -251,6 +272,32 @@ describe("consultation payment verification service", () => {
         })
       })
     );
+  });
+
+  it("blocks provider verification results for admin-created manual appointments", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "pending_review",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z"),
+      verificationPayload: {
+        manualAppointmentIntake: { version: 1, source: "admin_manual_appointment" }
+      }
+    });
+
+    await expect(
+      applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1",
+        consultation: consultation(),
+        evidence: { amount: 900, qrPayload: "qr-payload" },
+        result: result()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("verifies funds but requires rescheduling when the provider responds after the slot expires", async () => {

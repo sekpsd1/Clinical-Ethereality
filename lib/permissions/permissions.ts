@@ -5,6 +5,7 @@ export const permissions = [
   "profile:read:self",
   "profile:update:self",
   "consultation:create:self",
+  "consultation:manual-create",
   "consultation:read:self",
   "consultation:read:assigned",
   "consultation:update:assigned",

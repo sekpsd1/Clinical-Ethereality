@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
-import { getConsultationProviderFailureAt } from "@/features/consultations/payment/manual-review";
+import {
+  getConsultationProviderFailureAt,
+  getManualAppointmentIntake
+} from "@/features/consultations/payment/manual-review";
 
 export type SlotLockReleaseResult = {
   expiredConsultations: number;
@@ -45,7 +48,14 @@ export async function releaseExpiredConsultationSlotLocks(now = new Date()): Pro
     const manualReviewCandidates = expiredConsultations.filter(
       (consultation) =>
         consultation.payment?.status === "pending_review" &&
-        Boolean(getConsultationProviderFailureAt(consultation.payment.verificationPayload))
+        Boolean(
+          getConsultationProviderFailureAt(
+            consultation.payment.verificationPayload
+          ) ||
+            getManualAppointmentIntake(
+              consultation.payment.verificationPayload
+            )
+        )
     );
     const cancelledConsultations = expiredConsultations.filter(
       (consultation) =>

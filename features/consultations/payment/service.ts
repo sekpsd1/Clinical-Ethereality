@@ -80,6 +80,28 @@ function getProviderAttemptedAt(verificationPayload: Prisma.JsonValue | null): D
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export function hasAdminManualAppointmentIntake(
+  verificationPayload: Prisma.JsonValue | null
+): boolean {
+  if (
+    !verificationPayload ||
+    typeof verificationPayload !== "object" ||
+    Array.isArray(verificationPayload)
+  ) {
+    return false;
+  }
+
+  const intake = (verificationPayload as Prisma.JsonObject).manualAppointmentIntake;
+
+  return Boolean(
+    intake &&
+      typeof intake === "object" &&
+      !Array.isArray(intake) &&
+      (intake as Prisma.JsonObject).version === 1 &&
+      (intake as Prisma.JsonObject).source === "admin_manual_appointment"
+  );
+}
+
 export function getConsultationPaymentVerificationRetryAfterSeconds(
   payment: { status: string; verificationPayload: Prisma.JsonValue | null },
   now = new Date()
@@ -124,6 +146,10 @@ export async function claimConsultationProviderVerification(
   });
 
   if (!payment || payment.status !== "pending_review") {
+    throw new PaymentVerificationConflictError();
+  }
+
+  if (hasAdminManualAppointmentIntake(payment.verificationPayload)) {
     throw new PaymentVerificationConflictError();
   }
 
@@ -230,6 +256,10 @@ export async function applyConsultationPaymentVerification(
       verificationPayload: true
     }
   });
+
+  if (hasAdminManualAppointmentIntake(existingPayment?.verificationPayload ?? null)) {
+    throw new PaymentVerificationConflictError();
+  }
 
   if (existingPayment?.status === "verified" || existingPayment?.status === "refunded") {
     throw new PaymentVerificationConflictError();

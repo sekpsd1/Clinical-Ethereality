@@ -3,7 +3,10 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
-import { getConsultationProviderFailureAt } from "@/features/consultations/payment/manual-review";
+import {
+  getConsultationProviderFailureAt,
+  getManualAppointmentIntake
+} from "@/features/consultations/payment/manual-review";
 import { paymentSlipEntityType } from "@/features/payments/private-slips";
 
 type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
@@ -133,12 +136,21 @@ function getProviderLabel(source: string | null): string {
     return "ตรวจโดยแอดมิน";
   }
 
+  if (
+    source === "admin_manual_appointment" ||
+    source === "line_oa_external_bank"
+  ) {
+    return "ตรวจจากรายการธนาคารภายนอก";
+  }
+
   return "ยังไม่ได้ตรวจผ่านผู้ให้บริการ";
 }
 
 function getReviewSourceLabel(source: string | null): string {
   const labels: Record<string, string> = {
     admin_manual_review: "แอดมินตรวจเอง",
+    admin_manual_appointment: "นัดหมายที่ Admin รับเรื่อง",
+    line_oa_external_bank: "Manual fallback หลังระบบตรวจสลิปล้มเหลว",
     customer_checkout_foundation: "รอสลิปจากหน้าชำระเงิน",
     prescription_order: "คำสั่งซื้อจากใบสั่งยาในระบบ",
     external_prescription_order: "คำสั่งซื้อแนบใบสั่งยาภายนอก",
@@ -192,7 +204,17 @@ function getReceiverLabel(status: AdminPaymentQueueItem["status"]): string {
 function getPaymentOperationalSummary(payment: PaymentWithContext) {
   const payload = asRecord(payment.verificationPayload);
   const result = asRecord(payload.result as Prisma.JsonValue | null | undefined);
-  const source = getString(payload.verificationSource) ?? getString(payload.source);
+  const manualReview = asRecord(
+    payload.manualReview as Prisma.JsonValue | null | undefined
+  );
+  const manualAppointmentIntake = asRecord(
+    payload.manualAppointmentIntake as Prisma.JsonValue | null | undefined
+  );
+  const source =
+    getString(manualReview.verificationSource) ??
+    getString(manualAppointmentIntake.source) ??
+    getString(payload.verificationSource) ??
+    getString(payload.source);
   const resultStatus = getString(result.status);
 
   return {
@@ -210,6 +232,9 @@ function getConsultationManualReview(
 ): AdminPaymentQueueItem["consultationManualReview"] {
   if (!payment.consultation) return null;
   const failureAt = getConsultationProviderFailureAt(payment.verificationPayload);
+  const manualAppointmentIntake = getManualAppointmentIntake(
+    payment.verificationPayload
+  );
   const eligibleStatus =
     payment.consultation.status === "pending_payment" ||
     payment.consultation.status === "reschedule_required";
@@ -222,22 +247,27 @@ function getConsultationManualReview(
   const eligible = Boolean(
     payment.status === "pending_review" &&
       eligibleStatus &&
-      failureAt &&
+      (failureAt || manualAppointmentIntake) &&
       attachmentId
   );
   const reason = !eligibleStatus
     ? "สถานะนัดหมายไม่อนุญาตให้ตรวจด้วยวิธีนี้"
     : payment.status !== "pending_review"
       ? "สถานะการชำระเงินไม่อยู่ระหว่างรอตรวจ"
-      : !failureAt
-        ? "ไม่พบหลักฐานว่าระบบตรวจสลิปอัตโนมัติล้มเหลว"
+      : !failureAt && !manualAppointmentIntake
+        ? "ไม่พบแหล่งที่มาของ Manual Review ที่ระบบอนุญาต"
         : !attachmentId
           ? "ไม่พบสลิปส่วนตัวที่เชื่อมกับรายการ"
           : activeSlot
-            ? "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที"
+            ? manualAppointmentIntake
+              ? "คำขอนัดโดย Admin ยังรอตรวจรายการโอน หากยืนยันจึงจะนัดหมาย"
+              : "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที"
             : "slot เดิมถูกปล่อยแล้ว หลังยืนยันลูกค้าต้องเลือกเวลาใหม่";
 
   return {
+    kind: manualAppointmentIntake
+      ? "manual_appointment"
+      : "provider_fallback",
     eligible,
     reason,
     slipHref: attachmentId ? `/api/payments/slips/${attachmentId}` : null,

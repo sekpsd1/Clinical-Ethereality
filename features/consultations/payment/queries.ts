@@ -5,7 +5,10 @@ import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import { getPromptPayInstruction } from "@/lib/payments/promptpay";
 import { paymentSlipEntityType } from "@/features/payments/private-slips";
-import { getConsultationPaymentVerificationRetryAfterSeconds } from "@/features/consultations/payment/service";
+import {
+  getConsultationPaymentVerificationRetryAfterSeconds,
+  hasAdminManualAppointmentIntake
+} from "@/features/consultations/payment/service";
 import type {
   ConsultationPaymentData,
   ConsultationPaymentDetail,
@@ -93,8 +96,12 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
   const feeAmount = consultation.doctor.consultationFee ?? 1000;
   const promptPay = await getPromptPayInstruction(feeAmount);
   const doctorAvatarUrl = getPaymentDoctorAvatarUrl(consultation.doctor.user.avatarUrl);
+  const manualAppointmentReviewPending = Boolean(
+    consultation.payment?.status === "pending_review" &&
+      hasAdminManualAppointmentIntake(consultation.payment.verificationPayload)
+  );
   const privateSlipAttachment =
-    consultation.payment?.status === "pending_review"
+    consultation.payment?.status === "pending_review" && !manualAppointmentReviewPending
       ? await prisma.fileAttachment.findFirst({
           where: {
             entityId: consultation.payment.id,
@@ -121,6 +128,7 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
     feeLabel: formatMoney(feeAmount),
     appointmentHref: `/consult/appointments/${consultation.id}`,
     waitingRoomHref: `/consult/waiting-room?consultation=${consultation.id}`,
+    manualAppointmentReviewPending,
     privateSlipAttachmentId: privateSlipAttachment?.id ?? null,
     promptPay,
     verificationRetryAfterSeconds: consultation.payment

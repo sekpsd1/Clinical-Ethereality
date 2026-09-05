@@ -485,3 +485,10 @@ The entries below are the current production handoff and supersede earlier SMS O
 ## OTP resend UI (2026-09-03)
 
 - [x] Add the customer-facing `ส่ง OTP อีกครั้ง` control with a 60-second UI cooldown while preserving the existing server-authoritative 60-second atomic dispatch claim, three-requests-per-hour limit, prior-challenge invalidation, and audit logging. Code verification is complete; Production deployment requires separate approval.
+
+## Admin manual appointment payment review (code only, 2026-09-05)
+
+- [x] Add an Admin-only manual appointment intake contract that requires a verified active patient, approved active doctor, exact configured future slot, private evidence, controlled reason, and transfer time within 24 hours; create only `pending_payment` / `pending_review` records with a 15-minute slot hold.
+- [x] Add guarded approve/reject review: unique normalized external-bank reference on approval; `scheduled` when the hold is active; `reschedule_required` when it expired; `rejected` / `cancelled` plus slot release on controlled rejection.
+- [x] Preserve audit, actor/time/evidence metadata, row-locking, Serializable/CAS/idempotency boundaries, and block customer provider verification or slip resubmission for Admin-created manual appointments.
+- [ ] Integrate the exported intake Server Action into the Admin appointment calendar in its owning task, then perform separately approved controlled UAT. The current release requires no migration or Production business-data mutation.

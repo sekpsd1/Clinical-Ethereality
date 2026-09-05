@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import {
+  applyManualAppointmentPaymentDecision,
   applyManualConsultationPaymentReview,
+  createManualAppointmentPaymentIntake,
+  ManualAppointmentIntakeError,
   recordConsultationProviderFailure
 } from "@/features/consultations/payment/manual-review";
 import { manualConsultationPaymentReviewSchema } from "@/features/admin/payments/schema";
@@ -30,7 +33,20 @@ function txMock(overrides: {
         scheduledAt,
         slotLockId: consultationStatus === "reschedule_required" ? null : "lock-1",
         status: consultationStatus,
-        doctor: { userId: "doctor-user-1" },
+        patient: {
+          role: "customer",
+          status: "active",
+          fullName: "Verified Patient",
+          dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
+          phone: "0812345678",
+          normalizedPhone: "+66812345678",
+          phoneVerifiedAt: new Date("2026-09-01T00:00:00.000Z")
+        },
+        doctor: {
+          userId: "doctor-user-1",
+          status: "approved",
+          user: { status: "active" }
+        },
         slotLock:
           consultationStatus === "reschedule_required"
             ? null
@@ -242,5 +258,301 @@ describe("manual consultation payment review", () => {
     ).resolves.toBe("already_processed");
     expect(tx.fileAttachment.findFirst).not.toHaveBeenCalled();
     expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+function manualAppointmentPayload() {
+  return {
+    manualAppointmentIntake: {
+      version: 1,
+      source: "admin_manual_appointment",
+      attachmentId: "attachment-1",
+      createdAt: "2026-09-05T05:00:00.000Z",
+      createdById: "admin-1",
+      reasonCode: "provider_unavailable",
+      transferredAt: "2026-09-05T04:30:00.000Z"
+    }
+  } satisfies Prisma.JsonObject;
+}
+
+function intakeTxMock() {
+  return {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "patient-1" }]),
+    auditLog: { create: vi.fn() },
+    user: {
+      findUnique: vi.fn().mockResolvedValue({
+        role: "customer",
+        status: "active",
+        fullName: "Verified Patient",
+        dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
+        phone: "0812345678",
+        normalizedPhone: "+66812345678",
+        phoneVerifiedAt: new Date("2026-09-01T00:00:00.000Z")
+      })
+    },
+    doctorAvailability: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "availability-1",
+        doctorId: "doctor-1",
+        weekday: 1,
+        startTime: "09:00",
+        endTime: "10:00",
+        slotMinutes: 30,
+        effectiveFrom: null,
+        effectiveTo: null,
+        isActive: true,
+        doctor: {
+          id: "doctor-1",
+          status: "approved",
+          consultationFee: 900,
+          user: { status: "active" }
+        }
+      })
+    },
+    doctorAvailabilityDateOverride: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null)
+    },
+    consultation: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "consultation-1" })
+    },
+    consultationSlotLock: {
+      create: vi.fn().mockResolvedValue({ id: "lock-1" })
+    },
+    payment: {
+      create: vi.fn().mockResolvedValue({ id: "payment-1" })
+    },
+    fileAttachment: { create: vi.fn() },
+    notification: { create: vi.fn() }
+  };
+}
+
+function preparedEvidence() {
+  return {
+    attachmentId: "attachment-1",
+    byteSize: 128,
+    cleanup: vi.fn(),
+    fileName: "slip.png",
+    mimeType: "image/png" as const,
+    storageKey: "payments/private/slip.png",
+    storageUrl: "/api/payments/slips/attachment-1"
+  };
+}
+
+describe("admin manual appointment payment intake and review", () => {
+  it("creates only pending records with private evidence and a bounded slot lock", async () => {
+    const tx = intakeTxMock();
+
+    const result = await createManualAppointmentPaymentIntake(
+      tx as never,
+      {
+        actorId: "admin-1",
+        availabilityId: "availability-1",
+        doctorId: "doctor-1",
+        evidence: preparedEvidence(),
+        patientId: "patient-1",
+        reasonCode: "provider_unavailable",
+        scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+        transferredAt: new Date("2026-09-05T05:30:00.000Z")
+      },
+      now
+    );
+
+    expect(result).toEqual({
+      consultationId: "consultation-1",
+      paymentId: "payment-1",
+      status: "created"
+    });
+    expect(tx.consultation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "pending_payment" })
+      })
+    );
+    expect(tx.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "pending_review",
+          verificationPayload: expect.objectContaining({
+            manualAppointmentIntake: expect.objectContaining({
+              source: "admin_manual_appointment",
+              reasonCode: "provider_unavailable"
+            })
+          })
+        })
+      })
+    );
+    expect(tx.consultationSlotLock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          expiresAt: new Date("2026-09-05T06:15:00.000Z")
+        })
+      })
+    );
+    expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
+      "transactionReference"
+    );
+  });
+
+  it("rejects evidence transferred more than 24 hours before intake", async () => {
+    const tx = intakeTxMock();
+
+    await expect(
+      createManualAppointmentPaymentIntake(
+        tx as never,
+        {
+          actorId: "admin-1",
+          availabilityId: "availability-1",
+          doctorId: "doctor-1",
+          evidence: preparedEvidence(),
+          patientId: "patient-1",
+          reasonCode: "provider_unavailable",
+          scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+          transferredAt: new Date("2026-09-04T05:59:59.000Z")
+        },
+        now
+      )
+    ).rejects.toBeInstanceOf(ManualAppointmentIntakeError);
+    expect(tx.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns the matching pending intake instead of creating duplicate records", async () => {
+    const tx = intakeTxMock();
+    tx.consultation.findFirst.mockResolvedValueOnce({
+      id: "consultation-existing",
+      patientId: "patient-1",
+      status: "pending_payment",
+      payment: {
+        id: "payment-existing",
+        status: "pending_review",
+        verificationPayload: manualAppointmentPayload()
+      }
+    });
+
+    const result = await createManualAppointmentPaymentIntake(
+      tx as never,
+      {
+        actorId: "admin-1",
+        availabilityId: "availability-1",
+        doctorId: "doctor-1",
+        evidence: preparedEvidence(),
+        patientId: "patient-1",
+        reasonCode: "provider_unavailable",
+        scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+        transferredAt: new Date("2026-09-05T04:30:00.000Z")
+      },
+      now
+    );
+
+    expect(result).toEqual({
+      consultationId: "consultation-existing",
+      paymentId: "payment-existing",
+      status: "already_pending"
+    });
+    expect(tx.consultationSlotLock.create).not.toHaveBeenCalled();
+    expect(tx.consultation.create).not.toHaveBeenCalled();
+    expect(tx.payment.create).not.toHaveBeenCalled();
+  });
+
+  it("verifies an eligible manual appointment without fabricating provider failure", async () => {
+    const tx = txMock({ verificationPayload: manualAppointmentPayload() });
+
+    const result = await applyManualAppointmentPaymentDecision(
+      tx as never,
+      {
+        actorId: "admin-1",
+        decision: "verified",
+        paymentId: "payment-1",
+        transactionReference: "bank-reference-1"
+      },
+      now
+    );
+
+    expect(result).toBe("scheduled");
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "verified",
+          normalizedTransactionReference: "BANKREFERENCE1"
+        })
+      })
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "consultation.manual_appointment_payment_review",
+          metadataJson: expect.objectContaining({
+            verificationSource: "admin_manual_appointment",
+            transactionReferenceRecorded: true
+          })
+        })
+      })
+    );
+    expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
+      "BANKREFERENCE1"
+    );
+  });
+
+  it("keeps verified funds and requires rescheduling when the Admin-created slot expired", async () => {
+    const tx = txMock({
+      expiresAt: new Date("2026-09-05T05:59:59.000Z"),
+      verificationPayload: manualAppointmentPayload()
+    });
+
+    const result = await applyManualAppointmentPaymentDecision(
+      tx as never,
+      {
+        actorId: "admin-1",
+        decision: "verified",
+        paymentId: "payment-1",
+        transactionReference: "bank-reference-1"
+      },
+      now
+    );
+
+    expect(result).toBe("reschedule_required");
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "verified" }) })
+    );
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "reschedule_required", slotLockId: null }
+      })
+    );
+  });
+
+  it("rejects the payment, cancels the provisional consultation, and releases the slot", async () => {
+    const tx = txMock({ verificationPayload: manualAppointmentPayload() });
+
+    const result = await applyManualAppointmentPaymentDecision(
+      tx as never,
+      {
+        actorId: "admin-1",
+        decision: "rejected",
+        paymentId: "payment-1",
+        rejectionReasonCode: "evidence_invalid"
+      },
+      now
+    );
+
+    expect(result).toBe("rejected");
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "rejected",
+          normalizedTransactionReference: null,
+          reviewedById: "admin-1"
+        })
+      })
+    );
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "cancelled", slotLockId: null }
+      })
+    );
+    expect(tx.consultationSlotLock.deleteMany).toHaveBeenCalledWith({
+      where: { id: "lock-1" }
+    });
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
   });
 });

@@ -49,7 +49,8 @@ describe("role permissions", () => {
     ["pharmacist", "profile:read:self"],
     ["pharmacist", "profile:update:self"],
     ["admin", "admin:access"],
-    ["admin", "payment:review"]
+    ["admin", "payment:review"],
+    ["admin", "consultation:manual-create"]
   ] satisfies Array<[Role, Permission]>)("allows %s to use %s", (role, permission) => {
     expect(hasPermission(session(role), permission)).toBe(true);
   });
@@ -62,7 +63,10 @@ describe("role permissions", () => {
     ["pharmacist", "prescription:verify"],
     ["pharmacist", "order:fulfill"],
     ["pharmacist", "consultation:update:assigned"],
-    ["pharmacist", "community:moderate"]
+    ["pharmacist", "community:moderate"],
+    ["customer", "consultation:manual-create"],
+    ["doctor", "consultation:manual-create"],
+    ["pharmacist", "consultation:manual-create"]
   ] satisfies Array<[Role, Permission]>)("denies %s from using %s", (role, permission) => {
     expect(hasPermission(session(role), permission)).toBe(false);
   });

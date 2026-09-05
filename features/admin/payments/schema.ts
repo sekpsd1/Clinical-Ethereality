@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
-import { consultationManualReviewReasonCodes } from "@/features/consultations/payment/manual-review";
+import {
+  consultationManualReviewReasonCodes,
+  manualAppointmentRejectionReasonCodes
+} from "@/features/consultations/payment/manual-review";
 
 const bangkokLocalDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
@@ -90,3 +93,46 @@ export const manualConsultationPaymentReviewSchema = z
       data.transactionReference
     )
   }));
+
+export const manualAppointmentPaymentIntakeSchema = z.object({
+  patientId: z.string().cuid(),
+  doctorId: z.string().cuid(),
+  availabilityId: z.string().min(1),
+  scheduledAt: z.string().datetime(),
+  transferredAt: bangkokLocalDateTimeSchema,
+  reasonCode: z.enum(consultationManualReviewReasonCodes),
+  confirmedManualIntake: z.literal("true")
+});
+
+export const manualAppointmentPaymentDecisionSchema = z.union([
+  z
+    .object({
+      paymentId: z.string().min(1),
+      decision: z.literal("verified"),
+      transactionReference: z.string().trim().min(1).max(255),
+      confirmedExternalBankCheck: z.literal("true")
+    })
+    .superRefine((data, context) => {
+      try {
+        normalizePaymentTransactionReference(data.transactionReference);
+      } catch {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["transactionReference"],
+          message: "A valid bank transaction reference is required."
+        });
+      }
+    })
+    .transform((data) => ({
+      ...data,
+      transactionReference: normalizePaymentTransactionReference(
+        data.transactionReference
+      )
+    })),
+  z.object({
+    paymentId: z.string().min(1),
+    decision: z.literal("rejected"),
+    rejectionReasonCode: z.enum(manualAppointmentRejectionReasonCodes),
+    confirmedRejection: z.literal("true")
+  })
+]);
