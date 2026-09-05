@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { CalendarCheck } from "lucide-react";
-import { createConsultationBookingAction } from "@/features/consultations/booking/actions";
+import {
+  createConsultationBookingAction,
+  reschedulePaidConsultationAction
+} from "@/features/consultations/booking/actions";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 import { BookingIdentityVerification } from "@/features/identity-verification/BookingIdentityVerification";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
@@ -28,7 +31,7 @@ function getStaticSlot(slot: string): BookingSlot {
   };
 }
 
-export function BookingTimeSlotForm({ data, verification, bookingError }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingError: string | null }) {
+export function BookingTimeSlotForm({ data, verification, bookingError, rescheduleConsultationId }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingError: string | null; rescheduleConsultationId?: string }) {
   const slots = useMemo(() => (data.slots.length > 0 ? data.slots : staticTimeSlots.map(getStaticSlot)), [data.slots]);
   const hasRealSlots = data.slots.length > 0 && !data.unavailable;
   const firstAvailableSlot = slots.find((slot) => slot.status === "available");
@@ -47,7 +50,13 @@ export function BookingTimeSlotForm({ data, verification, bookingError }: { data
   }
 
   return (
-    <form action={createConsultationBookingAction} className="space-y-6">
+    <form action={rescheduleConsultationId ? reschedulePaidConsultationAction : createConsultationBookingAction} className="space-y-6">
+      {rescheduleConsultationId ? <input type="hidden" name="consultationId" value={rescheduleConsultationId} /> : null}
+      {rescheduleConsultationId ? (
+        <p className="rounded-[16px] border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-semibold leading-6 text-primary">
+          การชำระเงินยืนยันแล้ว เลือกเวลาใหม่กับแพทย์เดิมโดยไม่ต้องชำระซ้ำ
+        </p>
+      ) : null}
       <CalendarPicker dates={availableDates} selectedDate={selectedDate} onSelectDate={selectDate} enabled={hasRealSlots} />
 
       <section className="flex flex-col gap-5">
@@ -124,7 +133,7 @@ export function BookingTimeSlotForm({ data, verification, bookingError }: { data
             className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-base font-bold leading-6 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />
-            {verification.isVerified ? "ยืนยันการจอง" : "ยืนยันข้อมูลเพื่อจอง"}
+            {verification.isVerified ? (rescheduleConsultationId ? "ยืนยันเวลาใหม่" : "ยืนยันการจอง") : "ยืนยันข้อมูลเพื่อจอง"}
           </button>
         </div>
       </section>

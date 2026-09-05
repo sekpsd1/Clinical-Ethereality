@@ -200,7 +200,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       prisma.consultation.count({
         where: {
           status: {
-            in: ["requested", "pending_payment", "scheduled"]
+            in: ["requested", "pending_payment", "reschedule_required", "scheduled"]
           }
         }
       }),

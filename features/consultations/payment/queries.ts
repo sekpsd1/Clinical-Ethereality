@@ -17,6 +17,7 @@ type ConsultationRecord = NonNullable<Awaited<ReturnType<typeof getConsultationR
 const statusLabels: Record<ConsultationStatus, string> = {
   requested: "รอยืนยัน",
   pending_payment: "รอชำระเงิน",
+  reschedule_required: "ต้องเลือกเวลาใหม่",
   scheduled: "ชำระเงินแล้ว",
   live: "กำลังปรึกษา",
   completed: "เสร็จสิ้น",
@@ -124,7 +125,8 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
     promptPay,
     verificationRetryAfterSeconds: consultation.payment
       ? getConsultationPaymentVerificationRetryAfterSeconds(consultation.payment)
-      : 0
+      : 0,
+    paymentRecordStatus: consultation.payment?.status ?? null
   };
 }
 

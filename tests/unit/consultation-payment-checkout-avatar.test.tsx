@@ -18,6 +18,7 @@ const data: ConsultationPaymentData = {
     scheduledTime: "09:00",
     status: "pending_payment",
     statusLabel: "รอชำระเงิน",
+    paymentRecordStatus: "pending_review",
     feeAmount: 1,
     feeLabel: "1 บาท",
     appointmentHref: "/consult/appointments/consultation-1",

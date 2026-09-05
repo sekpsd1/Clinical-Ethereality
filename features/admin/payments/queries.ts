@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
+import { getConsultationProviderFailureAt } from "@/features/consultations/payment/manual-review";
+import { paymentSlipEntityType } from "@/features/payments/private-slips";
 
 type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
 
@@ -44,6 +46,13 @@ function getPaymentsForAdmin() {
       },
       consultation: {
         select: {
+          status: true,
+          scheduledAt: true,
+          slotLock: {
+            select: {
+              expiresAt: true
+            }
+          },
           patient: {
             select: {
               displayName: true,
@@ -194,7 +203,53 @@ function getPaymentOperationalSummary(payment: PaymentWithContext) {
   };
 }
 
-function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
+function getConsultationManualReview(
+  payment: PaymentWithContext,
+  attachmentId: string | null,
+  now: Date
+): AdminPaymentQueueItem["consultationManualReview"] {
+  if (!payment.consultation) return null;
+  const failureAt = getConsultationProviderFailureAt(payment.verificationPayload);
+  const eligibleStatus =
+    payment.consultation.status === "pending_payment" ||
+    payment.consultation.status === "reschedule_required";
+  const activeSlot = Boolean(
+    payment.consultation.status === "pending_payment" &&
+      payment.consultation.slotLock &&
+      (!payment.consultation.slotLock.expiresAt ||
+        payment.consultation.slotLock.expiresAt > now)
+  );
+  const eligible = Boolean(
+    payment.status === "pending_review" &&
+      eligibleStatus &&
+      failureAt &&
+      attachmentId
+  );
+  const reason = !eligibleStatus
+    ? "สถานะนัดหมายไม่อนุญาตให้ตรวจด้วยวิธีนี้"
+    : payment.status !== "pending_review"
+      ? "สถานะการชำระเงินไม่อยู่ระหว่างรอตรวจ"
+      : !failureAt
+        ? "ไม่พบหลักฐานว่าระบบตรวจสลิปอัตโนมัติล้มเหลว"
+        : !attachmentId
+          ? "ไม่พบสลิปส่วนตัวที่เชื่อมกับรายการ"
+          : activeSlot
+            ? "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที"
+            : "slot เดิมถูกปล่อยแล้ว หลังยืนยันลูกค้าต้องเลือกเวลาใหม่";
+
+  return {
+    eligible,
+    reason,
+    slipHref: attachmentId ? `/api/payments/slips/${attachmentId}` : null,
+    slotState: activeSlot ? "active" : "released"
+  };
+}
+
+function mapPayment(
+  payment: PaymentWithContext,
+  attachmentId: string | null,
+  now: Date
+): AdminPaymentQueueItem {
   const summary = getPaymentOperationalSummary(payment);
   const customer = payment.order?.user ?? payment.consultation?.patient ?? null;
   const referenceId = payment.orderId ?? payment.consultationId ?? payment.id;
@@ -213,6 +268,7 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
       ? customer.phoneVerifiedAt ? "verified" : "pending"
       : "not_provided",
     amount: formatMoney(payment.amount),
+    amountInput: payment.amount.toString(),
     refundAmountInput: payment.amount.toString(),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,
@@ -222,7 +278,12 @@ function mapPayment(payment: PaymentWithContext): AdminPaymentQueueItem {
     receiverLabel: summary.receiverLabel,
     itemSummary: getItemSummary(payment),
     submittedAt: formatDate(payment.createdAt) ?? "",
-    reviewedAt: formatDate(payment.reviewedAt)
+    reviewedAt: formatDate(payment.reviewedAt),
+    consultationManualReview: getConsultationManualReview(
+      payment,
+      attachmentId,
+      now
+    )
   };
 }
 
@@ -231,7 +292,32 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
 
   try {
     const [payments, refundReadiness] = await Promise.all([getPaymentsForAdmin(), getManualStoreRefundReadiness()]);
-    const paymentItems = payments.map(mapPayment);
+    const consultationPaymentIds = payments
+      .filter(
+        (payment) =>
+          payment.consultationId && payment.status === "pending_review"
+      )
+      .map((payment) => payment.id);
+    const attachments = consultationPaymentIds.length
+      ? await prisma.fileAttachment.findMany({
+          where: {
+            entityId: { in: consultationPaymentIds },
+            entityType: paymentSlipEntityType,
+            purpose: "payment_slip",
+            status: "attached",
+            storageKey: { not: null }
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, entityId: true }
+        })
+      : [];
+    const attachmentByPaymentId = new Map(
+      attachments.map((attachment) => [attachment.entityId, attachment.id])
+    );
+    const now = new Date();
+    const paymentItems = payments.map((payment) =>
+      mapPayment(payment, attachmentByPaymentId.get(payment.id) ?? null, now)
+    );
 
     return {
       payments: paymentItems,

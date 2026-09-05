@@ -39,6 +39,7 @@ enum StaffProfileStatus {
 enum ConsultationStatus {
   requested
   pending_payment
+  reschedule_required
   scheduled
   live
   completed

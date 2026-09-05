@@ -3,6 +3,7 @@ import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
 import { AdminPaymentRefundForm } from "@/features/admin/AdminPaymentRefundForm";
+import { AdminConsultationPaymentReviewForm } from "@/features/admin/AdminConsultationPaymentReviewForm";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 
 const statusLabels: Record<string, string> = {
@@ -166,6 +167,9 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
               </div>
               {payment.status === "verified" && payment.orderId ? (
                 <AdminPaymentRefundForm payment={payment} readiness={data.refundReadiness} />
+              ) : null}
+              {payment.consultationId && payment.status === "pending_review" ? (
+                <AdminConsultationPaymentReviewForm payment={payment} />
               ) : null}
             </article>
           );

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
+  applyManualConsultationPaymentReview: vi.fn(),
   applyManualPaymentReview: vi.fn(),
   applyManualStoreRefund: vi.fn(),
+  assertPermission: vi.fn(),
   getManualStoreRefundReadiness: vi.fn(),
   requireAdminSession: vi.fn(),
   revalidatePath: vi.fn(),
@@ -24,6 +26,10 @@ vi.mock("@/lib/auth/guards", () => ({
   requireAdminSession: mocks.requireAdminSession
 }));
 
+vi.mock("@/lib/permissions", () => ({
+  assertPermission: mocks.assertPermission
+}));
+
 vi.mock("@/features/payments/service", () => ({
   applyManualPaymentReview: mocks.applyManualPaymentReview
 }));
@@ -36,7 +42,25 @@ vi.mock("@/features/payments/refund-readiness", () => ({
   getManualStoreRefundReadiness: mocks.getManualStoreRefundReadiness
 }));
 
-import { refundStorePaymentAction, reviewPaymentAction } from "@/features/admin/payments/actions";
+vi.mock("@/features/consultations/payment/manual-review", () => ({
+  applyManualConsultationPaymentReview: mocks.applyManualConsultationPaymentReview,
+  consultationManualReviewReasonCodes: [
+    "provider_unavailable",
+    "provider_timeout",
+    "provider_result_ambiguous"
+  ],
+  ConsultationManualReviewError: class ConsultationManualReviewError extends Error {
+    constructor(readonly code: string) {
+      super(code);
+    }
+  }
+}));
+
+import {
+  refundStorePaymentAction,
+  reviewConsultationPaymentAction,
+  reviewPaymentAction
+} from "@/features/admin/payments/actions";
 
 describe("admin payment review action", () => {
   beforeEach(() => {
@@ -97,6 +121,41 @@ describe("admin payment review action", () => {
 
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.applyManualPaymentReview).not.toHaveBeenCalled();
+  });
+
+  it("requires the dedicated permission and a serializable transaction for consultation review", async () => {
+    mocks.applyManualConsultationPaymentReview.mockResolvedValueOnce("scheduled");
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({ status: "success" });
+    expect(mocks.assertPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "admin-1" }),
+      "consultation-payment:manual-review"
+    );
+    expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+    });
+    expect(mocks.applyManualConsultationPaymentReview).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: "admin-1",
+        amount: "900.00",
+        paymentId: "payment-1",
+        transactionReference: "BANKREFERENCE1"
+      })
+    );
   });
 
   it("requires the existing admin guard and serializable transaction for a manual Store refund", async () => {

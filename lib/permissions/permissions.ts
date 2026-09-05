@@ -17,6 +17,7 @@ export const permissions = [
   "order:fulfill",
   "payment:create:self",
   "payment:review",
+  "consultation-payment:manual-review",
   "community:create:self",
   "community:moderate",
   "admin:access"

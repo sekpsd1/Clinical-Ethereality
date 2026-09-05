@@ -1,4 +1,4 @@
-import type { ConsultationStatus } from "@prisma/client";
+import type { ConsultationStatus, PaymentStatus } from "@prisma/client";
 import type { PromptPayInstruction } from "@/lib/payments/promptpay";
 
 export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "cooldown" | "invalid" | "expired" | "not_found";
@@ -19,6 +19,7 @@ export type ConsultationPaymentDetail = {
   privateSlipAttachmentId: string | null;
   promptPay: PromptPayInstruction;
   verificationRetryAfterSeconds: number;
+  paymentRecordStatus: PaymentStatus | null;
 };
 
 export type ConsultationPaymentData = {

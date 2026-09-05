@@ -12,6 +12,7 @@ export type AdminPaymentQueueItem = {
   customerPhone: string | null;
   customerPhoneVerificationStatus: "verified" | "pending" | "not_provided";
   amount: string;
+  amountInput: string;
   refundAmountInput: string;
   status: PaymentStatus;
   methodLabel: string;
@@ -22,6 +23,12 @@ export type AdminPaymentQueueItem = {
   itemSummary: string;
   submittedAt: string;
   reviewedAt: string | null;
+  consultationManualReview: {
+    eligible: boolean;
+    reason: string;
+    slipHref: string | null;
+    slotState: "active" | "released" | "not_applicable";
+  } | null;
 };
 
 export type AdminPaymentsData = {

@@ -48,9 +48,23 @@ function txMock() {
     consultation: {
       findUnique: vi.fn().mockResolvedValue({
         patientId: "patient-1",
-        status: "pending_payment"
+        doctorId: "doctor-1",
+        scheduledAt: new Date("2099-01-01T02:00:00.000Z"),
+        slotLockId: "lock-1",
+        status: "pending_payment",
+        doctor: { userId: "doctor-user-1" },
+        slotLock: {
+          id: "lock-1",
+          doctorId: "doctor-1",
+          patientId: "patient-1",
+          scheduledAt: new Date("2099-01-01T02:00:00.000Z"),
+          expiresAt: new Date("2099-01-01T03:00:00.000Z")
+        }
       }),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
+    },
+    consultationSlotLock: {
+      deleteMany: vi.fn()
     },
     notification: {
       create: vi.fn()
@@ -237,6 +251,41 @@ describe("consultation payment verification service", () => {
         })
       })
     );
+  });
+
+  it("verifies funds but requires rescheduling when the provider responds after the slot expires", async () => {
+    const tx = txMock();
+    tx.consultation.findUnique.mockResolvedValueOnce({
+      patientId: "patient-1",
+      doctorId: "doctor-1",
+      scheduledAt: new Date("2026-09-06T02:00:00.000Z"),
+      slotLockId: "lock-1",
+      status: "pending_payment",
+      doctor: { userId: "doctor-user-1" },
+      slotLock: {
+        id: "lock-1",
+        doctorId: "doctor-1",
+        patientId: "patient-1",
+        scheduledAt: new Date("2026-09-06T02:00:00.000Z"),
+        expiresAt: new Date("2020-01-01T00:00:00.000Z")
+      }
+    });
+
+    await applyConsultationPaymentVerification(tx as never, {
+      actorId: "patient-1",
+      consultation: consultation(),
+      evidence: { amount: 900, qrPayload: "qr-payload" },
+      result: result()
+    });
+
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith({
+      where: { id: "consultation-1", status: "pending_payment" },
+      data: { status: "reschedule_required", slotLockId: null }
+    });
+    expect(tx.consultationSlotLock.deleteMany).toHaveBeenCalledWith({
+      where: { id: "lock-1" }
+    });
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
   });
 
   it("records provider-webhook evidence without attributing the provider event to the patient", async () => {

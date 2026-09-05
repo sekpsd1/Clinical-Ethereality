@@ -56,6 +56,14 @@ export function ConsultPaymentCheckout({
                 href={consultation.waitingRoomHref}
                 cta="เปิดห้องรอ"
               />
+            ) : consultation.status === "reschedule_required" ? (
+              <PaymentStateCard
+                tone={consultation.paymentRecordStatus === "verified" ? "success" : "neutral"}
+                title={consultation.paymentRecordStatus === "verified" ? "ยืนยันการชำระเงินแล้ว" : "รอแอดมินตรวจรายการโอน"}
+                body={consultation.paymentRecordStatus === "verified" ? "เวลานัดเดิมถูกปล่อยคืนแล้ว กรุณาเลือกเวลาใหม่ของแพทย์เดิมโดยไม่ต้องชำระซ้ำ" : "สลิปยังอยู่ในคิวตรวจสอบ เวลานัดเดิมถูกปล่อยคืนแล้วและระบบจะไม่ยึด slot ให้อัตโนมัติ"}
+                href={consultation.paymentRecordStatus === "verified" ? `/consult/booking/somchai?reschedule=${consultation.id}` : consultation.appointmentHref}
+                cta={consultation.paymentRecordStatus === "verified" ? "เลือกเวลาใหม่" : "ดูสถานะนัดหมาย"}
+              />
             ) : consultation.status === "cancelled" ? (
               <PaymentStateCard
                 tone="danger"
@@ -188,7 +196,7 @@ function PrivateSlipVerification({
 }
 
 function getPaymentStatusTone(status: ConsultationPaymentDetail["status"]): "neutral" | "success" | "warning" | "danger" {
-  if (status === "pending_payment" || status === "requested") {
+  if (status === "pending_payment" || status === "requested" || status === "reschedule_required") {
     return "warning";
   }
 
@@ -220,6 +228,14 @@ function ConsultationPaymentStatusCard({
           body: "เวลานี้ถูกปล่อยคืนแล้ว ระบบจะไม่รับสลิปสำหรับนัดหมายนี้ เพื่อป้องกันการชำระเงินผิดรายการ",
           tone: "danger" as const
         }
+      : consultation.status === "reschedule_required"
+        ? {
+            icon: RotateCcw,
+            label: consultation.paymentRecordStatus === "verified" ? "ชำระแล้ว" : "รอตรวจรายการโอน",
+            title: "เวลานัดเดิมถูกปล่อยคืนแล้ว",
+            body: consultation.paymentRecordStatus === "verified" ? "เลือกเวลาใหม่ของแพทย์เดิมโดยไม่ต้องชำระซ้ำ" : "ทีมงานกำลังตรวจรายการโอน ระบบจะไม่เปิดห้องหรือยึดเวลาเดิมอัตโนมัติ",
+            tone: "warning" as const
+          }
       : consultation.status === "scheduled" || consultation.status === "live"
         ? {
             icon: CheckCircle2,

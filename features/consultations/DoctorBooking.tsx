@@ -5,7 +5,7 @@ import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { DoctorBookingData } from "@/features/consultations/booking/types";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
 
-export function DoctorBooking({ data, verification, bookingStatus }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingStatus?: string }) {
+export function DoctorBooking({ data, verification, bookingStatus, rescheduleConsultationId }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingStatus?: string; rescheduleConsultationId?: string }) {
   const bookingError =
     bookingStatus === "failed"
       ? "ไม่สามารถจองเวลานี้ได้ อาจมีผู้จองแล้วหรือ slot ถูกปิด กรุณาเลือกเวลาอื่น"
@@ -15,6 +15,8 @@ export function DoctorBooking({ data, verification, bookingStatus }: { data: Doc
         ? "กรุณาเลือกเวลานัดหมายก่อนยืนยัน"
         : bookingStatus === "identity_required"
         ? "กรุณายืนยันชื่อ วันเกิด และเบอร์โทรก่อนจองแพทย์"
+        : bookingStatus === "reschedule_ineligible"
+        ? "รายการนี้ยังไม่พร้อมเลือกเวลาใหม่ กรุณาตรวจสถานะการชำระเงิน"
         : null;
 
   return (
@@ -23,7 +25,7 @@ export function DoctorBooking({ data, verification, bookingStatus }: { data: Doc
 
       <div className="flex flex-col gap-6 px-4 pt-[72px]">
         <DoctorBioCard doctor={data.doctor} />
-        <BookingTimeSlotForm data={data} verification={verification} bookingError={bookingError} />
+        <BookingTimeSlotForm data={data} verification={verification} bookingError={bookingError} rescheduleConsultationId={rescheduleConsultationId} />
       </div>
     </section>
   );

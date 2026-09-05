@@ -153,6 +153,18 @@ function getWorkflowStatus(
     };
   }
 
+  if (status === "reschedule_required") {
+    return {
+      readinessLabel: "รอเลือกเวลาใหม่",
+      readinessTitle: "ยังไม่พร้อมตรวจ",
+      readinessDescription: "slot เดิมถูกปล่อยแล้ว ลูกค้าต้องเลือกเวลาใหม่ก่อนเปิดห้องปรึกษา",
+      readinessTone: "warning",
+      ...paymentCopy,
+      canOpenConsultRoom: false,
+      consultRoomHref: null
+    };
+  }
+
   if (status === "scheduled" || status === "live") {
     return {
       readinessLabel: status === "live" ? "กำลังปรึกษา" : "พร้อมตรวจ",
@@ -253,6 +265,13 @@ function getPaymentStatusCopy(
     return {
       paymentStatusLabel: "ไม่ได้ชำระเงิน",
       paymentStatusDescription: "slot ถูกปล่อยคืนหรือยกเลิกแล้ว"
+    };
+  }
+
+  if (consultationStatus === "reschedule_required") {
+    return {
+      paymentStatusLabel: paymentStatus === "verified" ? "ยืนยันแล้ว" : "รอตรวจรายการโอน",
+      paymentStatusDescription: paymentStatus === "verified" ? "ลูกค้าชำระแล้วและกำลังเลือกเวลาใหม่" : "slot เดิมถูกปล่อยและทีมงานกำลังตรวจรายการโอน"
     };
   }
 

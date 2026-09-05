@@ -233,3 +233,29 @@ export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBoo
     };
   }
 }
+
+export async function getVerifiedRescheduleContext(
+  patientId: string,
+  consultationId?: string
+): Promise<{ consultationId: string; doctorId: string } | null> {
+  noStore();
+  if (!consultationId || !doctorIdSchema.safeParse(consultationId).success) return null;
+  try {
+    return await prisma.consultation.findFirst({
+      where: {
+        id: consultationId,
+        patientId,
+        status: "reschedule_required",
+        slotLockId: null,
+        payment: { is: { status: "verified" } }
+      },
+      select: { id: true, doctorId: true }
+    }).then((consultation) =>
+      consultation
+        ? { consultationId: consultation.id, doctorId: consultation.doctorId }
+        : null
+    );
+  } catch {
+    return null;
+  }
+}

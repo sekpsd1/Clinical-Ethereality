@@ -19,6 +19,11 @@ const consultationStatusCopy: Record<ConsultationStatus, AdminConsultationStatus
     paymentLabel: "รอชำระค่าปรึกษา",
     tone: "warning"
   },
+  reschedule_required: {
+    label: "ชำระเงิน/ตรวจรายการแล้ว รอเลือกเวลาใหม่",
+    paymentLabel: "ตรวจสถานะจาก Payment",
+    tone: "warning"
+  },
   scheduled: {
     label: "ยืนยันนัดหมายแล้ว",
     paymentLabel: "ชำระค่าปรึกษาแล้ว",

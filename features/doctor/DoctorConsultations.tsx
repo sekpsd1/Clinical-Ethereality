@@ -12,6 +12,7 @@ const consultationStatusLabels: Record<string, string> = {
   completed: "เสร็จสิ้น",
   live: "กำลังปรึกษา",
   pending_payment: "รอชำระเงิน",
+  reschedule_required: "รอเลือกเวลาใหม่",
   requested: "รอยืนยัน",
   scheduled: "นัดหมายแล้ว"
 };
@@ -34,7 +35,7 @@ function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "s
     return "success";
   }
 
-  if (status === "requested" || status === "pending_payment") {
+  if (status === "requested" || status === "pending_payment" || status === "reschedule_required") {
     return "warning";
   }
 
@@ -46,7 +47,7 @@ function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "s
 }
 
 function canWritePrescription(consultation: DoctorConsultationItem): boolean {
-  if (consultation.status === "cancelled" || consultation.status === "requested" || consultation.status === "pending_payment") {
+  if (consultation.status === "cancelled" || consultation.status === "requested" || consultation.status === "pending_payment" || consultation.status === "reschedule_required") {
     return false;
   }
 

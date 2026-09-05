@@ -9,6 +9,7 @@ const consultationStatusLabels: Record<string, string> = {
   completed: "เสร็จสิ้น",
   live: "กำลังปรึกษา",
   pending_payment: "รอชำระเงิน",
+  reschedule_required: "รอเลือกเวลาใหม่",
   requested: "รอยืนยัน",
   scheduled: "นัดหมายแล้ว"
 };
@@ -27,7 +28,7 @@ function getStatusTone(status: DoctorPatientLogItem["latestConsultationStatus"])
     return "success";
   }
 
-  if (status === "requested" || status === "pending_payment" || status === "scheduled" || status === "live") {
+  if (status === "requested" || status === "pending_payment" || status === "reschedule_required" || status === "scheduled" || status === "live") {
     return "warning";
   }
 

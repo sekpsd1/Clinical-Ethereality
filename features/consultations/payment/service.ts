@@ -194,7 +194,20 @@ export async function applyConsultationPaymentVerification(
     },
     select: {
       patientId: true,
-      status: true
+      doctorId: true,
+      scheduledAt: true,
+      slotLockId: true,
+      status: true,
+      doctor: { select: { userId: true } },
+      slotLock: {
+        select: {
+          id: true,
+          doctorId: true,
+          patientId: true,
+          scheduledAt: true,
+          expiresAt: true
+        }
+      }
     }
   });
 
@@ -256,6 +269,22 @@ export async function applyConsultationPaymentVerification(
             ? { type: "qr_payload" }
             : { type: "image_url" }
   });
+  const slotIsActive = Boolean(
+    currentConsultation.slotLock &&
+      currentConsultation.slotLock.id === currentConsultation.slotLockId &&
+      currentConsultation.slotLock.doctorId === currentConsultation.doctorId &&
+      currentConsultation.slotLock.patientId === input.consultation.patientId &&
+      currentConsultation.scheduledAt &&
+      currentConsultation.slotLock.scheduledAt.getTime() ===
+        currentConsultation.scheduledAt.getTime() &&
+      (!currentConsultation.slotLock.expiresAt ||
+        currentConsultation.slotLock.expiresAt > reviewedAt)
+  );
+  const nextConsultationStatus = input.result.ok
+    ? slotIsActive
+      ? "scheduled"
+      : "reschedule_required"
+    : null;
 
   try {
     if (existingPayment) {
@@ -301,19 +330,26 @@ export async function applyConsultationPaymentVerification(
     throw error;
   }
 
-  if (transition.nextStatus) {
+  if (nextConsultationStatus) {
     const consultationUpdate = await tx.consultation.updateMany({
       where: {
         id: input.consultation.id,
         status: "pending_payment"
       },
-      data: {
-        status: transition.nextStatus
-      }
+      data:
+        nextConsultationStatus === "scheduled"
+          ? { status: "scheduled" }
+          : { status: "reschedule_required", slotLockId: null }
     });
 
     if (consultationUpdate.count !== 1) {
       throw new PaymentVerificationConflictError();
+    }
+
+    if (nextConsultationStatus === "reschedule_required" && currentConsultation.slotLockId) {
+      await tx.consultationSlotLock.deleteMany({
+        where: { id: currentConsultation.slotLockId }
+      });
     }
   }
 
@@ -323,14 +359,30 @@ export async function applyConsultationPaymentVerification(
         userId: input.consultation.patientId,
         type: "consultation",
         channel: "in_app",
-        title: "ยืนยันการชำระค่าปรึกษาแล้ว",
-        body: "นัดหมายของคุณได้รับการยืนยันแล้ว กรุณาเปิดห้องรอก่อนเวลานัด",
+        title: nextConsultationStatus === "scheduled" ? "ยืนยันการชำระค่าปรึกษาแล้ว" : "ยืนยันการชำระเงินแล้ว กรุณาเลือกเวลาใหม่",
+        body: nextConsultationStatus === "scheduled" ? "นัดหมายของคุณได้รับการยืนยันแล้ว กรุณาเปิดห้องรอก่อนเวลานัด" : "เวลานัดเดิมถูกปล่อยคืนแล้ว เลือกเวลาใหม่ของแพทย์เดิมโดยไม่ต้องชำระซ้ำ",
         metadataJson: {
           consultationId: input.consultation.id,
-          href: `/consult/appointments/${input.consultation.id}`
+          href: nextConsultationStatus === "scheduled" ? `/consult/appointments/${input.consultation.id}` : `/consult/booking/somchai?doctorId=${currentConsultation.doctorId}&reschedule=${input.consultation.id}`
         }
       }
     });
+
+    if (nextConsultationStatus === "scheduled") {
+      await tx.notification.create({
+        data: {
+          userId: currentConsultation.doctor.userId,
+          type: "consultation",
+          channel: "in_app",
+          title: "มีนัดหมายปรึกษาใหม่",
+          body: "การชำระเงินได้รับการยืนยันแล้ว กรุณาตรวจคิวปรึกษา",
+          metadataJson: {
+            consultationId: input.consultation.id,
+            href: "/doctor/consultations"
+          }
+        }
+      });
+    }
   }
 
   await writeAuditLog(tx, {
@@ -340,12 +392,13 @@ export async function applyConsultationPaymentVerification(
     entityId: input.consultation.id,
     metadata: {
       previousStatus: input.consultation.status,
-      nextStatus: transition.nextStatus ?? input.consultation.status,
+      nextStatus: nextConsultationStatus ?? input.consultation.status,
       provider: input.result.provider,
       status: input.result.status,
       transactionReferenceRecorded: Boolean(normalizedTransactionReference),
       amountMatched: input.result.ok,
-      receiverMatched: input.result.ok
+      receiverMatched: input.result.ok,
+      slotOutcome: input.result.ok ? (slotIsActive ? "retained" : "released") : "unchanged"
     }
   });
 }

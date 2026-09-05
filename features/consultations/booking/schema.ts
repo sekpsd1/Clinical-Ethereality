@@ -7,3 +7,7 @@ export const createConsultationBookingSchema = z.object({
   // booking forms always submit it and the action verifies it against the slot.
   doctorId: z.string().cuid().optional()
 });
+
+export const reschedulePaidConsultationSchema = createConsultationBookingSchema.extend({
+  consultationId: z.string().cuid()
+});

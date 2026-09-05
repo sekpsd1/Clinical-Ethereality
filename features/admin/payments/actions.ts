@@ -4,10 +4,19 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
-import { manualStoreRefundSchema, reviewPaymentSchema } from "@/features/admin/payments/schema";
+import { assertPermission } from "@/lib/permissions";
+import {
+  manualConsultationPaymentReviewSchema,
+  manualStoreRefundSchema,
+  reviewPaymentSchema
+} from "@/features/admin/payments/schema";
 import { applyManualPaymentReview } from "@/features/payments/service";
 import { applyManualStoreRefund } from "@/features/payments/refunds";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
+import {
+  applyManualConsultationPaymentReview,
+  ConsultationManualReviewError
+} from "@/features/consultations/payment/manual-review";
 
 export type AdminPaymentActionState = {
   status: "idle" | "success" | "error";
@@ -113,6 +122,75 @@ export async function refundStorePaymentAction(
     return {
       status: "error",
       message: "ไม่สามารถบันทึกการคืนเงินได้ โปรดตรวจสถานะคำสั่งซื้อและข้อมูลที่กรอก"
+    };
+  }
+}
+
+export async function reviewConsultationPaymentAction(
+  _previousState: AdminPaymentActionState,
+  formData: FormData
+): Promise<AdminPaymentActionState> {
+  const session = await requireAdminSession();
+  assertPermission(session, "consultation-payment:manual-review");
+  const parsed = manualConsultationPaymentReviewSchema.safeParse(
+    formDataToObject(formData)
+  );
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "กรอกข้อมูลตรวจรายการโอนให้ครบและใช้วันที่เวลาประเทศไทย"
+    };
+  }
+
+  try {
+    const outcome = await prisma.$transaction(
+      (tx) =>
+        applyManualConsultationPaymentReview(tx, {
+          actorId: session.userId,
+          amount: parsed.data.amount,
+          customerReportedAt: parsed.data.customerReportedAt,
+          paymentId: parsed.data.paymentId,
+          reasonCode: parsed.data.reasonCode,
+          transactionReference: parsed.data.transactionReference,
+          transferredAt: parsed.data.transferredAt
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/payments");
+    revalidatePath("/doctor/consultations");
+    revalidatePath("/doctor/notifications");
+    revalidatePath("/notifications");
+
+    return {
+      status: "success",
+      message:
+        outcome === "already_processed"
+          ? "รายการนี้ยืนยันไว้แล้ว"
+          : outcome === "scheduled"
+            ? "ยืนยันการชำระเงินและนัดหมายแล้ว"
+            : "ยืนยันการชำระเงินแล้ว ลูกค้าต้องเลือกเวลาใหม่"
+    };
+  } catch (error) {
+    const messages: Partial<
+      Record<ConsultationManualReviewError["code"], string>
+    > = {
+      DUPLICATE_REFERENCE: "เลขอ้างอิงนี้ถูกใช้กับรายการที่ยืนยันแล้ว",
+      INVALID_AMOUNT: "ยอดที่กรอกไม่ตรงกับยอดค่าปรึกษา",
+      INVALID_CONTACT_WINDOW: "ลูกค้าต้องติดต่อ LINE OA ภายใน 24 ชั่วโมงหลังระบบตรวจสลิปล้มเหลว",
+      INVALID_TRANSFER_TIME: "วันเวลาโอนไม่อยู่ในช่วงที่อนุญาต",
+      MISSING_EVIDENCE: "ไม่พบสลิปส่วนตัวที่เชื่อมกับรายการนี้",
+      NOT_ELIGIBLE: "รายการนี้ไม่เข้าเงื่อนไข Manual Consultation Payment Review",
+      CONFLICT: "สถานะรายการเปลี่ยนแล้ว กรุณารีเฟรชก่อนตรวจใหม่"
+    };
+    return {
+      status: "error",
+      message:
+        error instanceof ConsultationManualReviewError
+          ? messages[error.code] ?? "ไม่สามารถยืนยันรายการนี้ได้"
+          : "ไม่สามารถยืนยันรายการนี้ได้ กรุณาตรวจสถานะแล้วลองใหม่"
     };
   }
 }

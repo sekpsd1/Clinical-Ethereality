@@ -17,7 +17,9 @@ describe("booking identity OTP dispatch contract", () => {
     expect(identitySource).toContain('setTimeout(() => {');
     expect(identitySource).not.toContain("useEffect");
     expect(identitySource).not.toContain("<form");
-    expect(bookingSource).toContain('<form action={createConsultationBookingAction}');
+    expect(bookingSource).toContain(
+      '<form action={rescheduleConsultationId ? reschedulePaidConsultationAction : createConsultationBookingAction}'
+    );
     expect(bookingSource.match(/<BookingIdentityVerification\b/g)).toHaveLength(1);
   });
 

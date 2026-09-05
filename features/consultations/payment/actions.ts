@@ -13,6 +13,7 @@ import {
   applyConsultationPaymentVerification,
   claimConsultationProviderVerification
 } from "@/features/consultations/payment/service";
+import { recordConsultationProviderFailure } from "@/features/consultations/payment/manual-review";
 import { PaymentVerificationRateLimitError } from "@/features/payments/service";
 import {
   paymentSlipEntityType,
@@ -27,6 +28,24 @@ function formDataToObject(formData: FormData) {
 
 function redirectToPayment(consultationId: string, status: string): never {
   redirect(`/consult/payment?consultation=${consultationId}&payment=${status}`);
+}
+
+async function recordProviderFailure(
+  consultationId: string,
+  actorId: string,
+  provider: "slipok" | "easyslip" | "unknown"
+): Promise<void> {
+  await prisma
+    .$transaction(
+      (tx) =>
+        recordConsultationProviderFailure(tx, {
+          actorId,
+          consultationId,
+          provider
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    )
+    .catch(() => undefined);
 }
 
 export async function verifyConsultationSlipAction(formData: FormData): Promise<void> {
@@ -137,10 +156,12 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
   }).catch(() => null);
 
   if (!result) {
+    await recordProviderFailure(consultationId, session.userId, "unknown");
     redirectToPayment(consultationId, "provider_error");
   }
 
   if (result.status === "provider_error") {
+    await recordProviderFailure(consultationId, session.userId, result.provider);
     redirectToPayment(consultationId, "provider_error");
   }
 

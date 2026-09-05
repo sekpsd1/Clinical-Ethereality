@@ -16,6 +16,7 @@ const consultationStatusLabels = {
   completed: "เสร็จสิ้น",
   live: "กำลังปรึกษา",
   pending_payment: "รอชำระเงิน",
+  reschedule_required: "รอเลือกเวลาใหม่",
   requested: "รอยืนยัน",
   scheduled: "นัดหมายแล้ว"
 } as const;

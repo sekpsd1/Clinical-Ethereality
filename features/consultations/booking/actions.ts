@@ -8,21 +8,76 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
-import { createConsultationBookingSchema } from "@/features/consultations/booking/schema";
+import {
+  createConsultationBookingSchema,
+  reschedulePaidConsultationSchema
+} from "@/features/consultations/booking/schema";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import { PatientVerificationError, requireVerifiedPatientProfile } from "@/features/identity-verification/service";
+import {
+  ConsultationRescheduleError,
+  rescheduleVerifiedConsultation
+} from "@/features/consultations/booking/reschedule";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
 
-function getBookingPath(doctorId?: string, bookingStatus?: string): Route {
+function getBookingPath(doctorId?: string, bookingStatus?: string, reschedule?: string): Route {
   const params = new URLSearchParams();
   if (doctorId) params.set("doctorId", doctorId);
   if (bookingStatus) params.set("booking", bookingStatus);
+  if (reschedule) params.set("reschedule", reschedule);
   const query = params.toString();
   return (query ? `/consult/booking/somchai?${query}` : "/consult/booking/somchai") as Route;
+}
+
+export async function reschedulePaidConsultationAction(formData: FormData): Promise<void> {
+  const session = await requireCurrentSession();
+  assertPermission(session, "consultation:create:self");
+  const parsed = reschedulePaidConsultationSchema.safeParse(formDataToObject(formData));
+  const consultationId = String(formData.get("consultationId") ?? "");
+  const doctorId = String(formData.get("doctorId") ?? "");
+
+  if (!parsed.success) {
+    redirect(getBookingPath(doctorId, "invalid", consultationId));
+  }
+
+  try {
+    await requireVerifiedPatientProfile(session.userId);
+    await prisma.$transaction(
+      (tx) =>
+        rescheduleVerifiedConsultation(tx, {
+          availabilityId: parsed.data.availabilityId,
+          consultationId: parsed.data.consultationId,
+          doctorId: parsed.data.doctorId ?? "",
+          patientId: session.userId,
+          scheduledAt: new Date(parsed.data.scheduledAt)
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof PatientVerificationError) {
+      redirect(getBookingPath(doctorId, "identity_required", consultationId));
+    }
+    const status =
+      error instanceof ConsultationRescheduleError && error.code === "NOT_ELIGIBLE"
+        ? "reschedule_ineligible"
+        : error instanceof ConsultationRescheduleError && error.code === "SLOT_UNAVAILABLE"
+          ? "locked"
+          : "failed";
+    redirect(getBookingPath(doctorId, status, consultationId));
+  }
+
+  revalidatePath("/consult/booking/somchai");
+  revalidatePath(`/consult/appointments/${parsed.data.consultationId}`);
+  revalidatePath("/doctor/consultations");
+  revalidatePath("/doctor/notifications");
+  revalidatePath("/notifications");
+  revalidatePath("/admin");
+  revalidatePath("/admin/audit");
+  redirect(`/consult/appointments/${parsed.data.consultationId}`);
 }
 
 export async function createConsultationBookingAction(formData: FormData): Promise<void> {

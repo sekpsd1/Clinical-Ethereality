@@ -31,6 +31,13 @@ const statusContent: Record<
     nextStepDescription: "ชำระค่าปรึกษาเพื่อยืนยันและสำรองเวลานัดหมายนี้",
     ctaLabel: "ไปหน้าชำระเงิน"
   },
+  reschedule_required: {
+    label: "ต้องเลือกเวลาใหม่",
+    tone: "warning",
+    nextStepLabel: "เลือกเวลาปรึกษาใหม่",
+    nextStepDescription: "เวลานัดเดิมถูกปล่อยคืนแล้ว ระบบจะไม่ยึดเวลาเดิมโดยอัตโนมัติ",
+    ctaLabel: "ตรวจสถานะและเลือกเวลาใหม่"
+  },
   scheduled: {
     label: "นัดหมายแล้ว",
     tone: "success",
@@ -77,7 +84,8 @@ function getConsultationRecord(consultationId: string, patientId: string) {
             }
           }
         }
-      }
+      },
+      payment: { select: { status: true } }
     }
   });
 }
@@ -107,7 +115,8 @@ function formatMoney(value: number | null): string {
   return `${new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(value ?? 1000)} บาท`;
 }
 
-function getCtaHref(status: ConsultationStatus, consultationId: string): string {
+function getCtaHref(consultation: ConsultationRecord): string {
+  const { status, id: consultationId } = consultation;
   if (status === "scheduled" || status === "live") {
     return `/consult/waiting-room?consultation=${consultationId}`;
   }
@@ -120,10 +129,19 @@ function getCtaHref(status: ConsultationStatus, consultationId: string): string 
     return "/consult/booking/somchai";
   }
 
+  if (status === "reschedule_required") {
+    return consultation.payment?.status === "verified"
+      ? `/consult/booking/somchai?doctorId=${consultation.doctorId}&reschedule=${consultation.id}`
+      : `/consult/payment?consultation=${consultation.id}`;
+  }
+
   return `/consult/payment?consultation=${consultationId}`;
 }
 
-function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointmentDetail, "paymentStatusLabel" | "paymentStatusDescription"> {
+function getPaymentStatusCopy(
+  status: ConsultationStatus,
+  paymentStatus: string | null
+): Pick<CustomerAppointmentDetail, "paymentStatusLabel" | "paymentStatusDescription"> {
   if (status === "pending_payment") {
     return {
       paymentStatusLabel: "รอชำระเงิน",
@@ -145,6 +163,18 @@ function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointm
     };
   }
 
+  if (status === "reschedule_required") {
+    return paymentStatus === "verified"
+      ? {
+          paymentStatusLabel: "ชำระเงินแล้ว",
+          paymentStatusDescription: "ยืนยันรายการโอนแล้ว เลือกเวลาใหม่ของแพทย์เดิมโดยไม่ต้องชำระซ้ำ"
+        }
+      : {
+          paymentStatusLabel: "รอแอดมินตรวจรายการโอน",
+          paymentStatusDescription: "slot เดิมถูกปล่อยแล้ว แต่หลักฐานยังอยู่ในคิว Manual Review"
+        };
+  }
+
   return {
     paymentStatusLabel: "รอยืนยัน",
     paymentStatusDescription: "ระบบกำลังเตรียมขั้นตอนการชำระเงินสำหรับนัดหมายนี้"
@@ -153,7 +183,7 @@ function getPaymentStatusCopy(status: ConsultationStatus): Pick<CustomerAppointm
 
 function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentDetail {
   const status = statusContent[consultation.status];
-  const paymentStatus = getPaymentStatusCopy(consultation.status);
+  const paymentStatus = getPaymentStatusCopy(consultation.status, consultation.payment?.status ?? null);
   const avatarUrl = consultation.doctor.user.avatarUrl ?? "/images/doctors/somchai-payment.png";
 
   return {
@@ -173,7 +203,7 @@ function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentD
     nextStepLabel: status.nextStepLabel,
     nextStepDescription: status.nextStepDescription,
     ctaLabel: status.ctaLabel,
-    ctaHref: getCtaHref(consultation.status, consultation.id)
+    ctaHref: getCtaHref(consultation)
   };
 }
 
