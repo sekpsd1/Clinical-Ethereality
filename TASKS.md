@@ -492,3 +492,12 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Add guarded approve/reject review: unique normalized external-bank reference on approval; `scheduled` when the hold is active; `reschedule_required` when it expired; `rejected` / `cancelled` plus slot release on controlled rejection.
 - [x] Preserve audit, actor/time/evidence metadata, row-locking, Serializable/CAS/idempotency boundaries, and block customer provider verification or slip resubmission for Admin-created manual appointments.
 - [ ] Integrate the exported intake Server Action into the Admin appointment calendar in its owning task, then perform separately approved controlled UAT. The current release requires no migration or Production business-data mutation.
+
+## Admin test consultation reset (code only, 2026-09-05)
+
+- [x] Add an Admin-only, dedicated-permission preview and cancellation contract for one explicitly selected controlled UAT Consultation; return opaque operational identifiers/status only and no patient PII.
+- [x] Enforce exact active-lifecycle eligibility, strict controlled/non-monetary UAT provenance, `test_data_reset` confirmation, Serializable row locks, Consultation/Payment CAS, safe owned-slot release, and fail-closed conflict handling.
+- [x] Preserve Payment status, slip/evidence attachments, AuditLog, User, and Doctor records; store the pending-payment reset marker in existing Payment JSON and audit actor/time/previous status without a migration.
+- [x] Define schedule-preflight behavior: ignore only pending Consultation payments whose linked Consultation is cancelled and whose strict reset marker has matching Consultation/Payment IDs; every ordinary or malformed pending payment continues blocking schedule deactivation.
+- [x] Cover permission, exact-target/no-PII preview, non-test denial, lifecycle/lock safety, race handling, idempotency, pending-payment preservation, and schedule-preflight marker behavior with focused unit tests.
+- [ ] Before any Production reset, run read-only preview for each exact target, obtain separate mutation approval, execute one target at a time, verify Consultation/audit/payment-marker/slot outcomes after each transaction, and stop on any mismatch. Do not commit, deploy, or mutate Production as part of the code-only review.
