@@ -54,6 +54,25 @@ export const deleteDoctorAvailabilityDateOverrideSchema = z.object({
   confirm: z.literal("delete")
 });
 
+export const updateDoctorAvailabilityDateOverrideSchema = z.object({
+  overrideId: z.string().min(1)
+}).and(createDoctorAvailabilityDateOverrideSchema);
+
+export const copyDoctorAvailabilityDateOverridesSchema = z.object({
+  doctorId: z.string().min(1),
+  sourceDate: z.string().regex(calendarDatePattern),
+  targetDates: z.array(z.string().regex(calendarDatePattern)).min(1).max(31),
+  confirm: z.literal("copy")
+}).superRefine((value, context) => {
+  if (new Set(value.targetDates).size !== value.targetDates.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "เลือกวันปลายทางซ้ำ", path: ["targetDates"] });
+  }
+
+  if (value.targetDates.includes(value.sourceDate)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "วันปลายทางต้องต่างจากวันต้นทาง", path: ["targetDates"] });
+  }
+});
+
 export const upsertDoctorAvailabilitySchema = z
   .object({
     availabilityId: z.string().optional(),

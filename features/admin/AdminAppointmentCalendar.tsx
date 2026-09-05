@@ -1,6 +1,5 @@
-import { CalendarDays, Clock3, UserRound } from "lucide-react";
+import { CalendarDays, Clock3, Stethoscope, UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { AdminAppointmentDateField } from "@/features/admin/AdminAppointmentDateField";
 import type { AdminAppointmentCalendarData } from "@/features/admin/schedules/types";
 
 const statusTones = {
@@ -12,30 +11,30 @@ const statusTones = {
 
 export function AdminAppointmentCalendar({ data }: { data: AdminAppointmentCalendarData }) {
   return (
-    <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+    <section id="doctor-schedule" className="scroll-mt-4 rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-label font-bold uppercase text-primary">นัดหมายจริง</p>
-          <h2 className="mt-1 font-headline text-lg font-bold text-text">ปฏิทินนัดหมายแพทย์</h2>
-          <p className="mt-1 text-xs leading-5 text-muted">ตรวจเวลาว่างก่อนแจ้งลูกค้า โดยแสดงนัดยืนยันและช่วงเวลาที่กำลังรอชำระเงิน</p>
+          <p className="text-label font-bold uppercase text-primary">ขั้นตอนที่ 2</p>
+          <h2 className="mt-1 font-headline text-lg font-bold text-text">ตารางแพทย์ วันที่ {data.dateLabel}</h2>
+          <p className="mt-1 text-xs leading-5 text-muted">เลือกแพทย์เพื่อจัดการเวลาตรวจของวันนั้น รายการจองและช่วงที่รอชำระเงินจะแสดงแยกชัดเจน</p>
         </div>
         <CalendarDays aria-hidden="true" className="size-5 shrink-0 text-primary" />
       </div>
 
-      <form action="/admin/schedules" method="get" className="mt-4 grid gap-3 sm:grid-cols-2">
+      <form action="/admin/schedules#doctor-schedule" method="get" className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <input type="hidden" name="date" value={data.dateValue} />
         <label className="text-xs font-bold text-text">
-          แพทย์
+          เลือกแพทย์
           <select name="doctor" defaultValue={data.selectedDoctorId} className="mt-1 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text">
-            <option value="">แพทย์ทุกคน</option>
+            <option value="">แสดงแพทย์ทุกคน</option>
             {data.doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
           </select>
         </label>
-        <AdminAppointmentDateField initialValue={data.dateValue} />
-        <button type="submit" className="min-h-10 rounded-[8px] bg-primary px-4 text-sm font-bold text-white sm:col-span-2">ดูตารางนัดหมาย</button>
+        <button type="submit" className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-bold text-white"><Stethoscope aria-hidden="true" className="size-4" />จัดการแพทย์</button>
       </form>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-        <p className="text-sm font-bold text-text">{data.dateLabel}</p>
+        <p className="text-sm font-bold text-text">{data.selectedDoctorId ? "ตารางของแพทย์ที่เลือก" : "ตารางแพทย์ทั้งหมด"}</p>
         <StatusBadge tone={data.slots.length > 0 ? "success" : "neutral"}>{data.slots.length} ช่วงเวลา</StatusBadge>
       </div>
 

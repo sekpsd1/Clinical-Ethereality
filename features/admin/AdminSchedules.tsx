@@ -33,15 +33,25 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
         </section>
       ) : null}
 
-      <AdminDateScheduleCalendar overrides={data.dateOverrides} slots={data.slots} />
+      <AdminDateScheduleCalendar
+        overrides={data.dateOverrides}
+        slots={data.slots}
+        selectedDate={data.appointmentCalendar.dateValue}
+        selectedDoctorId={data.appointmentCalendar.selectedDoctorId}
+      />
 
       <AdminAppointmentCalendar data={data.appointmentCalendar} />
 
-      <AdminConsultationFeeSettings doctors={data.doctors} />
+      <AdminDateScheduleEditor
+        doctors={data.doctors}
+        overrides={data.dateOverrides}
+        selectedDate={data.appointmentCalendar.dateValue}
+        selectedDoctorId={data.appointmentCalendar.selectedDoctorId}
+      />
 
       <AdminBulkScheduleEditor doctors={data.doctors} />
 
-      <AdminDateScheduleEditor doctors={data.doctors} />
+      <AdminConsultationFeeSettings doctors={data.doctors} />
 
       {editSlot ? <AdminScheduleForm key={editSlot.id} doctors={data.doctors} editSlot={editSlot} /> : null}
 

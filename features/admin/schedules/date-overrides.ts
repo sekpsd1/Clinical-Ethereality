@@ -34,3 +34,19 @@ export function getBangkokDayRange(value: Date): { start: Date; end: Date } {
   const start = new Date(`${scheduleDate}T00:00:00+07:00`);
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
+
+export function getBangkokScheduleDateValue(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(now);
+  const valueByType = new Map(parts.map((part) => [part.type, part.value]));
+
+  return `${valueByType.get("year")}-${valueByType.get("month")}-${valueByType.get("day")}`;
+}
+
+export function isPastScheduleDate(value: string, now = new Date()): boolean {
+  return value < getBangkokScheduleDateValue(now);
+}
