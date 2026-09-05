@@ -6,12 +6,14 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from "@/features/admin/schedules/bulk";
-import { getBangkokDayRange, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
+import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
+import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
   deleteDoctorAvailabilityDateOverrideSchema,
   createDoctorAvailabilityBatchSchema,
+  deactivateAllDoctorSchedulesSchema,
   toggleDoctorAvailabilityDateOverrideSchema,
   toggleDoctorAvailabilitySchema,
   updateDoctorAvailabilityDateOverrideSchema,
@@ -370,6 +372,67 @@ export async function toggleDoctorAvailabilityAction(
     status: "success",
     message: "ปรับสถานะตารางเรียบร้อยแล้ว"
   };
+}
+
+export async function deactivateAllDoctorSchedulesAction(
+  _previousState: AdminScheduleActionState,
+  formData: FormData
+): Promise<AdminScheduleActionState> {
+  const session = await requireAdminSession();
+  const parsed = deactivateAllDoctorSchedulesSchema.safeParse(formDataToObject(formData));
+
+  if (!parsed.success) return { status: "error", message: "กรุณาพิมพ์ข้อความยืนยันให้ถูกต้อง" };
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const today = parseScheduleDate(getBangkokScheduleDateValue(now));
+      const doctors = await tx.doctor.findMany({
+        where: { status: "approved", user: { status: "active" } },
+        select: { id: true }
+      });
+      const doctorIds = doctors.map((doctor) => doctor.id);
+      const [activeConsultations, pendingPayments, activeSlotLocks] = await Promise.all([
+        tx.consultation.count({
+          where: {
+            doctorId: { in: doctorIds },
+            status: { notIn: ["completed", "cancelled"] }
+          }
+        }),
+        tx.payment.count({
+          where: {
+            status: { in: ["pending_slip", "pending_review"] },
+            consultation: { doctorId: { in: doctorIds } }
+          }
+        }),
+        tx.consultationSlotLock.count({ where: { doctorId: { in: doctorIds }, expiresAt: { gt: now } } })
+      ]);
+      const conflict = getDoctorScheduleDeactivateConflict({ targetDoctors: doctorIds.length, activeConsultations, pendingPayments, activeSlotLocks });
+      if (conflict) throw new ScheduleBookingSafetyError(conflict);
+
+      const [availability, overrides] = await Promise.all([
+        tx.doctorAvailability.updateMany({ where: { doctorId: { in: doctorIds }, isActive: true }, data: { isActive: false } }),
+        tx.doctorAvailabilityDateOverride.updateMany({ where: { doctorId: { in: doctorIds }, scheduleDate: { gte: today }, isActive: true }, data: { isActive: false } })
+      ]);
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "doctor_schedule.bulk_deactivate",
+        entityType: "doctor_schedule",
+        metadata: { doctorCount: doctorIds.length, recurringAvailabilityCount: availability.count, futureDateOverrideCount: overrides.count, scheduleFrom: getBangkokScheduleDateValue(now) }
+      });
+
+      return { doctorCount: doctorIds.length, recurringAvailabilityCount: availability.count, futureDateOverrideCount: overrides.count };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/schedules");
+    revalidatePath("/admin/audit");
+    revalidatePath("/consult");
+    return { status: "success", message: `ปิดตารางประจำ ${result.recurringAvailabilityCount} รายการ และเวลาพิเศษในอนาคต ${result.futureDateOverrideCount} รายการของแพทย์ ${result.doctorCount} คนแล้ว` };
+  } catch (error) {
+    return { status: "error", message: error instanceof ScheduleBookingSafetyError ? error.message : "ไม่สามารถปิดตารางทั้งหมดได้" };
+  }
 }
 
 export async function createDoctorAvailabilityDateOverrideAction(

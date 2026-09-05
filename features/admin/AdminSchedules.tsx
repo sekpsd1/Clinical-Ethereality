@@ -1,6 +1,7 @@
 import { CalendarClock, Stethoscope, ToggleRight } from "lucide-react";
 import { AdminConsultationFeeSettings } from "@/features/admin/AdminConsultationFeeSettings";
 import { AdminAppointmentCalendar } from "@/features/admin/AdminAppointmentCalendar";
+import { AdminDeactivateAllDoctorSchedules } from "@/features/admin/AdminDeactivateAllDoctorSchedules";
 import { AdminScheduleForm } from "@/features/admin/AdminScheduleForm";
 import type { AdminSchedulesData } from "@/features/admin/schedules/types";
 
@@ -30,6 +31,8 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
       ) : null}
 
       <AdminAppointmentCalendar data={data.appointmentCalendar} manualAppointmentPatients={data.manualAppointmentPatients} workingHoursDoctors={data.doctors} dateOverrides={data.dateOverrides} />
+
+      <AdminDeactivateAllDoctorSchedules doctorCount={data.doctors.length} />
 
       <AdminConsultationFeeSettings doctors={data.doctors} />
 

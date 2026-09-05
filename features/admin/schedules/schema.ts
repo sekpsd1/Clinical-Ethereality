@@ -99,6 +99,10 @@ export const toggleDoctorAvailabilitySchema = z.object({
   isActive: z.enum(["true", "false"]).transform((value) => value === "true")
 });
 
+export const deactivateAllDoctorSchedulesSchema = z.object({
+  confirmation: z.literal("ปิดตารางทดสอบทั้งหมด")
+});
+
 export const createDoctorAvailabilityBatchSchema = z
   .object({
     doctorId: z.string().min(1),
