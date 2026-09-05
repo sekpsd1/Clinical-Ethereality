@@ -260,7 +260,8 @@
 - [x] Add manual admin payment verify/reject Server Action boundaries
 - [x] Extract manual payment review rules into a tested domain service
 - [x] Add Consultation-only manual payment fallback after a recorded provider failure: private-slip evidence, external-bank attestation, exact amount and normalized-reference uniqueness, 24-hour LINE OA contact window, dedicated permission, Serializable locks/CAS, minimized audit metadata, and in-app notification.
-- [x] Add `reschedule_required` for paid consultations whose original slot expired, preserve review/payment state during locked expiry cleanup, and let the customer choose a new slot from the same doctor without paying again. Production migration/deployment remains separately gated.
+- [x] Add `reschedule_required` for paid consultations whose original slot expired, preserve review/payment state during locked expiry cleanup, and let the customer choose a new slot from the same doctor without paying again.
+- [x] Deploy the Consultation manual-review fallback and guarded `20260905130000_add_consultation_reschedule_required_status` migration after a verified Production backup and read-only schema preflight; confirm one applied migration record, the enum member, no unfinished migration, the existing payment-reference unique index, removal of the one-time migration target, and normal HTTP 200 health after restart.
 - [x] Add data-backed admin order management queue foundation
 - [x] Add manual admin order fulfillment Server Action boundaries
 - [x] Add data-backed admin inventory management queue foundation
