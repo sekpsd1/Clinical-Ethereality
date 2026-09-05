@@ -7,7 +7,7 @@ import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from "@/features/admin/schedules/bulk";
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
-import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
+import { getDoctorScheduleDeactivateConflict, isCancelledTestResetPayment } from "@/features/admin/schedules/bulk-deactivate";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
@@ -83,12 +83,16 @@ async function getDoctorScheduleDeactivatePreflight(tx: Prisma.TransactionClient
     select: { id: true }
   });
   const doctorIds = doctors.map((doctor) => doctor.id);
-  const [activeConsultations, pendingPayments, activeSlotLocks] = await Promise.all([
+  const [activeConsultations, pendingPaymentRows, activeSlotLocks] = await Promise.all([
     tx.consultation.count({ where: { doctorId: { in: doctorIds }, status: { notIn: ["completed", "cancelled"] } } }),
-    tx.payment.count({ where: { status: { in: ["pending_slip", "pending_review"] }, consultation: { doctorId: { in: doctorIds } } } }),
+    tx.payment.findMany({
+      where: { status: { in: ["pending_slip", "pending_review"] }, consultation: { doctorId: { in: doctorIds } } },
+      select: { id: true, verificationPayload: true, consultation: { select: { id: true, status: true } } }
+    }),
     tx.consultationSlotLock.count({ where: { doctorId: { in: doctorIds }, expiresAt: { gt: now } } })
   ]);
 
+  const pendingPayments = pendingPaymentRows.filter((payment) => !isCancelledTestResetPayment(payment)).length;
   return { doctorIds, activeConsultations, pendingPayments, activeSlotLocks };
 }
 
