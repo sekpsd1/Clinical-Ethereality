@@ -69,7 +69,7 @@ export type AdminAppointmentCalendarSlot = {
   availabilityId: string;
   scheduledAtIso: string;
   timeLabel: string;
-  status: "available" | "pending_payment" | "scheduled" | "live";
+  status: "available" | "pending_payment" | "scheduled" | "live" | "closed";
   statusLabel: string;
   lockExpiresAt: string | null;
 };
