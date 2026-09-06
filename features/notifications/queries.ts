@@ -10,6 +10,9 @@ type CustomerNotificationRecord = Pick<
 >;
 type CustomerNotificationRouteInput = Pick<CustomerNotificationRecord, "type" | "metadataJson">;
 
+const customerLiveConsultationHrefPattern =
+  /^\/consult\/live\?consultation=[A-Za-z0-9_-]{1,128}$/;
+
 function formatRelativeTime(date: Date): string {
   const deltaSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
   const formatter = new Intl.RelativeTimeFormat("th-TH", {
@@ -67,6 +70,7 @@ export function resolveCustomerNotificationHref(
     href === "/profile/rewards" ||
     href === "/consult/prescriptions" ||
     href === "/consult/advice-log" ||
+    (typeof href === "string" && customerLiveConsultationHrefPattern.test(href)) ||
     (typeof href === "string" && href.startsWith("/consult/appointments/"))
   ) {
     return href;

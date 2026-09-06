@@ -74,4 +74,47 @@ describe("customer notification routing", () => {
       })
     ).toBe("/community");
   });
+
+  it("preserves an exact internal live-consultation destination with an opaque id", () => {
+    expect(
+      resolveCustomerNotificationHref({
+        type: "consultation",
+        metadataJson: {
+          href: "/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc"
+        }
+      })
+    ).toBe("/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc");
+  });
+
+  it("rejects malformed or expanded live-consultation destinations", () => {
+    const unsafeHrefs = [
+      "https://malicious.example/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc",
+      "//malicious.example/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc",
+      "/consult/live?consultation=",
+      "/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc&next=/store",
+      "/consult/live?consultation=cmf8p4w7h0001qz6x9k2v3abc#details",
+      "/consult/live?consultation=../../admin",
+      "/consult/live/extra?consultation=cmf8p4w7h0001qz6x9k2v3abc"
+    ];
+
+    for (const href of unsafeHrefs) {
+      expect(
+        resolveCustomerNotificationHref({
+          type: "consultation",
+          metadataJson: { href }
+        })
+      ).toBe("/consult/advice-log");
+    }
+  });
+
+  it("keeps the legacy consultation advice destination unchanged", () => {
+    expect(
+      resolveCustomerNotificationHref({
+        type: "consultation",
+        metadataJson: {
+          href: "/consult/advice-log"
+        }
+      })
+    ).toBe("/consult/advice-log");
+  });
 });
