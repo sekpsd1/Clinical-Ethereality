@@ -223,8 +223,8 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
       dateLabel: new Intl.DateTimeFormat("th-TH", { timeZone: CLINIC_TIME_ZONE, dateStyle: "medium" }).format(getScheduledAtForCalendarDate(dateValue, "00:00")),
       slots: buildAdminAppointmentCalendarSlots({ availabilities, overrides: overrides.filter((override) => override.scheduleDate.toISOString().slice(0, 10) === dateValue), consultations: calendarConsultations.filter((consultation) => consultation.scheduledAt && getBangkokCalendarDateKey(consultation.scheduledAt) === dateValue), dateValue, now: input.now }).map((slot) => {
         const consultation = slot.consultation;
-        const status = consultation?.status ?? "available";
-        return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : "ว่าง", lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };
+        const status = consultation?.status ?? slot.status;
+        return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : status === "blocked" ? "ไม่ว่าง (แอดมินกำหนด)" : "ว่าง", slotMinutes: slot.slotMinutes, lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };
       })
     }))
   };

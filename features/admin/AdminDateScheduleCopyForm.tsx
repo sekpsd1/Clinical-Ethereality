@@ -11,7 +11,7 @@ export function AdminDateScheduleCopyForm({ doctorId, sourceDate, sourceOverride
   const [state, action, isPending] = useActionState(copyDoctorAvailabilityDateOverridesAction, initialState);
   const [targetDates, setTargetDates] = useState([""]);
   const [confirmed, setConfirmed] = useState(false);
-  const sourceSummary = useMemo(() => sourceOverrides.map((item) => item.type === "closed" ? "วันหยุด (ปิดทั้งวัน)" : `${item.timeRange} • รอบละ ${item.slotMinutes} นาที`), [sourceOverrides]);
+  const sourceSummary = useMemo(() => sourceOverrides.map((item) => item.type === "closed" ? "วันหยุด (ปิดทั้งวัน)" : `${item.type === "blocked" ? "ไม่ว่าง" : "เวลาว่าง"} ${item.timeRange} • รอบละ ${item.slotMinutes} นาที`), [sourceOverrides]);
   const filledTargets = targetDates.filter(Boolean);
 
   if (sourceOverrides.length === 0) {

@@ -60,17 +60,18 @@ export function AdminDateScheduleCalendar({
         const date = new Date(`${dateValue}T00:00:00.000Z`);
         const regular = slots.filter((slot) => slot.isActive && slot.weekday === date.getUTCDay() && isEffectiveOn(slot, dateValue));
         const hasClosed = items.some((item) => item.type === "closed");
+        const hasBlocked = items.some((item) => item.type === "blocked");
         const hasSpecial = items.some((item) => item.type === "available");
         const hasRegular = !hasClosed && regular.length > 0;
         const className = `min-h-12 rounded-[8px] border p-1 text-xs font-bold ${selectedDate === dateValue ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-text"}`;
-        const marker = hasClosed || hasSpecial || hasRegular ? <span className={`mx-auto mt-1 block h-1.5 w-1.5 rounded-full ${hasClosed ? "bg-[#ba1a1a]" : hasSpecial ? "bg-primary" : "bg-[#2e8b8b]"}`} /> : null;
+        const marker = hasClosed || hasBlocked || hasSpecial || hasRegular ? <span className={`mx-auto mt-1 block h-1.5 w-1.5 rounded-full ${hasClosed ? "bg-[#6b7280]" : hasBlocked ? "bg-[#ba1a1a]" : hasSpecial ? "bg-primary" : "bg-[#2e8b8b]"}`} /> : null;
         if (dateValue < todayDate) return <span key={dateValue} aria-label={`${day} วันย้อนหลัง`} className={`${className} cursor-not-allowed opacity-40`}><span>{day}</span>{marker}</span>;
         if (!selectedDoctorId) return <span key={dateValue} aria-label={`${day} เลือกแพทย์ก่อน`} className={`${className} cursor-not-allowed opacity-40`}><span>{day}</span>{marker}</span>;
         const href = { pathname: "/admin/schedules", query: { date: dateValue, doctor: selectedDoctorId }, hash: "doctor-schedule" };
         return <Link key={dateValue} href={href} className={className}><span>{day}</span>{marker}</Link>;
       })}</div>
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold text-muted"><span>● สีฟ้า: เวลาว่างประจำ</span><span className="text-primary">● สีเขียว: เวลาพิเศษ</span><span className="text-[#ba1a1a]">● สีแดง: วันหยุด</span></div>
-      <div className="mt-4 rounded-[8px] bg-primary/5 p-3 text-xs"><p className="font-bold text-text">วันที่เลือก: {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeZone: "UTC" }).format(selectedDateObject)}</p>{selectedOverrides.map((item) => <p key={item.id} className={`mt-1 font-semibold ${item.type === "closed" ? "text-[#93000a]" : "text-primary"}`}>{item.doctorName}: {item.type === "closed" ? "วันหยุด" : `เวลาพิเศษ ${item.timeRange}`}</p>)}{selectedRegular.map((slot) => <p key={slot.id} className="mt-1 font-semibold text-[#2e8b8b]">{slot.doctorName}: เวลาว่างประจำ {slot.timeRange}</p>)}{selectedOverrides.length === 0 && selectedRegular.length === 0 ? <p className="mt-1 text-muted">ยังไม่มีเวลาตรวจที่เปิดไว้</p> : null}</div>
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold text-muted"><span>● สีฟ้า: เวลาว่างประจำ</span><span className="text-primary">● สีเขียว: เวลาพิเศษ</span><span className="text-[#ba1a1a]">● สีแดง: ไม่ว่าง</span><span>● สีเทา: ปิดทั้งวัน</span></div>
+      <div className="mt-4 rounded-[8px] bg-primary/5 p-3 text-xs"><p className="font-bold text-text">วันที่เลือก: {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeZone: "UTC" }).format(selectedDateObject)}</p>{selectedOverrides.map((item) => <p key={item.id} className={`mt-1 font-semibold ${item.type === "closed" || item.type === "blocked" ? "text-[#93000a]" : "text-primary"}`}>{item.doctorName}: {item.type === "closed" ? "ปิดทั้งวัน" : item.type === "blocked" ? `ไม่ว่าง ${item.timeRange}` : `เวลาพิเศษ ${item.timeRange}`}</p>)}{selectedRegular.map((slot) => <p key={slot.id} className="mt-1 font-semibold text-[#2e8b8b]">{slot.doctorName}: เวลาว่างประจำ {slot.timeRange}</p>)}{selectedOverrides.length === 0 && selectedRegular.length === 0 ? <p className="mt-1 text-muted">ยังไม่มีเวลาตรวจที่เปิดไว้</p> : null}</div>
     </section>
   );
 }

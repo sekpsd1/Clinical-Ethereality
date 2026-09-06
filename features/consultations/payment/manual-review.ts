@@ -13,6 +13,7 @@ import {
   getScheduledSlotTimes,
   getSlotLockExpiresAt
 } from "@/features/consultations/booking/slots";
+import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -397,6 +398,9 @@ export async function createManualAppointmentPaymentIntake(
   ) {
     throw new ManualAppointmentIntakeError("SLOT_UNAVAILABLE");
   }
+  if (await findActiveBlockingOverrideForSlot(tx, { doctorId: input.doctorId, scheduledAt: input.scheduledAt, slotMinutes })) {
+    throw new ManualAppointmentIntakeError("SLOT_UNAVAILABLE");
+  }
 
   const existing = await tx.consultation.findFirst({
     where: {
@@ -653,6 +657,7 @@ async function applyConsultationPaymentReviewDecision(
       doctorId: true,
       createdAt: true,
       scheduledAt: true,
+      bookedDurationMinutes: true,
       slotLockId: true,
       status: true,
       patient: {
@@ -820,6 +825,13 @@ async function applyConsultationPaymentReviewDecision(
     }
   }
 
+  const blockedOverride = consultation.scheduledAt && decision === "verified"
+    ? await findActiveBlockingOverrideForSlot(tx, {
+        doctorId: consultation.doctorId,
+        scheduledAt: consultation.scheduledAt,
+        slotMinutes: consultation.bookedDurationMinutes ?? 30
+      })
+    : null;
   const hasActiveSlot = Boolean(
     consultation.status === "pending_payment" &&
       consultation.scheduledAt &&
@@ -829,7 +841,8 @@ async function applyConsultationPaymentReviewDecision(
       consultation.slotLock.patientId === consultation.patientId &&
       consultation.slotLock.scheduledAt.getTime() ===
         consultation.scheduledAt.getTime() &&
-      (!consultation.slotLock.expiresAt || consultation.slotLock.expiresAt > now)
+      (!consultation.slotLock.expiresAt || consultation.slotLock.expiresAt > now) &&
+      !blockedOverride
   );
   const nextConsultationStatus: ConsultationStatus =
     decision === "rejected"
@@ -980,6 +993,7 @@ async function applyConsultationPaymentReviewDecision(
       reasonCode,
       verificationSource: expectedVerificationSource,
       transactionReferenceRecorded: Boolean(normalizedReference),
+      blockedByScheduleOverride: Boolean(blockedOverride),
       slotOutcome:
         nextConsultationStatus === "scheduled" ? "retained" : "released",
       ...(input.kind === "manual_appointment" && input.decision === "rejected"

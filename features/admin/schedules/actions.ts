@@ -8,12 +8,14 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from "@/features/admin/schedules/bulk";
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
 import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
+import { getScheduledAtForCalendarDate } from "@/features/consultations/booking/slots";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
   deleteDoctorAvailabilityDateOverrideSchema,
   createDoctorAvailabilityBatchSchema,
   deactivateAllDoctorSchedulesSchema,
+  setDoctorCalendarSlotStatusSchema,
   toggleDoctorAvailabilityDateOverrideSchema,
   toggleDoctorAvailabilitySchema,
   updateDoctorAvailabilityDateOverrideSchema,
@@ -76,6 +78,53 @@ function formDataToDateCopyObject(formData: FormData) {
 class BatchAvailabilityConflictError extends Error {}
 class DateOverrideConflictError extends Error {}
 class ScheduleBookingSafetyError extends Error {}
+
+function rangesOverlap(leftStart: Date, leftEnd: Date, rightStart: Date, rightEnd: Date): boolean {
+  return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+async function hasActiveScheduleConflict(
+  tx: Prisma.TransactionClient,
+  input: { doctorId: string; scheduleDate: Date; startTime?: string; endTime?: string; now: Date }
+): Promise<boolean> {
+  const { start: dayStart, end: dayEnd } = getBangkokDayRange(input.scheduleDate);
+  const rangeStart = input.startTime ? getScheduledAtForCalendarDate(input.scheduleDate.toISOString().slice(0, 10), input.startTime) : dayStart;
+  const rangeEnd = input.endTime ? getScheduledAtForCalendarDate(input.scheduleDate.toISOString().slice(0, 10), input.endTime) : dayEnd;
+  const [consultations, locks] = await Promise.all([
+    tx.consultation.findMany({
+      where: { doctorId: input.doctorId, scheduledAt: { gte: dayStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
+      select: { scheduledAt: true, bookedDurationMinutes: true }
+    }),
+    tx.consultationSlotLock.findMany({
+      where: {
+        doctorId: input.doctorId,
+        scheduledAt: { gte: dayStart, lt: dayEnd },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }]
+      },
+      select: { scheduledAt: true, availabilityId: true, consultation: { select: { bookedDurationMinutes: true } } }
+    })
+  ]);
+
+  if (consultations.some((item) => item.scheduledAt && rangesOverlap(item.scheduledAt, new Date(item.scheduledAt.getTime() + (item.bookedDurationMinutes ?? 30) * 60 * 1000), rangeStart, rangeEnd))) {
+    return true;
+  }
+
+  const sourceIds = locks.flatMap((lock) => lock.availabilityId ? [lock.availabilityId] : []);
+  const [weeklySources, dateSources] = sourceIds.length === 0 ? [[], []] : await Promise.all([
+    tx.doctorAvailability.findMany({ where: { id: { in: sourceIds } }, select: { id: true, slotMinutes: true } }),
+    tx.doctorAvailabilityDateOverride.findMany({ where: { id: { in: sourceIds } }, select: { id: true, slotMinutes: true } })
+  ]);
+  const durationBySource = new Map([...weeklySources, ...dateSources].map((source) => [source.id, source.slotMinutes ?? 30]));
+
+  return locks.some((lock) => {
+    const minutes = lock.consultation?.bookedDurationMinutes ?? (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null) ?? 30;
+    return rangesOverlap(lock.scheduledAt, new Date(lock.scheduledAt.getTime() + minutes * 60 * 1000), rangeStart, rangeEnd);
+  });
+}
+
+function overrideTimeBlock(item: { startTime: string | null; endTime: string | null; slotMinutes: number | null }) {
+  return item.startTime && item.endTime && item.slotMinutes ? { startTime: item.startTime, endTime: item.endTime, slotMinutes: item.slotMinutes } : null;
+}
 
 async function getDoctorScheduleDeactivatePreflight(tx: Prisma.TransactionClient, now: Date) {
   const doctors = await tx.doctor.findMany({
@@ -450,6 +499,123 @@ export async function previewDeactivateAllDoctorSchedulesAction(
   }
 }
 
+export async function setDoctorCalendarSlotStatusAction(
+  _previousState: AdminScheduleActionState,
+  formData: FormData
+): Promise<AdminScheduleActionState> {
+  const session = await requireAdminSession();
+  const parsed = setDoctorCalendarSlotStatusSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) return { status: "error", message: "ข้อมูลสถานะช่องเวลาไม่ถูกต้อง" };
+  if (isPastScheduleDate(parsed.data.scheduleDate)) return { status: "error", message: "ไม่สามารถเปลี่ยนสถานะวันย้อนหลังได้" };
+
+  const scheduleDate = parseScheduleDate(parsed.data.scheduleDate);
+  const candidate = { startTime: parsed.data.startTime, endTime: parsed.data.endTime, slotMinutes: parsed.data.slotMinutes };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT \`id\` FROM \`Doctor\` WHERE \`id\` = ${parsed.data.doctorId} FOR UPDATE`);
+      const doctor = await tx.doctor.findUnique({ where: { id: parsed.data.doctorId }, select: { id: true, status: true, user: { select: { status: true } } } });
+      if (!doctor || doctor.status !== "approved" || doctor.user.status !== "active") throw new DateOverrideConflictError("แพทย์รายนี้ยังไม่พร้อมรับนัด");
+
+      const activeOverrides = await tx.doctorAvailabilityDateOverride.findMany({
+        where: { doctorId: doctor.id, scheduleDate, isActive: true },
+        select: { id: true, type: true, startTime: true, endTime: true, slotMinutes: true }
+      });
+      let disabledOverrideIds: string[] = [];
+      let createdOverrideId: string | null = null;
+
+      if (parsed.data.targetStatus === "available" && await hasActiveScheduleConflict(tx, { doctorId: doctor.id, scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, now: new Date() })) {
+        throw new DateOverrideConflictError("สถานะช่องนี้มาจากนัดหมายหรือการล็อกเวลาจริง จึงเปลี่ยนจากปฏิทินไม่ได้");
+      }
+
+      if (parsed.data.targetStatus === "closed") {
+        if (await hasActiveScheduleConflict(tx, { doctorId: doctor.id, scheduleDate, now: new Date() })) {
+          throw new DateOverrideConflictError("ปิดทั้งวันไม่ได้ เพราะมีนัดหมายหรือการล็อกเวลาอยู่ในวันที่เลือก");
+        }
+        const activeClosed = activeOverrides.find((item) => item.type === "closed");
+        disabledOverrideIds = activeOverrides.filter((item) => item.id !== activeClosed?.id).map((item) => item.id);
+        if (disabledOverrideIds.length > 0) {
+          await tx.doctorAvailabilityDateOverride.updateMany({ where: { id: { in: disabledOverrideIds } }, data: { isActive: false } });
+        }
+        if (!activeClosed) {
+          const created = await tx.doctorAvailabilityDateOverride.create({ data: { doctorId: doctor.id, scheduleDate, type: "closed", startTime: null, endTime: null, slotMinutes: null } });
+          createdOverrideId = created.id;
+        }
+      } else if (parsed.data.targetStatus === "blocked") {
+        if (await hasActiveScheduleConflict(tx, { doctorId: doctor.id, scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, now: new Date() })) {
+          throw new DateOverrideConflictError("กำหนดไม่ว่างไม่ได้ เพราะช่วงเวลานี้มีนัดหมายหรือการล็อกเวลาอยู่แล้ว");
+        }
+        const blockedBlocks = activeOverrides.filter((item) => item.type === "blocked").flatMap((item) => {
+          const block = overrideTimeBlock(item);
+          return block ? [{ id: item.id, ...block }] : [];
+        });
+        const exactBlocked = blockedBlocks.find((item) => item.startTime === candidate.startTime && item.endTime === candidate.endTime && item.slotMinutes === candidate.slotMinutes);
+        if (!exactBlocked && hasOverlappingTimeBlock(blockedBlocks, candidate)) {
+          throw new DateOverrideConflictError("ช่วงไม่ว่างซ้อนกับช่วงไม่ว่างเดิมของวันที่เลือก");
+        }
+        disabledOverrideIds = activeOverrides.filter((item) => item.type === "closed").map((item) => item.id);
+        if (disabledOverrideIds.length > 0) {
+          await tx.doctorAvailabilityDateOverride.updateMany({ where: { id: { in: disabledOverrideIds } }, data: { isActive: false } });
+        }
+        if (!exactBlocked) {
+          const created = await tx.doctorAvailabilityDateOverride.create({ data: { doctorId: doctor.id, scheduleDate, type: "blocked", ...candidate } });
+          createdOverrideId = created.id;
+        }
+      } else {
+        const overlappingBlockedIds = activeOverrides.filter((item) => {
+          if (item.type !== "blocked") return false;
+          const block = overrideTimeBlock(item);
+          return block ? hasOverlappingTimeBlock([block], candidate) : false;
+        }).map((item) => item.id);
+        const closedIds = activeOverrides.filter((item) => item.type === "closed").map((item) => item.id);
+        disabledOverrideIds = [...overlappingBlockedIds, ...closedIds];
+        if (disabledOverrideIds.length > 0) {
+          await tx.doctorAvailabilityDateOverride.updateMany({ where: { id: { in: disabledOverrideIds } }, data: { isActive: false } });
+        }
+
+        const recurring = await tx.doctorAvailability.findMany({
+          where: { doctorId: doctor.id, weekday: scheduleDate.getUTCDay(), isActive: true },
+          select: { startTime: true, endTime: true, slotMinutes: true, effectiveFrom: true, effectiveTo: true }
+        });
+        const dateValue = parsed.data.scheduleDate;
+        const activeAvailableBlocks = activeOverrides.filter((item) => item.type === "available").flatMap((item) => {
+          const block = overrideTimeBlock(item);
+          return block ? [block] : [];
+        });
+        const effectiveRecurring = recurring.filter((item) => {
+          const from = item.effectiveFrom?.toISOString().slice(0, 10);
+          const to = item.effectiveTo?.toISOString().slice(0, 10);
+          return (!from || dateValue >= from) && (!to || dateValue <= to);
+        });
+        const coversCandidate = [...effectiveRecurring, ...activeAvailableBlocks].some((item) => item.startTime <= candidate.startTime && item.endTime >= candidate.endTime);
+        if (!coversCandidate) {
+          if (hasOverlappingTimeBlock([...effectiveRecurring, ...activeAvailableBlocks], candidate)) {
+            throw new DateOverrideConflictError("ช่วงว่างใหม่ซ้อนกับเวลาว่างเดิมเพียงบางส่วน กรุณาเลือกช่วงเวลาให้ตรงกับตาราง");
+          }
+          const created = await tx.doctorAvailabilityDateOverride.create({ data: { doctorId: doctor.id, scheduleDate, type: "available", ...candidate } });
+          createdOverrideId = created.id;
+        }
+      }
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: "doctor_availability_date_override.calendar_status",
+        entityType: "doctor_availability_date_override",
+        entityId: createdOverrideId ?? disabledOverrideIds[0],
+        metadata: { doctorId: doctor.id, scheduleDate: parsed.data.scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, slotMinutes: candidate.slotMinutes, targetStatus: parsed.data.targetStatus, disabledOverrideIds, createdOverrideId }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    return { status: "error", message: error instanceof DateOverrideConflictError ? error.message : "ไม่สามารถเปลี่ยนสถานะช่องเวลาได้" };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/schedules");
+  revalidatePath("/admin/audit");
+  revalidatePath("/consult");
+  return { status: "success", message: parsed.data.targetStatus === "closed" ? "ปิดทั้งวันที่เลือกแล้ว" : parsed.data.targetStatus === "blocked" ? "กำหนดช่วงเวลาเป็นไม่ว่างแล้ว" : "กำหนดช่วงเวลาเป็นว่างแล้ว" };
+}
+
 export async function createDoctorAvailabilityDateOverrideAction(
   _previousState: AdminScheduleActionState,
   formData: FormData
@@ -501,22 +667,26 @@ export async function createDoctorAvailabilityDateOverrideAction(
             slotMinutes: parsed.data.slotMinutes!
           };
           const existingBlocks = existing.flatMap((item) =>
-            item.type === "available" && item.startTime && item.endTime && item.slotMinutes
+            item.type === parsed.data.type && item.startTime && item.endTime && item.slotMinutes
               ? [{ startTime: item.startTime, endTime: item.endTime, slotMinutes: item.slotMinutes }]
               : []
           );
 
           if (hasOverlappingTimeBlock(existingBlocks, candidate)) {
-            throw new DateOverrideConflictError("ช่วงเวลาพิเศษซ้อนกับรายการเดิมของวันที่เลือก");
+            throw new DateOverrideConflictError(parsed.data.type === "blocked" ? "ช่วงไม่ว่างซ้อนกับช่วงไม่ว่างเดิมของวันที่เลือก" : "ช่วงเวลาพิเศษซ้อนกับรายการเดิมของวันที่เลือก");
           }
 
-          const recurring = await tx.doctorAvailability.findMany({
-            where: { doctorId: doctor.id, weekday: scheduleDate.getUTCDay(), isActive: true },
-            select: { startTime: true, endTime: true, slotMinutes: true }
-          });
+          if (parsed.data.type === "available") {
+            const recurring = await tx.doctorAvailability.findMany({
+              where: { doctorId: doctor.id, weekday: scheduleDate.getUTCDay(), isActive: true },
+              select: { startTime: true, endTime: true, slotMinutes: true }
+            });
 
-          if (hasOverlappingTimeBlock(recurring, candidate)) {
-            throw new DateOverrideConflictError("ช่วงเวลาพิเศษซ้อนกับเวลาว่างประจำของแพทย์");
+            if (hasOverlappingTimeBlock(recurring, candidate)) {
+              throw new DateOverrideConflictError("ช่วงเวลาพิเศษซ้อนกับเวลาว่างประจำของแพทย์");
+            }
+          } else if (await hasActiveScheduleConflict(tx, { doctorId: doctor.id, scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, now: new Date() })) {
+            throw new DateOverrideConflictError("กำหนดไม่ว่างไม่ได้ เพราะช่วงเวลานี้มีนัดหมายหรือการล็อกเวลาอยู่แล้ว");
           }
         }
 
@@ -525,9 +695,9 @@ export async function createDoctorAvailabilityDateOverrideAction(
             doctorId: doctor.id,
             scheduleDate,
             type: parsed.data.type,
-            startTime: parsed.data.type === "available" ? parsed.data.startTime : null,
-            endTime: parsed.data.type === "available" ? parsed.data.endTime : null,
-            slotMinutes: parsed.data.type === "available" ? parsed.data.slotMinutes : null,
+            startTime: parsed.data.type === "closed" ? null : parsed.data.startTime,
+            endTime: parsed.data.type === "closed" ? null : parsed.data.endTime,
+            slotMinutes: parsed.data.type === "closed" ? null : parsed.data.slotMinutes,
             notes: parsed.data.notes || null
           }
         });
@@ -570,10 +740,34 @@ export async function toggleDoctorAvailabilityDateOverrideAction(
       const current = await tx.doctorAvailabilityDateOverride.findUnique({ where: { id: parsed.data.overrideId } });
       if (!current) throw new Error("Override not found.");
 
-      if (!parsed.data.isActive) {
+      if (!parsed.data.isActive && current.type !== "blocked") {
         const booking = await findActiveBookingOnScheduleDate(tx, current.doctorId, current.scheduleDate);
         if (booking) {
           throw new DateOverrideConflictError("ปิดใช้งานไม่ได้ เพราะมีนัดหมายในวันที่เลือกแล้ว");
+        }
+      }
+
+      if (parsed.data.isActive && !current.isActive) {
+        const activeOverrides = await tx.doctorAvailabilityDateOverride.findMany({
+          where: { doctorId: current.doctorId, scheduleDate: current.scheduleDate, isActive: true, id: { not: current.id } },
+          select: { type: true, startTime: true, endTime: true, slotMinutes: true }
+        });
+        if (current.type === "closed") {
+          if (activeOverrides.length > 0 || await hasActiveScheduleConflict(tx, { doctorId: current.doctorId, scheduleDate: current.scheduleDate, now: new Date() })) {
+            throw new DateOverrideConflictError("เปิดวันหยุดนี้ไม่ได้ เพราะมีตารางอื่น นัดหมาย หรือการล็อกเวลาอยู่แล้ว");
+          }
+        } else {
+          if (activeOverrides.some((item) => item.type === "closed")) throw new DateOverrideConflictError("วันที่เลือกถูกปิดทั้งวันอยู่");
+          const candidate = overrideTimeBlock(current);
+          if (!candidate) throw new DateOverrideConflictError("ช่วงเวลาของรายการไม่สมบูรณ์");
+          const sameTypeBlocks = activeOverrides.filter((item) => item.type === current.type).flatMap((item) => {
+            const block = overrideTimeBlock(item);
+            return block ? [block] : [];
+          });
+          if (hasOverlappingTimeBlock(sameTypeBlocks, candidate)) throw new DateOverrideConflictError("ช่วงเวลาซ้อนกับรายการที่เปิดใช้งานอยู่");
+          if (current.type === "blocked" && await hasActiveScheduleConflict(tx, { doctorId: current.doctorId, scheduleDate: current.scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, now: new Date() })) {
+            throw new DateOverrideConflictError("เปิดช่วงไม่ว่างไม่ได้ เพราะมีนัดหมายหรือการล็อกเวลาอยู่แล้ว");
+          }
         }
       }
 
@@ -627,33 +821,35 @@ export async function updateDoctorAvailabilityDateOverrideAction(
           throw new Error("Date override not found.");
         }
 
-        if (await findActiveBookingOnScheduleDate(tx, current.doctorId, scheduleDate)) {
-          throw new DateOverrideConflictError("แก้ไขช่วงเวลานี้ไม่ได้ เพราะมีนัดหมายในวันที่เลือกแล้ว");
-        }
-
         const otherOverrides = await tx.doctorAvailabilityDateOverride.findMany({
           where: { doctorId: current.doctorId, scheduleDate, isActive: true, id: { not: current.id } },
           select: { type: true, startTime: true, endTime: true, slotMinutes: true }
         });
 
         if (parsed.data.type === "closed") {
+          if (await hasActiveScheduleConflict(tx, { doctorId: current.doctorId, scheduleDate, now: new Date() })) throw new DateOverrideConflictError("ปิดทั้งวันไม่ได้ เพราะมีนัดหมายหรือการล็อกเวลาอยู่แล้ว");
           if (otherOverrides.length > 0) throw new DateOverrideConflictError("วันที่เลือกมีเวลาพิเศษอยู่แล้ว กรุณาลบหรือปิดใช้งานรายการอื่นก่อน");
         } else {
           if (otherOverrides.some((item) => item.type === "closed")) throw new DateOverrideConflictError("วันที่เลือกเป็นวันหยุดอยู่ กรุณาปิดใช้งานวันหยุดก่อน");
           const candidate = { startTime: parsed.data.startTime!, endTime: parsed.data.endTime!, slotMinutes: parsed.data.slotMinutes! };
-          const otherBlocks = otherOverrides.flatMap((item) => item.type === "available" && item.startTime && item.endTime && item.slotMinutes ? [{ startTime: item.startTime, endTime: item.endTime, slotMinutes: item.slotMinutes }] : []);
+          const otherBlocks = otherOverrides.flatMap((item) => item.type === parsed.data.type && item.startTime && item.endTime && item.slotMinutes ? [{ startTime: item.startTime, endTime: item.endTime, slotMinutes: item.slotMinutes }] : []);
           if (hasOverlappingTimeBlock(otherBlocks, candidate)) throw new DateOverrideConflictError("ช่วงเวลาซ้อนกับรายการอื่นของวันที่เลือก");
-          const recurring = await tx.doctorAvailability.findMany({ where: { doctorId: current.doctorId, weekday: scheduleDate.getUTCDay(), isActive: true }, select: { startTime: true, endTime: true, slotMinutes: true } });
-          if (hasOverlappingTimeBlock(recurring, candidate)) throw new DateOverrideConflictError("ช่วงเวลาซ้อนกับเวลาว่างประจำของแพทย์");
+          if (parsed.data.type === "available") {
+            const recurring = await tx.doctorAvailability.findMany({ where: { doctorId: current.doctorId, weekday: scheduleDate.getUTCDay(), isActive: true }, select: { startTime: true, endTime: true, slotMinutes: true } });
+            if (hasOverlappingTimeBlock(recurring, candidate)) throw new DateOverrideConflictError("ช่วงเวลาซ้อนกับเวลาว่างประจำของแพทย์");
+            if (current.type !== "blocked" && await findActiveBookingOnScheduleDate(tx, current.doctorId, scheduleDate)) throw new DateOverrideConflictError("แก้ไขช่วงเวลานี้ไม่ได้ เพราะมีนัดหมายในวันที่เลือกแล้ว");
+          } else if (await hasActiveScheduleConflict(tx, { doctorId: current.doctorId, scheduleDate, startTime: candidate.startTime, endTime: candidate.endTime, now: new Date() })) {
+            throw new DateOverrideConflictError("กำหนดไม่ว่างไม่ได้ เพราะช่วงเวลานี้มีนัดหมายหรือการล็อกเวลาอยู่แล้ว");
+          }
         }
 
         const override = await tx.doctorAvailabilityDateOverride.update({
           where: { id: current.id },
           data: {
             type: parsed.data.type,
-            startTime: parsed.data.type === "available" ? parsed.data.startTime : null,
-            endTime: parsed.data.type === "available" ? parsed.data.endTime : null,
-            slotMinutes: parsed.data.type === "available" ? parsed.data.slotMinutes : null,
+            startTime: parsed.data.type === "closed" ? null : parsed.data.startTime,
+            endTime: parsed.data.type === "closed" ? null : parsed.data.endTime,
+            slotMinutes: parsed.data.type === "closed" ? null : parsed.data.slotMinutes,
             notes: parsed.data.notes || null
           }
         });

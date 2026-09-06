@@ -40,7 +40,7 @@ export type AdminDoctorAvailabilityDateOverride = {
   doctorName: string;
   scheduleDate: string;
   scheduleDateValue: string;
-  type: "available" | "closed";
+  type: "available" | "blocked" | "closed";
   timeRange: string;
   slotMinutes: number | null;
   isActive: boolean;
@@ -69,8 +69,9 @@ export type AdminAppointmentCalendarSlot = {
   availabilityId: string;
   scheduledAtIso: string;
   timeLabel: string;
-  status: "available" | "pending_payment" | "scheduled" | "live" | "closed";
+  status: "available" | "blocked" | "pending_payment" | "scheduled" | "live" | "closed";
   statusLabel: string;
+  slotMinutes: number;
   lockExpiresAt: string | null;
 };
 

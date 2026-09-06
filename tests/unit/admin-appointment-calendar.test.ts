@@ -33,4 +33,19 @@ describe("admin appointment calendar", () => {
 
     expect(slots).toEqual([]);
   });
+
+  it("keeps admin-blocked cells visible and lets a real appointment remain the authoritative status", () => {
+    const slots = buildAdminAppointmentCalendarSlots({
+      dateValue: "2026-09-07",
+      now: new Date("2026-09-01T00:00:00.000Z"),
+      availabilities: [{ id: "availability-1", doctorId: "doctor-1", weekday: 1, startTime: "09:00", endTime: "10:00", slotMinutes: 30, notes: null }],
+      overrides: [{ id: "blocked-1", doctorId: "doctor-1", type: "blocked", startTime: "09:00", endTime: "10:00", slotMinutes: 30, notes: "Admin block" }],
+      consultations: [{ doctorId: "doctor-1", scheduledAt: new Date("2026-09-07T02:30:00.000Z"), status: "scheduled", slotLockExpiresAt: null }]
+    });
+
+    expect(slots.map((slot) => [slot.timeLabel, slot.status, slot.consultation?.status ?? null])).toEqual([
+      ["09:00", "blocked", null],
+      ["09:30", "blocked", "scheduled"]
+    ]);
+  });
 });

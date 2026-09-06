@@ -63,6 +63,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
           weekday: 1,
         }),
       },
+      doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
       notification: { create: vi.fn().mockResolvedValue({}) },
       user: {
         findUnique: vi.fn().mockResolvedValue({
@@ -114,6 +115,29 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       }),
     });
     expect(mocks.prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a normal booking when a date-specific admin block overlaps the submitted slot", async () => {
+    const slotLockCreate = vi.fn();
+    const tx = {
+      user: { findUnique: vi.fn().mockResolvedValue({ fullName: "Patient Example", dateOfBirth: new Date("1990-01-30T00:00:00.000Z"), phone: "0812345678", normalizedPhone: "+66812345678", phoneVerifiedAt: new Date("2026-08-13T16:00:00.000Z") }) },
+      doctorAvailability: { findUnique: vi.fn().mockResolvedValue({ doctor: { consultationFee: 800, id: "doctor-1", status: "approved", user: { status: "active" } }, doctorId: "doctor-1", endTime: "10:00", id: "availability-1", isActive: true, slotMinutes: 30, startTime: "09:00", weekday: 1 }) },
+      doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue({ id: "blocked-1" }) },
+      consultationSlotLock: { create: slotLockCreate }
+    };
+    mocks.requireCurrentSession.mockResolvedValue({ userId: "patient-1" });
+    mocks.assertPermission.mockReturnValue(undefined);
+    mocks.requireVerifiedPatientProfile.mockResolvedValue(undefined);
+    mocks.releaseExpiredConsultationSlotLocks.mockResolvedValue(undefined);
+    mocks.prisma.$transaction.mockImplementationOnce(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
+    const formData = new FormData();
+    formData.set("availabilityId", "availability-1");
+    formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
+
+    await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
+
+    expect(slotLockCreate).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenLastCalledWith("/consult/booking/somchai?booking=failed");
   });
 
   it("rejects a selected doctor when the submitted availability belongs to another doctor", async () => {

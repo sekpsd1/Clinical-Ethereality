@@ -19,6 +19,7 @@ import {
   ConsultationRescheduleError,
   rescheduleVerifiedConsultation
 } from "@/features/consultations/booking/reschedule";
+import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -190,6 +191,9 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       }
 
       const doctorId = scheduleSource.doctorId;
+      if (await findActiveBlockingOverrideForSlot(tx, { doctorId, scheduledAt, slotMinutes })) {
+        throw new Error("Availability is blocked for booking.");
+      }
       const existing = await tx.consultation.findFirst({
         where: {
           doctorId,
@@ -290,7 +294,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       });
 
       return consultation;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     consultationId = result.id;
   } catch (error) {

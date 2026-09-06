@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForCalendarDate, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
+import { isSlotBlockedByDateOverride } from "@/features/consultations/booking/blocked-overrides";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
@@ -116,6 +117,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
     .filter((slot) => isAvailabilityEffectiveOn(slot, slot.scheduledAt));
   const special = dateOverrides
     .filter((override) => override.type === "available" && override.startTime && override.endTime && override.slotMinutes)
+    .filter((override) => !closedDates.has(override.scheduleDate.toISOString().slice(0, 10)))
     .map((override) => ({
       id: override.id,
       scheduledAt: getScheduledAtForDate(override.scheduleDate, override.startTime!),
@@ -141,6 +143,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
   return expanded
     .sort((left, right) => left.scheduledAt.getTime() - right.scheduledAt.getTime())
     .filter((slot) => slot.scheduledAt > now)
+    .filter((slot) => !isSlotBlockedByDateOverride(dateOverrides, slot.scheduledAt, slot.slotMinutes))
     .filter((slot) => {
       const timestamp = slot.scheduledAt.getTime();
       if (seen.has(timestamp)) return false;

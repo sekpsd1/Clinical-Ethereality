@@ -29,6 +29,7 @@ function txMock() {
     },
     doctorAvailability: { findUnique: vi.fn().mockResolvedValue(null) },
     doctorAvailabilityDateOverride: {
+      findFirst: vi.fn().mockResolvedValue(null),
       findUnique: vi.fn().mockResolvedValue({
         id: "override-1",
         doctorId: "doctor-1",
@@ -136,5 +137,13 @@ describe("verified consultation rescheduling", () => {
     ).rejects.toMatchObject({
       code: "SLOT_UNAVAILABLE"
     });
+  });
+
+  it("rejects a verified reschedule when an admin block overlaps the selected slot", async () => {
+    const tx = txMock();
+    tx.doctorAvailabilityDateOverride.findFirst.mockResolvedValueOnce({ id: "blocked-1" });
+
+    await expect(rescheduleVerifiedConsultation(tx as never, { availabilityId: "override-1", consultationId: "consultation-1", doctorId: "doctor-1", patientId: "patient-1", scheduledAt }, now)).rejects.toMatchObject({ code: "SLOT_UNAVAILABLE" });
+    expect(tx.consultationSlotLock.create).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,7 @@ export type AppointmentCalendarAvailability = {
 export type AppointmentCalendarOverride = {
   id: string;
   doctorId: string;
-  type: "available" | "closed";
+  type: "available" | "blocked" | "closed";
   startTime: string | null;
   endTime: string | null;
   slotMinutes: number | null;
@@ -36,11 +36,31 @@ export type BuiltAppointmentCalendarSlot = {
   timeLabel: string;
   slotMinutes: number;
   notes: string | null;
+  status: "available" | "blocked";
   consultation: AppointmentCalendarConsultation | null;
 };
 
 function isPendingPaymentLocked(consultation: AppointmentCalendarConsultation, now: Date): boolean {
   return consultation.status === "pending_payment" && (!consultation.slotLockExpiresAt || consultation.slotLockExpiresAt > now);
+}
+
+function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function overlapsBlockedOverride(
+  slot: { doctorId: string; timeLabel: string; slotMinutes: number },
+  overrides: AppointmentCalendarOverride[]
+): AppointmentCalendarOverride | null {
+  const slotStart = timeToMinutes(slot.timeLabel);
+  const slotEnd = slotStart + slot.slotMinutes;
+  return overrides.find((override) => {
+    if (override.doctorId !== slot.doctorId || override.type !== "blocked" || !override.startTime || !override.endTime) return false;
+    const blockStart = timeToMinutes(override.startTime);
+    const blockEnd = timeToMinutes(override.endTime);
+    return slotStart < blockEnd && blockStart < slotEnd;
+  }) ?? null;
 }
 
 export function buildAdminAppointmentCalendarSlots(input: {
@@ -52,7 +72,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
 }): BuiltAppointmentCalendarSlot[] {
   const scheduleDate = new Date(`${input.dateValue}T12:00:00+07:00`);
   const closedDoctorIds = new Set(input.overrides.filter((override) => override.type === "closed").map((override) => override.doctorId));
-  const blocks = [
+  const availableBlocks = [
     ...input.availabilities
       .filter((availability) => availability.weekday === scheduleDate.getUTCDay() && !closedDoctorIds.has(availability.doctorId))
       .filter((availability) => {
@@ -71,7 +91,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
     ...input.overrides
       .filter(
         (override): override is AppointmentCalendarOverride & { startTime: string; endTime: string; slotMinutes: number } =>
-          override.type === "available" && Boolean(override.startTime && override.endTime && override.slotMinutes)
+          override.type === "available" && !closedDoctorIds.has(override.doctorId) && Boolean(override.startTime && override.endTime && override.slotMinutes)
       )
       .map((override) => ({
         availabilityId: override.id,
@@ -82,6 +102,19 @@ export function buildAdminAppointmentCalendarSlots(input: {
         notes: override.notes
       }))
   ];
+  const blockedBlocks = input.overrides
+    .filter(
+      (override): override is AppointmentCalendarOverride & { startTime: string; endTime: string; slotMinutes: number } =>
+        override.type === "blocked" && !closedDoctorIds.has(override.doctorId) && Boolean(override.startTime && override.endTime && override.slotMinutes)
+    )
+    .map((override) => ({
+      availabilityId: override.id,
+      doctorId: override.doctorId,
+      startTime: override.startTime,
+      endTime: override.endTime,
+      slotMinutes: override.slotMinutes,
+      notes: override.notes
+    }));
   const consultationsBySlot = new Map(
     input.consultations
       .filter((consultation) => consultation.scheduledAt)
@@ -90,22 +123,27 @@ export function buildAdminAppointmentCalendarSlots(input: {
   );
   const seen = new Set<string>();
 
-  return blocks
+  return [...availableBlocks, ...blockedBlocks]
     .flatMap((block) =>
       getScheduledSlotTimes(
         getScheduledAtForCalendarDate(input.dateValue, block.startTime),
         block.startTime,
         block.endTime,
         block.slotMinutes
-      ).map((scheduledAt) => ({
-        availabilityId: block.availabilityId,
-        doctorId: block.doctorId,
-        scheduledAt,
-        timeLabel: formatBangkokTime(scheduledAt),
-        slotMinutes: block.slotMinutes,
-        notes: block.notes,
-        consultation: consultationsBySlot.get(`${block.doctorId}:${scheduledAt.getTime()}`) ?? null
-      }))
+      ).map((scheduledAt) => {
+        const timeLabel = formatBangkokTime(scheduledAt);
+        const blocked = overlapsBlockedOverride({ doctorId: block.doctorId, timeLabel, slotMinutes: block.slotMinutes }, input.overrides);
+        return {
+          availabilityId: blocked?.id ?? block.availabilityId,
+          doctorId: block.doctorId,
+          scheduledAt,
+          timeLabel,
+          slotMinutes: block.slotMinutes,
+          notes: blocked?.notes ?? block.notes,
+          status: blocked ? "blocked" as const : "available" as const,
+          consultation: consultationsBySlot.get(`${block.doctorId}:${scheduledAt.getTime()}`) ?? null
+        };
+      })
     )
     .sort((left, right) => left.scheduledAt.getTime() - right.scheduledAt.getTime() || left.doctorId.localeCompare(right.doctorId))
     .filter((slot) => {

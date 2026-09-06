@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { copyDoctorAvailabilityDateOverridesSchema, createDoctorAvailabilityDateOverrideSchema, updateDoctorAvailabilityDateOverrideSchema } from "@/features/admin/schedules/schema";
+import { copyDoctorAvailabilityDateOverridesSchema, createDoctorAvailabilityDateOverrideSchema, setDoctorCalendarSlotStatusSchema, updateDoctorAvailabilityDateOverrideSchema } from "@/features/admin/schedules/schema";
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
 
 describe("admin date schedule overrides", () => {
   it("accepts a complete special opening and a full-day closure", () => {
     expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "available", startTime: "09:00", endTime: "11:00", slotMinutes: "60" }).success).toBe(true);
     expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "closed" }).success).toBe(true);
+    expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "blocked", startTime: "09:00", endTime: "10:00", slotMinutes: "30" }).success).toBe(true);
+  });
+
+  it("validates all three calendar-cell status choices and keeps full-day closure explicit", () => {
+    const base = { doctorId: "doctor-1", scheduleDate: "2026-08-10", startTime: "09:00", endTime: "09:30", slotMinutes: "30" };
+    expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "available" }).success).toBe(true);
+    expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "blocked" }).success).toBe(true);
+    expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "closed" }).success).toBe(true);
+    expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "busy" }).success).toBe(false);
   });
 
   it("rejects an invalid special opening and detects an overlapping block", () => {

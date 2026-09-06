@@ -7,6 +7,7 @@ import {
   getScheduledSlotTimes,
   getUpcomingDateForWeekday
 } from "@/features/consultations/booking/slots";
+import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
 
 export class ConsultationRescheduleError extends Error {
   constructor(readonly code: "NOT_ELIGIBLE" | "SLOT_UNAVAILABLE" | "CONFLICT") {
@@ -131,6 +132,9 @@ export async function rescheduleVerifiedConsultation(
     input.scheduledAt <= now ||
     !validSlots.some((slot) => slot.getTime() === input.scheduledAt.getTime())
   ) {
+    throw new ConsultationRescheduleError("SLOT_UNAVAILABLE");
+  }
+  if (await findActiveBlockingOverrideForSlot(tx, { doctorId: consultation.doctorId, scheduledAt: input.scheduledAt, slotMinutes })) {
     throw new ConsultationRescheduleError("SLOT_UNAVAILABLE");
   }
 

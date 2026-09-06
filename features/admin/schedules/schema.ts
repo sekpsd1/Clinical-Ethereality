@@ -18,7 +18,7 @@ export const createDoctorAvailabilityDateOverrideSchema = z
   .object({
     doctorId: z.string().min(1),
     scheduleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    type: z.enum(["available", "closed"]),
+    type: z.enum(["available", "blocked", "closed"]),
     startTime: z.string().regex(timePattern).optional(),
     endTime: z.string().regex(timePattern).optional(),
     slotMinutes: z.coerce.number().int().min(10).max(240).optional(),
@@ -48,6 +48,25 @@ export const toggleDoctorAvailabilityDateOverrideSchema = z.object({
   overrideId: z.string().min(1),
   isActive: z.enum(["true", "false"]).transform((value) => value === "true")
 });
+
+export const setDoctorCalendarSlotStatusSchema = z
+  .object({
+    doctorId: z.string().min(1),
+    scheduleDate: z.string().regex(calendarDatePattern),
+    startTime: z.string().regex(timePattern),
+    endTime: z.string().regex(timePattern),
+    slotMinutes: z.coerce.number().int().min(10).max(240),
+    targetStatus: z.enum(["available", "blocked", "closed"])
+  })
+  .superRefine((value, context) => {
+    const start = timeToMinutes(value.startTime);
+    const end = timeToMinutes(value.endTime);
+    if (start >= end) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม", path: ["endTime"] });
+    } else if ((end - start) % value.slotMinutes !== 0) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "ระยะเวลาต่อรอบต้องหารช่วงเวลาได้ลงตัว", path: ["slotMinutes"] });
+    }
+  });
 
 export const deleteDoctorAvailabilityDateOverrideSchema = z.object({
   overrideId: z.string().min(1),

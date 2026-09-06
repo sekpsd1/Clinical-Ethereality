@@ -31,6 +31,7 @@ function txMock(overrides: {
         doctorId: "doctor-1",
         createdAt: new Date("2026-09-05T02:00:00.000Z"),
         scheduledAt,
+        bookedDurationMinutes: 30,
         slotLockId: consultationStatus === "reschedule_required" ? null : "lock-1",
         status: consultationStatus,
         patient: {
@@ -81,6 +82,7 @@ function txMock(overrides: {
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
     consultationSlotLock: { deleteMany: vi.fn() },
+    doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
     fileAttachment: {
       findFirst: vi.fn().mockResolvedValue({ id: "attachment-1" })
     },
@@ -215,6 +217,17 @@ describe("manual consultation payment review", () => {
       where: { id: "lock-1" }
     });
     expect(tx.notification.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps verified funds but refuses to schedule a slot blocked before manual review", async () => {
+    const tx = txMock();
+    tx.doctorAvailabilityDateOverride.findFirst.mockResolvedValueOnce({ id: "blocked-1" });
+
+    const outcome = await applyManualConsultationPaymentReview(tx as never, input(), now);
+
+    expect(outcome).toBe("reschedule_required");
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "reschedule_required", slotLockId: null } }));
+    expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadataJson: expect.objectContaining({ blockedByScheduleOverride: true }) }) }));
   });
 
   it("rejects customer contact outside the 24-hour provider-failure window", async () => {
@@ -414,6 +427,25 @@ describe("admin manual appointment payment intake and review", () => {
       )
     ).rejects.toBeInstanceOf(ManualAppointmentIntakeError);
     expect(tx.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects an Admin manual intake when the selected time is blocked", async () => {
+    const tx = intakeTxMock();
+    tx.doctorAvailabilityDateOverride.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "blocked-1" });
+
+    await expect(createManualAppointmentPaymentIntake(tx as never, {
+      actorId: "admin-1",
+      availabilityId: "availability-1",
+      doctorId: "doctor-1",
+      evidence: preparedEvidence(),
+      patientId: "patient-1",
+      reasonCode: "provider_unavailable",
+      scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+      transferredAt: new Date("2026-09-05T05:30:00.000Z")
+    }, now)).rejects.toMatchObject({ code: "SLOT_UNAVAILABLE" });
+    expect(tx.consultationSlotLock.create).not.toHaveBeenCalled();
   });
 
   it("returns the matching pending intake instead of creating duplicate records", async () => {

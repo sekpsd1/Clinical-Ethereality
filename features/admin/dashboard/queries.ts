@@ -96,6 +96,12 @@ const activityLabels: Record<string, string> = {
   "doctor_availability.create": "เพิ่มเวลาว่างแพทย์",
   "doctor_availability.update": "แก้ไขเวลาว่างแพทย์",
   "doctor_availability.toggle": "เปลี่ยนสถานะเวลาว่างแพทย์",
+  "doctor_availability_date_override.create": "เพิ่มสถานะตารางรายวัน",
+  "doctor_availability_date_override.update": "แก้ไขสถานะตารางรายวัน",
+  "doctor_availability_date_override.toggle": "เปลี่ยนการใช้งานตารางรายวัน",
+  "doctor_availability_date_override.copy": "คัดลอกตารางรายวัน",
+  "doctor_availability_date_override.delete": "ลบตารางรายวัน",
+  "doctor_availability_date_override.calendar_status": "เปลี่ยนสถานะช่องเวลาในปฏิทิน",
   "order.create_checkout": "สร้างคำสั่งซื้อจากตะกร้า",
   "order.create_from_prescription": "สร้างคำสั่งซื้อจากใบสั่งยา",
   "order.create_from_external_prescription": "สร้างคำสั่งซื้อจากใบสั่งยาภายนอก",
@@ -142,7 +148,7 @@ function getActivityHref(entityType: string): string {
     return "/admin/moderation";
   }
 
-  if (entityType === "doctor_availability") {
+  if (entityType === "doctor_availability" || entityType === "doctor_availability_date_override") {
     return "/admin/schedules";
   }
 

@@ -19,7 +19,7 @@ export function AdminScheduleCrudWorkspace({ slots, overrides }: { slots: AdminD
   const normalizedQuery = query.trim().toLocaleLowerCase("th-TH");
   const rows = useMemo(() => {
     const recurring = slots.map((slot) => ({ kind: "recurring" as const, id: slot.id, doctor: slot.doctorName, isActive: slot.isActive, summary: `ทุก${slot.weekdayLabel} • ${slot.timeRange}`, detail: slot.effectiveRangeLabel, slot }));
-    const daily = overrides.map((override) => ({ kind: "daily" as const, id: override.id, doctor: override.doctorName, isActive: override.isActive, summary: override.scheduleDate, detail: override.type === "closed" ? "ปิดทั้งวัน" : `เพิ่มเวลาเฉพาะวัน • ${override.timeRange}`, override }));
+    const daily = overrides.map((override) => ({ kind: "daily" as const, id: override.id, doctor: override.doctorName, isActive: override.isActive, summary: override.scheduleDate, detail: override.type === "closed" ? "ปิดทั้งวัน" : override.type === "blocked" ? `ไม่ว่างเฉพาะช่วง • ${override.timeRange}` : `เพิ่มเวลาเฉพาะวัน • ${override.timeRange}`, override }));
     return [...recurring, ...daily].filter((row) =>
       (kind === "all" || row.kind === kind) &&
       (status === "all" || (status === "active" ? row.isActive : !row.isActive)) &&

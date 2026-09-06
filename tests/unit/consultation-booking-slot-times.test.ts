@@ -44,4 +44,12 @@ describe("consultation booking slots", () => {
       ["2026-09-05", "21:00"]
     ]);
   });
+
+  it("omits every customer slot that overlaps an active blocked date range", () => {
+    const recurring = [{ id: "weekly", weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 30, notes: null }];
+    const blocked = [{ id: "blocked", type: "blocked", scheduleDate: new Date("2026-08-03T00:00:00.000Z"), startTime: "09:30", endTime: "10:30", slotMinutes: 30, notes: null }];
+    const slots = getBookingSources(recurring as never, blocked as never, new Date("2026-08-01T02:00:00.000Z"));
+
+    expect(slots.map((slot) => slot.startTime)).toEqual(["09:00", "10:30"]);
+  });
 });
