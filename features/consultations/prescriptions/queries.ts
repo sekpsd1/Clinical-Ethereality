@@ -73,7 +73,11 @@ function getStatusTone(status: PrescriptionStatus): CustomerPrescriptionItem["st
 
 function getProductSummary(prescription: PrescriptionRecord): string {
   if (prescription.orderItems.length === 0) {
-    return "ยังไม่มีคำสั่งซื้อยาที่เชื่อมโยง";
+    return (
+      parsePrescriptionItems(prescription.itemsJson)
+        .map((item) => item.medicationName)
+        .join(", ") || "ใบสั่งยาจากแพทย์"
+    );
   }
 
   return prescription.orderItems.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
@@ -89,7 +93,7 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescription
   if (isPrescriptionOrderReady(status) && !hasOrder) {
     return {
       title: "ใบสั่งยาพร้อมใช้",
-      body: "แพทย์ออกใบสั่งยาแล้ว คุณสามารถใช้ใบสั่งยานี้สั่งซื้อสินค้าที่ต้องใช้ใบสั่งยาได้โดยไม่ต้องรอตรวจเอกสารซ้ำ",
+      body: "คุณยังไม่ได้สั่งยาจากใบสั่งยานี้ กดปุ่ม “สั่งยาตามใบสั่งแพทย์” เพื่อเลือกที่อยู่และดำเนินการสั่งซื้อ",
       ctaLabel: "สั่งยาตามใบสั่งแพทย์",
       ctaHref: `/store/prescriptions/${prescriptionId}`
     };

@@ -81,7 +81,11 @@ function PrescriptionCard({ prescription }: { prescription: CustomerPrescription
       <div className="mt-4 grid gap-3">
         <InfoRow icon={FileClock} label="การปรึกษา" value={prescription.consultationDate} />
         <InfoRow icon={ShieldCheck} label="คลินิก" value={prescription.pharmacistName ?? "ใช้ใบสั่งยาจากแพทย์ได้"} />
-        <InfoRow icon={PackageCheck} label="คำสั่งซื้อที่เกี่ยวข้อง" value={prescription.linkedOrderCode ?? "ยังไม่มีคำสั่งซื้อ"} />
+        <InfoRow
+          icon={PackageCheck}
+          label={prescription.linkedOrderCode ? "คำสั่งซื้อที่เกี่ยวข้อง" : "สถานะคำสั่งซื้อ"}
+          value={prescription.linkedOrderCode ?? "ยังไม่ได้สั่งยาจากใบสั่งยานี้"}
+        />
       </div>
 
       <div className="mt-4 rounded-[18px] bg-[#f7f9fb]/85 p-4">

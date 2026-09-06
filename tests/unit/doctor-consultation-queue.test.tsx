@@ -115,4 +115,34 @@ describe("Doctor consultation queue", () => {
     expect(html).toContain("ระยะเวลานัด");
     expect(html).toContain("ยังไม่ระบุ");
   });
+
+  it("shows an issued prescription as read-only and offers no duplicate prescription control", () => {
+    const completed = consultation("completed", "30 นาที");
+    completed.prescriptionCount = 1;
+    completed.latestPrescriptionId = "prescription-issued";
+    completed.latestPrescriptionStatus = "pending_verification";
+    completed.latestPrescriptionMedication = {
+      medicationName: "Paracetamol 500 mg",
+      dosage: "500 mg",
+      quantity: "10 เม็ด",
+      instructions: "รับประทานครั้งละ 1 เม็ดหลังอาหาร"
+    };
+    const data: DoctorConsultationsData = {
+      consultations: [completed],
+      prescriptionProducts: [],
+      summary: {
+        scheduled: 0,
+        live: 0,
+        completed: 1
+      }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html).toContain("ออกใบสั่งยาแล้ว • ลูกค้าพร้อมสั่งซื้อ");
+    expect(html).toContain("Paracetamol 500 mg • ขนาด 500 mg • จำนวน 10 เม็ด");
+    expect(html).toContain("จึงไม่สามารถออกใบสั่งยาซ้ำได้");
+    expect(html).not.toContain("ยังเขียนใบสั่งยาไม่ได้");
+    expect(html).not.toContain('href="#prescription-consultation-completed"');
+  });
 });

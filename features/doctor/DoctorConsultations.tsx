@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
 import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultationControls";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
+import { formatPrescriptionItem } from "@/features/prescriptions/items";
 
 const consultationStatusLabels: Record<string, string> = {
   cancelled: "ยกเลิกแล้ว",
@@ -52,6 +53,25 @@ function canWritePrescription(consultation: DoctorConsultationItem): boolean {
   }
 
   return !consultation.latestPrescriptionStatus || consultation.latestPrescriptionStatus === "draft" || consultation.latestPrescriptionStatus === "rejected";
+}
+
+function hasIssuedPrescription(consultation: DoctorConsultationItem): boolean {
+  return Boolean(
+    consultation.latestPrescriptionStatus &&
+      !["draft", "rejected"].includes(consultation.latestPrescriptionStatus)
+  );
+}
+
+function getIssuedPrescriptionStatus(consultation: DoctorConsultationItem): string {
+  if (consultation.latestPrescriptionStatus === "dispensed") {
+    return "ออกใบสั่งยาแล้ว • ลูกค้าสั่งซื้อแล้ว";
+  }
+
+  if (consultation.latestPrescriptionStatus === "archived") {
+    return "ใบสั่งยาถูกเก็บถาวร";
+  }
+
+  return "ออกใบสั่งยาแล้ว • ลูกค้าพร้อมสั่งซื้อ";
 }
 
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
@@ -246,6 +266,8 @@ function LatestChatPanel({ consultation }: { consultation: DoctorConsultationIte
 }
 
 function ActionRow({ consultation }: { consultation: DoctorConsultationItem }) {
+  const issuedPrescription = hasIssuedPrescription(consultation);
+
   return (
     <div className="mt-4 grid grid-cols-2 gap-2">
       {consultation.consultRoomHref ? (
@@ -270,6 +292,23 @@ function ActionRow({ consultation }: { consultation: DoctorConsultationItem }) {
           <Pill aria-hidden="true" className="size-4" strokeWidth={2.1} />
           เขียนใบสั่งยา
         </a>
+      ) : issuedPrescription ? (
+        <div className="rounded-[8px] border border-primary/15 bg-primary/5 px-3 py-3 text-left">
+          <div className="flex items-start gap-2">
+            <Pill aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={2.1} />
+            <div className="min-w-0">
+              <p className="text-xs font-bold leading-5 text-primary">{getIssuedPrescriptionStatus(consultation)}</p>
+              {consultation.latestPrescriptionMedication ? (
+                <p className="mt-1 text-[11px] leading-4 text-muted">
+                  {formatPrescriptionItem(consultation.latestPrescriptionMedication)}
+                </p>
+              ) : null}
+              <p className="mt-1 text-[10px] font-semibold leading-4 text-muted">
+                การปรึกษานี้มีใบสั่งยาแล้ว จึงไม่สามารถออกใบสั่งยาซ้ำได้
+              </p>
+            </div>
+          </div>
+        </div>
       ) : (
         <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
           ยังเขียนใบสั่งยาไม่ได้
