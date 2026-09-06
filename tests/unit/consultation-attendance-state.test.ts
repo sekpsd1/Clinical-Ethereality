@@ -23,17 +23,67 @@ function event(
 }
 
 describe("consultation Zoom attendance state", () => {
-  it("allows normal completion only after both roles joined the same meeting", () => {
+  it("allows normal completion only while both roles overlap in the same meeting", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
         event("customer", "joined", "2030-01-01T10:02:00.000Z")
       ],
-      scheduledAt
+      scheduledAt,
+      new Date("2030-01-01T10:03:00.000Z")
     );
 
     expect(state.normalCompletionEligible).toBe(true);
     expect(state.bothJoinedSameMeeting).toBe(true);
+  });
+
+  it("does not qualify sequential attendance with no positive temporal overlap", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("customer", "joined", "2030-01-01T10:06:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
+        event("customer", "left", "2030-01-01T10:08:00.000Z"),
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z")
+      ],
+      scheduledAt,
+      new Date("2030-01-01T10:09:00.000Z")
+    );
+
+    expect(state.doctorEverJoined).toBe(true);
+    expect(state.customerEverJoined).toBe(true);
+    expect(state.bothJoinedSameMeeting).toBe(false);
+    expect(state.normalCompletionEligible).toBe(false);
+  });
+
+  it("qualifies a verified positive overlap from out-of-order closed events", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("customer", "left", "2030-01-01T10:08:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
+        event("customer", "joined", "2030-01-01T10:04:00.000Z"),
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z")
+      ],
+      scheduledAt,
+      new Date("2030-01-01T10:09:00.000Z")
+    );
+
+    expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.normalCompletionEligible).toBe(true);
+  });
+
+  it("requires positive overlap rather than matching boundary timestamps", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
+        event("customer", "joined", "2030-01-01T10:05:00.000Z"),
+        event("customer", "left", "2030-01-01T10:06:00.000Z")
+      ],
+      scheduledAt,
+      new Date("2030-01-01T10:07:00.000Z")
+    );
+
+    expect(state.normalCompletionEligible).toBe(false);
   });
 
   it("does not combine attendance from different meeting UUIDs", () => {

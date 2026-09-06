@@ -65,7 +65,9 @@ describe("doctor consultation attendance completion transaction", () => {
   it("allows normal completion after Zoom verifies both parties in the same meeting", async () => {
     const tx = transaction([
       event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-      event("customer", "joined", "2030-01-01T10:01:00.000Z")
+      event("customer", "joined", "2030-01-01T10:01:00.000Z"),
+      event("doctor", "left", "2030-01-01T10:02:00.000Z"),
+      event("customer", "left", "2030-01-01T10:03:00.000Z")
     ]);
 
     await applyDoctorConsultationTransition(tx as never, {
@@ -86,6 +88,26 @@ describe("doctor consultation attendance completion transaction", () => {
     });
     expect(tx.notification.create).toHaveBeenCalledOnce();
     expect(tx.auditLog.create.mock.calls[0]?.[0].data.action).toBe("consultation.complete");
+  });
+
+  it("denies normal completion when both parties joined the same meeting sequentially", async () => {
+    const tx = transaction([
+      event("customer", "left", "2030-01-01T10:08:00.000Z"),
+      event("doctor", "left", "2030-01-01T10:05:00.000Z"),
+      event("customer", "joined", "2030-01-01T10:06:00.000Z"),
+      event("doctor", "joined", "2030-01-01T10:00:00.000Z")
+    ]);
+
+    await expect(
+      applyDoctorConsultationTransition(tx as never, {
+        consultationId: "consultation-1",
+        transition: "complete",
+        summary: "คำแนะนำครบถ้วน",
+        ...doctorActor
+      })
+    ).rejects.toMatchObject({ code: "attendance_not_verified" });
+    expect(tx.consultation.update).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
   });
 
   it("denies no-show when the verified continuous doctor interval is under ten minutes", async () => {

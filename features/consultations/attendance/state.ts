@@ -23,6 +23,24 @@ function secondsBetween(start: Date, end: Date) {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
 }
 
+type AttendanceInterval = {
+  role: "doctor" | "customer";
+  meetingUuidHash: string;
+  startedAt: Date;
+  endedAt: Date;
+};
+
+function getSessionKey(event: ConsultationAttendanceEventRecord) {
+  return [event.role, event.meetingUuidHash, event.participantSessionHash].join(":");
+}
+
+function intervalsOverlap(left: AttendanceInterval, right: AttendanceInterval) {
+  const overlapStartedAt = Math.max(left.startedAt.getTime(), right.startedAt.getTime());
+  const overlapEndedAt = Math.min(left.endedAt.getTime(), right.endedAt.getTime());
+
+  return overlapEndedAt > overlapStartedAt;
+}
+
 export function getConsultationAttendanceState(
   events: ConsultationAttendanceEventRecord[],
   scheduledAt: Date | null,
@@ -39,51 +57,86 @@ export function getConsultationAttendanceState(
   });
   const doctorMeetings = new Set<string>();
   const customerMeetings = new Set<string>();
-  const activeDoctorSessions = new Map<string, Date>();
+  const activeSessions = new Map<
+    string,
+    Pick<AttendanceInterval, "role" | "meetingUuidHash" | "startedAt">
+  >();
+  const attendanceIntervals: AttendanceInterval[] = [];
   let longestVerifiedDoctorPresenceSeconds = 0;
 
   for (const event of ordered) {
+    const sessionKey = getSessionKey(event);
+
     if (event.eventType === "joined") {
       (event.role === "doctor" ? doctorMeetings : customerMeetings).add(event.meetingUuidHash);
 
-      if (event.role === "doctor" && !activeDoctorSessions.has(event.participantSessionHash)) {
-        activeDoctorSessions.set(event.participantSessionHash, event.occurredAt);
+      if (!activeSessions.has(sessionKey)) {
+        activeSessions.set(sessionKey, {
+          role: event.role,
+          meetingUuidHash: event.meetingUuidHash,
+          startedAt: event.occurredAt
+        });
       }
 
       continue;
     }
 
-    if (event.role !== "doctor") {
+    const activeSession = activeSessions.get(sessionKey);
+
+    if (!activeSession) {
       continue;
     }
 
-    const joinedAt = activeDoctorSessions.get(event.participantSessionHash);
+    attendanceIntervals.push({
+      ...activeSession,
+      endedAt: event.occurredAt
+    });
 
-    if (!joinedAt) {
-      continue;
+    if (event.role === "doctor") {
+      const effectiveStart =
+        scheduledAt && scheduledAt > activeSession.startedAt
+          ? scheduledAt
+          : activeSession.startedAt;
+      longestVerifiedDoctorPresenceSeconds = Math.max(
+        longestVerifiedDoctorPresenceSeconds,
+        secondsBetween(effectiveStart, event.occurredAt)
+      );
     }
 
-    const effectiveStart = scheduledAt && scheduledAt > joinedAt ? scheduledAt : joinedAt;
-    longestVerifiedDoctorPresenceSeconds = Math.max(
-      longestVerifiedDoctorPresenceSeconds,
-      secondsBetween(effectiveStart, event.occurredAt)
-    );
-    activeDoctorSessions.delete(event.participantSessionHash);
+    activeSessions.delete(sessionKey);
   }
 
   let activeDoctorPresenceSeconds = 0;
 
-  for (const joinedAt of activeDoctorSessions.values()) {
-    const effectiveStart = scheduledAt && scheduledAt > joinedAt ? scheduledAt : joinedAt;
-    activeDoctorPresenceSeconds = Math.max(
-      activeDoctorPresenceSeconds,
-      secondsBetween(effectiveStart, now)
-    );
+  for (const activeSession of activeSessions.values()) {
+    attendanceIntervals.push({
+      ...activeSession,
+      endedAt: now
+    });
+
+    if (activeSession.role === "doctor") {
+      const effectiveStart =
+        scheduledAt && scheduledAt > activeSession.startedAt
+          ? scheduledAt
+          : activeSession.startedAt;
+      activeDoctorPresenceSeconds = Math.max(
+        activeDoctorPresenceSeconds,
+        secondsBetween(effectiveStart, now)
+      );
+    }
   }
 
   const doctorEverJoined = doctorMeetings.size > 0;
   const customerEverJoined = customerMeetings.size > 0;
-  const bothJoinedSameMeeting = [...doctorMeetings].some((meeting) => customerMeetings.has(meeting));
+  const doctorIntervals = attendanceIntervals.filter((interval) => interval.role === "doctor");
+  const customerIntervals = attendanceIntervals.filter((interval) => interval.role === "customer");
+  const bothJoinedSameMeeting = doctorIntervals.some((doctorInterval) =>
+    customerIntervals.some(
+      (customerInterval) =>
+        customerInterval.meetingUuidHash === doctorInterval.meetingUuidHash &&
+        intervalsOverlap(doctorInterval, customerInterval)
+    )
+  );
   const noShowCompletionEligible =
     !customerEverJoined && longestVerifiedDoctorPresenceSeconds >= NO_SHOW_WAIT_SECONDS;
 
@@ -118,6 +171,14 @@ export function getAttendanceStatusCopy(
   }
 
   if (state.customerEverJoined) {
+    if (state.doctorEverJoined) {
+      return {
+        label: "ยังไม่ยืนยันว่าอยู่ใน Zoom พร้อมกัน",
+        description: "ระบบจะเปิดขั้นตอนจบการปรึกษาหลัง Zoom ยืนยันช่วงเวลาที่แพทย์และผู้ป่วยอยู่ในห้องเดียวกันพร้อมกัน",
+        tone: "warning" as const
+      };
+    }
+
     return {
       label: viewerRole === "doctor" ? "ยืนยันผู้ป่วยแล้ว • รอแพทย์" : "Zoom ยืนยันคุณแล้ว • รอแพทย์",
       description: "ระบบจะเปิดขั้นตอนจบการปรึกษาหลัง Zoom ยืนยันแพทย์ในห้องเดียวกัน",
