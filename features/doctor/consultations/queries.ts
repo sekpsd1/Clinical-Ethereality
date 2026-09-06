@@ -11,6 +11,7 @@ import {
   resolveDoctorConsultationDurations,
   type ConsultationBookingDurationAudit
 } from "@/features/doctor/consultations/duration";
+import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
 import type {
   DoctorConsultationItem,
   DoctorConsultationsData,
@@ -435,7 +436,9 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
       getPrescriptionProductsForDoctor()
     ]);
     const durationByConsultationId = await getBookedDurationSnapshots(consultations);
-    const consultationItems = consultations.map((consultation) => mapConsultation(consultation, durationByConsultationId));
+    const consultationItems = prioritizeDoctorConsultations(
+      consultations.map((consultation) => mapConsultation(consultation, durationByConsultationId))
+    );
 
     return {
       consultations: consultationItems,

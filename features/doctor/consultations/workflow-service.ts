@@ -9,10 +9,26 @@ export type DoctorConsultationWorkflowSnapshot = {
   id: string;
   patientId: string;
   status: ConsultationStatus;
+  scheduledAt: Date | null;
   doctor: {
     userId: string;
   };
 };
+
+export class DoctorConsultationWorkflowError extends Error {
+  constructor(
+    message: string,
+    readonly code:
+      | "not_found"
+      | "wrong_doctor"
+      | "invalid_status"
+      | "missing_appointment_time"
+      | "before_appointment_time"
+  ) {
+    super(message);
+    this.name = "DoctorConsultationWorkflowError";
+  }
+}
 
 export function getDoctorConsultationNextStatus(
   consultation: DoctorConsultationWorkflowSnapshot | null,
@@ -20,22 +36,50 @@ export function getDoctorConsultationNextStatus(
     userId: string;
     role: Role;
   },
-  transition: DoctorConsultationTransition
+  transition: DoctorConsultationTransition,
+  now = new Date()
 ): ConsultationStatus {
   if (!consultation) {
-    throw new Error("Consultation not found.");
+    throw new DoctorConsultationWorkflowError("Consultation not found.", "not_found");
   }
 
   if (actor.role === "doctor" && consultation.doctor.userId !== actor.userId) {
-    throw new Error("Doctor cannot update another doctor's consultation.");
+    throw new DoctorConsultationWorkflowError(
+      "Doctor cannot update another doctor's consultation.",
+      "wrong_doctor"
+    );
   }
 
   if (transition === "start" && consultation.status !== "scheduled") {
-    throw new Error("Only scheduled consultations can be started.");
+    throw new DoctorConsultationWorkflowError(
+      "Only scheduled consultations can be started.",
+      "invalid_status"
+    );
+  }
+
+  if (transition === "start") {
+    const scheduledAt = consultation.scheduledAt;
+
+    if (!scheduledAt) {
+      throw new DoctorConsultationWorkflowError(
+        "Consultation appointment time is required before starting.",
+        "missing_appointment_time"
+      );
+    }
+
+    if (scheduledAt.getTime() > now.getTime()) {
+      throw new DoctorConsultationWorkflowError(
+        "Consultation cannot start before the scheduled appointment time.",
+        "before_appointment_time"
+      );
+    }
   }
 
   if (transition === "complete" && consultation.status !== "live") {
-    throw new Error("Only live consultations can be completed.");
+    throw new DoctorConsultationWorkflowError(
+      "Only live consultations can be completed.",
+      "invalid_status"
+    );
   }
 
   return transition === "start" ? "live" : "completed";
@@ -60,6 +104,7 @@ export async function applyDoctorConsultationTransition(
       id: true,
       patientId: true,
       status: true,
+      scheduledAt: true,
       doctor: {
         select: {
           userId: true

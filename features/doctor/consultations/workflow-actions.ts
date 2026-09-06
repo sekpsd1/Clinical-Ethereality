@@ -7,12 +7,14 @@ import { createZoomMeetingIfConfigured } from "@/lib/zoom/meetings";
 import { transitionDoctorConsultationSchema } from "@/features/doctor/consultations/workflow-schema";
 import {
   applyDoctorConsultationTransition,
+  DoctorConsultationWorkflowError,
   getDoctorConsultationNextStatus
 } from "@/features/doctor/consultations/workflow-service";
 
 export type DoctorConsultationWorkflowActionState = {
   status: "idle" | "success" | "error";
   message: string;
+  roomHref?: string;
 };
 
 function formDataToObject(formData: FormData) {
@@ -82,9 +84,27 @@ export async function transitionDoctorConsultationAction(
           ? zoomMeeting
             ? "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว"
             : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom"
-          : "จบการปรึกษาและบันทึกสรุปแล้ว"
+          : "จบการปรึกษาและบันทึกสรุปแล้ว",
+      roomHref:
+        parsed.data.transition === "start"
+          ? `/consult/live?consultation=${parsed.data.consultationId}`
+          : undefined
     };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof DoctorConsultationWorkflowError &&
+      (error.code === "before_appointment_time" ||
+        error.code === "missing_appointment_time")
+    ) {
+      return {
+        status: "error",
+        message:
+          error.code === "before_appointment_time"
+            ? "ยังไม่ถึงเวลานัด ระบบจึงยังไม่เปิดให้เริ่มการปรึกษา"
+            : "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"
+      };
+    }
+
     return {
       status: "error",
       message:

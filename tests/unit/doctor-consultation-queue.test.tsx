@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DoctorConsultations } from "@/features/doctor/DoctorConsultations";
+import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 vi.mock("@/features/doctor/DoctorConsultationControls", () => ({
@@ -43,7 +44,25 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
   };
 }
 
-describe("Doctor consultation queue duration", () => {
+describe("Doctor consultation queue", () => {
+  it("prioritizes live and scheduled consultations over historical entries", () => {
+    const prioritized = prioritizeDoctorConsultations([
+      consultation("cancelled", "30 นาที"),
+      consultation("completed", "30 นาที"),
+      consultation("scheduled", "30 นาที"),
+      consultation("live", "30 นาที"),
+      consultation("pending_payment", "30 นาที")
+    ]);
+
+    expect(prioritized.map((item) => item.status)).toEqual([
+      "live",
+      "scheduled",
+      "cancelled",
+      "completed",
+      "pending_payment"
+    ]);
+  });
+
   it("shows configured duration on every consultation status card", () => {
     const data: DoctorConsultationsData = {
       consultations: [
