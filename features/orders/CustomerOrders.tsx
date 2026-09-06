@@ -90,7 +90,13 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
         <InfoTile icon="receipt" label="ยอดรวม" value={order.total} />
         <InfoTile icon="payment" label="ชำระเงิน" value={order.paymentLabel} />
         <InfoTile icon="shipment" label="จัดส่ง" value={order.shipmentLabel} />
-        <InfoTile icon="tracking" label="เลขพัสดุ" value={order.trackingNumber ?? "-"} />
+        <InfoTile
+          icon="tracking"
+          label="ข้อมูลพัสดุ"
+          value={order.trackingNumber
+            ? `${order.carrier ? `${order.carrier} · ` : ""}${order.trackingNumber}`
+            : "-"}
+        />
       </dl>
 
       {order.externalPrescriptionAttachmentCount > 0 ? (

@@ -173,6 +173,7 @@ function mapOrder(
     } : null,
     shipmentId: shipment?.id ?? null,
     shipmentStatus: shipment?.status ?? null,
+    carrier: shipment?.carrier ?? null,
     trackingNumber: shipment?.trackingNumber ?? null,
     createdAt: formatDate(order.createdAt),
     fulfillmentHistory: fulfillmentHistory.get(order.id) ?? []

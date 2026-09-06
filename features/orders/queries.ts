@@ -16,7 +16,7 @@ const orderStatusLabels: Record<OrderStatus, string> = {
   pending_payment: "รอชำระเงิน",
   payment_review: "ตรวจสอบสลิป",
   paid: "ชำระเงินแล้ว",
-  preparing: "กำลังจัดเตรียม",
+  preparing: "กำลังจัดเตรียมสินค้า",
   shipped: "จัดส่งแล้ว",
   delivered: "สำเร็จ",
   cancelled: "ยกเลิก",
@@ -33,7 +33,7 @@ const paymentStatusLabels: Record<PaymentStatus, string> = {
 
 const shipmentStatusLabels: Record<ShipmentStatus, string> = {
   pending: "รอจัดส่ง",
-  preparing: "กำลังเตรียมยา",
+  preparing: "กำลังจัดเตรียมสินค้า",
   shipped: "จัดส่งแล้ว",
   delivered: "ส่งสำเร็จ",
   failed: "จัดส่งไม่สำเร็จ",
@@ -139,13 +139,17 @@ function getTrackingSteps(order: CustomerOrderRecord): CustomerOrderTrackingStep
       status: getStepStatus(order.status, ["paid", "preparing", "shipped", "delivered", "refunded"], ["pending_payment", "payment_review"])
     },
     {
-      title: "จัดเตรียมโดยเภสัชกร",
-      description: shipment ? shipmentStatusLabels[shipment.status] : "รอเข้าสู่คิวห้องยา",
+      title: "จัดเตรียมโดยทีมงาน",
+      description: shipment ? shipmentStatusLabels[shipment.status] : "รอทีมงานเริ่มจัดเตรียมสินค้า",
       status: getStepStatus(order.status, ["shipped", "delivered"], ["paid", "preparing"])
     },
     {
       title: "จัดส่ง",
-      description: shipment?.trackingNumber ? `เลขพัสดุ: ${shipment.trackingNumber}` : "ยังไม่มีเลขพัสดุ",
+      description: shipment?.trackingNumber
+        ? [shipment.carrier ? `ขนส่ง: ${shipment.carrier}` : null, `เลขพัสดุ: ${shipment.trackingNumber}`]
+            .filter(Boolean)
+            .join(" · ")
+        : "ยังไม่มีเลขพัสดุ",
       status: getStepStatus(order.status, ["delivered"], ["shipped"])
     }
   ];
@@ -218,6 +222,7 @@ async function mapOrder(
     } : null,
     shipmentStatus: shipment?.status ?? null,
     shipmentLabel: shipment ? shipmentStatusLabels[shipment.status] : "ยังไม่มีข้อมูลจัดส่ง",
+    carrier: shipment?.carrier ?? null,
     trackingNumber: shipment?.trackingNumber ?? null,
     createdAt: formatDate(order.createdAt),
     updatedAt: formatDate(order.updatedAt),

@@ -35,9 +35,9 @@ const paymentStatusLabels: Record<string, string> = {
 };
 
 const fulfillmentActionLabels = {
-  "order.mark_delivered": "ยืนยันส่งมอบ",
-  "order.mark_preparing": "เริ่มจัดยา",
-  "order.mark_shipped": "จัดส่งแล้ว"
+  "order.mark_delivered": "ยืนยันส่งถึง",
+  "order.mark_preparing": "เริ่มจัดเตรียม",
+  "order.mark_shipped": "บันทึกการจัดส่ง"
 } as const;
 
 function getStatusTone(status: AdminOrderQueueItem["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -64,7 +64,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
       tone: "warning"
     },
     {
-      label: "กำลังจัดยา",
+      label: "กำลังจัดเตรียม",
       value: String(data.summary.inFulfillment),
       tone: "neutral"
     },
@@ -81,7 +81,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
         <p className="text-label font-bold uppercase text-white/75">จัดการคำสั่งซื้อ</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คำสั่งซื้อและจัดส่ง</h2>
         <p className="mt-2 max-w-[340px] text-sm leading-6 text-white/80">
-          ติดตามคำสั่งซื้อที่ชำระแล้ว เตรียมยา และอัปเดตสถานะจัดส่งด้วยขั้นตอนสั้นที่สุด
+          ติดตามคำสั่งซื้อที่ชำระแล้ว จัดเตรียมสินค้า และอัปเดตสถานะจัดส่งด้วยขั้นตอนสั้นที่สุด
         </p>
       </section>
 
@@ -161,6 +161,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                   <Truck aria-hidden="true" className="size-4 text-primary" strokeWidth={2.1} />
                   <span className="truncate">
                     {order.shipmentStatus ? shipmentStatusLabels[order.shipmentStatus] : "ยังไม่มีข้อมูลจัดส่ง"}
+                    {order.carrier ? ` · ${order.carrier}` : ""}
                     {order.trackingNumber ? ` · ${order.trackingNumber}` : ""}
                   </span>
                 </div>
@@ -187,7 +188,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                 </div>
               ) : null}
 
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+              <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-end sm:justify-between">
                 <p className="min-w-0 truncate text-[11px] font-semibold text-muted">
                   สร้างเมื่อ {order.createdAt} · ชำระเงิน {paymentStatusLabels[order.paymentStatus] ?? order.paymentStatus}
                 </p>

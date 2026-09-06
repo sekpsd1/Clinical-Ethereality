@@ -24,36 +24,55 @@ export function AdminOrderActionButtons({ order }: AdminOrderActionButtonsProps)
   const actionState = deliverState.status !== "idle" ? deliverState : shipState.status !== "idle" ? shipState : prepareState;
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-2">
-      <div className="flex gap-2">
-        {order.status === "paid" ? (
-          <OrderActionForm
-            action={prepareAction}
-            actionName="mark_preparing"
-            ariaLabel={`เริ่มจัดเตรียม ${order.orderCode}`}
-            className="bg-primary text-white"
-            icon="prepare"
-          />
-        ) : null}
-        {order.status === "preparing" ? (
-          <OrderActionForm
-            action={shipAction}
-            actionName="mark_shipped"
-            ariaLabel={`จัดส่ง ${order.orderCode}`}
-            className="bg-primary text-white"
-            icon="ship"
-          />
-        ) : null}
-        {order.status === "shipped" ? (
-          <OrderActionForm
-            action={deliverAction}
-            actionName="mark_delivered"
-            ariaLabel={`ยืนยันส่งถึงแล้ว ${order.orderCode}`}
-            className="bg-success text-white"
-            icon="deliver"
-          />
-        ) : null}
-      </div>
+    <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+      {order.status === "paid" ? (
+        <OrderActionForm
+          action={prepareAction}
+          actionName="mark_preparing"
+          className="bg-primary text-white"
+          icon="prepare"
+          label="เริ่มจัดเตรียม"
+        />
+      ) : null}
+      {order.status === "preparing" ? (
+        <form action={shipAction} className="w-full space-y-3 rounded-[8px] border border-primary/15 bg-primary/5 p-3 sm:min-w-[280px]">
+          <input type="hidden" name="orderId" value={order.id} />
+          <input type="hidden" name="action" value="mark_shipped" />
+          <label className="block text-[11px] font-bold text-text">
+            ผู้ให้บริการขนส่ง <span className="font-medium text-muted">(ไม่บังคับ)</span>
+            <input
+              type="text"
+              name="carrier"
+              maxLength={80}
+              placeholder="เช่น ไปรษณีย์ไทย, Flash"
+              className="mt-1.5 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-[11px] font-bold text-text">
+            เลขพัสดุ <span className="text-danger">*</span>
+            <input
+              type="text"
+              name="trackingNumber"
+              required
+              minLength={3}
+              maxLength={100}
+              autoComplete="off"
+              placeholder="กรอกเลขพัสดุ"
+              className="mt-1.5 h-10 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
+            />
+          </label>
+          <ActionButton className="w-full bg-primary text-white" icon="ship" label="บันทึกการจัดส่ง" />
+        </form>
+      ) : null}
+      {order.status === "shipped" ? (
+        <OrderActionForm
+          action={deliverAction}
+          actionName="mark_delivered"
+          className="bg-success text-white"
+          icon="deliver"
+          label="ยืนยันส่งถึง"
+        />
+      ) : null}
       {actionState.status !== "idle" ? (
         <p
           className={cn(
@@ -71,34 +90,34 @@ export function AdminOrderActionButtons({ order }: AdminOrderActionButtonsProps)
   function OrderActionForm({
     action,
     actionName,
-    ariaLabel,
     className,
-    icon
+    icon,
+    label
   }: {
     action: (payload: FormData) => void;
     actionName: "mark_preparing" | "mark_shipped" | "mark_delivered";
-    ariaLabel: string;
     className: string;
     icon: "prepare" | "ship" | "deliver";
+    label: string;
   }) {
     return (
       <form action={action}>
         <input type="hidden" name="orderId" value={order.id} />
         <input type="hidden" name="action" value={actionName} />
-        <ActionIconButton ariaLabel={ariaLabel} className={className} icon={icon} />
+        <ActionButton className={className} icon={icon} label={label} />
       </form>
     );
   }
 }
 
-function ActionIconButton({
-  ariaLabel,
+function ActionButton({
   className,
-  icon
+  icon,
+  label
 }: {
-  ariaLabel: string;
   className: string;
   icon: "prepare" | "ship" | "deliver";
+  label: string;
 }) {
   const { pending } = useFormStatus();
   const Icon = icon === "prepare" ? PackageCheck : icon === "ship" ? Truck : CheckCircle2;
@@ -106,11 +125,11 @@ function ActionIconButton({
   return (
     <button
       type="submit"
-      className={cn("inline-flex size-9 items-center justify-center rounded-full disabled:opacity-60", className)}
-      aria-label={ariaLabel}
+      className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-bold disabled:opacity-60", className)}
       disabled={pending}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
+      {pending ? "กำลังบันทึก..." : label}
     </button>
   );
 }

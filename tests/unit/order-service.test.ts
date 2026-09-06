@@ -98,6 +98,8 @@ describe("order fulfillment service", () => {
       orderId: "order-1",
       action: "mark_shipped",
       actorId: "admin-1",
+      carrier: " Thailand Post ",
+      trackingNumber: "  EM123456789TH ",
       auditMetadata: {
         actorRole: "admin",
         surface: "admin"
@@ -127,7 +129,9 @@ describe("order fulfillment service", () => {
         id: "shipment-1"
       },
       data: {
+        carrier: "Thailand Post",
         status: "shipped",
+        trackingNumber: "EM123456789TH",
         updatedById: "admin-1"
       }
     });
@@ -140,5 +144,70 @@ describe("order fulfillment service", () => {
         entityId: "prescription-1"
       })
     });
+  });
+
+  it("moves a prescription-linked paid order to preparing without dispensing it", async () => {
+    const prescriptionFindMany = vi.fn();
+    const prescriptionUpdateMany = vi.fn();
+    const orderUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const shipmentUpdate = vi.fn().mockResolvedValue({ id: "shipment-1" });
+    const auditCreate = vi.fn().mockResolvedValue({ id: "audit-1" });
+    const tx = {
+      order: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "order-1",
+          status: "paid",
+          items: [{ prescriptionId: "prescription-1" }],
+          shipments: [{ id: "shipment-1" }]
+        }),
+        updateMany: orderUpdateMany
+      },
+      prescription: {
+        findMany: prescriptionFindMany,
+        updateMany: prescriptionUpdateMany
+      },
+      shipmentTracking: {
+        update: shipmentUpdate
+      },
+      auditLog: {
+        create: auditCreate
+      }
+    } as unknown as Prisma.TransactionClient;
+
+    await applyOrderFulfillmentTransition(tx, {
+      orderId: "order-1",
+      action: "mark_preparing",
+      actorId: "admin-1"
+    });
+
+    expect(prescriptionFindMany).not.toHaveBeenCalled();
+    expect(prescriptionUpdateMany).not.toHaveBeenCalled();
+    expect(orderUpdateMany).toHaveBeenCalledWith({
+      where: { id: "order-1", status: "paid" },
+      data: { status: "preparing" }
+    });
+    expect(shipmentUpdate).toHaveBeenCalledWith({
+      where: { id: "shipment-1" },
+      data: { status: "preparing", updatedById: "admin-1" }
+    });
+    expect(auditCreate).toHaveBeenCalledOnce();
+  });
+
+  it("rejects mark_shipped without a valid tracking number before mutating the order", async () => {
+    const orderFindUnique = vi.fn();
+    const tx = {
+      order: {
+        findUnique: orderFindUnique
+      }
+    } as unknown as Prisma.TransactionClient;
+
+    await expect(applyOrderFulfillmentTransition(tx, {
+      orderId: "order-1",
+      action: "mark_shipped",
+      actorId: "admin-1",
+      trackingNumber: "  "
+    })).rejects.toThrow("A valid shipment tracking number is required before shipping.");
+
+    expect(orderFindUnique).not.toHaveBeenCalled();
   });
 });

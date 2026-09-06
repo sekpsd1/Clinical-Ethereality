@@ -35,6 +35,8 @@ export async function updateOrderFulfillmentAction(
         orderId: parsed.data.orderId,
         action: parsed.data.action,
         actorId: session.userId,
+        carrier: parsed.data.carrier,
+        trackingNumber: parsed.data.trackingNumber,
         auditMetadata: {
           actorRole: session.role,
           surface: "admin"

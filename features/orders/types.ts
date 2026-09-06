@@ -28,6 +28,7 @@ export type CustomerOrderItem = {
   shippingAddress: OrderShippingAddressView | null;
   shipmentStatus: ShipmentStatus | null;
   shipmentLabel: string;
+  carrier: string | null;
   trackingNumber: string | null;
   createdAt: string;
   updatedAt: string;

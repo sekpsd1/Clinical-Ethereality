@@ -25,6 +25,7 @@ export type AdminOrderQueueItem = {
   shippingAddress: OrderShippingAddressView | null;
   shipmentId: string | null;
   shipmentStatus: ShipmentStatus | null;
+  carrier: string | null;
   trackingNumber: string | null;
   createdAt: string;
   fulfillmentHistory: AdminOrderFulfillmentHistoryItem[];

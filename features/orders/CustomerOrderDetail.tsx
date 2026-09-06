@@ -81,7 +81,12 @@ function OrderDetailContent({ order }: { order: CustomerOrderItem }) {
         <DetailTile label="ยอดรวม" value={order.total} />
         <DetailTile label="การชำระเงิน" value={order.paymentLabel} />
         <DetailTile label="การจัดส่ง" value={order.shipmentLabel} />
-        <DetailTile label="เลขพัสดุ" value={order.trackingNumber ?? "-"} />
+        <DetailTile
+          label="ข้อมูลพัสดุ"
+          value={order.trackingNumber
+            ? `${order.carrier ? `${order.carrier} · ` : ""}${order.trackingNumber}`
+            : "-"}
+        />
       </section>
 
       <section className="rounded-[24px] border border-white/40 bg-white/75 p-6 shadow-[0_10px_30px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">

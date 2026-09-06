@@ -55,15 +55,51 @@ export function assertPrescriptionReadyForDispensing(status: PrescriptionStatus)
   }
 }
 
+export function normalizeShipmentTrackingNumber(value: string | undefined): string {
+  const trackingNumber = value?.trim() ?? "";
+
+  if (
+    trackingNumber.length < 3 ||
+    trackingNumber.length > 100 ||
+    !/^[\p{L}\p{N}][\p{L}\p{N}._/# -]*$/u.test(trackingNumber)
+  ) {
+    throw new Error("A valid shipment tracking number is required before shipping.");
+  }
+
+  return trackingNumber;
+}
+
+function normalizeShipmentCarrier(value: string | undefined): string | undefined {
+  const carrier = value?.trim();
+
+  if (!carrier) {
+    return undefined;
+  }
+
+  if (carrier.length > 80 || /[\r\n\t]/.test(carrier)) {
+    throw new Error("Shipment carrier is invalid.");
+  }
+
+  return carrier;
+}
+
 export async function applyOrderFulfillmentTransition(
   tx: Prisma.TransactionClient,
   input: {
     orderId: string;
     action: OrderFulfillmentAction;
     actorId: string;
+    carrier?: string;
+    trackingNumber?: string;
     auditMetadata?: Record<string, string>;
   }
 ) {
+  const shipmentDetails = input.action === "mark_shipped"
+    ? {
+        carrier: normalizeShipmentCarrier(input.carrier),
+        trackingNumber: normalizeShipmentTrackingNumber(input.trackingNumber)
+      }
+    : null;
   const order = await tx.order.findUnique({
     where: {
       id: input.orderId
@@ -111,7 +147,7 @@ export async function applyOrderFulfillmentTransition(
         })
       : [];
 
-  if (linkedPrescriptions.length !== prescriptionIds.length) {
+  if (input.action === "mark_shipped" && linkedPrescriptions.length !== prescriptionIds.length) {
     throw new Error("Linked prescription was not found.");
   }
 
@@ -135,7 +171,8 @@ export async function applyOrderFulfillmentTransition(
 
   await upsertLatestShipment(tx, order.id, order.shipments[0]?.id, {
     status: transition.shipmentStatus,
-    updatedById: input.actorId
+    updatedById: input.actorId,
+    ...(shipmentDetails ?? {})
   });
 
   for (const prescription of linkedPrescriptions) {
@@ -179,6 +216,7 @@ export async function applyOrderFulfillmentTransition(
     metadata: {
       previousStatus: order.status,
       nextStatus: transition.to,
+      ...(shipmentDetails ?? {}),
       ...input.auditMetadata
     }
   });
@@ -191,6 +229,8 @@ async function upsertLatestShipment(
   data: {
     status: ShipmentStatus;
     updatedById: string;
+    carrier?: string;
+    trackingNumber?: string;
   }
 ) {
   if (shipmentId) {

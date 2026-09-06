@@ -14,8 +14,8 @@ const trackingSteps: TrackingStep[] = [
     status: "done"
   },
   {
-    title: "กำลังจัดเตรียมยาโดยเภสัชกร",
-    description: "ระบบกำลังตรวจสอบความถูกต้องของใบสั่งยา",
+    title: "กำลังจัดเตรียมสินค้าโดยทีมงาน",
+    description: "ทีมงานกำลังตรวจสอบและจัดเตรียมคำสั่งซื้อ",
     status: "active"
   },
   {
@@ -73,7 +73,7 @@ export function PaymentSuccessTracking() {
 
         <section className="rounded-[24px] border border-white/20 bg-white/70 p-8 shadow-[0_20px_50px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
           <p className="mb-10 text-base font-semibold leading-8 text-[#191c1e]">
-            ขอบคุณที่ใช้บริการ ข้อมูลการสั่งซื้อของคุณถูกส่งไปยังห้องยาเรียบร้อยแล้ว
+            ขอบคุณที่ใช้บริการ ทีมงานได้รับคำสั่งซื้อของคุณและกำลังดำเนินการเรียบร้อยแล้ว
           </p>
 
           <div className="space-y-10">
