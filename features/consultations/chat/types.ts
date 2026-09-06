@@ -14,6 +14,9 @@ export type LiveConsultationChatData = {
   doctorImageUrl: string;
   patientImageUrl: string;
   statusLabel: string;
+  attendanceLabel: string;
+  attendanceDescription: string;
+  attendanceTone: "neutral" | "success" | "warning";
   canSend: boolean;
   videoHref: string | null;
   videoMode: "meeting_sdk" | "external" | "unavailable";

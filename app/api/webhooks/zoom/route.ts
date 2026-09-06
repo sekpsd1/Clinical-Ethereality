@@ -1,13 +1,20 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getAppEnv } from "@/lib/env/schema";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
+import { parseZoomParticipantAttendanceEvent } from "@/features/consultations/attendance/webhook-schema";
+import {
+  applyZoomParticipantAttendanceEvent,
+  ZoomAttendanceWebhookError
+} from "@/features/consultations/attendance/webhook-service";
 
 export const dynamic = "force-dynamic";
 
 type ZoomWebhookBody = {
   event?: unknown;
+  event_ts?: unknown;
   payload?: unknown;
 };
 
@@ -37,6 +44,17 @@ function getMeetingId(body: ZoomWebhookBody): string | null {
   const id = object.id;
 
   return typeof id === "string" || typeof id === "number" ? String(id) : null;
+}
+
+function getEventOccurredAt(body: ZoomWebhookBody): Date | null {
+  if (typeof body.event_ts !== "number" || !Number.isFinite(body.event_ts)) {
+    return null;
+  }
+
+  const milliseconds = body.event_ts > 10_000_000_000 ? body.event_ts : body.event_ts * 1000;
+  const occurredAt = new Date(milliseconds);
+
+  return Number.isFinite(occurredAt.getTime()) ? occurredAt : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -103,6 +121,50 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  if (body.event === "meeting.participant_joined" || body.event === "meeting.participant_left") {
+    const participantEvent = parseZoomParticipantAttendanceEvent(body);
+
+    if (!participantEvent) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Zoom participant event is invalid."
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const result = await prisma.$transaction(
+        (tx) => applyZoomParticipantAttendanceEvent(tx, participantEvent),
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+
+      return NextResponse.json({
+        ok: true,
+        duplicate: result.duplicate
+      });
+    } catch (error) {
+      if (error instanceof ZoomAttendanceWebhookError) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Zoom participant event could not be applied."
+          },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Zoom participant event is temporarily unavailable."
+        },
+        { status: 503 }
+      );
+    }
+  }
+
   if (body.event !== "meeting.started" && body.event !== "meeting.ended") {
     return NextResponse.json({
       ok: true,
@@ -131,6 +193,7 @@ export async function POST(request: NextRequest) {
         id: true,
         patientId: true,
         status: true,
+        scheduledAt: true,
         doctor: {
           select: {
             userId: true
@@ -143,8 +206,16 @@ export async function POST(request: NextRequest) {
       return;
     }
 
-    const auditAction =
-      body.event === "meeting.started" ? "zoom.meeting_started" : "zoom.meeting_ended";
+    const eventOccurredAt = getEventOccurredAt(body);
+    const earlyMeetingStart =
+      body.event === "meeting.started" &&
+      consultation.status === "scheduled" &&
+      (!consultation.scheduledAt || !eventOccurredAt || consultation.scheduledAt > eventOccurredAt);
+    const auditAction = earlyMeetingStart
+      ? "zoom.meeting_started_rejected"
+      : body.event === "meeting.started"
+        ? "zoom.meeting_started"
+        : "zoom.meeting_ended";
     const duplicateEvent = await tx.auditLog.findFirst({
       where: {
         action: auditAction,
@@ -160,10 +231,21 @@ export async function POST(request: NextRequest) {
       return;
     }
 
+    if (earlyMeetingStart) {
+      await writeAuditLog(tx, {
+        action: auditAction,
+        entityType: "consultation",
+        entityId: consultation.id,
+        metadata: {
+          meetingId,
+          reason: consultation.scheduledAt ? "before_scheduled_at" : "missing_scheduled_at"
+        }
+      });
+      return;
+    }
+
     const nextStatus =
-      body.event === "meeting.started" && consultation.status === "scheduled"
-        ? "live"
-        : null;
+      body.event === "meeting.started" && consultation.status === "scheduled" ? "live" : null;
 
     if (nextStatus) {
       await tx.consultation.update({

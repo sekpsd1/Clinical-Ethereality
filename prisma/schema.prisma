@@ -46,6 +46,25 @@ enum ConsultationStatus {
   cancelled
 }
 
+enum ConsultationCompletionOutcome {
+  normal
+  no_show
+}
+
+enum ConsultationNoShowReason {
+  customer_did_not_join
+}
+
+enum ConsultationAttendanceRole {
+  doctor
+  customer
+}
+
+enum ConsultationAttendanceEventType {
+  joined
+  left
+}
+
 enum DoctorAvailabilityDateOverrideType {
   available
   closed
@@ -375,6 +394,8 @@ model Consultation {
   zoomPassword          String?            @db.VarChar(120)
   zoomJoinUrl           String?            @db.Text
   summary               String?            @db.Text
+  completionOutcome     ConsultationCompletionOutcome?
+  noShowReason          ConsultationNoShowReason?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -385,12 +406,46 @@ model Consultation {
   prescriptions Prescription[]
   messages      ConsultationMessage[]
   payment       Payment?
+  attendanceCredentials ConsultationAttendanceCredential[]
+  attendanceEvents      ConsultationAttendanceEvent[]
 
   @@index([patientId])
   @@index([doctorId])
   @@index([assessmentId])
   @@index([status])
   @@index([scheduledAt])
+}
+
+model ConsultationAttendanceCredential {
+  id              String                     @id @default(cuid())
+  consultationId  String
+  role            ConsultationAttendanceRole
+  customerKeyHash String                     @unique @db.VarChar(64)
+  expiresAt       DateTime
+  createdAt       DateTime                   @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@index([consultationId, role, expiresAt], map: "ConsultAttendCred_consult_role_exp_idx")
+  @@index([expiresAt], map: "ConsultAttendCred_expires_idx")
+}
+
+model ConsultationAttendanceEvent {
+  id                     String                          @id @default(cuid())
+  consultationId         String
+  providerEventKey       String                          @unique @db.VarChar(64)
+  meetingUuidHash        String                          @db.VarChar(64)
+  participantSessionHash String                          @db.VarChar(64)
+  role                   ConsultationAttendanceRole
+  eventType              ConsultationAttendanceEventType
+  occurredAt             DateTime
+  createdAt              DateTime                        @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+
+  @@index([consultationId, meetingUuidHash, role, occurredAt], map: "ConsultAttendEvent_meeting_role_time_idx")
+  @@index([consultationId, participantSessionHash, occurredAt], map: "ConsultAttendEvent_session_time_idx")
+  @@index([occurredAt], map: "ConsultAttendEvent_occurred_idx")
 }
 
 model ConsultationSlotLock {

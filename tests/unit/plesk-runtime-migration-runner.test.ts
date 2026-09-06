@@ -8,6 +8,7 @@ const {
   CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET,
   DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET,
   SMS_OTP_MIGRATION_TARGET,
+  ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -176,6 +177,45 @@ describe("Plesk runtime migration runner", () => {
     const result = runPleskRuntimeMigration({
       rootDir,
       env: { [MIGRATION_APPROVAL_ENV]: DOCTOR_AVAILABILITY_EFFECTIVE_DATES_MIGRATION_TARGET },
+      spawnSync,
+      ...loggers
+    });
+
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
+    expect(spawnSync).not.toHaveBeenCalled();
+    expect(loggers.errors).toEqual([
+      "[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start."
+    ]);
+  });
+
+  it("allows the reviewed Zoom attendance migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET,
+      ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when an older target is used after the Zoom attendance migration is present", () => {
+    const rootDir = createRunnerWorkspace([
+      CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET,
+      ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn();
+    const loggers = createLoggers();
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: CONSULTATION_RESCHEDULE_REQUIRED_MIGRATION_TARGET },
       spawnSync,
       ...loggers
     });

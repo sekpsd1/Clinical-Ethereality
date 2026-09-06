@@ -118,6 +118,9 @@ describe("transitionDoctorConsultationAction start gate", () => {
     });
     expect(mocks.createZoomMeeting).toHaveBeenCalledTimes(1);
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "Serializable"
+    });
     expect(mocks.applyTransition).toHaveBeenCalledTimes(1);
   });
 });

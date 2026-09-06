@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireDoctorSession } from "@/lib/auth/guards";
 import { createZoomMeetingIfConfigured } from "@/lib/zoom/meetings";
@@ -69,11 +70,12 @@ export async function transitionDoctorConsultationAction(
         consultationId: parsed.data.consultationId,
         transition: parsed.data.transition,
         summary: parsed.data.summary,
+        noShowReason: parsed.data.noShowReason,
         actorId: session.userId,
         actorRole: session.role,
         zoomMeeting
       });
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     revalidateDoctorWorkflow(parsed.data.consultationId);
 
@@ -84,7 +86,9 @@ export async function transitionDoctorConsultationAction(
           ? zoomMeeting
             ? "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว"
             : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom"
-          : "จบการปรึกษาและบันทึกสรุปแล้ว",
+          : parsed.data.transition === "complete_no_show"
+            ? "บันทึกผลผู้ป่วยไม่มาตามนัดและแจ้งผู้ป่วยแล้ว"
+            : "จบการปรึกษาและบันทึกสรุปแล้ว",
       roomHref:
         parsed.data.transition === "start"
           ? `/consult/live?consultation=${parsed.data.consultationId}`
@@ -103,6 +107,29 @@ export async function transitionDoctorConsultationAction(
             ? "ยังไม่ถึงเวลานัด ระบบจึงยังไม่เปิดให้เริ่มการปรึกษา"
             : "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"
       };
+    }
+
+    if (error instanceof DoctorConsultationWorkflowError) {
+      if (error.code === "attendance_not_verified") {
+        return {
+          status: "error",
+          message: "ยังจบการปรึกษาไม่ได้ เพราะ Zoom ยังไม่ยืนยันว่าแพทย์และผู้ป่วยเข้าห้องเดียวกัน"
+        };
+      }
+
+      if (error.code === "no_show_not_eligible") {
+        return {
+          status: "error",
+          message: "ยังบันทึกไม่มาตามนัดไม่ได้ ต้องมีเวลารอของแพทย์ที่ Zoom ยืนยันต่อเนื่องครบ 10 นาทีก่อน"
+        };
+      }
+
+      if (error.code === "no_show_doctor_required" || error.code === "invalid_no_show_reason") {
+        return {
+          status: "error",
+          message: "ยังบันทึกไม่มาตามนัดไม่ได้ กรุณาใช้บัญชีแพทย์ที่รับผิดชอบและเหตุผลที่ระบบกำหนด"
+        };
+      }
     }
 
     return {

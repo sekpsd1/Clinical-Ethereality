@@ -26,6 +26,14 @@ export type DoctorConsultationItem = {
   scheduledAt: string | null;
   durationLabel: string;
   summary: string | null;
+  attendance: {
+    label: string;
+    description: string;
+    tone: "neutral" | "success" | "warning";
+    normalCompletionEligible: boolean;
+    noShowCompletionEligible: boolean;
+    noShowRemainingSeconds: number | null;
+  };
   prescriptionCount: number;
   latestPrescriptionId: string | null;
   latestPrescriptionStatus: PrescriptionStatus | null;

@@ -11,6 +11,7 @@ type ZoomJoinData =
       signature: string;
       zak?: string;
       userName: string;
+      customerKey: string;
       leaveUrl: string;
     }
   | {
@@ -136,6 +137,7 @@ function ZoomClientApp() {
             signature: data.signature,
             userEmail: "",
             userName: data.userName,
+            customerKey: data.customerKey,
             ...(data.zak ? { zak: data.zak } : {}),
             success,
             error

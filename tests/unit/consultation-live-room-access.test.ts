@@ -49,7 +49,8 @@ function consultationRecord(status: "scheduled" | "live" | "completed") {
         avatarUrl: null
       }
     },
-    messages: []
+    messages: [],
+    attendanceEvents: []
   };
 }
 
@@ -135,6 +136,7 @@ describe("getLiveConsultationChat direct URL access", () => {
       consultationId: "consultation-uat",
       viewerRole: "customer",
       statusLabel: "Live",
+      attendanceLabel: "รอการยืนยันจาก Zoom",
       canSend: true,
       videoHref: "/consult/live/zoom?consultation=consultation-uat"
     });

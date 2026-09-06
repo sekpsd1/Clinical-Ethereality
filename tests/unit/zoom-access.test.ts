@@ -3,13 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   session: null as null | { userId: string; role: "customer" | "doctor" | "admin" | "pharmacist"; displayName?: string | null },
   findFirst: vi.fn(),
+  createAttendanceCredential: vi.fn(),
   signature: vi.fn(),
   zak: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentSession: () => mocks.session }));
-vi.mock("@/lib/db/prisma", () => ({ prisma: { consultation: { findFirst: mocks.findFirst } } }));
+vi.mock("@/lib/db/prisma", () => ({
+  prisma: {
+    consultation: { findFirst: mocks.findFirst },
+    consultationAttendanceCredential: { create: mocks.createAttendanceCredential }
+  }
+}));
 vi.mock("@/lib/env/schema", () => ({ getAppEnv: () => ({ NEXT_PUBLIC_APP_URL: "https://app.example.test" }) }));
 vi.mock("@/lib/zoom/meeting-sdk", () => ({ issueZoomMeetingSdkSignature: mocks.signature }));
 vi.mock("@/lib/zoom/meetings", () => ({ getZoomHostZakIfConfigured: mocks.zak }));
@@ -32,6 +38,7 @@ describe("Zoom consultation access", () => {
     });
     mocks.signature.mockResolvedValue("sdk-signature");
     mocks.zak.mockResolvedValue("host-zak");
+    mocks.createAttendanceCredential.mockResolvedValue({ id: "credential-1" });
   });
 
   it("issues a host signature and ZAK only to the assigned doctor", async () => {
@@ -47,6 +54,11 @@ describe("Zoom consultation access", () => {
     expect(mocks.signature).toHaveBeenCalledWith("12345678901", 1);
     expect(mocks.zak).toHaveBeenCalledOnce();
     expect(data).toMatchObject({ available: true, zak: "host-zak", userName: "Dr A" });
+    expect(data.available && data.customerKey).toMatch(/^d[A-Za-z0-9]{32}$/);
+    const stored = mocks.createAttendanceCredential.mock.calls[0]?.[0].data;
+    expect(stored.role).toBe("doctor");
+    expect(stored.customerKeyHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(stored)).not.toContain(data.available ? data.customerKey : "not-issued");
   });
 
   it("issues only a participant signature to the consultation owner", async () => {
@@ -58,6 +70,7 @@ describe("Zoom consultation access", () => {
     expect(mocks.signature).toHaveBeenCalledWith("12345678901", 0);
     expect(mocks.zak).not.toHaveBeenCalled();
     expect(data).toMatchObject({ available: true, userName: "Customer" });
+    expect(data.available && data.customerKey).toMatch(/^c[A-Za-z0-9]{32}$/);
     expect(JSON.stringify(data)).not.toContain("host-zak");
   });
 
@@ -119,5 +132,6 @@ describe("Zoom consultation access", () => {
 
     expect(data).toMatchObject({ available: false });
     expect(JSON.stringify(data)).not.toContain("meeting-sdk-client-secret");
+    expect(mocks.createAttendanceCredential).not.toHaveBeenCalled();
   });
 });

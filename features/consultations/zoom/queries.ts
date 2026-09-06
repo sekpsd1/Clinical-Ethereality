@@ -5,6 +5,7 @@ import { getAppEnv } from "@/lib/env/schema";
 import { issueZoomMeetingSdkSignature } from "@/lib/zoom/meeting-sdk";
 import { getZoomHostZakIfConfigured } from "@/lib/zoom/meetings";
 import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
+import { createZoomAttendanceCredential } from "@/features/consultations/attendance/identity";
 import type { ZoomMeetingFrameAccess, ZoomMeetingJoinData } from "@/features/consultations/zoom/types";
 
 export async function getZoomMeetingFrameAccess(
@@ -198,6 +199,19 @@ export async function getZoomMeetingJoinData(
       };
     }
 
+    const attendanceCredential = createZoomAttendanceCredential(
+      session.role === "doctor" ? "doctor" : "customer",
+      now
+    );
+    await prisma.consultationAttendanceCredential.create({
+      data: {
+        consultationId: consultation.id,
+        role: session.role === "doctor" ? "doctor" : "customer",
+        customerKeyHash: attendanceCredential.customerKeyHash,
+        expiresAt: attendanceCredential.expiresAt
+      }
+    });
+
     return {
       available: true,
       consultationId: consultation.id,
@@ -206,6 +220,7 @@ export async function getZoomMeetingJoinData(
       signature,
       ...(zak ? { zak } : {}),
       userName: session.displayName || (session.role === "doctor" ? "Doctor" : "Patient"),
+      customerKey: attendanceCredential.customerKey,
       leaveUrl
     };
   } catch {

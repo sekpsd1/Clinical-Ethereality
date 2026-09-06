@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db/prisma";
 import { isZoomMeetingSdkConfigured } from "@/lib/zoom/meeting-sdk";
 import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
 import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
+import {
+  getAttendanceStatusCopy,
+  getConsultationAttendanceState
+} from "@/features/consultations/attendance/state";
 
 const emptyChatData: LiveConsultationChatData = {
   consultationId: null,
@@ -12,6 +16,9 @@ const emptyChatData: LiveConsultationChatData = {
   doctorImageUrl: "/images/doctors/waiting-profile.png",
   patientImageUrl: "/images/profiles/current-user.png",
   statusLabel: "ยังไม่มีห้อง",
+  attendanceLabel: "รอการยืนยันจาก Zoom",
+  attendanceDescription: "การเปิดหน้าเว็บยังไม่ถือว่าเข้าร่วม ระบบรอ event ที่ Zoom ยืนยันเท่านั้น",
+  attendanceTone: "neutral",
   canSend: false,
   videoHref: null,
   videoMode: "unavailable",
@@ -92,6 +99,15 @@ export async function getLiveConsultationChat(
           include: {
             sender: true
           }
+        },
+        attendanceEvents: {
+          select: {
+            role: true,
+            eventType: true,
+            meetingUuidHash: true,
+            participantSessionHash: true,
+            occurredAt: true
+          }
         }
       }
     });
@@ -106,6 +122,12 @@ export async function getLiveConsultationChat(
     const sdkConfigured = isZoomMeetingSdkConfigured();
     const videoHref =
       consultation.zoomMeetingId && sdkConfigured ? `/consult/live/zoom?consultation=${consultation.id}` : null;
+    const attendanceState = getConsultationAttendanceState(
+      consultation.attendanceEvents,
+      consultation.scheduledAt,
+      now
+    );
+    const attendanceCopy = getAttendanceStatusCopy(attendanceState, session.role);
 
     return {
       consultationId: consultation.id,
@@ -114,6 +136,9 @@ export async function getLiveConsultationChat(
       doctorImageUrl: consultation.doctor.user.avatarUrl ?? "/images/doctors/waiting-profile.png",
       patientImageUrl: consultation.patient.avatarUrl ?? "/images/profiles/current-user.png",
       statusLabel: "Live",
+      attendanceLabel: attendanceCopy.label,
+      attendanceDescription: attendanceCopy.description,
+      attendanceTone: attendanceCopy.tone,
       canSend: true,
       videoHref,
       videoMode:

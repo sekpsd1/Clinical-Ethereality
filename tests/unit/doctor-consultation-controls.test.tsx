@@ -35,12 +35,23 @@ type WorkflowFormProps = {
   onSubmit: (event: { preventDefault: () => void }) => void;
 };
 
-function consultation(status: "scheduled" | "live") {
+function consultation(
+  status: "scheduled" | "live",
+  attendance: Pick<DoctorConsultationItem, "attendance">["attendance"] = {
+    label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว",
+    description: "พร้อมจบการปรึกษา",
+    tone: "success",
+    normalCompletionEligible: true,
+    noShowCompletionEligible: false,
+    noShowRemainingSeconds: null
+  }
+) {
   return {
     id: "consultation-1",
     status,
-    summary: null
-  } satisfies Pick<DoctorConsultationItem, "id" | "status" | "summary">;
+    summary: null,
+    attendance
+  } satisfies Pick<DoctorConsultationItem, "id" | "status" | "summary" | "attendance">;
 }
 
 function findWorkflowForm(node: ReactNode): ReactElement<WorkflowFormProps> {
@@ -139,5 +150,82 @@ describe("Doctor consultation controls", () => {
     expect(html).toContain("เข้าห้องปรึกษา/Zoom ตอนนี้");
     expect(html).toContain("/consult/live?consultation=consultation-1");
     expect(html).not.toContain(">เริ่มการปรึกษา</button>");
+  });
+
+  it("hides completion actions until server attendance evidence is eligible", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    const html = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={consultation("live", {
+          label: "Zoom ยืนยันแพทย์แล้ว • รอผู้ป่วย",
+          description: "ต้องรอต่อเนื่องอีกประมาณ 8 นาที",
+          tone: "warning",
+          normalCompletionEligible: false,
+          noShowCompletionEligible: false,
+          noShowRemainingSeconds: 480
+        })}
+      />
+    );
+
+    expect(html).toContain("รอผู้ป่วย");
+    expect(html).not.toContain("ยืนยันจบการปรึกษา");
+    expect(html).not.toContain("ยืนยันไม่มาตามนัด");
+  });
+
+  it("shows only the controlled no-show action after server eligibility", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    const html = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={consultation("live", {
+          label: "ยืนยันเวลารอครบ 10 นาทีแล้ว",
+          description: "พร้อมบันทึกผลไม่มาตามนัด",
+          tone: "warning",
+          normalCompletionEligible: false,
+          noShowCompletionEligible: true,
+          noShowRemainingSeconds: 0
+        })}
+      />
+    );
+
+    expect(html).toContain("customer_did_not_join");
+    expect(html).toContain("ยืนยันไม่มาตามนัด");
+    expect(html).not.toContain("name=\"summary\"");
+  });
+
+  it("requires distinct final confirmation before dispatching no-show", async () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    workflowMocks.confirm.mockReturnValue(false);
+    const form = findWorkflowForm(
+      DoctorConsultationControls({
+        consultation: consultation("live", {
+          label: "ยืนยันเวลารอครบ 10 นาทีแล้ว",
+          description: "พร้อมบันทึกผลไม่มาตามนัด",
+          tone: "warning",
+          normalCompletionEligible: false,
+          noShowCompletionEligible: true,
+          noShowRemainingSeconds: 0
+        })
+      })
+    );
+
+    const result = await submitForm(form);
+
+    expect(workflowMocks.confirm).toHaveBeenCalledWith(
+      "ยืนยันว่าผู้ป่วยไม่ได้เข้าห้อง Zoom และต้องการบันทึกผลไม่มาตามนัดใช่ไหม? ระบบจะแจ้งผู้ป่วยและไม่สร้างคำแนะนำทางคลินิก"
+    );
+    expect(result.prevented).toBe(true);
+    expect(workflowMocks.dispatch).not.toHaveBeenCalled();
   });
 });

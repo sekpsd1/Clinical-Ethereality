@@ -33,6 +33,14 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
     scheduledAt: "3 ส.ค. 2569 09:00",
     durationLabel,
     summary: null,
+    attendance: {
+      label: "รอการยืนยันจาก Zoom",
+      description: "ยังไม่มีหลักฐานผู้เข้าร่วม",
+      tone: "neutral",
+      normalCompletionEligible: false,
+      noShowCompletionEligible: false,
+      noShowRemainingSeconds: 600
+    },
     prescriptionCount: 0,
     latestPrescriptionId: null,
     latestPrescriptionStatus: null,

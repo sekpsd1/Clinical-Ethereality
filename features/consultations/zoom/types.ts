@@ -7,6 +7,7 @@ export type ZoomMeetingJoinData =
       signature: string;
       zak?: string;
       userName: string;
+      customerKey: string;
       leaveUrl: string;
     }
   | {

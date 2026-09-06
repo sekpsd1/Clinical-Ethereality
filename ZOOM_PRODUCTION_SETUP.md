@@ -42,6 +42,21 @@ Enable Event Subscription in that same S2S app:
 
 Zoom validates a webhook URL at setup and periodically. The endpoint verifies `x-zm-request-timestamp` (five-minute window) and `x-zm-signature` before JSON parsing/database work; lifecycle audit records make retries idempotent and the raw body is never saved.
 
+### Pending verified-attendance coordinated release
+
+Do not perform these steps until the Controller separately approves the Production migration/deploy window. The current live subscription remains `meeting.started` and `meeting.ended` only.
+
+1. Take a fresh database backup and confirm there are no unfinished migrations. Verify `20260906120000_add_zoom_attendance_gate` is the latest source migration and is pending exactly once.
+2. Stage the matching attendance-gate source/artifact and complete the isolated Zoom-client plus main-app builds while the existing runtime remains active. Do not change Zoom yet.
+3. Set `PLESK_MIGRATION_TARGET` to exactly `20260906120000_add_zoom_attendance_gate`, then perform the one approved restart. The guarded runner must apply the migration before starting the matching runtime and must fail closed if the target is absent from the allowlist, not latest, or cannot be applied.
+4. Confirm the two attendance tables, unique `providerEventKey` and `customerKeyHash` indexes, foreign keys, nullable Consultation completion outcome/reason columns, no unfinished migration, and `/api/health` HTTP 200. Do not backfill old Consultations. Remove `PLESK_MIGRATION_TARGET` entirely and perform the separately counted normal restart/readiness check required by the existing runner procedure.
+5. In the existing Server-to-Server OAuth app, add only `meeting:read:participant:admin`. Retain `meeting:write:admin` and `user:read:admin`.
+6. On the existing Event Subscription and exact existing endpoint, retain `meeting.started` and `meeting.ended`, then add `meeting.participant_joined` and `meeting.participant_left`. Do not create a second endpoint, rotate the secret, or change environment values for this release.
+7. Save/activate the S2S app change only after step 4 is healthy. Confirm Zoom endpoint validation succeeds and inspect webhook delivery using event names/status only—never copy payloads, customer keys, participant identifiers, or secrets into tickets/logs.
+8. Run Controlled UAT using a newly booked Websthai Customer appointment. Verify cross-owner rejection, Doctor/Customer same-meeting completion, duplicate/out-of-order webhook safety, early start rejection, Doctor leave-before-10 reset, controlled no-show after a provider-closed 10-minute interval, and no raw identity storage. Do not use Honey or reopen any completed Consultation.
+
+Rollback is application-first: disable the two participant events, return application code to the prior compatible commit, and restart once. Preserve the additive tables/columns if any evidence or outcome exists; dropping them is a separate destructive approval and is not part of rollback.
+
 ## Domains, origins, and network configuration
 
 - Use only the HTTPS production hostname: `https://app.bccgroup-thailand.com`. Never configure a raw IP address as a Meeting SDK web domain.

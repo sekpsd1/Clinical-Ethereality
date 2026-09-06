@@ -5,6 +5,7 @@ import { Camera, Mic, Phone, RefreshCw, Settings } from "lucide-react";
 import { ConsultationMessageComposer } from "@/features/consultations/chat/ConsultationMessageComposer";
 import { ConsultationChatAutoRefresh } from "@/features/consultations/chat/ConsultationChatAutoRefresh";
 import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
+import { cn } from "@/lib/design-system/variants";
 
 export function LiveConsultation({ chat }: { chat: LiveConsultationChatData }) {
   return (
@@ -46,6 +47,19 @@ function LiveHeader({ chat }: { chat: LiveConsultationChatData }) {
 function VideoPanel({ chat }: { chat: LiveConsultationChatData }) {
   return (
     <section className="shrink-0 px-4 py-2">
+      <div
+        className={cn(
+          "mb-2 rounded-[8px] border px-3 py-2",
+          chat.attendanceTone === "success"
+            ? "border-success/20 bg-success/10"
+            : chat.attendanceTone === "warning"
+              ? "border-warning/20 bg-warning/10"
+              : "border-primary/10 bg-white/70"
+        )}
+      >
+        <p className="text-xs font-bold text-text">{chat.attendanceLabel}</p>
+        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-muted">{chat.attendanceDescription}</p>
+      </div>
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#151616] shadow-video-panel">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_45%)]" />
         {chat.videoHref ? (

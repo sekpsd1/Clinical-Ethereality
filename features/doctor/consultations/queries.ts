@@ -12,6 +12,10 @@ import {
   type ConsultationBookingDurationAudit
 } from "@/features/doctor/consultations/duration";
 import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
+import {
+  getAttendanceStatusCopy,
+  getConsultationAttendanceState
+} from "@/features/consultations/attendance/state";
 import type {
   DoctorConsultationItem,
   DoctorConsultationsData,
@@ -74,7 +78,16 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
           sender: true
         }
       },
-      payment: true
+      payment: true,
+      attendanceEvents: {
+        select: {
+          role: true,
+          eventType: true,
+          meetingUuidHash: true,
+          participantSessionHash: true,
+          occurredAt: true
+        }
+      }
     }
   });
 }
@@ -357,10 +370,28 @@ async function getBookedDurationSnapshots(consultations: ConsultationWithDetails
   return resolveDoctorConsultationDurations(consultations, audits, availability);
 }
 
-function mapConsultation(consultation: ConsultationWithDetails, durationByConsultationId: Map<string, number>): DoctorConsultationItem {
+function mapConsultation(
+  consultation: ConsultationWithDetails,
+  durationByConsultationId: Map<string, number>,
+  now = new Date(),
+  allowNoShowCompletion = true
+): DoctorConsultationItem {
   const latestPrescription = consultation.prescriptions[0] ?? null;
   const latestMessage = consultation.messages[0] ?? null;
   const workflow = getWorkflowStatus(consultation.status, consultation.payment);
+  const attendanceState = getConsultationAttendanceState(
+    consultation.attendanceEvents,
+    consultation.scheduledAt,
+    now
+  );
+  const attendanceCopy =
+    !allowNoShowCompletion && attendanceState.noShowCompletionEligible
+      ? {
+          label: "แพทย์ผู้รับผิดชอบยืนยันเวลารอครบแล้ว",
+          description: "เฉพาะแพทย์ที่รับผิดชอบนัดหมายเท่านั้นที่บันทึกผลไม่มาตามนัดได้",
+          tone: "warning" as const
+        }
+      : getAttendanceStatusCopy(attendanceState, "doctor");
   const canOpenConsultRoom =
     workflow.canOpenConsultRoom &&
     isLiveConsultationOpen(consultation.status, consultation.scheduledAt);
@@ -384,6 +415,13 @@ function mapConsultation(consultation: ConsultationWithDetails, durationByConsul
     scheduledAt: formatDate(consultation.scheduledAt),
     durationLabel: formatDoctorConsultationDuration(durationByConsultationId.get(consultation.id)),
     summary: consultation.summary,
+    attendance: {
+      ...attendanceCopy,
+      normalCompletionEligible: attendanceState.normalCompletionEligible,
+      noShowCompletionEligible:
+        allowNoShowCompletion && attendanceState.noShowCompletionEligible,
+      noShowRemainingSeconds: attendanceState.noShowRemainingSeconds
+    },
     prescriptionCount: consultation.prescriptions.length,
     latestPrescriptionId: latestPrescription?.id ?? null,
     latestPrescriptionStatus: latestPrescription?.status ?? null,
@@ -437,7 +475,14 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
     ]);
     const durationByConsultationId = await getBookedDurationSnapshots(consultations);
     const consultationItems = prioritizeDoctorConsultations(
-      consultations.map((consultation) => mapConsultation(consultation, durationByConsultationId))
+      consultations.map((consultation) =>
+        mapConsultation(
+          consultation,
+          durationByConsultationId,
+          new Date(),
+          session.role === "doctor"
+        )
+      )
     );
 
     return {
