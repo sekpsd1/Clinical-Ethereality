@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   establishZoomExternalSession,
@@ -9,6 +11,22 @@ import {
 } from "@/features/consultations/zoom/ZoomExternalLauncher";
 
 describe("Zoom external-browser client helpers", () => {
+  it("receives the LIFF ID from a runtime server prop instead of a client build-time environment lookup", () => {
+    const launcherSource = fs.readFileSync(
+      path.join(process.cwd(), "features", "consultations", "zoom", "ZoomExternalLauncher.tsx"),
+      "utf8"
+    );
+    const livePageSource = fs.readFileSync(
+      path.join(process.cwd(), "app", "(app)", "consult", "live", "page.tsx"),
+      "utf8"
+    );
+
+    expect(launcherSource).not.toContain("process.env.NEXT_PUBLIC_LINE_LIFF_ID");
+    expect(launcherSource).toContain("liffId?: string");
+    expect(livePageSource).toContain("getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID");
+    expect(livePageSource).toContain("liffId={liffId}");
+  });
+
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
     expect(isLineInAppBrowser("Mozilla/5.0 Line/15.20.1")).toBe(true);
     expect(isLineInAppBrowser("Mozilla/5.0 Chrome/140.0")).toBe(false);
