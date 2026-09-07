@@ -7,7 +7,8 @@ LIFF, Zoom apps or host, JWT secret/issuer, files, patient data, payment data,
 or fixture.
 
 The Production command npm run uat:zoom-fixture remains separate. The Test
-command is npm run uat:zoom-test-fixture.
+commands are npm run uat:zoom-test-db-precheck,
+npm run uat:zoom-test-account-bootstrap, and npm run uat:zoom-test-fixture.
 
 ## 1. Provision the isolated Test boundary
 
@@ -43,41 +44,73 @@ Set ZOOM_TEST_LINE_CREDENTIALS_CONFIRMED=true and
 ZOOM_TEST_ZOOM_CREDENTIALS_CONFIRMED=true only after a second person or the
 owner verifies the Test applications are separate from Production.
 
-## 2. Prepare the database and account digests
+## 2. Prove the blank Test database before migration
 
-Apply repository migrations to the blank Test database through the reviewed
-staging migration procedure. Do not use prisma db push. Before mutation, the
-runner compares every successfully applied, non-rolled-back migration with the
-source migration directories and checks the required schema columns.
-
-The runner queries DATABASE() and CURRENT_USER() from the connected database.
-Set ZOOM_TEST_DATABASE_IDENTITY_SHA256 to the lowercase SHA-256 of:
+The read-only pre-migration guard queries only DATABASE() and CURRENT_USER()
+from the connected database. It intentionally does not require application
+tables, Test users, LINE credentials, or Zoom credentials, so it can run
+against the dedicated blank database. Set ZOOM_TEST_DATABASE_IDENTITY_SHA256
+to the lowercase SHA-256 of:
 
     <exact database name><NUL><exact CURRENT_USER() result>
 
 Calculate the digest in a private local tool. Do not print either input or the
-digest in Plesk logs or chat. The runner reports only matched or a closed
-failure code. A hash match is insufficient by itself: both live database
-identities must contain a Test token and must not look like Production.
+digest in Plesk logs or chat. A hash match is insufficient by itself: both live
+database identities must contain a separate test, uat, or staging token and
+must not contain prod, production, main, or app2026.
 
-Sign in once through the dedicated Test LIFF with the synthetic Customer and
-Doctor LINE accounts. Approve the Doctor in Test and complete the Customer's
-synthetic profile/phone verification through the approved Test path. Do not
-copy LINE IDs, names, email addresses, phone numbers, or database IDs into a
-command.
+Run this mandatory guard immediately before migrations:
 
-Set these private environment digests:
+    run uat:zoom-test-db-precheck -- --confirm-test
 
-- ZOOM_TEST_CUSTOMER_USER_ID_SHA256: lowercase SHA-256 of the Test Customer's
-  internal User.id
-- ZOOM_TEST_DOCTOR_USER_ID_SHA256: lowercase SHA-256 of the Test Doctor's
-  linked internal User.id
+Continue only when it returns databaseIdentity matched. Then apply repository
+migrations through the reviewed staging migration procedure:
 
-The runner searches only LINE-backed database accounts and requires exactly
-one active, verified Customer and one active Doctor with an approved profile.
-It never prints their IDs, LINE identities, labels, or profile data.
+    run db:migrate:deploy
 
-## 3. Deploy and smoke-test the Test site
+Do not use prisma db push or prisma db seed. Keep every migration and
+reconciliation target key absent during both commands. If any Test boundary
+cannot be proven, stop without migrating.
+
+## 3. Bootstrap the two LINE-backed Test accounts
+
+Sign in once through the dedicated Test LIFF with two distinct synthetic LINE
+accounts. Do not manually complete a profile, approve a Doctor, or copy LINE
+IDs, names, email addresses, phone numbers, or database IDs into a command.
+Set only the private lowercase SHA-256 digests of each internal User.id in
+ZOOM_TEST_CUSTOMER_USER_ID_SHA256 and ZOOM_TEST_DOCTOR_USER_ID_SHA256.
+
+Each digest must resolve to exactly one active LINE-backed account in untouched
+Customer state, with no Consultation, Payment, Order, Prescription, or
+Notification. Keep SMS, payments, storage, uploads, community, AI, booking,
+patient portal, and prescriptions disabled. The runner never contacts LINE,
+SMS, Zoom, storage, payment, or another provider.
+
+Precheck is read-only and returns a target fingerprint:
+
+    run uat:zoom-test-account-bootstrap -- --mode=precheck --confirm-test
+
+Apply requires that exact fingerprint and runs in a Serializable transaction:
+
+    run uat:zoom-test-account-bootstrap -- --mode=apply --confirm-test --target-fingerprint=<fingerprint>
+
+It gives the Customer a clearly synthetic, non-routable Test-only profile and
+verified-phone marker without sending SMS. It promotes only the second Test
+account to Doctor, creates one approved Test-only Doctor profile with no
+license number or phone, and appends exactly two Test-only provenance audits.
+An exact replay performs no mutation; any partial state, unexpected profile,
+related business record, audit mismatch, or changed fingerprint fails closed.
+
+Verify read-only after apply:
+
+    run uat:zoom-test-account-bootstrap -- --mode=verify --confirm-test --target-fingerprint=<fingerprint>
+
+These identities and their synthetic data are permanently Test-only. Never
+copy, promote, restore, or synchronize them into Production. The fixture
+runner independently rechecks the database identity, complete migrations,
+schema columns, and both account hashes without printing identity data.
+
+## 4. Deploy and smoke-test the Test site
 
 Use reviewed origin/main source, deterministic lockfiles, approved Node 24.x,
 public document root, and server.js. Run the non-migration preflight, build the
@@ -92,7 +125,7 @@ appears, or any boundary cannot be proven. Required smoke checks:
 - anonymous protected routes redirect to Test LINE login
 - Zoom CSP is present only on /zoom-sdk/*
 
-## 4. Create the controlled fixture
+## 5. Create the controlled fixture
 
 Choose a unique non-sensitive fixture key and a future UTC slot no more than
 30 days away. In Plesk's Node command UI, enter only the portion after the
@@ -113,7 +146,7 @@ returns the same state without a second mutation. It never creates a Payment,
 slip, Order, Prescription, SMS/provider request, attendance record, or Zoom
 meeting.
 
-## 5. Run mobile LINE and Zoom UAT
+## 6. Run mobile LINE and Zoom UAT
 
 At the slot time, the assigned Doctor starts the Consultation once through the
 normal Test UI. Confirm exactly one Zoom meeting. The Customer then opens the
@@ -138,7 +171,7 @@ Read-only verification after the Doctor starts the room:
 
     run uat:zoom-test-fixture -- --mode=verify --confirm-test --fixture-key=<key> --scheduled-at=<ISO-UTC> --target-fingerprint=<fingerprint> --expected-status=live --expected-zoom=present
 
-## 6. Non-destructive cleanup
+## 7. Non-destructive cleanup
 
 End/leave the Test meeting, then cancel only the exact fixture:
 

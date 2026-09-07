@@ -19,6 +19,8 @@
     "job:store-reservation-cleanup": "node scripts/store-reservation-cleanup-runner.cjs",
     "check:store-reservation-cleanup": "node scripts/store-reservation-cleanup-runner.cjs --check-readiness",
     "uat:zoom-fixture": "node scripts/zoom-uat-fixture-runner.cjs",
+    "uat:zoom-test-db-precheck": "node scripts/zoom-test-db-precheck.cjs",
+    "uat:zoom-test-account-bootstrap": "node scripts/zoom-test-account-bootstrap.cjs",
     "uat:zoom-test-fixture": "node scripts/zoom-test-fixture-runner.cjs",
     "test:e2e": "playwright test",
     "db:migrate:status": "prisma migrate status",

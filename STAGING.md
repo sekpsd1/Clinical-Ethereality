@@ -49,14 +49,18 @@ Recommended staging database steps:
 2. Set `DATABASE_URL` in the Vercel staging environment.
 3. Run `npx prisma validate` before deployment.
 4. Apply schema changes through the approved deployment workflow.
-5. Seed only synthetic staging data.
+5. Seed only synthetic staging data through an explicitly reviewed workflow.
 6. Confirm `/api/health` after deployment.
 
 Staging must never connect to production data.
 
 For the isolated LINE Mini App to Zoom fixture, use
 ZOOM_TEST_ENVIRONMENT.md. Its Test-only command and environment/database
-guards are separate from the existing Production UAT runner.
+guards are separate from the existing Production UAT runner. This flow is an
+explicit exception to any older generic staging `db push` or seed guidance:
+run `uat:zoom-test-db-precheck -- --confirm-test` on the blank Test database
+immediately before `db:migrate:deploy`, never use `prisma db push` or
+`prisma db seed`, then use the reviewed account-bootstrap command.
 
 ## Release Checklist
 
