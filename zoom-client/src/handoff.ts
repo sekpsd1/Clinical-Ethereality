@@ -9,9 +9,32 @@ export type FetchSession = (
 ) => Promise<Pick<Response, "ok" | "json">>;
 
 export function getHandoffTicket(hash: string): string | null {
-  const value = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash).get("handoff")?.trim();
+  const value = new URLSearchParams(/^[#?]/.test(hash) ? hash.slice(1) : hash).get("handoff")?.trim();
 
   return value && value.length <= 160 ? value : null;
+}
+
+export function buildAndroidChromeIntentUrl(currentUrl: string): string | null {
+  try {
+    const target = new URL(currentUrl);
+    const ticket = getHandoffTicket(target.hash);
+
+    if (
+      target.protocol !== "https:" ||
+      target.pathname !== "/zoom-sdk/index.html" ||
+      !target.searchParams.has("consultation") ||
+      !ticket
+    ) {
+      return null;
+    }
+
+    target.hash = "";
+    target.searchParams.set("handoff", ticket);
+
+    return `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target.toString())};end`;
+  } catch {
+    return null;
+  }
 }
 
 export function isLineInAppBrowser(userAgent: string): boolean {

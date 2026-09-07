@@ -5,7 +5,12 @@ import {
   checkZoomCameraAndMicrophone,
   getZoomMediaPreflightMessage
 } from "./device-preflight";
-import { establishZoomExternalSession, isLineInAppBrowser } from "./handoff";
+import {
+  buildAndroidChromeIntentUrl,
+  establishZoomExternalSession,
+  getHandoffTicket,
+  isLineInAppBrowser
+} from "./handoff";
 import "./styles.css";
 
 type ZoomJoinData =
@@ -103,6 +108,7 @@ function ZoomClientApp() {
   const [message, setMessage] = useState("กำลังตรวจสิทธิ์ชั่วคราวสำหรับนัดหมาย...");
   const consultationId = getConsultationId();
   const isComplete = new URLSearchParams(window.location.search).get("complete") === "1";
+  const chromeIntentUrl = buildAndroidChromeIntentUrl(window.location.href);
 
   useEffect(() => {
     if (isComplete) {
@@ -119,20 +125,31 @@ function ZoomClientApp() {
 
     if (isLineInAppBrowser(window.navigator.userAgent)) {
       setSessionState("external_required");
-      setMessage("แตะเมนู ⋮ ด้านบน แล้วเลือก “เปิดในเบราว์เซอร์” เพื่อดำเนินการต่อใน Chrome");
+      setMessage(
+        chromeIntentUrl
+          ? "LINE รุ่นนี้ไม่มีเมนูเปิดเบราว์เซอร์ กด “เปิดใน Chrome” ด้านล่างเพื่อดำเนินการต่อ"
+          : "ไม่สามารถสร้างทางลัดไป Chrome ได้ กรุณากลับไปที่ LINE แล้วกดเปิด Zoom อีกครั้ง"
+      );
       return;
     }
 
     let active = true;
 
-    establishZoomExternalSession(consultationId, window.location.hash)
+    const handoffSource = getHandoffTicket(window.location.hash)
+      ? window.location.hash
+      : window.location.search;
+
+    establishZoomExternalSession(consultationId, handoffSource)
       .then(({ exchanged }) => {
         if (!active) {
           return;
         }
 
         if (exchanged) {
-          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.hash = "";
+          cleanUrl.searchParams.delete("handoff");
+          window.history.replaceState(null, "", `${cleanUrl.pathname}${cleanUrl.search}`);
         }
 
         setSessionState("ready");
@@ -150,7 +167,7 @@ function ZoomClientApp() {
     return () => {
       active = false;
     };
-  }, [consultationId, isComplete]);
+  }, [chromeIntentUrl, consultationId, isComplete]);
 
   async function checkDevices() {
     if (sessionState !== "ready" || mediaState === "checking") {
@@ -237,6 +254,17 @@ function ZoomClientApp() {
     createElement("p", { role: "status" }, consultationId || isComplete ? message : "ไม่พบข้อมูลนัดหมายที่ถูกต้อง"),
     isComplete
       ? null
+      : sessionState === "external_required"
+        ? chromeIntentUrl
+          ? createElement(
+              "a",
+              {
+                className: "zoom-button",
+                href: chromeIntentUrl
+              },
+              "เปิดใน Chrome"
+            )
+          : null
       : createElement(
           "div",
           { className: "zoom-actions" },
