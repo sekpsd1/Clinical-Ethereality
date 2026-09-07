@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const {
   PRECHECK_FAILURE_CODES,
+  getSafeFailure,
   parsePrecheckOptions,
   runDatabasePrecheck,
   writeSafeFailure
@@ -100,6 +101,21 @@ describe("Zoom Test database pre-migration guard", () => {
       code: PRECHECK_FAILURE_CODES.UNKNOWN_SAFE_FAILURE,
       mode: "precheck",
       stage: "unknown"
+    });
+  });
+
+  it("classifies Prisma initialization errorCode values without serializing details", () => {
+    expect(getSafeFailure({ errorCode: "P1000", message: "hidden" })).toEqual({
+      code: PRECHECK_FAILURE_CODES.DATABASE_AUTHENTICATION_FAILED,
+      stage: "database"
+    });
+    expect(getSafeFailure({ errorCode: "P1010", message: "hidden" })).toEqual({
+      code: PRECHECK_FAILURE_CODES.DATABASE_ACCESS_DENIED,
+      stage: "database"
+    });
+    expect(getSafeFailure({ errorCode: "P1011", message: "hidden" })).toEqual({
+      code: PRECHECK_FAILURE_CODES.DATABASE_TLS_FAILED,
+      stage: "database"
     });
   });
 });

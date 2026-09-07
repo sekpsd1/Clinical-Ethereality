@@ -15,6 +15,9 @@ const MIGRATION_TARGET_KEYS = [
 ];
 const PRECHECK_FAILURE_CODES = Object.freeze({
   ...RUNNER_FAILURE_CODES,
+  DATABASE_ACCESS_DENIED: "DATABASE_ACCESS_DENIED",
+  DATABASE_AUTHENTICATION_FAILED: "DATABASE_AUTHENTICATION_FAILED",
+  DATABASE_TLS_FAILED: "DATABASE_TLS_FAILED",
   UNKNOWN_SAFE_FAILURE: "UNKNOWN_SAFE_FAILURE"
 });
 const SAFE_STAGES = new Set(["arguments", "database", "environment", "unknown"]);
@@ -64,8 +67,18 @@ function getSafeFailure(error) {
   ) {
     return { code: error.code, stage: SAFE_STAGES.has(error.stage) ? error.stage : "unknown" };
   }
-  const databaseCodes = new Set(["P1000", "P1001", "P1002", "P1003", "P1008", "P1017"]);
-  if (databaseCodes.has(error?.code)) {
+  const databaseCode = error?.code ?? error?.errorCode;
+  if (databaseCode === "P1000") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_AUTHENTICATION_FAILED, stage: "database" };
+  }
+  if (databaseCode === "P1010") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ACCESS_DENIED, stage: "database" };
+  }
+  if (databaseCode === "P1011") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_TLS_FAILED, stage: "database" };
+  }
+  const databaseCodes = new Set(["P1001", "P1002", "P1003", "P1008", "P1017"]);
+  if (databaseCodes.has(databaseCode)) {
     return { code: PRECHECK_FAILURE_CODES.DATABASE_UNAVAILABLE, stage: "database" };
   }
   return { code: PRECHECK_FAILURE_CODES.UNKNOWN_SAFE_FAILURE, stage: "unknown" };
