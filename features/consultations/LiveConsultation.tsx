@@ -8,13 +8,13 @@ import type { LiveConsultationChatData } from "@/features/consultations/chat/typ
 import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 import { cn } from "@/lib/design-system/variants";
 
-export function LiveConsultation({ chat }: { chat: LiveConsultationChatData }) {
+export function LiveConsultation({ chat, liffId }: { chat: LiveConsultationChatData; liffId?: string }) {
   return (
     <section className="-mx-4 flex h-dvh flex-col overflow-hidden bg-[#eceef0]">
       <ConsultationChatAutoRefresh enabled={Boolean(chat.consultationId && chat.canSend)} />
       <LiveHeader chat={chat} />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-[76px]">
-        <VideoPanel chat={chat} />
+        <VideoPanel chat={chat} liffId={liffId} />
         <ChatTranscript chat={chat} />
         <MessageComposer chat={chat} />
       </main>
@@ -45,7 +45,7 @@ function LiveHeader({ chat }: { chat: LiveConsultationChatData }) {
   );
 }
 
-function VideoPanel({ chat }: { chat: LiveConsultationChatData }) {
+function VideoPanel({ chat, liffId }: { chat: LiveConsultationChatData; liffId?: string }) {
   return (
     <section className="shrink-0 px-4 py-2">
       <div
@@ -64,7 +64,7 @@ function VideoPanel({ chat }: { chat: LiveConsultationChatData }) {
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#151616] shadow-video-panel">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_45%)]" />
         {chat.videoHref && chat.consultationId ? (
-          <ZoomExternalLauncher consultationId={chat.consultationId} compact />
+          <ZoomExternalLauncher consultationId={chat.consultationId} liffId={liffId} compact />
         ) : (
           <div className="absolute left-1/2 top-[43%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-[8px] bg-black/45 px-4 py-3 text-center text-xs font-semibold leading-5 text-white">
             ยังไม่ได้สร้างห้อง Zoom

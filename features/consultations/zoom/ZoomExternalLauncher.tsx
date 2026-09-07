@@ -84,9 +84,11 @@ function loadLiffSdk(): Promise<LiffClient> {
 
 export function ZoomExternalLauncher({
   consultationId,
+  liffId,
   compact = false
 }: {
   consultationId: string;
+  liffId?: string;
   compact?: boolean;
 }) {
   const [state, setState] = useState<LaunchState>("idle");
@@ -120,14 +122,14 @@ export function ZoomExternalLauncher({
       }
 
       if (isLineInAppBrowser(window.navigator.userAgent)) {
-        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID?.trim();
+        const runtimeLiffId = liffId?.trim();
 
-        if (!liffId) {
+        if (!runtimeLiffId) {
           throw new Error("liff_id_missing");
         }
 
         const liff = await loadLiffSdk();
-        await liff.init({ liffId });
+        await liff.init({ liffId: runtimeLiffId });
 
         if (!liff.isInClient()) {
           throw new Error("liff_client_unavailable");
