@@ -5,17 +5,24 @@ const { runPleskRuntimeMigration } = require("./plesk-runtime-migration-runner.c
 const {
   runPleskSmsOtpSchemaReconciliation
 } = require("./plesk-sms-otp-schema-reconciliation.cjs");
+const { runZoomTestPleskMigration } = require("./zoom-test-plesk-migration.cjs");
 
 async function startPleskApplication({
   rootDir,
   startStandalone,
   assertMigrationTarget = assertPleskSmsOtpMigrationTarget,
   assertRuntimeReady = assertPleskHostRuntimeReady,
+  runZoomTestMigration = runZoomTestPleskMigration,
   runReconciliation = runPleskSmsOtpSchemaReconciliation,
   runMigration = runPleskRuntimeMigration
 }) {
   if (!assertMigrationTarget()) {
     throw new Error("Plesk migration target is not approved for this release.");
+  }
+
+  const zoomTestMigrationResult = await runZoomTestMigration({ rootDir });
+  if (!zoomTestMigrationResult.shouldStart) {
+    throw new Error("Zoom Test migration action completed or failed closed; standalone server was not started.");
   }
 
   assertRuntimeReady({ rootDir });

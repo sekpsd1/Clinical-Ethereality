@@ -1,5 +1,7 @@
 # Project State
 
+- Zoom Test Plesk migration transport hardening (2026-09-07): the isolated Test deployment now supports a one-time `ZOOM_TEST_PLESK_MIGRATION_ACTION=preflight-and-deploy-v1` startup action for Plesk versions whose Node command runner omits Node App environment variables. The action is accepted only through the production-mode Test boundary, reuses the reviewed database identity preflight, runs Prisma deploy and status with inherited application environment, suppresses Prisma output, records only allowlisted stage/status/error fields in a private runtime artifact, and refuses to start the standalone web app until the action variable is removed. Normal startup is unchanged when the variable is absent. This does not add an HTTP API, schema, Production path, credential file, or Production authorization.
+
 ## Project
 
 Clinical Ethereality

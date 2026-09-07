@@ -68,6 +68,27 @@ migrations through the reviewed staging migration procedure:
 
     run db:migrate:deploy
 
+Some Plesk versions do not inject Node App custom environment variables into
+the Node command runner. If the command above returns
+`ENVIRONMENT_NOT_PRODUCTION` while the Node App Dashboard still shows
+production mode, do not copy credentials into the command or a file. Use the
+guarded application-runtime path instead:
+
+1. Deploy the reviewed source containing the Test runtime runner.
+2. Add the one-time Node App variable
+   `ZOOM_TEST_PLESK_MIGRATION_ACTION=preflight-and-deploy-v1`.
+3. Restart only the Test Node App and make one request to the Test origin.
+4. Run `check:zoom-test-plesk-migration-status` without arguments. Continue
+   only when the safe result is `complete` / `complete` / `READY`.
+5. Remove `ZOOM_TEST_PLESK_MIGRATION_ACTION` entirely before the normal build
+   and restart.
+
+The runtime path calls the same database identity preflight, runs `prisma
+migrate deploy`, verifies `prisma migrate status`, writes only an allowlisted
+private status artifact, and deliberately refuses to start the web app while
+the one-time action exists. It never logs database identity, credentials, or
+Prisma output.
+
 Do not use prisma db push or prisma db seed. Keep every migration and
 reconciliation target key absent during both commands. If any Test boundary
 cannot be proven, stop without migrating.
