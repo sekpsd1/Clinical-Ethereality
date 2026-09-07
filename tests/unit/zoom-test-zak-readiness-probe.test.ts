@@ -56,6 +56,22 @@ describe("Zoom Test ZAK readiness probe", () => {
     ).resolves.toEqual({ status: "blocked", stage: "deployment_environment", httpCategory: "none" });
   });
 
+  it("allows Plesk command runner to omit NODE_ENV while retaining exact Test gates", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: "private-access" }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ token: "private-zak" }) });
+
+    const pleskEnvironment = Object.fromEntries(
+      Object.entries(environment).filter(([key]) => key !== "NODE_ENV")
+    );
+
+    await expect(getZoomTestZakReadiness({ environment: pleskEnvironment, fetchImpl })).resolves.toMatchObject({
+      status: "ready",
+      stage: "zak"
+    });
+  });
+
   it("normalizes HTTP status into broad categories", () => {
     expect(httpCategory(200)).toBe("2xx");
     expect(httpCategory(429)).toBe("4xx");

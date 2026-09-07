@@ -12,7 +12,7 @@ function hasValue(value) {
 }
 
 async function getZoomTestZakReadiness({ environment = process.env, fetchImpl = fetch } = {}) {
-  if (environment.NODE_ENV !== "production") {
+  if (hasValue(environment.NODE_ENV) && environment.NODE_ENV !== "production") {
     return { status: "blocked", stage: "node_environment", httpCategory: "none" };
   }
   if (environment.CE_DEPLOYMENT_ENVIRONMENT !== "test") {
