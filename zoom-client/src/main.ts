@@ -5,7 +5,7 @@ import {
   checkZoomCameraAndMicrophone,
   getZoomMediaPreflightMessage
 } from "./device-preflight";
-import { establishZoomExternalSession } from "./handoff";
+import { establishZoomExternalSession, isLineInAppBrowser } from "./handoff";
 import "./styles.css";
 
 type ZoomJoinData =
@@ -26,7 +26,7 @@ type ZoomJoinData =
     };
 
 type JoinState = "idle" | "joining" | "error";
-type SessionState = "checking" | "ready" | "error";
+type SessionState = "checking" | "external_required" | "ready" | "error";
 type MediaState = "idle" | "checking" | "ready" | "error";
 
 const INIT_TIMEOUT_MS = 20_000;
@@ -114,6 +114,12 @@ function ZoomClientApp() {
     if (!consultationId) {
       setSessionState("error");
       setMessage("ไม่พบข้อมูลนัดหมายที่ถูกต้อง");
+      return;
+    }
+
+    if (isLineInAppBrowser(window.navigator.userAgent)) {
+      setSessionState("external_required");
+      setMessage("แตะเมนู ⋮ ด้านบน แล้วเลือก “เปิดในเบราว์เซอร์” เพื่อดำเนินการต่อใน Chrome");
       return;
     }
 

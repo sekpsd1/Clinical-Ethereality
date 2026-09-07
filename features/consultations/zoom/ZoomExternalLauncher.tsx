@@ -27,6 +27,10 @@ export function isLineInAppBrowser(userAgent: string): boolean {
   return /\bLine\/[0-9.]+/i.test(userAgent);
 }
 
+export function isAndroidUserAgent(userAgent: string): boolean {
+  return /\bAndroid\b/i.test(userAgent);
+}
+
 export function isTrustedZoomLaunchUrl(value: string, currentOrigin: string): boolean {
   try {
     const url = new URL(value);
@@ -122,6 +126,11 @@ export function ZoomExternalLauncher({
       }
 
       if (isLineInAppBrowser(window.navigator.userAgent)) {
+        if (isAndroidUserAgent(window.navigator.userAgent)) {
+          window.location.assign(payload.launchUrl);
+          return;
+        }
+
         const runtimeLiffId = liffId?.trim();
 
         if (!runtimeLiffId) {
