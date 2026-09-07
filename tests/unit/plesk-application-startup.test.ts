@@ -18,6 +18,11 @@ function startupDependencies() {
       shouldStart: true,
       outcome: "not_requested"
     })),
+    runZoomTestFixture: vi.fn(async () => ({
+      requested: false,
+      shouldStart: true,
+      outcome: "not_requested"
+    })),
     runReconciliation: vi.fn(async () => ({
       outcome: "not_requested",
       shouldStart: true,
@@ -37,6 +42,7 @@ describe("Plesk application startup integration", () => {
     expect(dependencies.assertRuntimeReady).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
     expect(dependencies.runZoomTestMigration).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
     expect(dependencies.runZoomTestAccountBootstrap).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
+    expect(dependencies.runZoomTestFixture).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
     expect(dependencies.runReconciliation).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
     expect(dependencies.runMigration).toHaveBeenCalledWith({ rootDir: dependencies.rootDir });
     expect(dependencies.startStandalone).toHaveBeenCalledTimes(1);
@@ -67,6 +73,7 @@ describe("Plesk application startup integration", () => {
     expect(dependencies.assertRuntimeReady).not.toHaveBeenCalled();
     expect(dependencies.runZoomTestMigration).not.toHaveBeenCalled();
     expect(dependencies.runZoomTestAccountBootstrap).not.toHaveBeenCalled();
+    expect(dependencies.runZoomTestFixture).not.toHaveBeenCalled();
     expect(dependencies.runReconciliation).not.toHaveBeenCalled();
     expect(dependencies.startStandalone).not.toHaveBeenCalled();
   });
@@ -84,6 +91,7 @@ describe("Plesk application startup integration", () => {
     );
     expect(dependencies.assertRuntimeReady).not.toHaveBeenCalled();
     expect(dependencies.runZoomTestAccountBootstrap).not.toHaveBeenCalled();
+    expect(dependencies.runZoomTestFixture).not.toHaveBeenCalled();
     expect(dependencies.runReconciliation).not.toHaveBeenCalled();
     expect(dependencies.runMigration).not.toHaveBeenCalled();
     expect(dependencies.startStandalone).not.toHaveBeenCalled();
@@ -99,6 +107,23 @@ describe("Plesk application startup integration", () => {
 
     await expect(startPleskApplication(dependencies)).rejects.toThrow(
       "Zoom Test account bootstrap action completed or failed closed"
+    );
+    expect(dependencies.assertRuntimeReady).not.toHaveBeenCalled();
+    expect(dependencies.runReconciliation).not.toHaveBeenCalled();
+    expect(dependencies.runMigration).not.toHaveBeenCalled();
+    expect(dependencies.startStandalone).not.toHaveBeenCalled();
+  });
+
+  it("stops before runtime readiness after a requested Zoom Test fixture action", async () => {
+    const dependencies = startupDependencies();
+    dependencies.runZoomTestFixture.mockResolvedValue({
+      requested: true,
+      shouldStart: false,
+      outcome: "complete"
+    });
+
+    await expect(startPleskApplication(dependencies)).rejects.toThrow(
+      "Zoom Test fixture action completed or failed closed"
     );
     expect(dependencies.assertRuntimeReady).not.toHaveBeenCalled();
     expect(dependencies.runReconciliation).not.toHaveBeenCalled();
