@@ -89,6 +89,22 @@ function getSafeFailure(error) {
   }
   const errorName = typeof error?.name === "string" ? error.name : "";
   const errorMessage = typeof error?.message === "string" ? error.message : "";
+  if (/authentication failed|invalid (?:database )?credentials?|access denied for user/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_AUTHENTICATION_FAILED, stage: "database" };
+  }
+  if (/not allowed to connect|denied access to (?:the )?database/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ACCESS_DENIED, stage: "database" };
+  }
+  if (
+    /can(?:not|'t) reach database server|connection (?:refused|timed out)|ECONNREFUSED|ETIMEDOUT|unknown database|database .* does not exist/i.test(
+      errorMessage
+    )
+  ) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_UNAVAILABLE, stage: "database" };
+  }
+  if (/TLS connection|certificate verify failed|self[- ]signed certificate/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_TLS_FAILED, stage: "database" };
+  }
   if (/permission denied|EACCES/i.test(errorMessage)) {
     return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_PERMISSION_DENIED, stage: "database" };
   }

@@ -132,4 +132,13 @@ describe("Zoom Test database pre-migration guard", () => {
       stage: "database"
     });
   });
+
+  it.each([
+    ["PrismaClientInitializationError", "Authentication failed against database server", "DATABASE_AUTHENTICATION_FAILED"],
+    ["PrismaClientInitializationError", "Host is not allowed to connect", "DATABASE_ACCESS_DENIED"],
+    ["PrismaClientInitializationError", "Can't reach database server", "DATABASE_UNAVAILABLE"],
+    ["PrismaClientInitializationError", "Error opening a TLS connection", "DATABASE_TLS_FAILED"]
+  ])("classifies safe initialization message patterns", (name, message, code) => {
+    expect(getSafeFailure({ name, message })).toEqual({ code, stage: "database" });
+  });
 });
