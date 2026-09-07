@@ -137,7 +137,7 @@ Deploy only the reviewed `codex/test-zoom-fixture` branch to the Test site by
 using the Plesk Git panel's manual Pull/Deploy controls. Do not merge this
 branch into `main` for this validation, do not use automatic deployment, and
 do not run Pull/Deploy for the Production site. Use deterministic lockfiles,
-approved Node 24.x, the configured public document root, and server.js. Run the
+approved Node 20.x for Prisma ORM 6, the configured public document root, and server.js. Run the
 non-migration preflight, build the root and isolated Zoom client, prepare the
 Plesk host runtime, and restart only the Test application.
 
