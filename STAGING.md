@@ -54,6 +54,10 @@ Recommended staging database steps:
 
 Staging must never connect to production data.
 
+For the isolated LINE Mini App to Zoom fixture, use
+ZOOM_TEST_ENVIRONMENT.md. Its Test-only command and environment/database
+guards are separate from the existing Production UAT runner.
+
 ## Release Checklist
 
 Before accepting a staging deployment:
