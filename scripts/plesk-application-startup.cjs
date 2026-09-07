@@ -6,6 +6,7 @@ const {
   runPleskSmsOtpSchemaReconciliation
 } = require("./plesk-sms-otp-schema-reconciliation.cjs");
 const { runZoomTestPleskMigration } = require("./zoom-test-plesk-migration.cjs");
+const { runPleskAccountBootstrap } = require("./zoom-test-plesk-account-bootstrap.cjs");
 
 async function startPleskApplication({
   rootDir,
@@ -13,6 +14,7 @@ async function startPleskApplication({
   assertMigrationTarget = assertPleskSmsOtpMigrationTarget,
   assertRuntimeReady = assertPleskHostRuntimeReady,
   runZoomTestMigration = runZoomTestPleskMigration,
+  runZoomTestAccountBootstrap = runPleskAccountBootstrap,
   runReconciliation = runPleskSmsOtpSchemaReconciliation,
   runMigration = runPleskRuntimeMigration
 }) {
@@ -23,6 +25,11 @@ async function startPleskApplication({
   const zoomTestMigrationResult = await runZoomTestMigration({ rootDir });
   if (!zoomTestMigrationResult.shouldStart) {
     throw new Error("Zoom Test migration action completed or failed closed; standalone server was not started.");
+  }
+
+  const zoomTestAccountBootstrapResult = await runZoomTestAccountBootstrap({ rootDir });
+  if (!zoomTestAccountBootstrapResult.shouldStart) {
+    throw new Error("Zoom Test account bootstrap action completed or failed closed; standalone server was not started.");
   }
 
   assertRuntimeReady({ rootDir });
