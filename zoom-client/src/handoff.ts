@@ -14,6 +14,10 @@ export function getHandoffTicket(hash: string): string | null {
   return value && value.length <= 160 ? value : null;
 }
 
+export function isLineInAppBrowser(userAgent: string): boolean {
+  return /\bLine\/[0-9.]+/i.test(userAgent);
+}
+
 export async function establishZoomExternalSession(
   consultationId: string,
   hash: string,

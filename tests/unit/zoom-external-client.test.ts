@@ -3,9 +3,11 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   establishZoomExternalSession,
-  getHandoffTicket
+  getHandoffTicket,
+  isLineInAppBrowser as isZoomClientLineBrowser
 } from "../../zoom-client/src/handoff";
 import {
+  isAndroidUserAgent,
   isLineInAppBrowser,
   isTrustedZoomLaunchUrl
 } from "@/features/consultations/zoom/ZoomExternalLauncher";
@@ -29,6 +31,10 @@ describe("Zoom external-browser client helpers", () => {
 
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
     expect(isLineInAppBrowser("Mozilla/5.0 Line/15.20.1")).toBe(true);
+    expect(isAndroidUserAgent("Mozilla/5.0 (Linux; Android 15) Line/15.20.1")).toBe(true);
+    expect(isAndroidUserAgent("Mozilla/5.0 (iPhone) Line/15.20.1")).toBe(false);
+    expect(isZoomClientLineBrowser("Mozilla/5.0 (Linux; Android 15) Line/15.20.1")).toBe(true);
+    expect(isZoomClientLineBrowser("Mozilla/5.0 Chrome/140.0")).toBe(false);
     expect(isLineInAppBrowser("Mozilla/5.0 Chrome/140.0")).toBe(false);
     expect(
       isTrustedZoomLaunchUrl(
