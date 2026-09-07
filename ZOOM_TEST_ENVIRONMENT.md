@@ -112,10 +112,13 @@ schema columns, and both account hashes without printing identity data.
 
 ## 4. Deploy and smoke-test the Test site
 
-Use reviewed origin/main source, deterministic lockfiles, approved Node 24.x,
-public document root, and server.js. Run the non-migration preflight, build the
-root and isolated Zoom client, prepare the Plesk host runtime, and restart only
-the Test application.
+Deploy only the reviewed `codex/test-zoom-fixture` branch to the Test site by
+using the Plesk Git panel's manual Pull/Deploy controls. Do not merge this
+branch into `main` for this validation, do not use automatic deployment, and
+do not run Pull/Deploy for the Production site. Use deterministic lockfiles,
+approved Node 24.x, the configured public document root, and server.js. Run the
+non-migration preflight, build the root and isolated Zoom client, prepare the
+Plesk host runtime, and restart only the Test application.
 
 Stop if health/auth fails, a migration is unfinished or unexpected, a secret
 appears, or any boundary cannot be proven. Required smoke checks:
