@@ -270,6 +270,7 @@ export async function POST(request: NextRequest) {
             : "กรุณากลับไปที่คิวแพทย์เพื่อเขียนสรุปและจบการปรึกษา",
         metadataJson: {
           consultationId: consultation.id,
+          audienceRole: body.event === "meeting.ended" ? "doctor" : "customer",
           href:
             body.event === "meeting.started"
               ? `/consult/live?consultation=${consultation.id}`

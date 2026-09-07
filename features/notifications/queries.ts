@@ -2,6 +2,7 @@ import type { Notification, Prisma } from "@prisma/client";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
+import { assertRole } from "@/lib/permissions";
 import type { CustomerNotificationItem, CustomerNotificationsData } from "@/features/notifications/types";
 
 type CustomerNotificationRecord = Pick<
@@ -12,6 +13,11 @@ type CustomerNotificationRouteInput = Pick<CustomerNotificationRecord, "type" | 
 
 const customerLiveConsultationHrefPattern =
   /^\/consult\/live\?consultation=[A-Za-z0-9_-]{1,128}$/;
+const customerAppointmentHrefPattern =
+  /^\/consult\/appointments\/[A-Za-z0-9_-]{1,128}$/;
+const customerAdviceLogHrefPattern =
+  /^\/consult\/advice-log\?consultation=[A-Za-z0-9_-]{1,128}$/;
+const consultationIdPattern = /^[A-Za-z0-9_-]{1,128}$/;
 
 function formatRelativeTime(date: Date): string {
   const deltaSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
@@ -52,11 +58,41 @@ function getMetadataObject(metadata: Prisma.JsonValue): Prisma.JsonObject {
   return metadata;
 }
 
+export function isCustomerNotificationVisible(
+  notification: CustomerNotificationRouteInput
+): boolean {
+  const metadata = getMetadataObject(notification.metadataJson);
+  const audienceRole = metadata.audienceRole;
+  const href = metadata.href;
+
+  if (typeof audienceRole === "string" && audienceRole !== "customer") {
+    return false;
+  }
+
+  return !(
+    typeof href === "string" &&
+    (href === "/doctor" ||
+      href.startsWith("/doctor/") ||
+      href === "/admin" ||
+      href.startsWith("/admin/") ||
+      href === "/pharmacist" ||
+      href.startsWith("/pharmacist/"))
+  );
+}
+
 export function resolveCustomerNotificationHref(
   notification: CustomerNotificationRouteInput
 ): CustomerNotificationItem["href"] {
   const metadata = getMetadataObject(notification.metadataJson);
   const href = metadata.href;
+  const safeConsultationId =
+    typeof metadata.consultationId === "string" && consultationIdPattern.test(metadata.consultationId)
+      ? metadata.consultationId
+      : null;
+  const ownedAppointmentHref =
+    safeConsultationId
+      ? `/consult/appointments/${safeConsultationId}`
+      : null;
 
   if (href === "/store/payment-success") {
     return "/store/orders";
@@ -69,11 +105,15 @@ export function resolveCustomerNotificationHref(
     href === "/store" ||
     href === "/profile/rewards" ||
     href === "/consult/prescriptions" ||
-    href === "/consult/advice-log" ||
     (typeof href === "string" && customerLiveConsultationHrefPattern.test(href)) ||
-    (typeof href === "string" && href.startsWith("/consult/appointments/"))
+    (typeof href === "string" && customerAppointmentHrefPattern.test(href)) ||
+    (typeof href === "string" && customerAdviceLogHrefPattern.test(href))
   ) {
     return href;
+  }
+
+  if (href === "/consult/advice-log" && safeConsultationId) {
+    return `/consult/advice-log?consultation=${safeConsultationId}`;
   }
 
   if (notification.type === "community") {
@@ -89,7 +129,7 @@ export function resolveCustomerNotificationHref(
   }
 
   if (notification.type === "consultation") {
-    return "/consult/advice-log";
+    return ownedAppointmentHref ?? "/consult";
   }
 
   if (notification.type === "reward") {
@@ -113,6 +153,7 @@ function mapNotification(notification: CustomerNotificationRecord): CustomerNoti
 
 export async function getCustomerNotifications(session: PublicSession): Promise<CustomerNotificationsData> {
   noStore();
+  assertRole(session, ["customer"]);
 
   try {
     const notifications = await prisma.notification.findMany({
@@ -123,7 +164,7 @@ export async function getCustomerNotifications(session: PublicSession): Promise<
       orderBy: {
         createdAt: "desc"
       },
-      take: 50,
+      take: 100,
       select: {
         id: true,
         type: true,
@@ -134,7 +175,10 @@ export async function getCustomerNotifications(session: PublicSession): Promise<
         createdAt: true
       }
     });
-    const items = notifications.map(mapNotification);
+    const items = notifications
+      .filter(isCustomerNotificationVisible)
+      .slice(0, 50)
+      .map(mapNotification);
 
     return {
       notifications: items,

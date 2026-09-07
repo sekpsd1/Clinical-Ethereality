@@ -122,7 +122,7 @@ function getCtaHref(consultation: ConsultationRecord): string {
   }
 
   if (status === "completed") {
-    return "/consult/advice-log";
+    return `/consult/advice-log?consultation=${encodeURIComponent(consultationId)}`;
   }
 
   if (status === "cancelled") {

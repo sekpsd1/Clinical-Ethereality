@@ -255,4 +255,46 @@ describe("Zoom webhook route", () => {
       expect.objectContaining({ action: "zoom.meeting_started_rejected" })
     );
   });
+
+  it("keeps the meeting-ended notification scoped to the assigned doctor", async () => {
+    const tx = {
+      consultation: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "consultation-1",
+          patientId: "patient-1",
+          status: "live",
+          scheduledAt: new Date("2030-01-01T10:00:00.000Z"),
+          doctor: { userId: "doctor-1" }
+        }),
+        update: vi.fn()
+      },
+      auditLog: {
+        findFirst: vi.fn().mockResolvedValue(null)
+      },
+      notification: {
+        create: vi.fn()
+      }
+    };
+    mocks.transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const body = JSON.stringify({
+      event: "meeting.ended",
+      event_ts: new Date("2030-01-01T10:30:00.000Z").getTime(),
+      payload: { object: { id: 12345678901 } }
+    });
+
+    const response = await POST(signedRequest(body));
+
+    expect(response.status).toBe(200);
+    expect(tx.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "doctor-1",
+        title: "ห้อง Zoom สิ้นสุดแล้ว",
+        metadataJson: {
+          consultationId: "consultation-1",
+          audienceRole: "doctor",
+          href: "/doctor/consultations"
+        }
+      })
+    });
+  });
 });

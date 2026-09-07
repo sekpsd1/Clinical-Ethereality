@@ -224,6 +224,7 @@ export async function applyDoctorConsultationTransition(
             : "แพทย์บันทึกสรุปการปรึกษาเรียบร้อยแล้ว",
       metadataJson: {
         consultationId: input.consultationId,
+        audienceRole: "customer",
         href:
           input.transition === "start"
             ? `/consult/live?consultation=${input.consultationId}`

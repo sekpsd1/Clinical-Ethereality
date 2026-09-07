@@ -89,7 +89,12 @@ function getLinkedOrderCode(prescription: PrescriptionRecord): string | null {
   return order ? getOrderCode(order.id) : null;
 }
 
-function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescriptionId: string) {
+function getNextStep(
+  status: PrescriptionStatus,
+  hasOrder: boolean,
+  prescriptionId: string,
+  consultationId: string
+) {
   if (isPrescriptionOrderReady(status) && !hasOrder) {
     return {
       title: "ใบสั่งยาพร้อมใช้",
@@ -113,7 +118,7 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescription
       title: "ใบสั่งยาต้องให้แพทย์แก้ไข",
       body: "ใบสั่งยานี้ยังใช้สั่งซื้อไม่ได้ แพทย์สามารถปรับแก้และออกใบสั่งยาใหม่ได้จากคิวการปรึกษา",
       ctaLabel: "ดูสรุปคำแนะนำ",
-      ctaHref: "/consult/advice-log"
+      ctaHref: `/consult/advice-log?consultation=${encodeURIComponent(consultationId)}`
     };
   }
 
@@ -127,7 +132,12 @@ function getNextStep(status: PrescriptionStatus, hasOrder: boolean, prescription
 
 function mapPrescription(prescription: PrescriptionRecord): CustomerPrescriptionItem {
   const hasOrder = prescription.orderItems.length > 0;
-  const nextStep = getNextStep(prescription.status, hasOrder, prescription.id);
+  const nextStep = getNextStep(
+    prescription.status,
+    hasOrder,
+    prescription.id,
+    prescription.consultationId
+  );
 
   return {
     id: prescription.id,

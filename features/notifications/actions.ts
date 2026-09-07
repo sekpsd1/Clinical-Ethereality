@@ -3,30 +3,53 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
-import { requireCurrentSession } from "@/lib/auth/session";
+import { requireRoleSession } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
-import { resolveCustomerNotificationHref } from "@/features/notifications/queries";
+import {
+  isCustomerNotificationVisible,
+  resolveCustomerNotificationHref
+} from "@/features/notifications/queries";
 
 export async function markCustomerNotificationsReadAction(): Promise<void> {
-  const session = await requireCurrentSession();
-
-  await prisma.notification.updateMany({
+  const session = await requireRoleSession(["customer"], "/notifications");
+  const unreadNotifications = await prisma.notification.findMany({
     where: {
       userId: session.userId,
       channel: "in_app",
       readAt: null
     },
-    data: {
-      readAt: new Date()
+    select: {
+      id: true,
+      type: true,
+      metadataJson: true
     }
   });
+  const visibleIds = unreadNotifications
+    .filter(isCustomerNotificationVisible)
+    .map((notification) => notification.id);
+
+  if (visibleIds.length > 0) {
+    await prisma.notification.updateMany({
+      where: {
+        id: {
+          in: visibleIds
+        },
+        userId: session.userId,
+        channel: "in_app",
+        readAt: null
+      },
+      data: {
+        readAt: new Date()
+      }
+    });
+  }
 
   revalidatePath("/notifications");
   revalidatePath("/profile");
 }
 
 export async function openCustomerNotificationAction(formData: FormData): Promise<void> {
-  const session = await requireCurrentSession();
+  const session = await requireRoleSession(["customer"], "/notifications");
   const notificationId = formData.get("notificationId");
 
   if (typeof notificationId !== "string" || !notificationId) {
@@ -46,7 +69,7 @@ export async function openCustomerNotificationAction(formData: FormData): Promis
     }
   });
 
-  if (!notification) {
+  if (!notification || !isCustomerNotificationVisible(notification)) {
     return;
   }
 

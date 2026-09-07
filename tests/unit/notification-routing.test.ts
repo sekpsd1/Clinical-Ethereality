@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveCustomerNotificationHref } from "@/features/notifications/queries";
+import {
+  isCustomerNotificationVisible,
+  resolveCustomerNotificationHref
+} from "@/features/notifications/queries";
 
 describe("customer notification routing", () => {
   it("preserves the customer order list destination from order and payment metadata", () => {
@@ -103,18 +106,66 @@ describe("customer notification routing", () => {
           type: "consultation",
           metadataJson: { href }
         })
-      ).toBe("/consult/advice-log");
+      ).toBe("/consult");
     }
   });
 
-  it("keeps the legacy consultation advice destination unchanged", () => {
+  it("binds a legacy advice destination to its consultation id", () => {
     expect(
       resolveCustomerNotificationHref({
         type: "consultation",
         metadataJson: {
-          href: "/consult/advice-log"
+          href: "/consult/advice-log",
+          consultationId: "consultation-1"
         }
       })
-    ).toBe("/consult/advice-log");
+    ).toBe("/consult/advice-log?consultation=consultation-1");
+  });
+
+  it("does not send a customer to a doctor route from a consultation notification", () => {
+    expect(
+      resolveCustomerNotificationHref({
+        type: "consultation",
+        metadataJson: {
+          href: "/doctor/consultations",
+          consultationId: "consultation-1"
+        }
+      })
+    ).toBe("/consult/appointments/consultation-1");
+  });
+
+  it("falls back to the customer consult home without a valid consultation id", () => {
+    for (const consultationId of [undefined, "../doctor", "consultation-1?next=/doctor"]) {
+      expect(
+        resolveCustomerNotificationHref({
+          type: "consultation",
+          metadataJson: {
+            href: "/doctor/consultations",
+            consultationId
+          }
+        })
+      ).toBe("/consult");
+    }
+  });
+
+  it("classifies staff-only destinations as invisible in the customer center", () => {
+    for (const href of ["/doctor/consultations", "/admin", "/pharmacist/prescriptions"]) {
+      expect(
+        isCustomerNotificationVisible({
+          type: "consultation",
+          metadataJson: { href }
+        })
+      ).toBe(false);
+    }
+
+    expect(
+      isCustomerNotificationVisible({
+        type: "consultation",
+        metadataJson: {
+          audienceRole: "doctor",
+          href: "/consult/appointments/consultation-1"
+        }
+      })
+    ).toBe(false);
   });
 });
