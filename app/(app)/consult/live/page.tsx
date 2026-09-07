@@ -8,10 +8,14 @@ export default async function LiveConsultationPage({
 }: {
   searchParams: Promise<{
     consultation?: string;
+    uat?: string;
   }>;
 }) {
   const params = await searchParams;
-  const chat = await getLiveConsultationChat(params.consultation);
+  const chat = await getLiveConsultationChat(params.consultation, new Date(), {
+    allowImplicitTestLookup:
+      process.env.CE_DEPLOYMENT_ENVIRONMENT === "test" && params.uat === "current"
+  });
   const liffId = getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID;
 
   if (!chat.consultationId) {

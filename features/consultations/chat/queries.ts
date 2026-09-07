@@ -35,13 +35,16 @@ function formatMessageTime(date: Date): string {
 
 export async function getLiveConsultationChat(
   consultationId?: string,
-  now = new Date()
+  now = new Date(),
+  options: {
+    allowImplicitTestLookup?: boolean;
+  } = {}
 ): Promise<LiveConsultationChatData> {
   noStore();
 
   const session = await getCurrentSession();
 
-  if (!session || !consultationId) {
+  if (!session) {
     return emptyChatData;
   }
 
@@ -54,63 +57,78 @@ export async function getLiveConsultationChat(
 
   if (
     session.userId.startsWith("dev:") ||
-    (session.role !== "customer" && session.role !== "doctor")
+    (session.role !== "customer" && session.role !== "doctor") ||
+    (!consultationId && !options.allowImplicitTestLookup)
   ) {
     return sessionEmptyData;
   }
 
   try {
-    const consultation = await prisma.consultation.findFirst({
-      where:
-        session.role === "doctor"
-          ? {
-              id: consultationId,
-              doctor: {
-                userId: session.userId
-              },
-              status: "live",
-              scheduledAt: {
-                lte: now
-              }
-            }
-          : {
-              id: consultationId,
-              patientId: session.userId,
-              status: "live",
-              scheduledAt: {
-                lte: now
-              }
+    const where =
+      session.role === "doctor"
+        ? {
+            ...(consultationId ? { id: consultationId } : {}),
+            doctor: {
+              userId: session.userId
             },
-      include: {
-        patient: true,
-        doctor: {
-          include: {
-            user: true
+            status: "live" as const,
+            scheduledAt: {
+              lte: now
+            }
           }
+        : {
+            ...(consultationId ? { id: consultationId } : {}),
+            patientId: session.userId,
+            status: "live" as const,
+            scheduledAt: {
+              lte: now
+            }
+          };
+    const include = {
+      patient: true,
+      doctor: {
+        include: {
+          user: true
+        }
+      },
+      messages: {
+        where: {
+          status: "visible" as const
         },
-        messages: {
-          where: {
-            status: "visible"
-          },
-          orderBy: {
-            createdAt: "asc"
-          },
-          take: 50,
-          include: {
-            sender: true
-          }
+        orderBy: {
+          createdAt: "asc" as const
         },
-        attendanceEvents: {
-          select: {
-            role: true,
-            eventType: true,
-            meetingUuidHash: true,
-            participantSessionHash: true,
-            occurredAt: true
-          }
+        take: 50,
+        include: {
+          sender: true
+        }
+      },
+      attendanceEvents: {
+        select: {
+          role: true,
+          eventType: true,
+          meetingUuidHash: true,
+          participantSessionHash: true,
+          occurredAt: true
         }
       }
-    });
+    };
+    const consultations = consultationId
+      ? [
+          await prisma.consultation.findFirst({
+            where,
+            include
+          })
+        ]
+      : await prisma.consultation.findMany({
+          where,
+          include,
+          orderBy: {
+            scheduledAt: "desc"
+          },
+          take: 2
+        });
+    const consultation = consultations.length === 1 ? consultations[0] : null;
 
     if (
       !consultation ||

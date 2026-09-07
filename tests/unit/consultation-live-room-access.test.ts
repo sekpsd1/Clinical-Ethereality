@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
+  findMany: vi.fn(),
   getCurrentSession: vi.fn(),
   isZoomMeetingSdkConfigured: vi.fn(),
   noStore: vi.fn()
@@ -12,7 +13,8 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentSession: mocks.getCurrentSessio
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     consultation: {
-      findFirst: mocks.findFirst
+      findFirst: mocks.findFirst,
+      findMany: mocks.findMany
     }
   }
 }));
@@ -60,7 +62,7 @@ beforeEach(() => {
 });
 
 describe("getLiveConsultationChat direct URL access", () => {
-  it("denies anonymous, missing-ID, and admin requests before reading consultation data", async () => {
+  it("denies anonymous, unapproved missing-ID, and admin requests before reading consultation data", async () => {
     mocks.getCurrentSession.mockResolvedValueOnce(null);
     await expect(getLiveConsultationChat("consultation-uat", scheduledAt)).resolves.toMatchObject({
       consultationId: null
@@ -77,6 +79,52 @@ describe("getLiveConsultationChat direct URL access", () => {
     });
 
     expect(mocks.findFirst).not.toHaveBeenCalled();
+    expect(mocks.findMany).not.toHaveBeenCalled();
+  });
+
+  it("allows Test-only lookup when the owning customer has exactly one live consultation", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
+    mocks.findMany.mockResolvedValue([consultationRecord("live")]);
+
+    const result = await getLiveConsultationChat(undefined, scheduledAt, {
+      allowImplicitTestLookup: true
+    });
+
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+    expect(mocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          patientId: "patient-1",
+          status: "live",
+          scheduledAt: { lte: scheduledAt }
+        },
+        orderBy: { scheduledAt: "desc" },
+        take: 2
+      })
+    );
+    expect(result).toMatchObject({
+      consultationId: "consultation-uat",
+      viewerRole: "customer",
+      videoHref: "/consult/live/zoom?consultation=consultation-uat"
+    });
+  });
+
+  it("fails closed when Test-only lookup finds more than one live consultation", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
+    mocks.findMany.mockResolvedValue([
+      consultationRecord("live"),
+      { ...consultationRecord("live"), id: "consultation-other" }
+    ]);
+
+    const result = await getLiveConsultationChat(undefined, scheduledAt, {
+      allowImplicitTestLookup: true
+    });
+
+    expect(result).toMatchObject({
+      consultationId: null,
+      videoHref: null,
+      canSend: false
+    });
   });
 
   it("denies a scheduled consultation before the appointment gate", async () => {
