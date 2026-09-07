@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildAndroidChromeIntentUrl,
   establishZoomExternalSession,
   getHandoffTicket,
   isLineInAppBrowser as isZoomClientLineBrowser
@@ -67,6 +68,25 @@ describe("Zoom external-browser client helpers", () => {
       credentials: "same-origin",
       body: JSON.stringify({ ticket })
     });
+  });
+
+  it("builds a direct Android Chrome intent when LINE omits its open-browser menu", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+    const intentUrl = buildAndroidChromeIntentUrl(
+      `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`
+    );
+
+    expect(intentUrl).toContain("intent://app.example.test/zoom-sdk/index.html?");
+    expect(intentUrl).toContain(`consultation=consultation-1&handoff=${ticket}`);
+    expect(intentUrl).toContain("#Intent;scheme=https;package=com.android.chrome;");
+    expect(intentUrl).toContain("S.browser_fallback_url=https%3A%2F%2Fapp.example.test%2Fzoom-sdk%2Findex.html");
+    expect(intentUrl).toMatch(/;end$/);
+  });
+
+  it("accepts the one-time ticket from the Android Chrome intent query", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+
+    expect(getHandoffTicket(`?consultation=consultation-1&handoff=${ticket}`)).toBe(ticket);
   });
 
   it("validates an existing scoped cookie on reload without replaying the ticket", async () => {
