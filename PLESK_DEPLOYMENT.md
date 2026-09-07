@@ -173,7 +173,7 @@ first, then switch to automatic deployment only after a successful hosted smoke 
 ```bash
 run preflight:plesk:non-migration
 ci --include=dev --no-audit --no-fund
---prefix zoom-client ci --include=dev --no-audit --no-fund
+run install:zoom-client
 run build:plesk-host
 ```
 
