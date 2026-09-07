@@ -117,5 +117,19 @@ describe("Zoom Test database pre-migration guard", () => {
       code: PRECHECK_FAILURE_CODES.DATABASE_TLS_FAILED,
       stage: "database"
     });
+    expect(getSafeFailure({
+      name: "PrismaClientInitializationError",
+      message: "Error loading shared library libssl"
+    })).toEqual({
+      code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_UNAVAILABLE,
+      stage: "database"
+    });
+    expect(getSafeFailure({
+      name: "PrismaClientUnknownRequestError",
+      message: "hidden"
+    })).toEqual({
+      code: PRECHECK_FAILURE_CODES.DATABASE_QUERY_FAILED,
+      stage: "database"
+    });
   });
 });

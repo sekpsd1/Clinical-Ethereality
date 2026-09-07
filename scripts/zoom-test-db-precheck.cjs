@@ -17,6 +17,12 @@ const PRECHECK_FAILURE_CODES = Object.freeze({
   ...RUNNER_FAILURE_CODES,
   DATABASE_ACCESS_DENIED: "DATABASE_ACCESS_DENIED",
   DATABASE_AUTHENTICATION_FAILED: "DATABASE_AUTHENTICATION_FAILED",
+  DATABASE_CLIENT_VALIDATION_FAILED: "DATABASE_CLIENT_VALIDATION_FAILED",
+  DATABASE_ENGINE_FAILED: "DATABASE_ENGINE_FAILED",
+  DATABASE_ENGINE_PERMISSION_DENIED: "DATABASE_ENGINE_PERMISSION_DENIED",
+  DATABASE_ENGINE_PLATFORM_MISMATCH: "DATABASE_ENGINE_PLATFORM_MISMATCH",
+  DATABASE_ENGINE_UNAVAILABLE: "DATABASE_ENGINE_UNAVAILABLE",
+  DATABASE_QUERY_FAILED: "DATABASE_QUERY_FAILED",
   DATABASE_TLS_FAILED: "DATABASE_TLS_FAILED",
   UNKNOWN_SAFE_FAILURE: "UNKNOWN_SAFE_FAILURE"
 });
@@ -80,6 +86,29 @@ function getSafeFailure(error) {
   const databaseCodes = new Set(["P1001", "P1002", "P1003", "P1008", "P1017"]);
   if (databaseCodes.has(databaseCode)) {
     return { code: PRECHECK_FAILURE_CODES.DATABASE_UNAVAILABLE, stage: "database" };
+  }
+  const errorName = typeof error?.name === "string" ? error.name : "";
+  const errorMessage = typeof error?.message === "string" ? error.message : "";
+  if (/permission denied|EACCES/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_PERMISSION_DENIED, stage: "database" };
+  }
+  if (/ELFCLASS|invalid ELF|wrong architecture|platform mismatch/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_PLATFORM_MISMATCH, stage: "database" };
+  }
+  if (/libssl|openssl|query engine library|query-engine.*not found/i.test(errorMessage)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_UNAVAILABLE, stage: "database" };
+  }
+  if (errorName === "PrismaClientInitializationError") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_FAILED, stage: "database" };
+  }
+  if (["PrismaClientKnownRequestError", "PrismaClientUnknownRequestError"].includes(errorName)) {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_QUERY_FAILED, stage: "database" };
+  }
+  if (errorName === "PrismaClientRustPanicError") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_ENGINE_FAILED, stage: "database" };
+  }
+  if (errorName === "PrismaClientValidationError") {
+    return { code: PRECHECK_FAILURE_CODES.DATABASE_CLIENT_VALIDATION_FAILED, stage: "database" };
   }
   return { code: PRECHECK_FAILURE_CODES.UNKNOWN_SAFE_FAILURE, stage: "unknown" };
 }
