@@ -43,10 +43,11 @@ describe("feature validation schemas", () => {
     expect(getProductCategoryLabel("unknown")).toBe("สินค้าอื่น ๆ");
   });
 
-  it("limits direct admin role changes to customer and admin accounts", () => {
+  it("accepts every role supported by the guarded admin role-management workflow", () => {
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "admin" }).success).toBe(true);
     expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "customer" }).success).toBe(true);
-    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "doctor" }).success).toBe(false);
+    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "doctor" }).success).toBe(true);
+    expect(updateUserRoleSchema.safeParse({ userId: "user-1", role: "pharmacist" }).success).toBe(true);
     expect(updateUserRoleSchema.safeParse({ userId: "", role: "admin" }).success).toBe(false);
   });
 

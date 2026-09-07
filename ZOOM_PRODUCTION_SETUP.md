@@ -80,10 +80,12 @@ Use designated test Doctor/Admin and Customer accounts and a pre-authorized sche
 
 1. At 390 x 844, verify the customer waiting room and live room contain no horizontal scrolling and no Console/Server Error.
 2. Have only the assigned Doctor start the room. Verify Zoom meeting creation occurs once, the doctor enters as host, and the customer enters only that customer's consultation as participant. Attempt the URL with another customer and a pharmacist; both must be blocked.
-3. Verify the customer waits until the host starts/adopts the room; do not enable join-before-host. Verify live consultation hides `FooterNav`.
-4. Confirm `meeting.started` and `meeting.ended` are accepted once, retries do not duplicate audit/notification records, invalid or stale signatures return no sensitive details, and no raw webhook payload is saved.
-5. Temporarily remove one required Zoom variable in a controlled test window, restart the Node app, and verify the Zoom page states that setup is incomplete without a Console/Server Error or secret value. Restore the variable and restart.
-6. Review Plesk/Node logs for normal status/error categories only; OAuth access tokens, client secrets, ZAKs, passcodes, and webhook bodies must not appear.
+3. From the LINE Mini App on one supported iOS device and one supported Android device, press the Zoom launch control and confirm LINE opens the same-origin Zoom client in the external browser. Confirm the fragment ticket disappears after exchange, cannot be exchanged a second time, expires unused after two minutes, and never creates a general app session in the external browser.
+4. For both the assigned Doctor and owning Customer, deny then allow camera/microphone access. Confirm Join stays disabled until both devices pass, temporary preflight tracks stop before Zoom initializes, and the join-data endpoint is not called before preflight succeeds.
+5. Verify the customer waits until the host starts/adopts the room; do not enable join-before-host. Verify live consultation hides `FooterNav`.
+6. Confirm `meeting.started`, `meeting.ended`, `meeting.participant_joined`, and `meeting.participant_left` retain the approved replay/attendance behavior: a page open or media preflight alone never counts as attendance, and Doctor/Customer overlap plus no-show completion results are unchanged.
+7. Temporarily remove one required Zoom variable in a controlled test window, restart the Node app, and verify the Zoom page states that setup is incomplete without a Console/Server Error or secret value. Restore the variable and restart.
+8. Review Plesk/Node logs for normal status/error categories only; handoff tickets/cookies, OAuth access tokens, client secrets, ZAKs, passcodes, attendance customer keys, and webhook bodies must not appear.
 
 ## Disable / rollback
 

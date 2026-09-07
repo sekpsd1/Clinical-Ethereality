@@ -19,7 +19,7 @@ export type LiveConsultationChatData = {
   attendanceTone: "neutral" | "success" | "warning";
   canSend: boolean;
   videoHref: string | null;
-  videoMode: "meeting_sdk" | "external" | "unavailable";
+  videoMode: "external_handoff" | "unavailable";
   returnHref: string;
   messages: LiveConsultationChatMessage[];
 };

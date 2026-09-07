@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
   createAttendanceCredential: vi.fn(),
   signature: vi.fn(),
-  zak: vi.fn()
+  zak: vi.fn(),
+  externalViewer: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }));
@@ -19,8 +20,15 @@ vi.mock("@/lib/db/prisma", () => ({
 vi.mock("@/lib/env/schema", () => ({ getAppEnv: () => ({ NEXT_PUBLIC_APP_URL: "https://app.example.test" }) }));
 vi.mock("@/lib/zoom/meeting-sdk", () => ({ issueZoomMeetingSdkSignature: mocks.signature }));
 vi.mock("@/lib/zoom/meetings", () => ({ getZoomHostZakIfConfigured: mocks.zak }));
+vi.mock("@/features/consultations/zoom/external-handoff", () => ({
+  getZoomExternalViewer: mocks.externalViewer
+}));
 
-import { getZoomMeetingFrameAccess, getZoomMeetingJoinData } from "@/features/consultations/zoom/queries";
+import {
+  getZoomExternalMeetingJoinData,
+  getZoomMeetingLaunchAccess,
+  getZoomMeetingJoinData
+} from "@/features/consultations/zoom/queries";
 
 const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
 const afterAppointment = new Date("2030-01-01T10:01:00.000Z");
@@ -39,6 +47,7 @@ describe("Zoom consultation access", () => {
     mocks.signature.mockResolvedValue("sdk-signature");
     mocks.zak.mockResolvedValue("host-zak");
     mocks.createAttendanceCredential.mockResolvedValue({ id: "credential-1" });
+    mocks.externalViewer.mockResolvedValue(null);
   });
 
   it("issues a host signature and ZAK only to the assigned doctor", async () => {
@@ -74,10 +83,10 @@ describe("Zoom consultation access", () => {
     expect(JSON.stringify(data)).not.toContain("host-zak");
   });
 
-  it("authorizes the isolated frame without minting a signature or host token", async () => {
+  it("authorizes the external launch without minting a signature or host token", async () => {
     mocks.session = { userId: "doctor-1", role: "doctor", displayName: "Dr A" };
 
-    const data = await getZoomMeetingFrameAccess("consultation-1", afterAppointment);
+    const data = await getZoomMeetingLaunchAccess("consultation-1", afterAppointment);
 
     expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({ doctor: { userId: "doctor-1" } });
     expect(mocks.signature).not.toHaveBeenCalled();
@@ -133,5 +142,24 @@ describe("Zoom consultation access", () => {
     expect(data).toMatchObject({ available: false });
     expect(JSON.stringify(data)).not.toContain("meeting-sdk-client-secret");
     expect(mocks.createAttendanceCredential).not.toHaveBeenCalled();
+  });
+
+  it("uses the scoped external viewer and preserves the attendance customer key", async () => {
+    mocks.externalViewer.mockResolvedValue({
+      userId: "customer-1",
+      role: "customer",
+      displayName: "Customer"
+    });
+
+    const data = await getZoomExternalMeetingJoinData("consultation-1", afterAppointment);
+
+    expect(mocks.externalViewer).toHaveBeenCalledWith("consultation-1", afterAppointment);
+    expect(data).toMatchObject({
+      available: true,
+      userName: "Customer",
+      leaveUrl: "https://app.example.test/zoom-sdk/index.html?complete=1"
+    });
+    expect(data.available && data.customerKey).toMatch(/^c[A-Za-z0-9]{32}$/);
+    expect(mocks.createAttendanceCredential).toHaveBeenCalledOnce();
   });
 });

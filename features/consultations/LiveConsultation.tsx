@@ -5,6 +5,7 @@ import { Camera, Mic, Phone, RefreshCw, Settings } from "lucide-react";
 import { ConsultationMessageComposer } from "@/features/consultations/chat/ConsultationMessageComposer";
 import { ConsultationChatAutoRefresh } from "@/features/consultations/chat/ConsultationChatAutoRefresh";
 import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
+import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 import { cn } from "@/lib/design-system/variants";
 
 export function LiveConsultation({ chat }: { chat: LiveConsultationChatData }) {
@@ -62,16 +63,8 @@ function VideoPanel({ chat }: { chat: LiveConsultationChatData }) {
       </div>
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#151616] shadow-video-panel">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_45%)]" />
-        {chat.videoHref ? (
-          <Link
-            href={chat.videoHref as Route}
-            target={chat.videoMode === "external" ? "_blank" : undefined}
-            rel={chat.videoMode === "external" ? "noreferrer" : undefined}
-            aria-label="เปิดห้อง Zoom"
-            className="absolute left-1/2 top-[43%] flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border border-black/40 bg-black/30 text-[#d7eeee] shadow-qr-inset"
-          >
-            <span className="ml-1 h-0 w-0 border-y-[15px] border-l-[25px] border-y-transparent border-l-[#d7eeee]" />
-          </Link>
+        {chat.videoHref && chat.consultationId ? (
+          <ZoomExternalLauncher consultationId={chat.consultationId} compact />
         ) : (
           <div className="absolute left-1/2 top-[43%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-[8px] bg-black/45 px-4 py-3 text-center text-xs font-semibold leading-5 text-white">
             ยังไม่ได้สร้างห้อง Zoom

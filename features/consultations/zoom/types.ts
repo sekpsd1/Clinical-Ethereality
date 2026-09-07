@@ -17,7 +17,7 @@ export type ZoomMeetingJoinData =
       leaveUrl: string;
     };
 
-export type ZoomMeetingFrameAccess =
+export type ZoomMeetingLaunchAccess =
   | {
       available: true;
       consultationId: string;

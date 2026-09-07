@@ -1,6 +1,11 @@
-import { createElement, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createZoomClientInitOptions, revealZoomClientRoot } from "./sdk-runtime";
+import {
+  checkZoomCameraAndMicrophone,
+  getZoomMediaPreflightMessage
+} from "./device-preflight";
+import { establishZoomExternalSession } from "./handoff";
 import "./styles.css";
 
 type ZoomJoinData =
@@ -21,6 +26,8 @@ type ZoomJoinData =
     };
 
 type JoinState = "idle" | "joining" | "error";
+type SessionState = "checking" | "ready" | "error";
+type MediaState = "idle" | "checking" | "ready" | "error";
 
 const INIT_TIMEOUT_MS = 20_000;
 const JOIN_TIMEOUT_MS = 20_000;
@@ -91,24 +98,87 @@ function callbackToPromise(invoke: (success: () => void, error: (reason: unknown
 
 function ZoomClientApp() {
   const [state, setState] = useState<JoinState>("idle");
-  const [message, setMessage] = useState("Press Join Zoom to connect. Camera and microphone stay optional.");
+  const [sessionState, setSessionState] = useState<SessionState>("checking");
+  const [mediaState, setMediaState] = useState<MediaState>("idle");
+  const [message, setMessage] = useState("กำลังตรวจสิทธิ์ชั่วคราวสำหรับนัดหมาย...");
   const consultationId = getConsultationId();
+  const isComplete = new URLSearchParams(window.location.search).get("complete") === "1";
 
-  async function joinMeeting() {
-    if (!consultationId || state === "joining") {
+  useEffect(() => {
+    if (isComplete) {
+      setSessionState("ready");
+      setMessage("ออกจากห้อง Zoom แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
       return;
     }
 
-  setState("joining");
-  setMessage("Preparing Zoom...");
-  let stage: "init" | "join" | "i18n" | "load" = "load";
+    if (!consultationId) {
+      setSessionState("error");
+      setMessage("ไม่พบข้อมูลนัดหมายที่ถูกต้อง");
+      return;
+    }
 
-  try {
+    let active = true;
+
+    establishZoomExternalSession(consultationId, window.location.hash)
+      .then(({ exchanged }) => {
+        if (!active) {
+          return;
+        }
+
+        if (exchanged) {
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        }
+
+        setSessionState("ready");
+        setMessage("ตรวจสิทธิ์แล้ว กรุณาตรวจกล้องและไมโครโฟนก่อนเข้าห้อง");
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setSessionState("error");
+        setMessage("สิทธิ์เข้าห้องหมดอายุหรือถูกใช้แล้ว กรุณากลับไปเปิด Zoom จาก LINE อีกครั้ง");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [consultationId, isComplete]);
+
+  async function checkDevices() {
+    if (sessionState !== "ready" || mediaState === "checking") {
+      return;
+    }
+
+    setMediaState("checking");
+    setMessage("กำลังขอสิทธิ์และตรวจกล้องกับไมโครโฟน...");
+
+    try {
+      await checkZoomCameraAndMicrophone(window.navigator.mediaDevices, window.isSecureContext);
+      setMediaState("ready");
+      setMessage("กล้องและไมโครโฟนพร้อมแล้ว กดเข้าห้อง Zoom ได้");
+    } catch (error) {
+      setMediaState("error");
+      setMessage(getZoomMediaPreflightMessage(error));
+    }
+  }
+
+  async function joinMeeting() {
+    if (!consultationId || sessionState !== "ready" || mediaState !== "ready" || state === "joining") {
+      return;
+    }
+
+    setState("joining");
+    setMessage("กำลังเตรียมห้อง Zoom...");
+    let stage: "init" | "join" | "i18n" | "load" = "load";
+
+    try {
       const data = await fetchJoinData(consultationId);
 
       if (!data.available) {
         setState("error");
-        setMessage("This Zoom room is not available for this account.");
+        setMessage("ห้อง Zoom นี้ไม่พร้อมสำหรับบัญชีและนัดหมายนี้");
         return;
       }
 
@@ -146,11 +216,11 @@ function ZoomClientApp() {
         JOIN_TIMEOUT_MS,
         "join"
       );
-      setMessage("Connected to Zoom.");
+      setMessage("เชื่อมต่อ Zoom แล้ว");
     } catch (error) {
       reportSafeSdkError(stage, error);
       setState("error");
-      setMessage("Zoom could not be started. Return to the consultation room and try again.");
+      setMessage("เปิด Zoom ไม่สำเร็จ กรุณากลับไปที่ LINE แล้วลองเปิดห้องอีกครั้ง");
     }
   }
 
@@ -158,16 +228,31 @@ function ZoomClientApp() {
     "main",
     { className: "zoom-launcher" },
     createElement("h1", null, "Zoom Consultation"),
-    createElement("p", { role: "status" }, consultationId ? message : "Invalid consultation room."),
-    createElement(
-      "button",
-      {
-        disabled: !consultationId || state === "joining",
-        onClick: joinMeeting,
-        type: "button"
-      },
-      state === "joining" ? "Connecting…" : state === "error" ? "Try Zoom again" : "Join Zoom"
-    )
+    createElement("p", { role: "status" }, consultationId || isComplete ? message : "ไม่พบข้อมูลนัดหมายที่ถูกต้อง"),
+    isComplete
+      ? null
+      : createElement(
+          "div",
+          { className: "zoom-actions" },
+          createElement(
+            "button",
+            {
+              disabled: sessionState !== "ready" || mediaState === "checking" || state === "joining",
+              onClick: checkDevices,
+              type: "button"
+            },
+            mediaState === "checking" ? "กำลังตรวจ..." : mediaState === "ready" ? "ตรวจอุปกรณ์อีกครั้ง" : "ตรวจกล้องและไมโครโฟน"
+          ),
+          createElement(
+            "button",
+            {
+              disabled: !consultationId || sessionState !== "ready" || mediaState !== "ready" || state === "joining",
+              onClick: joinMeeting,
+              type: "button"
+            },
+            state === "joining" ? "กำลังเชื่อมต่อ…" : state === "error" ? "ลองเข้าห้องอีกครั้ง" : "เข้าห้อง Zoom"
+          )
+        )
   );
 }
 

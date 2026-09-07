@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getZoomMeetingJoinData } from "@/features/consultations/zoom/queries";
+import { getZoomExternalMeetingJoinData } from "@/features/consultations/zoom/queries";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ consultationId: string }> }) {
   const { consultationId } = await params;
-  const data = await getZoomMeetingJoinData(consultationId);
+  const data = await getZoomExternalMeetingJoinData(consultationId);
 
   return NextResponse.json(data, {
     headers: {

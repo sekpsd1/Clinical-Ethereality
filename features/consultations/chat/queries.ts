@@ -143,7 +143,7 @@ export async function getLiveConsultationChat(
       videoHref,
       videoMode:
         consultation.zoomMeetingId && sdkConfigured
-          ? "meeting_sdk"
+          ? "external_handoff"
           : "unavailable",
       returnHref:
         session.role === "doctor"
