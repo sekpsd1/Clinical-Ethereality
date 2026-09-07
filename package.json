@@ -26,6 +26,7 @@
     "check:zoom-test-plesk-account-bootstrap-status": "node scripts/zoom-test-plesk-account-bootstrap-status-probe.cjs",
     "check:zoom-test-plesk-fixture-status": "node scripts/zoom-test-plesk-fixture-status-probe.cjs",
     "check:zoom-test-runtime": "node scripts/zoom-test-runtime-diagnostics.cjs",
+    "check:zoom-test-zak": "node scripts/zoom-test-zak-readiness-probe.cjs",
     "uat:zoom-test-account-bootstrap": "node scripts/zoom-test-account-bootstrap.cjs",
     "uat:zoom-test-fixture": "node scripts/zoom-test-fixture-runner.cjs",
     "test:e2e": "playwright test",
