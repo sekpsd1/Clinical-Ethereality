@@ -174,7 +174,6 @@ first, then switch to automatic deployment only after a successful hosted smoke 
 run preflight:plesk:non-migration
 ci --include=dev --no-audit --no-fund
 --prefix zoom-client ci --include=dev --no-audit --no-fund
---prefix zoom-client run build
 run build:plesk-host
 ```
 
@@ -184,7 +183,8 @@ run build:plesk-host
 `npm ci` is expected to pass with the current committed `package-lock.json`.
 If it reports a lock-file mismatch, click **Pull Now** and **Deploy Now** again
 before retrying; do not run an ad-hoc `npm install` on the server. `build:plesk-host`
-builds on Linux and copies required static/public files into
+first builds the isolated Zoom client into `public/zoom-sdk`, then builds the
+main app on Linux and copies required static/public files into
 `.next/standalone`; the committed root `server.js` then starts that standalone app.
 The helper compares every source static/public file and size with its standalone
 copy after preparation. At startup, `server.js` repeats the same readiness check,
