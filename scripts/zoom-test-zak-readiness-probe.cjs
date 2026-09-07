@@ -12,12 +12,14 @@ function hasValue(value) {
 }
 
 async function getZoomTestZakReadiness({ environment = process.env, fetchImpl = fetch } = {}) {
-  if (
-    environment.NODE_ENV !== "production" ||
-    environment.CE_DEPLOYMENT_ENVIRONMENT !== "test" ||
-    environment.NEXT_PUBLIC_APP_URL !== TEST_APP_URL
-  ) {
-    return { status: "blocked", stage: "environment", httpCategory: "none" };
+  if (environment.NODE_ENV !== "production") {
+    return { status: "blocked", stage: "node_environment", httpCategory: "none" };
+  }
+  if (environment.CE_DEPLOYMENT_ENVIRONMENT !== "test") {
+    return { status: "blocked", stage: "deployment_environment", httpCategory: "none" };
+  }
+  if (environment.NEXT_PUBLIC_APP_URL !== TEST_APP_URL) {
+    return { status: "blocked", stage: "app_url", httpCategory: "none" };
   }
 
   const accountId = environment.ZOOM_ACCOUNT_ID;

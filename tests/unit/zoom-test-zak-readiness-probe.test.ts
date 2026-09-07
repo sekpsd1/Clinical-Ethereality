@@ -53,7 +53,7 @@ describe("Zoom Test ZAK readiness probe", () => {
   it("blocks execution outside the exact Test environment", async () => {
     await expect(
       getZoomTestZakReadiness({ environment: { ...environment, CE_DEPLOYMENT_ENVIRONMENT: "production" } })
-    ).resolves.toEqual({ status: "blocked", stage: "environment", httpCategory: "none" });
+    ).resolves.toEqual({ status: "blocked", stage: "deployment_environment", httpCategory: "none" });
   });
 
   it("normalizes HTTP status into broad categories", () => {
