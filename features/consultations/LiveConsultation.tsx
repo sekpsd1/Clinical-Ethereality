@@ -8,13 +8,13 @@ import type { LiveConsultationChatData } from "@/features/consultations/chat/typ
 import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 import { cn } from "@/lib/design-system/variants";
 
-export function LiveConsultation({ chat, liffId }: { chat: LiveConsultationChatData; liffId?: string }) {
+export function LiveConsultation({ chat }: { chat: LiveConsultationChatData }) {
   return (
     <section className="-mx-4 flex h-dvh flex-col overflow-hidden bg-[#eceef0]">
       <ConsultationChatAutoRefresh enabled={Boolean(chat.consultationId && chat.canSend)} />
       <LiveHeader chat={chat} />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-[76px]">
-        <VideoPanel chat={chat} liffId={liffId} />
+        <VideoPanel chat={chat} />
         <ChatTranscript chat={chat} />
         <MessageComposer chat={chat} />
       </main>
@@ -45,7 +45,7 @@ function LiveHeader({ chat }: { chat: LiveConsultationChatData }) {
   );
 }
 
-function VideoPanel({ chat, liffId }: { chat: LiveConsultationChatData; liffId?: string }) {
+function VideoPanel({ chat }: { chat: LiveConsultationChatData }) {
   return (
     <section className="shrink-0 px-4 py-2">
       <div
@@ -81,7 +81,7 @@ function VideoPanel({ chat, liffId }: { chat: LiveConsultationChatData; liffId?:
           </div>
         </div>
         {chat.videoHref && chat.consultationId ? (
-          <ZoomExternalLauncher consultationId={chat.consultationId} liffId={liffId} compact />
+          <ZoomExternalLauncher consultationId={chat.consultationId} compact />
         ) : null}
       </div>
     </section>

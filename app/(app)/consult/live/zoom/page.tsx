@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 import { getZoomMeetingLaunchAccess } from "@/features/consultations/zoom/queries";
-import { getAppEnv } from "@/lib/env/schema";
 
 export default async function ZoomConsultationPage({
   searchParams
@@ -14,12 +13,11 @@ export default async function ZoomConsultationPage({
   const { consultation } = await searchParams;
   const data = await getZoomMeetingLaunchAccess(consultation);
   const backHref = consultation ? `/consult/live?consultation=${consultation}` : "/consult";
-  const liffId = getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID;
 
   return (
     <section className="-mx-4 flex min-h-dvh flex-col justify-center bg-app px-4 py-8">
       {data.available ? (
-        <ZoomExternalLauncher consultationId={data.consultationId} liffId={liffId} />
+        <ZoomExternalLauncher consultationId={data.consultationId} />
       ) : (
         <div className="rounded-[8px] border border-dashed border-border bg-white/75 p-6 text-center">
           <h1 className="font-headline text-lg font-bold text-text">ยังเปิด Zoom ไม่ได้</h1>

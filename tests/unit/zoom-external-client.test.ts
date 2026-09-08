@@ -10,34 +10,34 @@ import {
 } from "../../zoom-client/src/handoff";
 import {
   buildIosLineExternalBrowserUrl,
-  getSafeIosLiffFailureCode,
+  getZoomLaunchTarget,
   isAndroidUserAgent,
   isLineInAppBrowser,
   isTrustedZoomLaunchUrl
 } from "@/features/consultations/zoom/ZoomExternalLauncher";
 
 describe("Zoom external-browser client helpers", () => {
-  it("receives the LIFF ID from a runtime server prop instead of a client build-time environment lookup", () => {
+  it("uses one shared launch handler without an iOS LIFF dependency or duplicate fallback control", () => {
     const launcherSource = fs.readFileSync(
       path.join(process.cwd(), "features", "consultations", "zoom", "ZoomExternalLauncher.tsx"),
       "utf8"
     );
     const zoomClientSource = fs.readFileSync(path.join(process.cwd(), "zoom-client", "src", "main.ts"), "utf8");
-    const livePageSource = fs.readFileSync(
-      path.join(process.cwd(), "app", "(app)", "consult", "live", "page.tsx"),
-      "utf8"
-    );
 
     expect(launcherSource).not.toContain("process.env.NEXT_PUBLIC_LINE_LIFF_ID");
-    expect(launcherSource).toContain("liffId?: string");
-    expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(3);
+    expect(launcherSource).not.toContain("liff.init");
+    expect(launcherSource).not.toContain("liff.openWindow");
+    expect(launcherSource).not.toContain("LIFF_CONTEXT_UNAVAILABLE");
+    expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(2);
+    expect(launcherSource.match(/เริ่มวิดีโอคอลกับแพทย์/g)).toHaveLength(2);
+    expect(launcherSource).not.toContain("เปิดวิดีโอคอลในเบราว์เซอร์ภายนอก");
+    expect(launcherSource).not.toContain('target="_blank"');
+    expect(launcherSource).toContain("window.location.assign(launchTarget)");
     expect(launcherSource).toContain("เริ่มวิดีโอคอลกับแพทย์");
     expect(launcherSource).toContain("col-start-1 row-start-2");
     expect(zoomClientSource).toContain("วิดีโอคอลปรึกษาแพทย์");
     expect(zoomClientSource).toContain("กดปุ่มด้านล่างเพื่อเปิดเบราว์เซอร์และเริ่มวิดีโอคอล");
     expect(zoomClientSource).toContain("เปิดวิดีโอคอลใน Chrome");
-    expect(livePageSource).toContain("getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID");
-    expect(livePageSource).toContain("liffId={liffId}");
   });
 
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
@@ -134,11 +134,27 @@ describe("Zoom external-browser client helpers", () => {
     ).toBeNull();
   });
 
-  it("reports only allowlisted iPhone LIFF failure codes", () => {
-    expect(getSafeIosLiffFailureCode(new Error("ios_liff_init_failed"))).toBe("LIFF_INIT_FAILED");
-    expect(getSafeIosLiffFailureCode(new Error("ios_liff_context_unavailable"))).toBe("LIFF_CONTEXT_UNAVAILABLE");
-    expect(getSafeIosLiffFailureCode(new Error("ticket=v1.secret patient=private"))).toBeNull();
-    expect(getSafeIosLiffFailureCode({ message: "ios_liff_open_failed" })).toBeNull();
+  it("routes iPhone LINE externally while preserving the existing Android and web targets", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+    const launchUrl = `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`;
+    const iosTarget = getZoomLaunchTarget(
+      launchUrl,
+      "https://app.example.test",
+      "Mozilla/5.0 (iPhone) Line/15.20.1"
+    );
+
+    expect(new URL(iosTarget ?? "").searchParams.get("openExternalBrowser")).toBe("1");
+    expect(getZoomLaunchTarget(launchUrl, "https://app.example.test", "Mozilla/5.0 (Linux; Android 15) Line/15.20.1")).toBe(
+      launchUrl
+    );
+    expect(getZoomLaunchTarget(launchUrl, "https://app.example.test", "Mozilla/5.0 Safari/605.1.15")).toBe(launchUrl);
+    expect(
+      getZoomLaunchTarget(
+        launchUrl.replace("app.example.test", "attacker.example"),
+        "https://app.example.test",
+        "Mozilla/5.0 (iPhone) Line/15.20.1"
+      )
+    ).toBeNull();
   });
 
   it("accepts a fragment ticket from Android Chrome and rejects query/request URL tickets", () => {
