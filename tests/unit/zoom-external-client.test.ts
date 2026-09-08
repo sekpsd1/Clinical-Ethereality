@@ -26,6 +26,9 @@ describe("Zoom external-browser client helpers", () => {
 
     expect(launcherSource).not.toContain("process.env.NEXT_PUBLIC_LINE_LIFF_ID");
     expect(launcherSource).toContain("liffId?: string");
+    expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(3);
+    expect(launcherSource).toContain("เปิด Zoom ในเบราว์เซอร์ภายนอก");
+    expect(launcherSource).toContain("col-start-1 row-start-2");
     expect(livePageSource).toContain("getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID");
     expect(livePageSource).toContain("liffId={liffId}");
   });

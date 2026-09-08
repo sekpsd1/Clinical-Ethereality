@@ -61,25 +61,28 @@ function VideoPanel({ chat, liffId }: { chat: LiveConsultationChatData; liffId?:
         <p className="text-xs font-bold text-text">{chat.attendanceLabel}</p>
         <p className="mt-0.5 text-[10px] font-semibold leading-4 text-muted">{chat.attendanceDescription}</p>
       </div>
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#151616] shadow-video-panel">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_45%)]" />
+      <div className="grid">
+        <div className="relative col-start-1 row-start-1 aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#151616] shadow-video-panel">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_45%)]" />
+          {!chat.videoHref || !chat.consultationId ? (
+            <div className="absolute left-1/2 top-[43%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-[8px] bg-black/45 px-4 py-3 text-center text-xs font-semibold leading-5 text-white">
+              ยังไม่ได้สร้างห้อง Zoom
+            </div>
+          ) : null}
+
+          <div className="absolute right-3 top-3 h-32 w-24 overflow-hidden rounded-xl border-2 border-white/20 bg-[#2f9b99] shadow-avatar">
+            <Image src={chat.patientImageUrl} alt="Patient preview" fill sizes="96px" className="object-cover" />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/30 px-4 py-2 shadow-live-controls backdrop-blur-topbar">
+            <VideoControl label="ควบคุมไมโครโฟนใน Zoom" icon={Mic} disabled />
+            <VideoControl label="ควบคุมกล้องใน Zoom" icon={Camera} disabled />
+            <VideoControl label="สลับกล้องใน Zoom" icon={RefreshCw} disabled />
+          </div>
+        </div>
         {chat.videoHref && chat.consultationId ? (
           <ZoomExternalLauncher consultationId={chat.consultationId} liffId={liffId} compact />
-        ) : (
-          <div className="absolute left-1/2 top-[43%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-[8px] bg-black/45 px-4 py-3 text-center text-xs font-semibold leading-5 text-white">
-            ยังไม่ได้สร้างห้อง Zoom
-          </div>
-        )}
-
-        <div className="absolute right-3 top-3 h-32 w-24 overflow-hidden rounded-xl border-2 border-white/20 bg-[#2f9b99] shadow-avatar">
-          <Image src={chat.patientImageUrl} alt="Patient preview" fill sizes="96px" className="object-cover" />
-        </div>
-
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/30 px-4 py-2 shadow-live-controls backdrop-blur-topbar">
-          <VideoControl label="ควบคุมไมโครโฟนใน Zoom" icon={Mic} disabled />
-          <VideoControl label="ควบคุมกล้องใน Zoom" icon={Camera} disabled />
-          <VideoControl label="สลับกล้องใน Zoom" icon={RefreshCw} disabled />
-        </div>
+        ) : null}
       </div>
     </section>
   );

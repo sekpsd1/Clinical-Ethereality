@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 const LIFF_SDK_URL = "https://static.line-scdn.net/liff/edge/2/sdk.js";
 
@@ -160,20 +162,38 @@ export function ZoomExternalLauncher({
 
   if (compact) {
     return (
-      <div className="absolute left-1/2 top-[43%] flex w-[76%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 text-center">
-        <button
+      <>
+        <div className="pointer-events-none relative z-10 col-start-1 row-start-1">
+          <div className="absolute left-1/2 top-[43%] flex w-[76%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 text-center">
+            <button
+              type="button"
+              onClick={openZoom}
+              disabled={state === "preparing"}
+              aria-label="เปิดห้อง Zoom ในเบราว์เซอร์ภายนอก"
+              className="pointer-events-auto flex size-14 items-center justify-center rounded-lg border border-black/40 bg-black/30 text-[#d7eeee] shadow-qr-inset disabled:opacity-60"
+            >
+              <span className="ml-1 h-0 w-0 border-y-[15px] border-l-[25px] border-y-transparent border-l-[#d7eeee]" />
+            </button>
+            <p className="rounded-md bg-black/55 px-3 py-1.5 text-[10px] font-semibold leading-4 text-white" role="status">
+              {message}
+            </p>
+          </div>
+        </div>
+        <Button
           type="button"
+          size="lg"
           onClick={openZoom}
           disabled={state === "preparing"}
-          aria-label="เปิดห้อง Zoom ในเบราว์เซอร์ภายนอก"
-          className="flex size-14 items-center justify-center rounded-lg border border-black/40 bg-black/30 text-[#d7eeee] shadow-qr-inset disabled:opacity-60"
+          className="col-start-1 row-start-2 mt-3 w-full"
         >
-          <span className="ml-1 h-0 w-0 border-y-[15px] border-l-[25px] border-y-transparent border-l-[#d7eeee]" />
-        </button>
-        <p className="rounded-md bg-black/55 px-3 py-1.5 text-[10px] font-semibold leading-4 text-white" role="status">
-          {message}
-        </p>
-      </div>
+          <ExternalLink aria-hidden="true" className="size-5" strokeWidth={2.2} />
+          {state === "preparing"
+            ? "กำลังเตรียมห้อง Zoom..."
+            : state === "launched"
+              ? "เปิด Zoom อีกครั้ง"
+              : "เปิด Zoom ในเบราว์เซอร์ภายนอก"}
+        </Button>
+      </>
     );
   }
 
