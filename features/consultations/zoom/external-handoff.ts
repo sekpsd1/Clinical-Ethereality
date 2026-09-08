@@ -347,6 +347,92 @@ export async function getZoomExternalViewer(
   return viewer;
 }
 
+export async function revokeCurrentZoomExternalSession(now = new Date()) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(zoomExternalAccessCookieName)?.value;
+  const parsed = token ? parseOpaqueToken(token) : null;
+
+  if (!token || !parsed) {
+    return { revoked: false } as const;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const sessionRecord = await tx.authSession.findUnique({
+      where: {
+        id: parsed.sessionId
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            role: true
+          }
+        }
+      }
+    });
+    const marker = parseMarker(sessionRecord?.userAgent ?? null);
+
+    if (
+      !sessionRecord ||
+      !marker ||
+      marker.stage !== "session" ||
+      (sessionRecord.user.role !== "customer" && sessionRecord.user.role !== "doctor") ||
+      sessionRecord.user.role !== marker.role ||
+      sessionRecord.userId !== sessionRecord.user.id ||
+      sessionRecord.status !== "active" ||
+      sessionRecord.expiresAt <= now ||
+      !hashesMatch(sessionRecord.refreshTokenHash, hashToken(token))
+    ) {
+      return { revoked: false } as const;
+    }
+
+    const revoked = await tx.authSession.updateMany({
+      where: {
+        id: sessionRecord.id,
+        userId: sessionRecord.user.id,
+        refreshTokenHash: sessionRecord.refreshTokenHash,
+        status: "active",
+        userAgent: sessionRecord.userAgent,
+        expiresAt: {
+          gt: now
+        },
+        user: {
+          is: {
+            id: sessionRecord.user.id,
+            role: marker.role
+          }
+        }
+      },
+      data: {
+        status: "revoked",
+        revokedAt: now
+      }
+    });
+
+    if (revoked.count !== 1) {
+      return { revoked: false } as const;
+    }
+
+    await tx.auditLog.create({
+      data: {
+        actorId: sessionRecord.user.id,
+        action: "consultation.zoom_external_session_revoked",
+        entityType: "Consultation",
+        entityId: marker.consultationId,
+        metadataJson: {
+          role: marker.role,
+          reason: "browser_video_room_leave"
+        }
+      }
+    });
+
+    return {
+      revoked: true,
+      consultationId: marker.consultationId
+    } as const;
+  });
+}
+
 export const zoomExternalHandoffLimits = {
   handoffTtlMs: HANDOFF_TTL_MS,
   externalSessionTtlMs: EXTERNAL_SESSION_TTL_MS

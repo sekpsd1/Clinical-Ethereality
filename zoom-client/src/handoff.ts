@@ -1,6 +1,8 @@
 type SessionResponse = {
   ok?: unknown;
   consultationId?: unknown;
+  error?: unknown;
+  revoked?: unknown;
 };
 
 const HANDOFF_TICKET_PATTERN = /^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/;
@@ -8,7 +10,33 @@ const HANDOFF_TICKET_PATTERN = /^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/;
 export type FetchSession = (
   input: RequestInfo | URL,
   init?: RequestInit
-) => Promise<Pick<Response, "ok" | "json">>;
+) => Promise<Pick<Response, "ok" | "json"> & { status?: number }>;
+
+export class ZoomExternalLeaveError extends Error {
+  constructor(public readonly code: "unavailable" | "temporary") {
+    super(`zoom_external_session_leave_${code}`);
+    this.name = "ZoomExternalLeaveError";
+  }
+}
+
+export function createZoomCompletionCleanupGate() {
+  let started = false;
+  let left = false;
+
+  return {
+    markLeft() {
+      left = true;
+    },
+    tryStart(isComplete: boolean) {
+      if (!isComplete || started || left) {
+        return false;
+      }
+
+      started = true;
+      return true;
+    }
+  };
+}
 
 export function getHandoffTicket(fragment: string): string | null {
   if (!fragment.startsWith("#")) {
@@ -114,4 +142,25 @@ export async function establishZoomExternalSession(
   }
 
   return { exchanged: true };
+}
+
+export async function leaveZoomExternalSession(fetchSession: FetchSession = fetch): Promise<void> {
+  const response = await fetchSession("/api/zoom/handoff/session/leave", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json"
+    }
+  });
+  const payload = (await response.json()) as SessionResponse;
+
+  if (response.ok && payload.ok === true && payload.revoked === true) {
+    return;
+  }
+
+  if (response.status === 401 && payload.error === "zoom_external_session_unavailable") {
+    throw new ZoomExternalLeaveError("unavailable");
+  }
+
+  throw new ZoomExternalLeaveError("temporary");
 }

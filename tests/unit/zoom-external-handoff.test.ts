@@ -43,6 +43,7 @@ import {
   exchangeZoomExternalHandoff,
   getZoomExternalViewer,
   issueZoomExternalHandoff,
+  revokeCurrentZoomExternalSession,
   ZoomExternalHandoffError
 } from "@/features/consultations/zoom/external-handoff";
 
@@ -144,5 +145,109 @@ describe("Zoom external-browser handoff", () => {
       ZoomExternalHandoffError
     );
     expect(mocks.transactionClient.authSession.create).not.toHaveBeenCalled();
+  });
+
+  it("revokes only the current valid external Zoom session and writes a scoped audit record", async () => {
+    let record: Record<string, unknown> | null = null;
+    mocks.transactionClient.authSession.create.mockImplementation(async ({ data }) => {
+      record = {
+        ...data,
+        user: {
+          id: "customer-1",
+          role: "customer",
+          status: "active",
+          displayName: "Customer"
+        }
+      };
+      return record;
+    });
+    mocks.transactionClient.authSession.findUnique.mockImplementation(async () => record);
+    mocks.transactionClient.authSession.updateMany.mockImplementation(async ({ data }) => {
+      record = record ? { ...record, ...data } : record;
+      return { count: 1 };
+    });
+    const handoff = await issueZoomExternalHandoff("consultation-1", { now });
+    const exchanged = await exchangeZoomExternalHandoff(handoff.ticket, now);
+    mocks.cookieValue = exchanged.externalSessionToken;
+
+    await expect(revokeCurrentZoomExternalSession(now)).resolves.toEqual({
+      revoked: true,
+      consultationId: "consultation-1"
+    });
+    expect(record).toMatchObject({
+      status: "revoked",
+      revokedAt: now,
+      userAgent: "zoom-external-session:v1:customer:consultation-1"
+    });
+    expect(mocks.transactionClient.auditLog.create).toHaveBeenLastCalledWith({
+      data: {
+        actorId: "customer-1",
+        action: "consultation.zoom_external_session_revoked",
+        entityType: "Consultation",
+        entityId: "consultation-1",
+        metadataJson: {
+          role: "customer",
+          reason: "browser_video_room_leave"
+        }
+      }
+    });
+
+    const auditCount = mocks.transactionClient.auditLog.create.mock.calls.length;
+    await expect(revokeCurrentZoomExternalSession(now)).resolves.toEqual({ revoked: false });
+    expect(mocks.transactionClient.auditLog.create).toHaveBeenCalledTimes(auditCount);
+  });
+
+  it("does not revoke a handoff ticket that has not become an external session", async () => {
+    let record: Record<string, unknown> | null = null;
+    mocks.transactionClient.authSession.create.mockImplementation(async ({ data }) => {
+      record = {
+        ...data,
+        user: {
+          id: "customer-1",
+          role: "customer",
+          status: "active",
+          displayName: "Customer"
+        }
+      };
+      return record;
+    });
+    mocks.transactionClient.authSession.findUnique.mockImplementation(async () => record);
+    const handoff = await issueZoomExternalHandoff("consultation-1", { now });
+    mocks.cookieValue = handoff.ticket;
+
+    await expect(revokeCurrentZoomExternalSession(now)).resolves.toEqual({ revoked: false });
+    expect(mocks.transactionClient.authSession.updateMany).not.toHaveBeenCalled();
+    expect(mocks.transactionClient.auditLog.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report success or write a leave audit for an expired external session", async () => {
+    let record: Record<string, unknown> | null = null;
+    mocks.transactionClient.authSession.create.mockImplementation(async ({ data }) => {
+      record = {
+        ...data,
+        user: {
+          id: "customer-1",
+          role: "customer",
+          status: "active",
+          displayName: "Customer"
+        }
+      };
+      return record;
+    });
+    mocks.transactionClient.authSession.findUnique.mockImplementation(async () => record);
+    mocks.transactionClient.authSession.updateMany.mockImplementation(async ({ data }) => {
+      record = record ? { ...record, ...data } : record;
+      return { count: 1 };
+    });
+    const handoff = await issueZoomExternalHandoff("consultation-1", { now });
+    const exchanged = await exchangeZoomExternalHandoff(handoff.ticket, now);
+    mocks.cookieValue = exchanged.externalSessionToken;
+    const updateCount = mocks.transactionClient.authSession.updateMany.mock.calls.length;
+    const auditCount = mocks.transactionClient.auditLog.create.mock.calls.length;
+    const afterExpiry = new Date(exchanged.expiresAt.getTime() + 1);
+
+    await expect(revokeCurrentZoomExternalSession(afterExpiry)).resolves.toEqual({ revoked: false });
+    expect(mocks.transactionClient.authSession.updateMany).toHaveBeenCalledTimes(updateCount);
+    expect(mocks.transactionClient.auditLog.create).toHaveBeenCalledTimes(auditCount);
   });
 });

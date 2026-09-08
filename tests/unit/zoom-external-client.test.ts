@@ -3,10 +3,13 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildAndroidChromeIntentUrl,
+  createZoomCompletionCleanupGate,
   establishZoomExternalSession,
   getHandoffTicket,
   getSanitizedHandoffPath,
-  isLineInAppBrowser as isZoomClientLineBrowser
+  isLineInAppBrowser as isZoomClientLineBrowser,
+  leaveZoomExternalSession,
+  ZoomExternalLeaveError
 } from "../../zoom-client/src/handoff";
 import {
   buildIosLineExternalBrowserUrl,
@@ -38,6 +41,10 @@ describe("Zoom external-browser client helpers", () => {
     expect(zoomClientSource).toContain("วิดีโอคอลปรึกษาแพทย์");
     expect(zoomClientSource).toContain("กดปุ่มด้านล่างเพื่อเปิดเบราว์เซอร์และเริ่มวิดีโอคอล");
     expect(zoomClientSource).toContain("เปิดวิดีโอคอลใน Chrome");
+    expect(zoomClientSource).toContain("ออกจากห้องวิดีโอในเบราว์เซอร์นี้");
+    expect(zoomClientSource).toContain('sessionState === "left"');
+    expect(zoomClientSource).not.toContain('history.replaceState(null, "", "/zoom-sdk/index.html?complete=1")');
+    expect(zoomClientSource).not.toContain("/api/auth/logout");
   });
 
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
@@ -80,6 +87,69 @@ describe("Zoom external-browser client helpers", () => {
       credentials: "same-origin",
       body: JSON.stringify({ ticket })
     });
+  });
+
+  it("leaves through a same-origin POST without invoking the normal app logout", async () => {
+    const fetchSession = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, revoked: true })
+    });
+
+    await expect(leaveZoomExternalSession(fetchSession)).resolves.toBeUndefined();
+    expect(fetchSession).toHaveBeenCalledWith("/api/zoom/handoff/session/leave", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json"
+      }
+    });
+  });
+
+  it("distinguishes an unavailable external session from a temporary leave failure", async () => {
+    const unavailable = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ ok: false, revoked: false, error: "zoom_external_session_unavailable" })
+    });
+    const temporary = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ ok: false })
+    });
+
+    const unavailableError: unknown = await leaveZoomExternalSession(unavailable).catch((error: unknown) => error);
+    const temporaryError: unknown = await leaveZoomExternalSession(temporary).catch((error: unknown) => error);
+
+    expect(unavailableError).toBeInstanceOf(ZoomExternalLeaveError);
+    expect(unavailableError).toMatchObject({ code: "unavailable" });
+    expect(temporaryError).toBeInstanceOf(ZoomExternalLeaveError);
+    expect(temporaryError).toMatchObject({ code: "temporary" });
+  });
+
+  it("prevents completion cleanup from invoking leave twice after a successful custom leave", async () => {
+    const fetchSession = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, revoked: true })
+    });
+    const completionGate = createZoomCompletionCleanupGate();
+
+    await leaveZoomExternalSession(fetchSession);
+    completionGate.markLeft();
+
+    if (completionGate.tryStart(true)) {
+      await leaveZoomExternalSession(fetchSession);
+    }
+
+    expect(fetchSession).toHaveBeenCalledOnce();
+  });
+
+  it("allows the built-in Zoom completion path to start cleanup only once", () => {
+    const completionGate = createZoomCompletionCleanupGate();
+
+    expect(completionGate.tryStart(false)).toBe(false);
+    expect(completionGate.tryStart(true)).toBe(true);
+    expect(completionGate.tryStart(true)).toBe(false);
   });
 
   it("builds a direct Android Chrome intent when LINE omits its open-browser menu", () => {

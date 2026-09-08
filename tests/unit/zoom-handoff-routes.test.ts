@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   issue: vi.fn(),
   exchange: vi.fn(),
+  revoke: vi.fn(),
   viewer: vi.fn()
 }));
 
@@ -13,6 +14,7 @@ vi.mock("@/features/consultations/zoom/external-handoff", () => {
   return {
     issueZoomExternalHandoff: mocks.issue,
     exchangeZoomExternalHandoff: mocks.exchange,
+    revokeCurrentZoomExternalSession: mocks.revoke,
     getZoomExternalViewer: mocks.viewer,
     getZoomExternalAccessCookieOptions: (maxAge = 7200) => ({
       httpOnly: true,
@@ -31,6 +33,7 @@ import {
   GET as validateHandoffSession,
   POST as exchangeHandoff
 } from "@/app/api/zoom/handoff/session/route";
+import { POST as leaveHandoffSession } from "@/app/api/zoom/handoff/session/leave/route";
 import {
   getRequestIpAddress,
   hasTrustedZoomHandoffOrigin
@@ -54,6 +57,7 @@ beforeEach(() => {
     expiresAt: new Date("2030-01-01T12:00:00.000Z")
   });
   mocks.viewer.mockResolvedValue({ userId: "customer-1", role: "customer" });
+  mocks.revoke.mockResolvedValue({ revoked: true, consultationId: "consultation-1" });
 });
 
 afterAll(() => {
@@ -125,6 +129,55 @@ describe("Zoom handoff routes", () => {
     expect(response.status).toBe(200);
     expect(mocks.viewer).toHaveBeenCalledWith("consultation-1");
     expect(mocks.exchange).not.toHaveBeenCalled();
+  });
+
+  it("revokes and clears only the external Zoom cookie on a same-origin leave", async () => {
+    const request = new NextRequest("https://app.example.test/api/zoom/handoff/session/leave", {
+      method: "POST",
+      headers: { origin: "https://app.example.test" }
+    });
+    const response = await leaveHandoffSession(request);
+    const body = await response.json();
+    const setCookie = response.headers.get("set-cookie") ?? "";
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true, revoked: true });
+    expect(mocks.revoke).toHaveBeenCalledOnce();
+    expect(setCookie).toContain("ce_zoom_access=");
+    expect(setCookie).toContain("Max-Age=0");
+    expect(setCookie).toContain("Path=/api");
+    expect(setCookie).not.toContain("ce_access");
+    expect(setCookie).not.toContain("ce_refresh");
+  });
+
+  it("rejects a cross-origin leave without revoking or clearing the Zoom cookie", async () => {
+    const request = new NextRequest("https://app.example.test/api/zoom/handoff/session/leave", {
+      method: "POST",
+      headers: { origin: "https://attacker.example" }
+    });
+    const response = await leaveHandoffSession(request);
+
+    expect(response.status).toBe(403);
+    expect(mocks.revoke).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("does not report leave success when the external session is missing or expired", async () => {
+    mocks.revoke.mockResolvedValue({ revoked: false });
+    const request = new NextRequest("https://app.example.test/api/zoom/handoff/session/leave", {
+      method: "POST",
+      headers: { origin: "https://app.example.test" }
+    });
+    const response = await leaveHandoffSession(request);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      revoked: false,
+      error: "zoom_external_session_unavailable"
+    });
+    expect(response.headers.get("set-cookie")).toContain("ce_zoom_access=");
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 
   it("normalizes same-origin checks and accepts only a bounded forwarded IP", () => {

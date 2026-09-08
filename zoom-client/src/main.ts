@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createZoomClientInitOptions, revealZoomClientRoot } from "./sdk-runtime";
 import {
@@ -7,9 +7,12 @@ import {
 } from "./device-preflight";
 import {
   buildAndroidChromeIntentUrl,
+  createZoomCompletionCleanupGate,
   establishZoomExternalSession,
   getSanitizedHandoffPath,
-  isLineInAppBrowser
+  isLineInAppBrowser,
+  leaveZoomExternalSession,
+  ZoomExternalLeaveError
 } from "./handoff";
 import "./styles.css";
 
@@ -31,8 +34,9 @@ type ZoomJoinData =
     };
 
 type JoinState = "idle" | "joining" | "error";
-type SessionState = "checking" | "external_required" | "ready" | "error";
+type SessionState = "checking" | "external_required" | "ready" | "left" | "error";
 type MediaState = "idle" | "checking" | "ready" | "error";
+type LeaveState = "idle" | "leaving" | "unavailable" | "error";
 
 const INIT_TIMEOUT_MS = 20_000;
 const JOIN_TIMEOUT_MS = 20_000;
@@ -105,16 +109,53 @@ function ZoomClientApp() {
   const [state, setState] = useState<JoinState>("idle");
   const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [mediaState, setMediaState] = useState<MediaState>("idle");
+  const [leaveState, setLeaveState] = useState<LeaveState>("idle");
   const [message, setMessage] = useState("กำลังตรวจสิทธิ์ชั่วคราวสำหรับนัดหมาย...");
+  const completionCleanupGate = useRef(createZoomCompletionCleanupGate());
   const consultationId = getConsultationId();
   const isComplete = new URLSearchParams(window.location.search).get("complete") === "1";
   const chromeIntentUrl = buildAndroidChromeIntentUrl(window.location.href);
 
   useEffect(() => {
     if (isComplete) {
-      setSessionState("ready");
-      setMessage("ออกจากห้อง Zoom แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
-      return;
+      if (!completionCleanupGate.current.tryStart(true)) {
+        return;
+      }
+
+      let active = true;
+
+      setMessage("กำลังปิดสิทธิ์ห้องวิดีโอในเบราว์เซอร์นี้...");
+      leaveZoomExternalSession()
+        .then(() => {
+          if (!active) {
+            return;
+          }
+
+          completionCleanupGate.current.markLeft();
+          setSessionState("ready");
+          setMessage("ออกจากห้องวิดีโอในเบราว์เซอร์นี้แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
+        })
+        .catch((error: unknown) => {
+          if (!active) {
+            return;
+          }
+
+          const unavailable = error instanceof ZoomExternalLeaveError && error.code === "unavailable";
+          if (unavailable) {
+            completionCleanupGate.current.markLeft();
+          }
+          setSessionState("error");
+          setLeaveState(unavailable ? "unavailable" : "error");
+          setMessage(
+            unavailable
+              ? "ไม่พบสิทธิ์ห้องวิดีโอที่ยังใช้งานในเบราว์เซอร์นี้ คุณสามารถปิดหน้านี้หรือกลับไปยัง LINE Mini App ได้"
+              : "ยังปิดสิทธิ์ห้องวิดีโอไม่ได้ กรุณาลองอีกครั้ง"
+          );
+        });
+
+      return () => {
+        active = false;
+      };
     }
 
     if (!consultationId) {
@@ -243,13 +284,51 @@ function ZoomClientApp() {
     }
   }
 
+  async function leaveVideoRoom() {
+    if (leaveState === "leaving") {
+      return;
+    }
+
+    setLeaveState("leaving");
+    setMessage("กำลังออกจากห้องวิดีโอในเบราว์เซอร์นี้...");
+
+    try {
+      await leaveZoomExternalSession();
+      completionCleanupGate.current.markLeft();
+      setSessionState("left");
+      setLeaveState("idle");
+      setMessage("ออกจากห้องวิดีโอในเบราว์เซอร์นี้แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
+    } catch (error) {
+      const unavailable = error instanceof ZoomExternalLeaveError && error.code === "unavailable";
+      if (unavailable) {
+        completionCleanupGate.current.markLeft();
+      }
+      setSessionState("error");
+      setLeaveState(unavailable ? "unavailable" : "error");
+      setMessage(
+        unavailable
+          ? "ไม่พบสิทธิ์ห้องวิดีโอที่ยังใช้งานในเบราว์เซอร์นี้ คุณสามารถปิดหน้านี้หรือกลับไปยัง LINE Mini App ได้"
+          : "ยังออกจากห้องวิดีโอไม่ได้ กรุณาลองอีกครั้ง"
+      );
+    }
+  }
+
   return createElement(
     "main",
     { className: "zoom-launcher" },
     createElement("h1", null, "วิดีโอคอลปรึกษาแพทย์"),
     createElement("p", { role: "status" }, consultationId || isComplete ? message : "ไม่พบข้อมูลนัดหมายที่ถูกต้อง"),
-    isComplete
-      ? null
+    isComplete || sessionState === "left"
+      ? leaveState === "error"
+        ? createElement(
+            "button",
+            {
+              onClick: leaveVideoRoom,
+              type: "button"
+            },
+            "ลองออกจากห้องอีกครั้ง"
+          )
+        : null
       : sessionState === "external_required"
         ? chromeIntentUrl
           ? createElement(
@@ -281,6 +360,16 @@ function ZoomClientApp() {
               type: "button"
             },
             state === "joining" ? "กำลังเชื่อมต่อ…" : state === "error" ? "ลองเข้าห้องอีกครั้ง" : "เข้าห้อง Zoom"
+          ),
+          createElement(
+            "button",
+            {
+              className: "zoom-button-secondary",
+              disabled: sessionState !== "ready" || leaveState === "leaving" || state === "joining",
+              onClick: leaveVideoRoom,
+              type: "button"
+            },
+            leaveState === "leaving" ? "กำลังออกจากห้อง..." : "ออกจากห้องวิดีโอในเบราว์เซอร์นี้"
           )
         )
   );
