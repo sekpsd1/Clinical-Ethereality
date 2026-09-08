@@ -5,6 +5,7 @@ import {
   buildAndroidChromeIntentUrl,
   establishZoomExternalSession,
   getHandoffTicket,
+  getSanitizedHandoffPath,
   isLineInAppBrowser as isZoomClientLineBrowser
 } from "../../zoom-client/src/handoff";
 import {
@@ -34,6 +35,8 @@ describe("Zoom external-browser client helpers", () => {
   });
 
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+
     expect(isLineInAppBrowser("Mozilla/5.0 Line/15.20.1")).toBe(true);
     expect(isAndroidUserAgent("Mozilla/5.0 (Linux; Android 15) Line/15.20.1")).toBe(true);
     expect(isAndroidUserAgent("Mozilla/5.0 (iPhone) Line/15.20.1")).toBe(false);
@@ -42,13 +45,13 @@ describe("Zoom external-browser client helpers", () => {
     expect(isLineInAppBrowser("Mozilla/5.0 Chrome/140.0")).toBe(false);
     expect(
       isTrustedZoomLaunchUrl(
-        "https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=v1.token",
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`,
         "https://app.example.test"
       )
     ).toBe(true);
     expect(
       isTrustedZoomLaunchUrl(
-        "https://attacker.example/zoom-sdk/index.html?consultation=consultation-1#handoff=v1.token",
+        `https://attacker.example/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`,
         "https://app.example.test"
       )
     ).toBe(false);
@@ -79,17 +82,76 @@ describe("Zoom external-browser client helpers", () => {
       `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`
     );
 
-    expect(intentUrl).toContain("intent://app.example.test/zoom-sdk/index.html?");
-    expect(intentUrl).toContain(`consultation=consultation-1&handoff=${ticket}`);
+    expect(intentUrl).toContain(
+      `intent://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}#Intent;`
+    );
+    expect(intentUrl).not.toContain(`?handoff=${ticket}`);
+    expect(intentUrl).not.toContain(`&handoff=${ticket}`);
     expect(intentUrl).toContain("#Intent;scheme=https;package=com.android.chrome;");
     expect(intentUrl).toContain("S.browser_fallback_url=https%3A%2F%2Fapp.example.test%2Fzoom-sdk%2Findex.html");
+    expect(intentUrl).toContain(encodeURIComponent(`#handoff=${ticket}`));
     expect(intentUrl).toMatch(/;end$/);
+
+    const intentData = intentUrl?.slice("intent://".length, intentUrl.lastIndexOf("#Intent;"));
+    const chromeTarget = new URL(`https://${intentData}`);
+    const fallback = /S\.browser_fallback_url=([^;]+);/.exec(intentUrl ?? "")?.[1];
+    const fallbackTarget = new URL(decodeURIComponent(fallback ?? ""));
+
+    expect(chromeTarget.searchParams.has("handoff")).toBe(false);
+    expect(chromeTarget.hash).toBe(`#handoff=${ticket}`);
+    expect(fallbackTarget.searchParams.has("handoff")).toBe(false);
+    expect(fallbackTarget.hash).toBe(`#handoff=${ticket}`);
   });
 
-  it("accepts the one-time ticket from the Android Chrome intent query", () => {
+  it("accepts a fragment ticket from Android Chrome and rejects query/request URL tickets", () => {
     const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
 
-    expect(getHandoffTicket(`?consultation=consultation-1&handoff=${ticket}`)).toBe(ticket);
+    expect(getHandoffTicket(`#handoff=${ticket}`)).toBe(ticket);
+    expect(getHandoffTicket(`?consultation=consultation-1&handoff=${ticket}`)).toBeNull();
+    expect(getHandoffTicket(`handoff=${ticket}`)).toBeNull();
+    expect(getHandoffTicket(`#handoff=${ticket}#Intent;scheme=https;end`)).toBeNull();
+  });
+
+  it("removes fragment and legacy query tickets from browser-visible history before exchange", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+
+    expect(
+      getSanitizedHandoffPath(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`
+      )
+    ).toBe("/zoom-sdk/index.html?consultation=consultation-1");
+    expect(
+      getSanitizedHandoffPath(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1&handoff=${ticket}`
+      )
+    ).toBe("/zoom-sdk/index.html?consultation=consultation-1");
+    expect(
+      getSanitizedHandoffPath(
+        "https://app.example.test/zoom-sdk/index.html?consultation=consultation-1"
+      )
+    ).toBeNull();
+  });
+
+  it("rejects Android intent input that already contains a query ticket", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+
+    expect(
+      buildAndroidChromeIntentUrl(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1&handoff=${ticket}#handoff=${ticket}`
+      )
+    ).toBeNull();
+    expect(
+      isTrustedZoomLaunchUrl(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1&handoff=${ticket}#handoff=${ticket}`,
+        "https://app.example.test"
+      )
+    ).toBe(false);
+    expect(
+      isTrustedZoomLaunchUrl(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}#Intent;scheme=https;end`,
+        "https://app.example.test"
+      )
+    ).toBe(false);
   });
 
   it("validates an existing scoped cookie on reload without replaying the ticket", async () => {

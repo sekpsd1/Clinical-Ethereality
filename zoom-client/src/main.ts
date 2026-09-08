@@ -8,7 +8,7 @@ import {
 import {
   buildAndroidChromeIntentUrl,
   establishZoomExternalSession,
-  getHandoffTicket,
+  getSanitizedHandoffPath,
   isLineInAppBrowser
 } from "./handoff";
 import "./styles.css";
@@ -135,21 +135,17 @@ function ZoomClientApp() {
 
     let active = true;
 
-    const handoffSource = getHandoffTicket(window.location.hash)
-      ? window.location.hash
-      : window.location.search;
+    const handoffSource = window.location.hash;
+    const sanitizedHandoffPath = getSanitizedHandoffPath(window.location.href);
+
+    if (sanitizedHandoffPath) {
+      window.history.replaceState(null, "", sanitizedHandoffPath);
+    }
 
     establishZoomExternalSession(consultationId, handoffSource)
-      .then(({ exchanged }) => {
+      .then(() => {
         if (!active) {
           return;
-        }
-
-        if (exchanged) {
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.hash = "";
-          cleanUrl.searchParams.delete("handoff");
-          window.history.replaceState(null, "", `${cleanUrl.pathname}${cleanUrl.search}`);
         }
 
         setSessionState("ready");

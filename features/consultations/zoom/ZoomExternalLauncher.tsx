@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const LIFF_SDK_URL = "https://static.line-scdn.net/liff/edge/2/sdk.js";
+const HANDOFF_TICKET_PATTERN = /^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/;
 
 type LiffClient = {
   init: (config: { liffId: string }) => Promise<void>;
@@ -36,11 +37,15 @@ export function isAndroidUserAgent(userAgent: string): boolean {
 export function isTrustedZoomLaunchUrl(value: string, currentOrigin: string): boolean {
   try {
     const url = new URL(value);
+    const ticket = new URLSearchParams(url.hash.slice(1)).get("handoff")?.trim();
+
     return (
       url.origin === currentOrigin &&
       url.pathname === "/zoom-sdk/index.html" &&
       url.searchParams.has("consultation") &&
-      url.hash.startsWith("#handoff=")
+      !url.searchParams.has("handoff") &&
+      url.hash.startsWith("#handoff=") &&
+      Boolean(ticket && HANDOFF_TICKET_PATTERN.test(ticket))
     );
   } catch {
     return false;

@@ -3,15 +3,38 @@ type SessionResponse = {
   consultationId?: unknown;
 };
 
+const HANDOFF_TICKET_PATTERN = /^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/;
+
 export type FetchSession = (
   input: RequestInfo | URL,
   init?: RequestInit
 ) => Promise<Pick<Response, "ok" | "json">>;
 
-export function getHandoffTicket(hash: string): string | null {
-  const value = new URLSearchParams(/^[#?]/.test(hash) ? hash.slice(1) : hash).get("handoff")?.trim();
+export function getHandoffTicket(fragment: string): string | null {
+  if (!fragment.startsWith("#")) {
+    return null;
+  }
 
-  return value && value.length <= 160 ? value : null;
+  const value = new URLSearchParams(fragment.slice(1)).get("handoff")?.trim();
+
+  return value && HANDOFF_TICKET_PATTERN.test(value) ? value : null;
+}
+
+export function getSanitizedHandoffPath(currentUrl: string): string | null {
+  try {
+    const target = new URL(currentUrl);
+
+    if (!target.searchParams.has("handoff") && !target.hash.startsWith("#handoff=")) {
+      return null;
+    }
+
+    target.searchParams.delete("handoff");
+    target.hash = "";
+
+    return `${target.pathname}${target.search}`;
+  } catch {
+    return null;
+  }
 }
 
 export function buildAndroidChromeIntentUrl(currentUrl: string): string | null {
@@ -23,15 +46,15 @@ export function buildAndroidChromeIntentUrl(currentUrl: string): string | null {
       target.protocol !== "https:" ||
       target.pathname !== "/zoom-sdk/index.html" ||
       !target.searchParams.has("consultation") ||
+      target.searchParams.has("handoff") ||
       !ticket
     ) {
       return null;
     }
 
-    target.hash = "";
-    target.searchParams.set("handoff", ticket);
+    const fallbackUrl = target.toString();
 
-    return `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target.toString())};end`;
+    return `intent://${target.host}${target.pathname}${target.search}${target.hash}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
   } catch {
     return null;
   }
