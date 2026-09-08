@@ -375,7 +375,8 @@ function mapConsultation(
   consultation: ConsultationWithDetails,
   durationByConsultationId: Map<string, number>,
   now = new Date(),
-  allowNoShowCompletion = true
+  allowNoShowCompletion = true,
+  canUpdatePrescriptionOutcome = false
 ): DoctorConsultationItem {
   const latestPrescription = consultation.prescriptions[0] ?? null;
   const latestMessage = consultation.messages[0] ?? null;
@@ -419,6 +420,7 @@ function mapConsultation(
     prescriptionOutcomeStatus: consultation.prescriptionOutcomeStatus,
     prescriptionOutcomeLabel: prescriptionOutcomeLabels[consultation.prescriptionOutcomeStatus],
     prescriptionOutcomeUpdatedAt: formatDate(consultation.prescriptionOutcomeUpdatedAt),
+    canUpdatePrescriptionOutcome,
     attendance: {
       ...attendanceCopy,
       normalCompletionEligible: attendanceState.normalCompletionEligible,
@@ -484,6 +486,7 @@ export async function getDoctorConsultations(): Promise<DoctorConsultationsData>
           consultation,
           durationByConsultationId,
           new Date(),
+          session.role === "doctor",
           session.role === "doctor"
         )
       )

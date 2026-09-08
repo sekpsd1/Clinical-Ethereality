@@ -34,6 +34,7 @@ export type DoctorConsultationItem = {
   prescriptionOutcomeStatus: ConsultationPrescriptionOutcomeStatus;
   prescriptionOutcomeLabel: string;
   prescriptionOutcomeUpdatedAt: string | null;
+  canUpdatePrescriptionOutcome: boolean;
   attendance: {
     label: string;
     description: string;

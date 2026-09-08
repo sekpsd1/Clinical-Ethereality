@@ -180,7 +180,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
               <ActionRow consultation={consultation} />
               <DoctorConsultationControls consultation={consultation} />
 
-              {consultation.status === "completed" ? (
+              {consultation.status === "completed" && consultation.canUpdatePrescriptionOutcome ? (
                 <DoctorPrescriptionOutcomeForm
                   consultationId={consultation.id}
                   currentStatus={consultation.prescriptionOutcomeStatus}

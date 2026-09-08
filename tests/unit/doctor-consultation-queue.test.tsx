@@ -48,6 +48,7 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
     prescriptionOutcomeStatus: "pending_doctor_summary",
     prescriptionOutcomeLabel: "รอแพทย์สรุป",
     prescriptionOutcomeUpdatedAt: null,
+    canUpdatePrescriptionOutcome: true,
     attendance: {
       label: "รอการยืนยันจาก Zoom",
       description: "ยังไม่มีหลักฐานผู้เข้าร่วม",
@@ -180,5 +181,26 @@ describe("Doctor consultation queue", () => {
     expect(html.match(/<option>มีใบสั่งยา<\/option>/g)).toHaveLength(1);
     expect(html.match(/<option>ไม่มีใบสั่งยา<\/option>/g)).toHaveLength(1);
     expect(html).toContain('data-outcome-form="pending_doctor_summary"');
+  });
+
+  it("keeps the outcome read-only for Admin support access", () => {
+    const completed = consultation("completed", "30 นาที");
+    completed.canUpdatePrescriptionOutcome = false;
+    const data: DoctorConsultationsData = {
+      consultations: [completed],
+      prescriptionProducts: [],
+      summary: {
+        scheduled: 0,
+        live: 0,
+        completed: 1
+      }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html).toContain("ผลสรุปใบสั่งยา");
+    expect(html).toContain("รอแพทย์สรุป");
+    expect(html).not.toContain("data-outcome-form");
+    expect(html).not.toContain("<option");
   });
 });
