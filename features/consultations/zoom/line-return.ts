@@ -7,5 +7,5 @@ export function buildLineProfileReturnUrl(liffId: string | undefined): string | 
     return null;
   }
 
-  return `https://miniapp.line.me/${normalizedLiffId}/profile`;
+  return `https://liff.line.me/${normalizedLiffId}/profile`;
 }

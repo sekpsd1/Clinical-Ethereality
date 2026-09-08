@@ -99,12 +99,12 @@ describe("Zoom external-browser client helpers", () => {
       json: async () => ({
         ok: true,
         revoked: true,
-        returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+        returnToLineUrl: "https://liff.line.me/1234567890-AbcdEfgh/profile"
       })
     });
 
     await expect(leaveZoomExternalSession(fetchSession)).resolves.toEqual({
-      returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+      returnToLineUrl: "https://liff.line.me/1234567890-AbcdEfgh/profile"
     });
     expect(fetchSession).toHaveBeenCalledWith("/api/zoom/handoff/session/leave", {
       method: "POST",
@@ -117,16 +117,16 @@ describe("Zoom external-browser client helpers", () => {
 
   it("accepts only a LINE LIFF profile return URL", () => {
     expect(buildLineProfileReturnUrl(" 1234567890-AbcdEfgh ")).toBe(
-      "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+      "https://liff.line.me/1234567890-AbcdEfgh/profile"
     );
     expect(buildLineProfileReturnUrl("not/a/liff-id")).toBeNull();
-    expect(getSafeLineProfileReturnUrl("https://miniapp.line.me/1234567890-AbcdEfgh/profile")).toBe(
-      "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+    expect(getSafeLineProfileReturnUrl("https://liff.line.me/1234567890-AbcdEfgh/profile")).toBe(
+      "https://liff.line.me/1234567890-AbcdEfgh/profile"
     );
     expect(getSafeLineProfileReturnUrl("https://app.example.test/profile")).toBeNull();
     expect(getSafeLineProfileReturnUrl("https://attacker.example/profile")).toBeNull();
-    expect(getSafeLineProfileReturnUrl("https://miniapp.line.me/1234567890-AbcdEfgh/profile?next=evil")).toBeNull();
-    expect(getSafeLineProfileReturnUrl("https://liff.line.me/1234567890-AbcdEfgh/profile")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://liff.line.me/1234567890-AbcdEfgh/profile?next=evil")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://miniapp.line.me/1234567890-AbcdEfgh/profile")).toBeNull();
     expect(getSafeLineProfileReturnUrl("javascript:alert(1)")).toBeNull();
   });
 
@@ -158,7 +158,7 @@ describe("Zoom external-browser client helpers", () => {
       json: async () => ({
         ok: true,
         revoked: true,
-        returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+        returnToLineUrl: "https://liff.line.me/1234567890-AbcdEfgh/profile"
       })
     });
     const completionGate = createZoomCompletionCleanupGate();

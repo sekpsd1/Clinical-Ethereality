@@ -147,7 +147,7 @@ describe("Zoom handoff routes", () => {
     expect(body).toEqual({
       ok: true,
       revoked: true,
-      returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+      returnToLineUrl: "https://liff.line.me/1234567890-AbcdEfgh/profile"
     });
     expect(mocks.revoke).toHaveBeenCalledOnce();
     expect(setCookie).toContain("ce_zoom_access=");

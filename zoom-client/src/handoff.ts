@@ -156,7 +156,7 @@ export function getSafeLineProfileReturnUrl(value: unknown): string | null {
 
     if (
       target.protocol !== "https:" ||
-      target.hostname !== "miniapp.line.me" ||
+      target.hostname !== "liff.line.me" ||
       target.username ||
       target.password ||
       target.port ||
