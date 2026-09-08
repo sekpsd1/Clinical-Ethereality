@@ -20,6 +20,7 @@ describe("Zoom external-browser client helpers", () => {
       path.join(process.cwd(), "features", "consultations", "zoom", "ZoomExternalLauncher.tsx"),
       "utf8"
     );
+    const zoomClientSource = fs.readFileSync(path.join(process.cwd(), "zoom-client", "src", "main.ts"), "utf8");
     const livePageSource = fs.readFileSync(
       path.join(process.cwd(), "app", "(app)", "consult", "live", "page.tsx"),
       "utf8"
@@ -28,8 +29,11 @@ describe("Zoom external-browser client helpers", () => {
     expect(launcherSource).not.toContain("process.env.NEXT_PUBLIC_LINE_LIFF_ID");
     expect(launcherSource).toContain("liffId?: string");
     expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(3);
-    expect(launcherSource).toContain("เปิด Zoom ในเบราว์เซอร์ภายนอก");
+    expect(launcherSource).toContain("เริ่มวิดีโอคอลกับแพทย์");
     expect(launcherSource).toContain("col-start-1 row-start-2");
+    expect(zoomClientSource).toContain("วิดีโอคอลปรึกษาแพทย์");
+    expect(zoomClientSource).toContain("กดปุ่มด้านล่างเพื่อเปิดเบราว์เซอร์และเริ่มวิดีโอคอล");
+    expect(zoomClientSource).toContain("เปิดวิดีโอคอลใน Chrome");
     expect(livePageSource).toContain("getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID");
     expect(livePageSource).toContain("liffId={liffId}");
   });

@@ -196,7 +196,7 @@ export function ZoomExternalLauncher({
             ? "กำลังเตรียมห้อง Zoom..."
             : state === "launched"
               ? "เปิด Zoom อีกครั้ง"
-              : "เปิด Zoom ในเบราว์เซอร์ภายนอก"}
+              : "เริ่มวิดีโอคอลกับแพทย์"}
         </Button>
       </>
     );

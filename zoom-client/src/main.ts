@@ -127,7 +127,7 @@ function ZoomClientApp() {
       setSessionState("external_required");
       setMessage(
         chromeIntentUrl
-          ? "LINE รุ่นนี้ไม่มีเมนูเปิดเบราว์เซอร์ กด “เปิดใน Chrome” ด้านล่างเพื่อดำเนินการต่อ"
+          ? "กดปุ่มด้านล่างเพื่อเปิดเบราว์เซอร์และเริ่มวิดีโอคอล"
           : "ไม่สามารถสร้างทางลัดไป Chrome ได้ กรุณากลับไปที่ LINE แล้วกดเปิด Zoom อีกครั้ง"
       );
       return;
@@ -246,7 +246,7 @@ function ZoomClientApp() {
   return createElement(
     "main",
     { className: "zoom-launcher" },
-    createElement("h1", null, "Zoom Consultation"),
+    createElement("h1", null, "วิดีโอคอลปรึกษาแพทย์"),
     createElement("p", { role: "status" }, consultationId || isComplete ? message : "ไม่พบข้อมูลนัดหมายที่ถูกต้อง"),
     isComplete
       ? null
@@ -258,7 +258,7 @@ function ZoomClientApp() {
                 className: "zoom-button",
                 href: chromeIntentUrl
               },
-              "เปิดใน Chrome"
+              "เปิดวิดีโอคอลใน Chrome"
             )
           : null
       : createElement(
