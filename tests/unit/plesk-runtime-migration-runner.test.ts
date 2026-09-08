@@ -10,6 +10,7 @@ const {
   SMS_OTP_MIGRATION_TARGET,
   ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET,
   BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET,
+  CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -243,6 +244,45 @@ describe("Plesk runtime migration runner", () => {
 
     expect(result).toEqual({ shouldStart: true, migrationRun: true });
     expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("allows the reviewed consultation prescription-outcome migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET,
+      CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when an older target is used after the prescription-outcome migration is present", () => {
+    const rootDir = createRunnerWorkspace([
+      BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET,
+      CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn();
+    const loggers = createLoggers();
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET },
+      spawnSync,
+      ...loggers
+    });
+
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
+    expect(spawnSync).not.toHaveBeenCalled();
+    expect(loggers.errors).toEqual([
+      "[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start."
+    ]);
   });
 
   it("fails closed and never logs secrets when Prisma migration fails", () => {

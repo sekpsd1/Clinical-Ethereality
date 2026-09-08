@@ -4,7 +4,10 @@ const {
   SMS_OTP_MIGRATION_TARGET,
   assertPleskSmsOtpMigrationTarget
 } = require("../../scripts/plesk-sms-otp-migration-guard.cjs");
-const { MIGRATION_APPROVAL_ENV } = require("../../scripts/plesk-runtime-migration-runner.cjs");
+const {
+  CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
+  MIGRATION_APPROVAL_ENV
+} = require("../../scripts/plesk-runtime-migration-runner.cjs");
 
 describe("Plesk SMS OTP migration guard", () => {
   it("allows a normal startup when no migration target is present", () => {
@@ -19,6 +22,16 @@ describe("Plesk SMS OTP migration guard", () => {
 
     expect(assertPleskSmsOtpMigrationTarget({
       env: { [MIGRATION_APPROVAL_ENV]: SMS_OTP_MIGRATION_TARGET },
+      error
+    })).toBe(true);
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("allows the reviewed consultation prescription-outcome target through the startup guard", () => {
+    const error = vi.fn();
+
+    expect(assertPleskSmsOtpMigrationTarget({
+      env: { [MIGRATION_APPROVAL_ENV]: CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET },
       error
     })).toBe(true);
     expect(error).not.toHaveBeenCalled();
