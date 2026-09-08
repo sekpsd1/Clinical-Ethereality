@@ -1,4 +1,4 @@
-import type { PrescriptionStatus } from "@prisma/client";
+import type { ConsultationPrescriptionOutcomeStatus, PrescriptionStatus } from "@prisma/client";
 
 export type CustomerPrescriptionItem = {
   id: string;
@@ -19,8 +19,18 @@ export type CustomerPrescriptionItem = {
   ctaHref: string;
 };
 
+export type CustomerConsultationPrescriptionOutcomeItem = {
+  consultationId: string;
+  status: Exclude<ConsultationPrescriptionOutcomeStatus, "prescription_issued">;
+  statusLabel: string;
+  statusTone: "neutral" | "success";
+  doctorName: string;
+  consultationDate: string;
+};
+
 export type CustomerPrescriptionsData = {
   prescriptions: CustomerPrescriptionItem[];
+  consultationOutcomes: CustomerConsultationPrescriptionOutcomeItem[];
   summary: {
     pending: number;
     verified: number;

@@ -1,6 +1,12 @@
-import type { ConsultationStatus, PrescriptionStatus, Prisma } from "@prisma/client";
+import type {
+  ConsultationPrescriptionOutcomeStatus,
+  ConsultationStatus,
+  PrescriptionStatus,
+  Prisma
+} from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { Role } from "@/lib/permissions/roles";
+import { ConsultationPrescriptionOutcomeError } from "@/features/prescriptions/outcome";
 import {
   toPrescriptionItemsJson,
   type PrescriptionMedicationItem
@@ -11,6 +17,7 @@ export type DoctorPrescriptionConsultation = {
   patientId: string;
   doctorId: string;
   status: ConsultationStatus;
+  prescriptionOutcomeStatus: ConsultationPrescriptionOutcomeStatus;
   doctor: {
     userId: string;
   };
@@ -56,6 +63,10 @@ export function getDoctorPrescriptionWritePlan(
 
   assertConsultationReadyForPrescription(consultation.status);
 
+  if (consultation.prescriptionOutcomeStatus === "no_prescription") {
+    throw new Error("Consultation is explicitly marked as having no prescription.");
+  }
+
   const latestPrescription = consultation.prescriptions[0] ?? null;
 
   if (!latestPrescription) {
@@ -95,6 +106,7 @@ export async function issueDoctorPrescription(
       patientId: true,
       doctorId: true,
       status: true,
+      prescriptionOutcomeStatus: true,
       doctor: {
         select: {
           userId: true
@@ -138,6 +150,37 @@ export async function issueDoctorPrescription(
           issuedAt,
           actorId: input.actorId
         });
+
+  const outcomeUpdate = await tx.consultation.updateMany({
+    where: {
+      id: consultation.id,
+      prescriptionOutcomeStatus: {
+        not: "no_prescription"
+      }
+    },
+    data: {
+      prescriptionOutcomeStatus: "prescription_issued",
+      prescriptionOutcomeUpdatedAt: issuedAt
+    }
+  });
+
+  if (outcomeUpdate.count !== 1) {
+    throw new ConsultationPrescriptionOutcomeError("concurrent_update");
+  }
+
+  if (consultation.prescriptionOutcomeStatus !== "prescription_issued") {
+    await writeAuditLog(tx, {
+      actorId: input.actorId,
+      action: "consultation.prescription_outcome_updated",
+      entityType: "consultation",
+      entityId: consultation.id,
+      metadata: {
+        previousStatus: consultation.prescriptionOutcomeStatus,
+        nextStatus: "prescription_issued",
+        source: "doctor_prescription_issued"
+      }
+    });
+  }
 
   await tx.notification.create({
     data: {

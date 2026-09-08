@@ -1,13 +1,19 @@
-import type { PrescriptionStatus } from "@prisma/client";
+import type { ConsultationPrescriptionOutcomeStatus, PrescriptionStatus } from "@prisma/client";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
-import type { CustomerPrescriptionItem, CustomerPrescriptionsData } from "@/features/consultations/prescriptions/types";
+import type {
+  CustomerConsultationPrescriptionOutcomeItem,
+  CustomerPrescriptionItem,
+  CustomerPrescriptionsData
+} from "@/features/consultations/prescriptions/types";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
+import { prescriptionIssuedStatuses, prescriptionOutcomeLabels } from "@/features/prescriptions/outcome";
 
 type PrescriptionRecord = Awaited<ReturnType<typeof getPrescriptionsForCustomer>>[number];
+type ConsultationOutcomeRecord = Awaited<ReturnType<typeof getConsultationOutcomesForCustomer>>[number];
 
 function getPrescriptionsForCustomer(userId: string) {
   return prisma.prescription.findMany({
@@ -34,6 +40,44 @@ function getPrescriptionsForCustomer(userId: string) {
         include: {
           product: true,
           order: true
+        }
+      }
+    }
+  });
+}
+
+function getConsultationOutcomesForCustomer(userId: string) {
+  return prisma.consultation.findMany({
+    where: {
+      patientId: userId,
+      status: "completed",
+      prescriptionOutcomeStatus: {
+        in: ["pending_doctor_summary", "no_prescription"]
+      },
+      prescriptions: {
+        none: {
+          status: {
+            in: prescriptionIssuedStatuses
+          }
+        }
+      }
+    },
+    orderBy: {
+      updatedAt: "desc"
+    },
+    take: 50,
+    select: {
+      id: true,
+      prescriptionOutcomeStatus: true,
+      scheduledAt: true,
+      createdAt: true,
+      doctor: {
+        select: {
+          user: {
+            select: {
+              displayName: true
+            }
+          }
         }
       }
     }
@@ -160,16 +204,38 @@ function mapPrescription(prescription: PrescriptionRecord): CustomerPrescription
   };
 }
 
+function mapConsultationOutcome(
+  consultation: ConsultationOutcomeRecord
+): CustomerConsultationPrescriptionOutcomeItem {
+  const status = consultation.prescriptionOutcomeStatus as Exclude<
+    ConsultationPrescriptionOutcomeStatus,
+    "prescription_issued"
+  >;
+
+  return {
+    consultationId: consultation.id,
+    status,
+    statusLabel: prescriptionOutcomeLabels[status],
+    statusTone: status === "no_prescription" ? "success" : "neutral",
+    doctorName: consultation.doctor.user.displayName ?? "แพทย์",
+    consultationDate: formatDate(consultation.scheduledAt ?? consultation.createdAt)
+  };
+}
+
 export async function getCustomerPrescriptions(session: PublicSession): Promise<CustomerPrescriptionsData> {
   noStore();
   assertPermission(session, "prescription:read:self");
 
   try {
-    const prescriptions = await getPrescriptionsForCustomer(session.userId);
+    const [prescriptions, consultationOutcomes] = await Promise.all([
+      getPrescriptionsForCustomer(session.userId),
+      getConsultationOutcomesForCustomer(session.userId)
+    ]);
     const items = prescriptions.map(mapPrescription);
 
     return {
       prescriptions: items,
+      consultationOutcomes: consultationOutcomes.map(mapConsultationOutcome),
       summary: {
         pending: items.filter((item) => item.status === "draft").length,
         verified: items.filter((item) => isPrescriptionOrderReady(item.status) || item.status === "dispensed").length,
@@ -179,6 +245,7 @@ export async function getCustomerPrescriptions(session: PublicSession): Promise<
   } catch {
     return {
       prescriptions: [],
+      consultationOutcomes: [],
       summary: {
         pending: 0,
         verified: 0,

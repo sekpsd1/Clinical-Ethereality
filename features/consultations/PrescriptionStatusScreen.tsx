@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeft, ClipboardCheck, FileClock, PackageCheck, Pill, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, FileClock, PackageCheck, Pill, ShieldCheck, Stethoscope } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type {
   CustomerPrescriptionItem,
+  CustomerConsultationPrescriptionOutcomeItem,
   CustomerPrescriptionsData
 } from "@/features/consultations/prescriptions/types";
 
@@ -28,17 +29,57 @@ export function PrescriptionStatusScreen({ data }: { data: CustomerPrescriptions
           <EmptyState title="ไม่สามารถโหลดสถานะใบสั่งยาได้" body="กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล แล้วลองเปิดจากหน้าการปรึกษาอีกครั้ง" />
         ) : null}
 
-        {!data.unavailable && data.prescriptions.length === 0 ? (
+        {!data.unavailable && data.prescriptions.length === 0 && data.consultationOutcomes.length === 0 ? (
           <EmptyState title="ยังไม่มีใบสั่งยา" body="ใบสั่งยาจากการปรึกษาแพทย์จะแสดงที่นี่เมื่อมีการบันทึกเข้าระบบ" />
         ) : null}
 
         <section className="space-y-4">
+          {data.consultationOutcomes.map((outcome) => (
+            <ConsultationOutcomeCard key={outcome.consultationId} outcome={outcome} />
+          ))}
           {data.prescriptions.map((prescription) => (
             <PrescriptionCard key={prescription.id} prescription={prescription} />
           ))}
         </section>
       </main>
     </section>
+  );
+}
+
+function ConsultationOutcomeCard({
+  outcome
+}: {
+  outcome: CustomerConsultationPrescriptionOutcomeItem;
+}) {
+  return (
+    <article className="rounded-[24px] border border-[#bdc9ca]/15 bg-white/75 p-5 shadow-payment-card backdrop-blur-payment">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Stethoscope aria-hidden="true" className="size-6" strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold leading-6 text-[#191c1e]">ผลสรุปหลังการปรึกษา</h2>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[#3e494a]">แพทย์: {outcome.doctorName}</p>
+          </div>
+        </div>
+        <StatusBadge tone={outcome.statusTone}>{outcome.statusLabel}</StatusBadge>
+      </div>
+      <div className="mt-4 grid gap-3">
+        <InfoRow icon={FileClock} label="การปรึกษา" value={outcome.consultationDate} />
+      </div>
+      <p className="mt-4 rounded-[18px] bg-primary/5 p-4 text-sm leading-6 text-[#3e494a]">
+        {outcome.status === "no_prescription"
+          ? "แพทย์สรุปแล้วว่าการปรึกษาครั้งนี้ไม่มีใบสั่งยา"
+          : "แพทย์กำลังสรุปผลว่าการปรึกษาครั้งนี้ต้องมีใบสั่งยาหรือไม่"}
+      </p>
+      <Link
+        href={`/consult/advice-log?consultation=${encodeURIComponent(outcome.consultationId)}` as Route}
+        className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-primary-gradient px-5 text-sm font-bold leading-5 text-white shadow-booking"
+      >
+        ดูสรุปคำแนะนำ
+      </Link>
+    </article>
   );
 }
 

@@ -13,6 +13,18 @@ vi.mock("@/features/doctor/DoctorPrescriptionForm", () => ({
   DoctorPrescriptionForm: () => null
 }));
 
+vi.mock("@/features/doctor/DoctorPrescriptionOutcomeForm", () => ({
+  DoctorPrescriptionOutcomeForm: ({ currentStatus }: { currentStatus: string }) => (
+    <div data-outcome-form={currentStatus}>
+      <select>
+        <option>รอแพทย์สรุป</option>
+        <option>มีใบสั่งยา</option>
+        <option>ไม่มีใบสั่งยา</option>
+      </select>
+    </div>
+  )
+}));
+
 function consultation(status: DoctorConsultationItem["status"], durationLabel: string): DoctorConsultationItem {
   return {
     id: `consultation-${status}`,
@@ -33,6 +45,9 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
     scheduledAt: "3 ส.ค. 2569 09:00",
     durationLabel,
     summary: null,
+    prescriptionOutcomeStatus: "pending_doctor_summary",
+    prescriptionOutcomeLabel: "รอแพทย์สรุป",
+    prescriptionOutcomeUpdatedAt: null,
     attendance: {
       label: "รอการยืนยันจาก Zoom",
       description: "ยังไม่มีหลักฐานผู้เข้าร่วม",
@@ -121,6 +136,8 @@ describe("Doctor consultation queue", () => {
     completed.prescriptionCount = 1;
     completed.latestPrescriptionId = "prescription-issued";
     completed.latestPrescriptionStatus = "pending_verification";
+    completed.prescriptionOutcomeStatus = "prescription_issued";
+    completed.prescriptionOutcomeLabel = "มีใบสั่งยา";
     completed.latestPrescriptionMedication = {
       medicationName: "Paracetamol 500 mg",
       dosage: "500 mg",
@@ -144,5 +161,24 @@ describe("Doctor consultation queue", () => {
     expect(html).toContain("จึงไม่สามารถออกใบสั่งยาซ้ำได้");
     expect(html).not.toContain("ยังเขียนใบสั่งยาไม่ได้");
     expect(html).not.toContain('href="#prescription-consultation-completed"');
+  });
+
+  it("shows exactly the three approved Thai outcome labels after a completed consultation", () => {
+    const data: DoctorConsultationsData = {
+      consultations: [consultation("completed", "30 นาที")],
+      prescriptionProducts: [],
+      summary: {
+        scheduled: 0,
+        live: 0,
+        completed: 1
+      }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html.match(/<option>รอแพทย์สรุป<\/option>/g)).toHaveLength(1);
+    expect(html.match(/<option>มีใบสั่งยา<\/option>/g)).toHaveLength(1);
+    expect(html.match(/<option>ไม่มีใบสั่งยา<\/option>/g)).toHaveLength(1);
+    expect(html).toContain('data-outcome-form="pending_doctor_summary"');
   });
 });

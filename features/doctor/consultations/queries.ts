@@ -12,6 +12,7 @@ import {
   type ConsultationBookingDurationAudit
 } from "@/features/doctor/consultations/duration";
 import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
+import { prescriptionOutcomeLabels } from "@/features/prescriptions/outcome";
 import {
   getAttendanceStatusCopy,
   getConsultationAttendanceState
@@ -415,6 +416,9 @@ function mapConsultation(
     scheduledAt: formatDate(consultation.scheduledAt),
     durationLabel: formatDoctorConsultationDuration(durationByConsultationId.get(consultation.id)),
     summary: consultation.summary,
+    prescriptionOutcomeStatus: consultation.prescriptionOutcomeStatus,
+    prescriptionOutcomeLabel: prescriptionOutcomeLabels[consultation.prescriptionOutcomeStatus],
+    prescriptionOutcomeUpdatedAt: formatDate(consultation.prescriptionOutcomeUpdatedAt),
     attendance: {
       ...attendanceCopy,
       normalCompletionEligible: attendanceState.normalCompletionEligible,

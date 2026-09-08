@@ -5,7 +5,8 @@ import type { PublicSession } from "@/lib/auth/types";
 
 const mocks = vi.hoisted(() => ({
   noStore: vi.fn(),
-  prescriptionFindMany: vi.fn()
+  prescriptionFindMany: vi.fn(),
+  consultationFindMany: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({
@@ -14,6 +15,9 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
+    consultation: {
+      findMany: mocks.consultationFindMany
+    },
     prescription: {
       findMany: mocks.prescriptionFindMany
     }
@@ -61,6 +65,38 @@ function prescription(orderItems: Array<Record<string, unknown>>) {
 describe("customer prescription status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.consultationFindMany.mockResolvedValue([]);
+  });
+
+  it("shows a customer-owned completed consultation with no prescription as a read-only outcome", async () => {
+    mocks.prescriptionFindMany.mockResolvedValue([]);
+    mocks.consultationFindMany.mockResolvedValue([
+      {
+        id: "consultation-no-prescription",
+        prescriptionOutcomeStatus: "no_prescription",
+        scheduledAt: new Date("2026-09-06T08:00:00.000Z"),
+        createdAt: new Date("2026-09-05T08:00:00.000Z"),
+        doctor: {
+          user: {
+            displayName: "แพทย์ทดสอบ"
+          }
+        }
+      }
+    ]);
+
+    const data = await getCustomerPrescriptions(session);
+    const html = renderToStaticMarkup(createElement(PrescriptionStatusScreen, { data }));
+
+    expect(mocks.consultationFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          patientId: "customer-1",
+          status: "completed"
+        })
+      })
+    );
+    expect(data.consultationOutcomes[0]?.statusLabel).toBe("ไม่มีใบสั่งยา");
+    expect(html).toContain("แพทย์สรุปแล้วว่าการปรึกษาครั้งนี้ไม่มีใบสั่งยา");
   });
 
   it("explains that an order has not been placed yet and keeps the primary order CTA", async () => {

@@ -349,6 +349,7 @@
 - [x] Add doctor-owned in-app notification screen and read actions
 - [x] Build structured prescription writing workflow with medicine, dosage, quantity, instructions, and warnings
 - [x] Extract doctor-issued prescription writing rules into a tested domain service
+- [x] Add an additive Consultation prescription outcome with three approved Thai states, assigned-Doctor-only completed-consultation mutation, real-Prescription consistency, auditable correction, Customer read-only status, and no schedule/calendar exposure; Production migration/deployment remains separately gated
 - [x] Keep the pharmacist prescription queue as read-only reference without making it an approval gate
 - [x] Make doctor-issued prescriptions immediately order-ready without pharmacist verification
 - [x] Build Admin-owned medicine preparation and shipment workflow

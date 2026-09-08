@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assertConsultationReadyForPrescription,
   getDoctorPrescriptionWritePlan,
+  issueDoctorPrescription,
   type DoctorPrescriptionConsultation
 } from "@/features/prescriptions/service";
 
@@ -13,6 +14,7 @@ function consultation(
     patientId: "patient-1",
     doctorId: "doctor-1",
     status: "scheduled",
+    prescriptionOutcomeStatus: "pending_doctor_summary",
     doctor: {
       userId: "doctor-user-1"
     },
@@ -92,6 +94,20 @@ describe("doctor prescription service", () => {
     ).toThrow("Doctor cannot update another doctor's consultation.");
   });
 
+  it("blocks issuing a prescription after the assigned doctor explicitly recorded no prescription", () => {
+    expect(() =>
+      getDoctorPrescriptionWritePlan(
+        consultation({
+          prescriptionOutcomeStatus: "no_prescription"
+        }),
+        {
+          role: "doctor",
+          userId: "doctor-user-1"
+        }
+      )
+    ).toThrow("Consultation is explicitly marked as having no prescription.");
+  });
+
   it("allows admins to support prescription issuing without doctor ownership", () => {
     expect(
       getDoctorPrescriptionWritePlan(consultation(), {
@@ -100,6 +116,64 @@ describe("doctor prescription service", () => {
       })
     ).toEqual({
       mode: "create"
+    });
+  });
+
+  it("atomically marks the consultation as prescription issued only after creating a real prescription", async () => {
+    const tx = {
+      consultation: {
+        findUnique: vi.fn().mockResolvedValue(consultation({ status: "completed" })),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      prescription: {
+        create: vi.fn().mockResolvedValue({ id: "prescription-created" })
+      },
+      notification: {
+        create: vi.fn().mockResolvedValue({ id: "notification-1" })
+      },
+      auditLog: {
+        create: vi.fn().mockResolvedValue({ id: "audit-1" })
+      }
+    };
+
+    await issueDoctorPrescription(tx as never, {
+      consultationId: "consultation-1",
+      notes: "",
+      medications: [
+        {
+          productId: "product-1",
+          medicationName: "Medicine",
+          dosage: "1 tablet",
+          quantity: "1",
+          instructions: "Use as directed"
+        }
+      ],
+      actorId: "doctor-user-1",
+      actorRole: "doctor"
+    });
+
+    expect(tx.prescription.create).toHaveBeenCalled();
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "consultation-1",
+        prescriptionOutcomeStatus: {
+          not: "no_prescription"
+        }
+      },
+      data: {
+        prescriptionOutcomeStatus: "prescription_issued",
+        prescriptionOutcomeUpdatedAt: expect.any(Date)
+      }
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "consultation.prescription_outcome_updated",
+        metadataJson: {
+          previousStatus: "pending_doctor_summary",
+          nextStatus: "prescription_issued",
+          source: "doctor_prescription_issued"
+        }
+      })
     });
   });
 });

@@ -9,3 +9,12 @@ export const submitPrescriptionSchema = z.object({
   warnings: z.string().trim().max(1000).optional(),
   notes: z.string().trim().max(2000).optional()
 });
+
+export const updatePrescriptionOutcomeSchema = z.object({
+  consultationId: z.string().min(1),
+  prescriptionOutcomeStatus: z.enum([
+    "pending_doctor_summary",
+    "prescription_issued",
+    "no_prescription"
+  ])
+});

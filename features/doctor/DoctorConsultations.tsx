@@ -4,6 +4,7 @@ import { ClipboardList, Clock3, FileText, MessageCircle, Pill, Stethoscope } fro
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
+import { DoctorPrescriptionOutcomeForm } from "@/features/doctor/DoctorPrescriptionOutcomeForm";
 import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultationControls";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
@@ -16,15 +17,6 @@ const consultationStatusLabels: Record<string, string> = {
   reschedule_required: "รอเลือกเวลาใหม่",
   requested: "รอยืนยัน",
   scheduled: "นัดหมายแล้ว"
-};
-
-const prescriptionStatusLabels: Record<string, string> = {
-  archived: "เก็บถาวร",
-  dispensed: "จ่ายยาแล้ว",
-  draft: "ฉบับร่าง",
-  pending_verification: "แพทย์ออกแล้ว",
-  rejected: "ไม่อนุมัติ",
-  verified: "พร้อมสั่งซื้อ"
 };
 
 function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -49,6 +41,10 @@ function getStatusTone(status: DoctorConsultationItem["status"]): "neutral" | "s
 
 function canWritePrescription(consultation: DoctorConsultationItem): boolean {
   if (consultation.status === "cancelled" || consultation.status === "requested" || consultation.status === "pending_payment" || consultation.status === "reschedule_required") {
+    return false;
+  }
+
+  if (consultation.prescriptionOutcomeStatus === "no_prescription") {
     return false;
   }
 
@@ -175,18 +171,21 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                 />
                 <InfoTile label="ระยะเวลานัด" value={consultation.durationLabel} icon={<Clock3 aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
                 <InfoTile
-                  label="ใบสั่งยา"
-                  value={
-                    consultation.latestPrescriptionStatus
-                      ? `${prescriptionStatusLabels[consultation.latestPrescriptionStatus]} (${consultation.prescriptionCount})`
-                      : "ยังไม่มี"
-                  }
+                  label="ผลสรุปใบสั่งยา"
+                  value={consultation.prescriptionOutcomeLabel}
                   icon={<FileText aria-hidden="true" className="size-3.5" strokeWidth={2.1} />}
                 />
               </div>
 
               <ActionRow consultation={consultation} />
               <DoctorConsultationControls consultation={consultation} />
+
+              {consultation.status === "completed" ? (
+                <DoctorPrescriptionOutcomeForm
+                  consultationId={consultation.id}
+                  currentStatus={consultation.prescriptionOutcomeStatus}
+                />
+              ) : null}
 
               <p className="mt-3 truncate border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
                 สร้างเมื่อ {consultation.createdAt}
@@ -309,6 +308,10 @@ function ActionRow({ consultation }: { consultation: DoctorConsultationItem }) {
             </div>
           </div>
         </div>
+      ) : consultation.prescriptionOutcomeStatus === "no_prescription" ? (
+        <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
+          สรุปแล้วว่าไม่มีใบสั่งยา
+        </span>
       ) : (
         <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
           ยังเขียนใบสั่งยาไม่ได้
