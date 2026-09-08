@@ -7,6 +7,17 @@ import { Button } from "@/components/ui/Button";
 const LIFF_SDK_URL = "https://static.line-scdn.net/liff/edge/2/sdk.js";
 const HANDOFF_TICKET_PATTERN = /^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/;
 
+const IOS_LIFF_FAILURE_MESSAGES = {
+  LIFF_ID_MISSING: "ไม่พบการตั้งค่า LINE Mini App",
+  LIFF_SDK_LOAD_FAILED: "โหลดส่วนเชื่อมต่อ LINE ไม่สำเร็จ",
+  LIFF_SDK_UNAVAILABLE: "ไม่พบส่วนเชื่อมต่อ LINE หลังโหลด",
+  LIFF_INIT_FAILED: "เริ่มต้น LINE Mini App ไม่สำเร็จ",
+  LIFF_CONTEXT_UNAVAILABLE: "หน้านี้ไม่ได้เปิดใน LIFF browser",
+  LIFF_OPEN_FAILED: "LINE ไม่สามารถเปิดหน้าวิดีโอคอลภายนอกได้"
+} as const;
+
+export type IosLiffFailureCode = keyof typeof IOS_LIFF_FAILURE_MESSAGES;
+
 type LiffClient = {
   init: (config: { liffId: string }) => Promise<void>;
   isInClient: () => boolean;
@@ -52,6 +63,32 @@ export function isTrustedZoomLaunchUrl(value: string, currentOrigin: string): bo
   }
 }
 
+export function buildIosLineExternalBrowserUrl(value: string, currentOrigin: string): string | null {
+  if (!isTrustedZoomLaunchUrl(value, currentOrigin)) {
+    return null;
+  }
+
+  const url = new URL(value);
+  url.searchParams.set("openExternalBrowser", "1");
+  return url.toString();
+}
+
+export function getSafeIosLiffFailureCode(error: unknown): IosLiffFailureCode | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  const match = /^ios_liff_(id_missing|sdk_load_failed|sdk_unavailable|init_failed|context_unavailable|open_failed)$/.exec(
+    error.message
+  );
+
+  return match ? (`LIFF_${match[1].toUpperCase()}` as IosLiffFailureCode) : null;
+}
+
+function createIosLiffError(code: IosLiffFailureCode): Error {
+  return new Error(`ios_liff_${code.slice("LIFF_".length).toLowerCase()}`);
+}
+
 function loadLiffSdk(): Promise<LiffClient> {
   const liffWindow = getLiffWindow();
 
@@ -93,6 +130,50 @@ function loadLiffSdk(): Promise<LiffClient> {
   return liffLoader;
 }
 
+async function openZoomFromIosLine(liffId: string | undefined, launchUrl: string): Promise<void> {
+  const runtimeLiffId = liffId?.trim();
+
+  if (!runtimeLiffId) {
+    throw createIosLiffError("LIFF_ID_MISSING");
+  }
+
+  let liff: LiffClient;
+
+  try {
+    liff = await loadLiffSdk();
+  } catch (error) {
+    throw createIosLiffError(
+      error instanceof Error && error.message === "liff_sdk_load_failed"
+        ? "LIFF_SDK_LOAD_FAILED"
+        : "LIFF_SDK_UNAVAILABLE"
+    );
+  }
+
+  try {
+    await liff.init({ liffId: runtimeLiffId });
+  } catch {
+    throw createIosLiffError("LIFF_INIT_FAILED");
+  }
+
+  try {
+    if (!liff.isInClient()) {
+      throw createIosLiffError("LIFF_CONTEXT_UNAVAILABLE");
+    }
+  } catch (error) {
+    if (getSafeIosLiffFailureCode(error) === "LIFF_CONTEXT_UNAVAILABLE") {
+      throw error;
+    }
+
+    throw createIosLiffError("LIFF_CONTEXT_UNAVAILABLE");
+  }
+
+  try {
+    liff.openWindow({ url: launchUrl, external: true });
+  } catch {
+    throw createIosLiffError("LIFF_OPEN_FAILED");
+  }
+}
+
 export function ZoomExternalLauncher({
   consultationId,
   liffId,
@@ -104,6 +185,7 @@ export function ZoomExternalLauncher({
 }) {
   const [state, setState] = useState<LaunchState>("idle");
   const [message, setMessage] = useState("ระบบจะเปิดเบราว์เซอร์ภายนอกเพื่อตรวจกล้องและไมค์ก่อนเข้าห้อง");
+  const [iosFallbackUrl, setIosFallbackUrl] = useState<string | null>(null);
 
   async function openZoom() {
     if (state === "preparing") {
@@ -112,6 +194,9 @@ export function ZoomExternalLauncher({
 
     setState("preparing");
     setMessage("กำลังสร้างสิทธิ์เข้าห้องแบบใช้ครั้งเดียว...");
+    setIosFallbackUrl(null);
+
+    let fallbackUrl: string | null = null;
 
     try {
       const response = await fetch(`/api/consultations/${encodeURIComponent(consultationId)}/zoom-handoff`, {
@@ -138,20 +223,14 @@ export function ZoomExternalLauncher({
           return;
         }
 
-        const runtimeLiffId = liffId?.trim();
+        fallbackUrl = buildIosLineExternalBrowserUrl(payload.launchUrl, window.location.origin);
 
-        if (!runtimeLiffId) {
-          throw new Error("liff_id_missing");
+        if (!fallbackUrl) {
+          throw new Error("zoom_handoff_unavailable");
         }
 
-        const liff = await loadLiffSdk();
-        await liff.init({ liffId: runtimeLiffId });
-
-        if (!liff.isInClient()) {
-          throw new Error("liff_client_unavailable");
-        }
-
-        liff.openWindow({ url: payload.launchUrl, external: true });
+        setIosFallbackUrl(fallbackUrl);
+        await openZoomFromIosLine(liffId, payload.launchUrl);
       } else {
         window.location.assign(payload.launchUrl);
         return;
@@ -159,9 +238,15 @@ export function ZoomExternalLauncher({
 
       setState("launched");
       setMessage("เปิดเบราว์เซอร์ภายนอกแล้ว หากไม่เห็นหน้าใหม่ให้ลองกดอีกครั้ง");
-    } catch {
+    } catch (error) {
       setState("error");
-      setMessage("ยังเปิดเบราว์เซอร์ภายนอกไม่ได้ กรุณาลองใหม่หรือเลือก “เปิดในเบราว์เซอร์” จากเมนู LINE");
+      const safeFailureCode = getSafeIosLiffFailureCode(error);
+
+      setMessage(
+        safeFailureCode && fallbackUrl
+          ? `${IOS_LIFF_FAILURE_MESSAGES[safeFailureCode]} กรุณาใช้ปุ่มเปิดเบราว์เซอร์ภายนอกด้านล่าง (รหัส ${safeFailureCode})`
+          : "ยังเปิดเบราว์เซอร์ภายนอกไม่ได้ กรุณาลองใหม่หรือเลือก “เปิดในเบราว์เซอร์” จากเมนู LINE"
+      );
     }
   }
 
@@ -198,6 +283,16 @@ export function ZoomExternalLauncher({
               ? "เปิด Zoom อีกครั้ง"
               : "เริ่มวิดีโอคอลกับแพทย์"}
         </Button>
+        {iosFallbackUrl ? (
+          <a
+            href={iosFallbackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="col-start-1 row-start-3 mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-primary/25 bg-white/90 px-4 text-sm font-bold text-primary"
+          >
+            เปิดวิดีโอคอลในเบราว์เซอร์ภายนอก
+          </a>
+        ) : null}
       </>
     );
   }
@@ -214,6 +309,16 @@ export function ZoomExternalLauncher({
       >
         {state === "preparing" ? "กำลังเตรียม..." : state === "launched" ? "เปิด Zoom อีกครั้ง" : "เปิดเบราว์เซอร์และตรวจอุปกรณ์"}
       </button>
+      {iosFallbackUrl ? (
+        <a
+          href={iosFallbackUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-primary/25 bg-white/90 px-4 text-sm font-bold text-primary"
+        >
+          เปิดวิดีโอคอลในเบราว์เซอร์ภายนอก
+        </a>
+      ) : null}
     </div>
   );
 }

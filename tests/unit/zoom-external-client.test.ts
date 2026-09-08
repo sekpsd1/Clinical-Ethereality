@@ -9,6 +9,8 @@ import {
   isLineInAppBrowser as isZoomClientLineBrowser
 } from "../../zoom-client/src/handoff";
 import {
+  buildIosLineExternalBrowserUrl,
+  getSafeIosLiffFailureCode,
   isAndroidUserAgent,
   isLineInAppBrowser,
   isTrustedZoomLaunchUrl
@@ -105,6 +107,38 @@ describe("Zoom external-browser client helpers", () => {
     expect(chromeTarget.hash).toBe(`#handoff=${ticket}`);
     expect(fallbackTarget.searchParams.has("handoff")).toBe(false);
     expect(fallbackTarget.hash).toBe(`#handoff=${ticket}`);
+  });
+
+  it("builds a safe iPhone LINE fallback without moving the one-time ticket into the query", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+    const fallbackUrl = buildIosLineExternalBrowserUrl(
+      `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`,
+      "https://app.example.test"
+    );
+    const parsed = new URL(fallbackUrl ?? "");
+
+    expect(parsed.searchParams.get("openExternalBrowser")).toBe("1");
+    expect(parsed.searchParams.has("handoff")).toBe(false);
+    expect(parsed.hash).toBe(`#handoff=${ticket}`);
+    expect(
+      buildIosLineExternalBrowserUrl(
+        `https://attacker.example/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`,
+        "https://app.example.test"
+      )
+    ).toBeNull();
+    expect(
+      buildIosLineExternalBrowserUrl(
+        `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1&handoff=${ticket}#handoff=${ticket}`,
+        "https://app.example.test"
+      )
+    ).toBeNull();
+  });
+
+  it("reports only allowlisted iPhone LIFF failure codes", () => {
+    expect(getSafeIosLiffFailureCode(new Error("ios_liff_init_failed"))).toBe("LIFF_INIT_FAILED");
+    expect(getSafeIosLiffFailureCode(new Error("ios_liff_context_unavailable"))).toBe("LIFF_CONTEXT_UNAVAILABLE");
+    expect(getSafeIosLiffFailureCode(new Error("ticket=v1.secret patient=private"))).toBeNull();
+    expect(getSafeIosLiffFailureCode({ message: "ios_liff_open_failed" })).toBeNull();
   });
 
   it("accepts a fragment ticket from Android Chrome and rejects query/request URL tickets", () => {
