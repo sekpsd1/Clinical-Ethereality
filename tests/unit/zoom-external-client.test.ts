@@ -7,6 +7,7 @@ import {
   establishZoomExternalSession,
   getHandoffTicket,
   getSanitizedHandoffPath,
+  getSafeLineProfileReturnUrl,
   isLineInAppBrowser as isZoomClientLineBrowser,
   leaveZoomExternalSession,
   ZoomExternalLeaveError
@@ -18,6 +19,7 @@ import {
   isLineInAppBrowser,
   isTrustedZoomLaunchUrl
 } from "@/features/consultations/zoom/ZoomExternalLauncher";
+import { buildLineProfileReturnUrl } from "@/features/consultations/zoom/line-return";
 
 describe("Zoom external-browser client helpers", () => {
   it("uses one shared launch handler without an iOS LIFF dependency or duplicate fallback control", () => {
@@ -42,9 +44,11 @@ describe("Zoom external-browser client helpers", () => {
     expect(zoomClientSource).toContain("กดปุ่มด้านล่างเพื่อเปิดเบราว์เซอร์และเริ่มวิดีโอคอล");
     expect(zoomClientSource).toContain("เปิดวิดีโอคอลใน Chrome");
     expect(zoomClientSource).toContain("ออกจากห้องวิดีโอในเบราว์เซอร์นี้");
+    expect(zoomClientSource).toContain("กลับไปหน้าโปรไฟล์ใน LINE");
     expect(zoomClientSource).toContain('sessionState === "left"');
     expect(zoomClientSource).not.toContain('history.replaceState(null, "", "/zoom-sdk/index.html?complete=1")');
     expect(zoomClientSource).not.toContain("/api/auth/logout");
+    expect(zoomClientSource).not.toContain("window.close");
   });
 
   it("recognizes LINE's in-app user agent and accepts only same-origin handoff URLs", () => {
@@ -92,10 +96,16 @@ describe("Zoom external-browser client helpers", () => {
   it("leaves through a same-origin POST without invoking the normal app logout", async () => {
     const fetchSession = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ ok: true, revoked: true })
+      json: async () => ({
+        ok: true,
+        revoked: true,
+        returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+      })
     });
 
-    await expect(leaveZoomExternalSession(fetchSession)).resolves.toBeUndefined();
+    await expect(leaveZoomExternalSession(fetchSession)).resolves.toEqual({
+      returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+    });
     expect(fetchSession).toHaveBeenCalledWith("/api/zoom/handoff/session/leave", {
       method: "POST",
       credentials: "same-origin",
@@ -103,6 +113,21 @@ describe("Zoom external-browser client helpers", () => {
         Accept: "application/json"
       }
     });
+  });
+
+  it("accepts only a LINE LIFF profile return URL", () => {
+    expect(buildLineProfileReturnUrl(" 1234567890-AbcdEfgh ")).toBe(
+      "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+    );
+    expect(buildLineProfileReturnUrl("not/a/liff-id")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://miniapp.line.me/1234567890-AbcdEfgh/profile")).toBe(
+      "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+    );
+    expect(getSafeLineProfileReturnUrl("https://app.example.test/profile")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://attacker.example/profile")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://miniapp.line.me/1234567890-AbcdEfgh/profile?next=evil")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("https://liff.line.me/1234567890-AbcdEfgh/profile")).toBeNull();
+    expect(getSafeLineProfileReturnUrl("javascript:alert(1)")).toBeNull();
   });
 
   it("distinguishes an unavailable external session from a temporary leave failure", async () => {
@@ -130,7 +155,11 @@ describe("Zoom external-browser client helpers", () => {
     const fetchSession = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, revoked: true })
+      json: async () => ({
+        ok: true,
+        revoked: true,
+        returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+      })
     });
     const completionGate = createZoomCompletionCleanupGate();
 

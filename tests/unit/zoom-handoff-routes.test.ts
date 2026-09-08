@@ -40,11 +40,13 @@ import {
 } from "@/features/consultations/zoom/handoff-request";
 
 const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+const previousLiffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
 const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
 
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_APP_URL = "https://app.example.test";
+  process.env.NEXT_PUBLIC_LINE_LIFF_ID = "1234567890-AbcdEfgh";
   mocks.issue.mockResolvedValue({
     ticket,
     consultationId: "consultation-1",
@@ -62,6 +64,7 @@ beforeEach(() => {
 
 afterAll(() => {
   process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+  process.env.NEXT_PUBLIC_LINE_LIFF_ID = previousLiffId;
 });
 
 describe("Zoom handoff routes", () => {
@@ -141,7 +144,11 @@ describe("Zoom handoff routes", () => {
     const setCookie = response.headers.get("set-cookie") ?? "";
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ ok: true, revoked: true });
+    expect(body).toEqual({
+      ok: true,
+      revoked: true,
+      returnToLineUrl: "https://miniapp.line.me/1234567890-AbcdEfgh/profile"
+    });
     expect(mocks.revoke).toHaveBeenCalledOnce();
     expect(setCookie).toContain("ce_zoom_access=");
     expect(setCookie).toContain("Max-Age=0");

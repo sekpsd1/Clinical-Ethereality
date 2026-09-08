@@ -110,6 +110,7 @@ function ZoomClientApp() {
   const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [mediaState, setMediaState] = useState<MediaState>("idle");
   const [leaveState, setLeaveState] = useState<LeaveState>("idle");
+  const [returnToLineUrl, setReturnToLineUrl] = useState<string | null>(null);
   const [message, setMessage] = useState("กำลังตรวจสิทธิ์ชั่วคราวสำหรับนัดหมาย...");
   const completionCleanupGate = useRef(createZoomCompletionCleanupGate());
   const consultationId = getConsultationId();
@@ -126,13 +127,14 @@ function ZoomClientApp() {
 
       setMessage("กำลังปิดสิทธิ์ห้องวิดีโอในเบราว์เซอร์นี้...");
       leaveZoomExternalSession()
-        .then(() => {
+        .then((result) => {
           if (!active) {
             return;
           }
 
           completionCleanupGate.current.markLeft();
-          setSessionState("ready");
+          setSessionState("left");
+          setReturnToLineUrl(result.returnToLineUrl);
           setMessage("ออกจากห้องวิดีโอในเบราว์เซอร์นี้แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
         })
         .catch((error: unknown) => {
@@ -293,9 +295,10 @@ function ZoomClientApp() {
     setMessage("กำลังออกจากห้องวิดีโอในเบราว์เซอร์นี้...");
 
     try {
-      await leaveZoomExternalSession();
+      const result = await leaveZoomExternalSession();
       completionCleanupGate.current.markLeft();
       setSessionState("left");
+      setReturnToLineUrl(result.returnToLineUrl);
       setLeaveState("idle");
       setMessage("ออกจากห้องวิดีโอในเบราว์เซอร์นี้แล้ว คุณสามารถกลับไปยัง LINE Mini App ได้");
     } catch (error) {
@@ -319,7 +322,16 @@ function ZoomClientApp() {
     createElement("h1", null, "วิดีโอคอลปรึกษาแพทย์"),
     createElement("p", { role: "status" }, consultationId || isComplete ? message : "ไม่พบข้อมูลนัดหมายที่ถูกต้อง"),
     isComplete || sessionState === "left"
-      ? leaveState === "error"
+      ? returnToLineUrl
+        ? createElement(
+            "a",
+            {
+              className: "zoom-button",
+              href: returnToLineUrl
+            },
+            "กลับไปหน้าโปรไฟล์ใน LINE"
+          )
+        : leaveState === "error"
         ? createElement(
             "button",
             {
