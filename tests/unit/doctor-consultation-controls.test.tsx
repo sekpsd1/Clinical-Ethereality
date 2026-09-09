@@ -1,12 +1,14 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DoctorConsultationItem } from "@/features/doctor/consultations/types";
 
 const workflowMocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   dispatch: vi.fn(),
-  useActionState: vi.fn()
+  setCanStartConsultation: vi.fn(),
+  useActionState: vi.fn(),
+  useEffect: vi.fn()
 }));
 
 vi.mock("react", async (importOriginal) => {
@@ -14,7 +16,9 @@ vi.mock("react", async (importOriginal) => {
 
   return {
     ...actual,
-    useActionState: workflowMocks.useActionState
+    useActionState: workflowMocks.useActionState,
+    useEffect: workflowMocks.useEffect,
+    useState: (initialValue: unknown) => [initialValue, workflowMocks.setCanStartConsultation]
   };
 });
 
@@ -50,8 +54,20 @@ function consultation(
     id: "consultation-1",
     status,
     summary: null,
-    attendance
-  } satisfies Pick<DoctorConsultationItem, "id" | "status" | "summary" | "attendance">;
+    attendance,
+    canStartConsultation: true,
+    startAvailableAt: "2030-01-01T09:55:00.000Z",
+    startAvailableInMs: 0
+  } satisfies Pick<
+    DoctorConsultationItem,
+    | "id"
+    | "status"
+    | "summary"
+    | "attendance"
+    | "canStartConsultation"
+    | "startAvailableAt"
+    | "startAvailableInMs"
+  >;
 }
 
 function findWorkflowForm(node: ReactNode): ReactElement<WorkflowFormProps> {
@@ -96,7 +112,18 @@ async function submitForm(form: ReactElement<WorkflowFormProps>) {
 describe("Doctor consultation controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("window", { confirm: workflowMocks.confirm });
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      clearTimeout: globalThis.clearTimeout,
+      confirm: workflowMocks.confirm,
+      removeEventListener: vi.fn(),
+      setTimeout: globalThis.setTimeout
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("requires final confirmation and does not dispatch completion when rejected", async () => {
@@ -150,6 +177,121 @@ describe("Doctor consultation controls", () => {
     expect(html).toContain("เข้าห้องปรึกษา/Zoom ตอนนี้");
     expect(html).toContain("/consult/live?consultation=consultation-1");
     expect(html).not.toContain(">เริ่มการปรึกษา</button>");
+  });
+
+  it("disables early start with clear preparation-window copy", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    const html = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={{
+          ...consultation("scheduled"),
+          canStartConsultation: false,
+          startAvailableAt: "2030-01-01T09:55:00.000Z",
+          startAvailableInMs: 60_000
+        }}
+      />
+    );
+
+    expect(html).toContain("เปิดห้องได้ก่อนเวลานัด 5 นาที");
+    expect(html).toContain("disabled");
+    expect(html).toContain("เริ่มการปรึกษา");
+  });
+
+  it("shows the preparation-window time in the clinic timezone", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+
+    const html = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={{
+          ...consultation("scheduled"),
+          canStartConsultation: false,
+          startAvailableAt: "2030-01-01T09:55:00.000Z",
+          startAvailableInMs: 60_000
+        }}
+      />
+    );
+
+    expect(html).toContain("16:55");
+  });
+
+  it("uses actual elapsed time when a throttled timer resumes after the preparation window opens", () => {
+    let elapsedMs = 0;
+    const timerCallbacks: Array<() => void> = [];
+    const setTimeout = vi.fn((callback: () => void) => {
+      timerCallbacks.push(callback);
+      return timerCallbacks.length;
+    });
+    const addDocumentListener = vi.fn();
+
+    vi.stubGlobal("performance", {
+      now: () => elapsedMs
+    });
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      clearTimeout: vi.fn(),
+      confirm: workflowMocks.confirm,
+      removeEventListener: vi.fn(),
+      setTimeout
+    });
+    vi.stubGlobal("document", {
+      addEventListener: addDocumentListener,
+      removeEventListener: vi.fn(),
+      visibilityState: "visible"
+    });
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    workflowMocks.useEffect.mockImplementationOnce((effect: () => void) => effect());
+
+    renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={{
+          ...consultation("scheduled"),
+          canStartConsultation: false,
+          startAvailableAt: "2030-01-01T09:55:00.000Z",
+          startAvailableInMs: 300_000
+        }}
+      />
+    );
+
+    expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 60_000);
+    expect(addDocumentListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+
+    elapsedMs = 300_001;
+    timerCallbacks[0]?.();
+
+    expect(workflowMocks.setCanStartConsultation).toHaveBeenCalledWith(true);
+  });
+
+  it("fails closed in the UI when the appointment time is missing", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    const html = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={{
+          ...consultation("scheduled"),
+          canStartConsultation: false,
+          startAvailableAt: null,
+          startAvailableInMs: null
+        }}
+      />
+    );
+
+    expect(html).toContain("นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว");
+    expect(html).toContain("disabled");
   });
 
   it("hides completion actions until server attendance evidence is eligible", () => {

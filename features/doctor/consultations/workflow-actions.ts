@@ -85,7 +85,9 @@ export async function transitionDoctorConsultationAction(
         parsed.data.transition === "start"
           ? zoomMeeting
             ? "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว"
-            : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom"
+            : consultation?.zoomMeetingId
+              ? "เริ่มการปรึกษาและเปิดห้อง Zoom เดิมแล้ว"
+              : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom"
           : parsed.data.transition === "complete_no_show"
             ? "บันทึกผลผู้ป่วยไม่มาตามนัดและแจ้งผู้ป่วยแล้ว"
             : "จบการปรึกษาและบันทึกสรุปแล้ว",
@@ -104,7 +106,7 @@ export async function transitionDoctorConsultationAction(
         status: "error",
         message:
           error.code === "before_appointment_time"
-            ? "ยังไม่ถึงเวลานัด ระบบจึงยังไม่เปิดให้เริ่มการปรึกษา"
+            ? "เปิดห้องได้ก่อนเวลานัด 5 นาที กรุณารอจนถึงช่วงเวลาเตรียมห้อง"
             : "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"
       };
     }

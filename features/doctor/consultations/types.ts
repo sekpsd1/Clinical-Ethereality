@@ -29,6 +29,9 @@ export type DoctorConsultationItem = {
   canOpenConsultRoom: boolean;
   consultRoomHref: string | null;
   scheduledAt: string | null;
+  canStartConsultation: boolean;
+  startAvailableAt: string | null;
+  startAvailableInMs: number | null;
   durationLabel: string;
   summary: string | null;
   prescriptionOutcomeStatus: ConsultationPrescriptionOutcomeStatus;

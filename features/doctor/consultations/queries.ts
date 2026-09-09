@@ -13,6 +13,7 @@ import {
 } from "@/features/doctor/consultations/duration";
 import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
 import { prescriptionOutcomeLabels } from "@/features/prescriptions/outcome";
+import { getDoctorConsultationStartWindow } from "@/features/doctor/consultations/start-window";
 import {
   getAttendanceStatusCopy,
   getConsultationAttendanceState
@@ -187,7 +188,7 @@ function getWorkflowStatus(
       readinessDescription:
         status === "live"
           ? "ห้องปรึกษาเปิดแล้ว สามารถเข้าแชทหรือออกใบสั่งยาได้ตามความเหมาะสม"
-          : "ชำระเงินแล้ว ตรวจแบบประเมินก่อน consult และเริ่มการปรึกษาเมื่อถึงเวลานัด",
+          : "ชำระเงินแล้ว ตรวจแบบประเมินก่อน consult และเปิดห้องได้ตั้งแต่ 5 นาทีก่อนเวลานัด",
       readinessTone: "success",
       ...paymentCopy,
       canOpenConsultRoom: status === "live",
@@ -381,6 +382,7 @@ function mapConsultation(
   const latestPrescription = consultation.prescriptions[0] ?? null;
   const latestMessage = consultation.messages[0] ?? null;
   const workflow = getWorkflowStatus(consultation.status, consultation.payment);
+  const startWindow = getDoctorConsultationStartWindow(consultation.scheduledAt, now);
   const attendanceState = getConsultationAttendanceState(
     consultation.attendanceEvents,
     consultation.scheduledAt,
@@ -415,6 +417,11 @@ function mapConsultation(
     canOpenConsultRoom,
     consultRoomHref: canOpenConsultRoom ? `/consult/live?consultation=${consultation.id}` : null,
     scheduledAt: formatDate(consultation.scheduledAt),
+    canStartConsultation: consultation.status === "scheduled" && startWindow.canStart,
+    startAvailableAt: startWindow.opensAt?.toISOString() ?? null,
+    startAvailableInMs: startWindow.opensAt
+      ? Math.max(startWindow.opensAt.getTime() - now.getTime(), 0)
+      : null,
     durationLabel: formatDoctorConsultationDuration(durationByConsultationId.get(consultation.id)),
     summary: consultation.summary,
     prescriptionOutcomeStatus: consultation.prescriptionOutcomeStatus,

@@ -81,8 +81,8 @@ describe("transitionDoctorConsultationAction start gate", () => {
     vi.useRealTimers();
   });
 
-  it("rejects an early start before Zoom creation or any transaction", async () => {
-    vi.setSystemTime(new Date("2030-01-01T09:59:59.999Z"));
+  it("rejects a start immediately before T-5 without Zoom creation or a transaction", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:54:59.999Z"));
     mocks.findUnique.mockResolvedValue(
       scheduledConsultation(new Date("2030-01-01T10:00:00.000Z"))
     );
@@ -94,16 +94,16 @@ describe("transitionDoctorConsultationAction start gate", () => {
 
     expect(result).toEqual({
       status: "error",
-      message: "ยังไม่ถึงเวลานัด ระบบจึงยังไม่เปิดให้เริ่มการปรึกษา"
+      message: "เปิดห้องได้ก่อนเวลานัด 5 นาที กรุณารอจนถึงช่วงเวลาเตรียมห้อง"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.applyTransition).not.toHaveBeenCalled();
   });
 
-  it("starts at the appointment time and returns the live-room route", async () => {
+  it("starts exactly at T-5 and returns the live-room route", async () => {
     const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
-    vi.setSystemTime(scheduledAt);
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
     mocks.findUnique.mockResolvedValue(scheduledConsultation(scheduledAt));
 
     const result = await transitionDoctorConsultationAction(
@@ -122,5 +122,98 @@ describe("transitionDoctorConsultationAction start gate", () => {
       isolationLevel: "Serializable"
     });
     expect(mocks.applyTransition).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not create another Zoom meeting when the consultation already has one", async () => {
+    const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+    vi.setSystemTime(new Date("2030-01-01T10:01:00.000Z"));
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(scheduledAt),
+      zoomMeetingId: "existing-meeting"
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result).toMatchObject({
+      status: "success",
+      message: "เริ่มการปรึกษาและเปิดห้อง Zoom เดิมแล้ว"
+    });
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not transition to live when Zoom meeting creation fails", async () => {
+    const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue(scheduledConsultation(scheduledAt));
+    mocks.createZoomMeeting.mockRejectedValue(new Error("zoom_unavailable"));
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "ยังเริ่มการปรึกษาไม่ได้ กรุณาตรวจสถานะนัดและการตั้งค่า Zoom"
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.applyTransition).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the appointment time is missing", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      scheduledAt: null
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"
+    });
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("blocks a doctor assigned to a different consultation before Zoom creation", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      doctor: { userId: "doctor-user-2" }
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result.status).toBe("error");
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("blocks a non-scheduled consultation before Zoom creation", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      status: "completed"
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result.status).toBe("error");
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });

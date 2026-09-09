@@ -33,7 +33,7 @@ describe("doctor consultation workflow", () => {
     ).toBe("live");
   });
 
-  it("rejects starting before the scheduled appointment time", () => {
+  it("rejects starting immediately before the five-minute preparation window", () => {
     expect(() =>
       getDoctorConsultationNextStatus(
         consultation({
@@ -44,12 +44,12 @@ describe("doctor consultation workflow", () => {
           userId: "doctor-user-1"
         },
         "start",
-        new Date("2030-01-01T09:59:59.999Z")
+        new Date("2030-01-01T09:54:59.999Z")
       )
-    ).toThrow("Consultation cannot start before the scheduled appointment time.");
+    ).toThrow("Consultation cannot start before the five-minute preparation window.");
   });
 
-  it("allows starting exactly at the scheduled appointment time", () => {
+  it("allows starting exactly five minutes before the appointment", () => {
     const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
 
     expect(
@@ -60,7 +60,23 @@ describe("doctor consultation workflow", () => {
           userId: "doctor-user-1"
         },
         "start",
-        scheduledAt
+        new Date("2030-01-01T09:55:00.000Z")
+      )
+    ).toBe("live");
+  });
+
+  it("allows starting after the scheduled appointment time", () => {
+    const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+
+    expect(
+      getDoctorConsultationNextStatus(
+        consultation({ scheduledAt }),
+        {
+          role: "doctor",
+          userId: "doctor-user-1"
+        },
+        "start",
+        new Date("2030-01-01T10:30:00.000Z")
       )
     ).toBe("live");
   });

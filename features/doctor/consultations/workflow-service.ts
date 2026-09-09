@@ -3,6 +3,7 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { Role } from "@/lib/permissions/roles";
 import type { CreatedZoomMeeting } from "@/lib/zoom/meetings";
 import { getConsultationAttendanceState } from "@/features/consultations/attendance/state";
+import { getDoctorConsultationStartWindow } from "@/features/doctor/consultations/start-window";
 
 export type DoctorConsultationTransition = "start" | "complete" | "complete_no_show";
 
@@ -72,9 +73,9 @@ export function getDoctorConsultationNextStatus(
       );
     }
 
-    if (scheduledAt.getTime() > now.getTime()) {
+    if (!getDoctorConsultationStartWindow(scheduledAt, now).canStart) {
       throw new DoctorConsultationWorkflowError(
-        "Consultation cannot start before the scheduled appointment time.",
+        "Consultation cannot start before the five-minute preparation window.",
         "before_appointment_time"
       );
     }

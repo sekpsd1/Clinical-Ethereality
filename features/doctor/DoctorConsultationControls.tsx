@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ArrowRight, CheckCircle2, Clock3, UserRoundX, Video } from "lucide-react";
 import {
@@ -20,9 +20,84 @@ const initialState: DoctorConsultationWorkflowActionState = {
 export function DoctorConsultationControls({
   consultation
 }: {
-  consultation: Pick<DoctorConsultationItem, "id" | "status" | "summary" | "attendance">;
+  consultation: Pick<
+    DoctorConsultationItem,
+    | "id"
+    | "status"
+    | "summary"
+    | "attendance"
+    | "canStartConsultation"
+    | "startAvailableAt"
+    | "startAvailableInMs"
+  >;
 }) {
   const [state, formAction] = useActionState(transitionDoctorConsultationAction, initialState);
+  const [canStartConsultation, setCanStartConsultation] = useState(
+    consultation.canStartConsultation
+  );
+
+  useEffect(() => {
+    if (
+      consultation.status !== "scheduled" ||
+      canStartConsultation ||
+      consultation.startAvailableInMs === null
+    ) {
+      return;
+    }
+
+    const initialRemainingMs = consultation.startAvailableInMs;
+    const startedAt = performance.now();
+
+    if (
+      !Number.isFinite(initialRemainingMs) ||
+      initialRemainingMs < 0 ||
+      !Number.isFinite(startedAt)
+    ) {
+      return;
+    }
+
+    let timer: number | undefined;
+    const clearTimer = () => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+        timer = undefined;
+      }
+    };
+
+    const refreshStartAvailability = () => {
+      clearTimer();
+      const elapsedMs = Math.max(performance.now() - startedAt, 0);
+      const remainingMs = initialRemainingMs - elapsedMs;
+
+      if (!Number.isFinite(remainingMs)) {
+        return;
+      }
+
+      if (remainingMs <= 0) {
+        setCanStartConsultation(true);
+        return;
+      }
+
+      const delayMs = Math.min(remainingMs, 60_000);
+      timer = window.setTimeout(refreshStartAvailability, delayMs);
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshStartAvailability();
+      }
+    };
+
+    window.addEventListener("focus", refreshStartAvailability);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    refreshStartAvailability();
+
+    return () => {
+      clearTimer();
+      window.removeEventListener("focus", refreshStartAvailability);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [canStartConsultation, consultation.startAvailableInMs, consultation.status]);
 
   if (consultation.status !== "scheduled" && consultation.status !== "live") {
     return null;
@@ -117,7 +192,13 @@ export function DoctorConsultationControls({
           )}
         </>
       ) : (
-        <p className="text-xs leading-5 text-muted">เริ่มสถานะ consult และสร้างห้อง Zoom อัตโนมัติเมื่อกำหนด credentials แล้ว</p>
+        <p className="text-xs leading-5 text-muted">
+          {canStartConsultation
+            ? "พร้อมเริ่ม consult และสร้างห้อง Zoom สำหรับนัดนี้แล้ว"
+            : consultation.startAvailableAt
+              ? `เปิดห้องได้ก่อนเวลานัด 5 นาที • เปิดได้เวลา ${formatStartTime(consultation.startAvailableAt)}`
+              : "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"}
+        </p>
       )}
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p
@@ -139,7 +220,12 @@ export function DoctorConsultationControls({
             <ArrowRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
           </Link>
         ) : (
-          transition ? <WorkflowSubmitButton transition={transition} /> : null
+          transition ? (
+            <WorkflowSubmitButton
+              transition={transition}
+              disabled={transition === "start" && !canStartConsultation}
+            />
+          ) : null
         )}
       </div>
     </form>
@@ -147,9 +233,11 @@ export function DoctorConsultationControls({
 }
 
 function WorkflowSubmitButton({
-  transition
+  transition,
+  disabled = false
 }: {
   transition: "start" | "complete" | "complete_no_show";
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   const complete = transition !== "start";
@@ -158,7 +246,7 @@ function WorkflowSubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className={cn(
         "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60",
         complete
@@ -176,4 +264,18 @@ function WorkflowSubmitButton({
             : "เริ่มการปรึกษา"}
     </button>
   );
+}
+
+function formatStartTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "เมื่อถึงช่วงเวลาเตรียมห้อง";
+  }
+
+  return new Intl.DateTimeFormat("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok"
+  }).format(date);
 }
