@@ -1,4 +1,5 @@
 import type { ConsentType } from "@prisma/client";
+import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 
 export type LegalDocument = {
   type: ConsentType;
@@ -54,13 +55,14 @@ export const legalDocuments = [
   {
     type: "teleconsultation",
     title: "Teleconsultation Consent",
-    version: "2026-05-20-draft",
-    required: true,
+    version: TELEMEDICINE_CONSENT_VERSION,
+    required: false,
     summary: "ความยินยอมใช้บริการปรึกษาแพทย์ทางไกลผ่านวิดีโอหรือแชท พร้อมรับทราบข้อจำกัดของบริการ",
     bullets: [
       "ยินยอมให้แพทย์เข้าถึงประวัติสุขภาพ ประวัติยา และข้อมูลที่เกี่ยวข้อง",
       "รับทราบว่าบริการนี้ไม่เหมาะกับภาวะฉุกเฉินและไม่แทนการพบแพทย์ทุกกรณี",
-      "ยินยอมให้บันทึกข้อความ เสียง หรือวิดีโอเพื่อคุณภาพ ความปลอดภัย และข้อกำหนดทางกฎหมาย",
+      "รับทราบว่าทุกเคสจะบันทึกเสียง วิดีโอ และประวัติแชทโดยอัตโนมัติ และเก็บรักษา 5 ปี",
+      "การจองแต่ละครั้งต้องยอมรับฉบับปัจจุบันใหม่ ความยินยอมจากการจองเก่าใช้แทนไม่ได้",
       "ยินยอมให้ส่งต่อข้อมูลแก่ผู้เชี่ยวชาญที่เกี่ยวข้องเมื่อจำเป็นเพื่อความปลอดภัย"
     ]
   },

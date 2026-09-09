@@ -184,7 +184,11 @@ describe("feature validation schemas", () => {
   it("validates versioned legal consent acceptance payloads", () => {
     const requiredDocuments = getRequiredLegalDocuments();
 
-    expect(requiredDocuments).toHaveLength(5);
+    expect(requiredDocuments).toHaveLength(4);
+    expect(getLegalDocument("teleconsultation")).toMatchObject({
+      version: "2026-09-09",
+      required: false
+    });
     expect(getLegalDocument("health_data")?.version).toBe("2026-05-20-draft");
     expect(
       acceptConsentSchema.safeParse({

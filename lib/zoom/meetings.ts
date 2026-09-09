@@ -70,6 +70,24 @@ async function requestZoomAccessToken(credentials: ZoomServerToServerCredentials
   return tokenBody.access_token;
 }
 
+export async function getZoomServerAccessTokenIfConfigured(): Promise<string | null> {
+  const credentials = getServerToServerCredentials();
+  return credentials ? requestZoomAccessToken(credentials) : null;
+}
+
+export function getZoomMeetingSettings() {
+  const recordingEnabled = getAppEnv().ENABLE_ZOOM_CLOUD_RECORDING;
+
+  return {
+    host_video: true,
+    participant_video: true,
+    join_before_host: false,
+    mute_upon_entry: true,
+    waiting_room: true,
+    ...(recordingEnabled ? { auto_recording: "cloud" as const } : {})
+  };
+}
+
 export function isZoomMeetingCreationConfigured(): boolean {
   return getServerToServerCredentials() !== null;
 }
@@ -100,13 +118,7 @@ export async function createZoomMeetingIfConfigured(input: {
       start_time: startTime.toISOString(),
       duration: 30,
       timezone: "Asia/Bangkok",
-      settings: {
-        host_video: true,
-        participant_video: true,
-        join_before_host: false,
-        mute_upon_entry: true,
-        waiting_room: true
-      }
+      settings: getZoomMeetingSettings()
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000)

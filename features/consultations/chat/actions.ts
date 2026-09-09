@@ -6,6 +6,7 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
 import { canParticipantAccessLiveConsultation } from "@/features/consultations/waiting-room/access";
+import { getRecordingRetentionUntil } from "@/features/consultations/consent/policy";
 
 export type SendConsultationMessageActionState = {
   status: "idle" | "success" | "error";
@@ -77,7 +78,8 @@ export async function sendConsultationMessageAction(
         data: {
           consultationId: consultation.id,
           senderId: session.userId,
-          body: parsed.data.body
+          body: parsed.data.body,
+          retentionUntil: getRecordingRetentionUntil(new Date())
         }
       });
 

@@ -1,9 +1,11 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { isIP } from "node:net";
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
@@ -20,9 +22,20 @@ import {
   rescheduleVerifiedConsultation
 } from "@/features/consultations/booking/reschedule";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
+import {
+  assertTelemedicineSelfConsent,
+  createTelemedicineConsent,
+  TelemedicineConsentError
+} from "@/features/consultations/consent/service";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
+}
+
+function getClientIp(headerStore: Headers): string | null {
+  const forwardedFor = headerStore.get("x-forwarded-for");
+  const candidate = forwardedFor?.split(",")[0]?.trim() || headerStore.get("x-real-ip")?.trim();
+  return candidate && isIP(candidate) !== 0 ? candidate : null;
 }
 
 function getBookingPath(doctorId?: string, bookingStatus?: string, reschedule?: string): Route {
@@ -101,6 +114,9 @@ export async function createConsultationBookingAction(formData: FormData): Promi
   }
 
   let consultationId: string | null = null;
+  const headerStore = await headers();
+  const ipAddress = getClientIp(headerStore);
+  const userAgent = headerStore.get("user-agent");
 
   try {
     await releaseExpiredConsultationSlotLocks();
@@ -120,6 +136,12 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       if (!patient?.fullName || !patient.dateOfBirth || !patient.phone || !patient.normalizedPhone || !patient.phoneVerifiedAt) {
         throw new PatientVerificationError("PROFILE_REQUIRED");
       }
+      assertTelemedicineSelfConsent({
+        dateOfBirth: patient.dateOfBirth,
+        accepted: parsed.data.telemedicineConsentAccepted,
+        version: parsed.data.telemedicineConsentVersion,
+        now
+      });
       const availability = await tx.doctorAvailability.findUnique({
         where: {
           id: parsed.data.availabilityId
@@ -261,6 +283,14 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         }
       });
 
+      const telemedicineConsentId = await createTelemedicineConsent(tx, {
+        consultationId: consultation.id,
+        userId: session.userId,
+        acceptedAt: now,
+        ipAddress,
+        userAgent
+      });
+
       await tx.notification.create({
         data: {
           userId: session.userId,
@@ -287,6 +317,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
           slotMinutes,
           slotLockId: slotLock.id,
           assessmentId: activeAssessment?.id ?? null,
+          telemedicineConsentId,
           recommendationTopic: activeAssessment?.recommendationTopic ?? null,
           scheduledAt: scheduledAt.toISOString(),
           status: "pending_payment"
@@ -304,6 +335,11 @@ export async function createConsultationBookingAction(formData: FormData): Promi
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       await releaseExpiredConsultationSlotLocks();
       redirect(getBookingPath(parsed.data.doctorId, "locked"));
+    }
+
+    if (error instanceof TelemedicineConsentError) {
+      const status = error.code === "GUARDIAN_REQUIRED" ? "guardian_required" : "consent_required";
+      redirect(getBookingPath(parsed.data.doctorId, status));
     }
 
     redirect(getBookingPath(parsed.data.doctorId, "failed"));

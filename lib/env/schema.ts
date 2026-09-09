@@ -56,6 +56,10 @@ export const envSchema = z.object({
   ZOOM_CLIENT_SECRET: z.string().optional(),
   ZOOM_HOST_USER_ID: z.string().optional(),
   ZOOM_WEBHOOK_SECRET: z.string().optional(),
+  ENABLE_ZOOM_CLOUD_RECORDING: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   ENABLE_DEV_AUTH_BYPASS: z
     .enum(["true", "false"])
     .default("false")

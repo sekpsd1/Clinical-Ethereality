@@ -5,7 +5,9 @@ export const createConsultationBookingSchema = z.object({
   scheduledAt: z.string().datetime(),
   // Optional only to keep existing bookmarked booking pages compatible. New
   // booking forms always submit it and the action verifies it against the slot.
-  doctorId: z.string().cuid().optional()
+  doctorId: z.string().cuid().optional(),
+  telemedicineConsentAccepted: z.string().optional(),
+  telemedicineConsentVersion: z.string().max(80).optional()
 });
 
 export const reschedulePaidConsultationSchema = createConsultationBookingSchema.extend({

@@ -9,6 +9,11 @@ import {
   applyZoomParticipantAttendanceEvent,
   ZoomAttendanceWebhookError
 } from "@/features/consultations/attendance/webhook-service";
+import { parseZoomRecordingCompletedEvent } from "@/features/consultations/recordings/webhook-schema";
+import {
+  applyZoomRecordingCompletedEvent,
+  RecordingWebhookError
+} from "@/features/consultations/recordings/webhook-service";
 
 export const dynamic = "force-dynamic";
 
@@ -160,6 +165,45 @@ export async function POST(request: NextRequest) {
           ok: false,
           error: "Zoom participant event is temporarily unavailable."
         },
+        { status: 503 }
+      );
+    }
+  }
+
+  if (body.event === "recording.completed") {
+    if (!env.ENABLE_ZOOM_CLOUD_RECORDING) {
+      return NextResponse.json({ ok: true, ignored: true });
+    }
+
+    const recordingEvent = parseZoomRecordingCompletedEvent(body);
+    if (!recordingEvent) {
+      return NextResponse.json(
+        { ok: false, error: "Zoom recording event is invalid." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const result = await prisma.$transaction(
+        (tx) => applyZoomRecordingCompletedEvent(tx, recordingEvent),
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+
+      return NextResponse.json({
+        ok: true,
+        duplicate: result.duplicate,
+        recordingCount: result.recordingCount
+      });
+    } catch (error) {
+      if (error instanceof RecordingWebhookError) {
+        return NextResponse.json(
+          { ok: false, error: "Zoom recording could not be mapped to a consultation." },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json(
+        { ok: false, error: "Zoom recording metadata is temporarily unavailable." },
         { status: 503 }
       );
     }

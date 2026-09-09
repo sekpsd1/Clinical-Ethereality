@@ -10,6 +10,8 @@ export const permissions = [
   "consultation:read:self",
   "consultation:read:assigned",
   "consultation:update:assigned",
+  "consultation-recording:read:assigned",
+  "consultation-recording:download:assigned",
   "prescription:create:assigned",
   "prescription:read:self",
   "prescription:read:assigned",
@@ -44,6 +46,8 @@ export const rolePermissions: Record<Role, readonly Permission[]> = {
     "profile:update:self",
     "consultation:read:assigned",
     "consultation:update:assigned",
+    "consultation-recording:read:assigned",
+    "consultation-recording:download:assigned",
     "prescription:create:assigned",
     "prescription:read:assigned"
   ],

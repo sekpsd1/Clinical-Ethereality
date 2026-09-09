@@ -71,6 +71,10 @@ enum ConsultationAttendanceEventType {
   left
 }
 
+enum RecordingProvider {
+  zoom
+}
+
 enum DoctorAvailabilityDateOverrideType {
   available
   blocked
@@ -237,6 +241,7 @@ model User {
   notifications       Notification[]
   rewardPoints        RewardPoint[]
   consentRecords      ConsentRecord[]
+  telemedicineConsents TelemedicineConsent[]
   auditLogs           AuditLog[]            @relation("ActorAuditLogs")
   reviewedPayments    Payment[]             @relation("PaymentReviewer")
   refundedPayments    Payment[]             @relation("PaymentRefunder")
@@ -416,8 +421,11 @@ model Consultation {
   prescriptions Prescription[]
   messages      ConsultationMessage[]
   payment       Payment?
-  attendanceCredentials ConsultationAttendanceCredential[]
-  attendanceEvents      ConsultationAttendanceEvent[]
+  attendanceCredentials  ConsultationAttendanceCredential[]
+  attendanceEvents       ConsultationAttendanceEvent[]
+  telemedicineConsent    TelemedicineConsent?
+  recordings             ConsultationRecording[]
+  recordingWebhookEvents ConsultationRecordingWebhookEvent[]
 
   @@index([patientId])
   @@index([doctorId])
@@ -425,6 +433,59 @@ model Consultation {
   @@index([status])
   @@index([scheduledAt])
   @@index([prescriptionOutcomeStatus])
+}
+
+model TelemedicineConsent {
+  id             String   @id @default(cuid())
+  consultationId String   @unique
+  userId         String
+  version        String   @db.VarChar(80)
+  acceptedAt     DateTime @default(now())
+  ipAddress      String?  @db.VarChar(45)
+  userAgent      String?  @db.Text
+  metadataJson   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, acceptedAt], map: "TelemedConsent_user_accepted_idx")
+  @@index([version], map: "TelemedConsent_version_idx")
+}
+
+model ConsultationRecording {
+  id                  String            @id @default(cuid())
+  consultationId      String
+  provider            RecordingProvider @default(zoom)
+  providerRecordingId String            @db.VarChar(191)
+  recordingType       String            @db.VarChar(80)
+  fileType            String            @db.VarChar(40)
+  fileSizeBytes       BigInt?
+  startedAt           DateTime?
+  endedAt             DateTime?
+  retentionUntil      DateTime
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerRecordingId], map: "ConsultRecording_provider_file_key")
+  @@index([consultationId, createdAt], map: "ConsultRecording_consult_created_idx")
+  @@index([retentionUntil], map: "ConsultRecording_retention_idx")
+}
+
+model ConsultationRecordingWebhookEvent {
+  id               String            @id @default(cuid())
+  consultationId   String
+  provider         RecordingProvider @default(zoom)
+  providerEventKey String            @unique @db.VarChar(64)
+  occurredAt       DateTime
+  createdAt        DateTime          @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+
+  @@index([consultationId, occurredAt], map: "ConsultRecEvent_consult_time_idx")
 }
 
 model ConsultationAttendanceCredential {
@@ -484,6 +545,7 @@ model ConsultationMessage {
   senderId       String
   body           String                    @db.Text
   status         ConsultationMessageStatus @default(visible)
+  retentionUntil DateTime
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
 
@@ -493,6 +555,7 @@ model ConsultationMessage {
   @@index([consultationId, createdAt])
   @@index([senderId])
   @@index([status])
+  @@index([retentionUntil], map: "ConsultMessage_retention_idx")
 }
 
 model ConsultAssessment {

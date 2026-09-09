@@ -5,6 +5,7 @@ import {
 } from "@/features/consultations/booking/queries";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { getPatientVerificationStatus } from "@/features/identity-verification/service";
+import { isAtLeast18 } from "@/features/consultations/consent/policy";
 
 export default async function DoctorBookingPage({
   searchParams
@@ -30,6 +31,10 @@ export default async function DoctorBookingPage({
     <DoctorBooking
       data={data}
       verification={verification}
+      canSelfConsent={Boolean(
+        verification.dateOfBirth &&
+        isAtLeast18(new Date(`${verification.dateOfBirth}T00:00:00.000Z`), new Date())
+      )}
       bookingStatus={params.booking}
       rescheduleConsultationId={reschedule?.consultationId}
     />

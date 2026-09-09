@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
     ZOOM_ACCOUNT_ID: "account-id",
     ZOOM_CLIENT_ID: "client-id",
     ZOOM_CLIENT_SECRET: "client-secret",
-    ZOOM_HOST_USER_ID: "host@example.com"
+    ZOOM_HOST_USER_ID: "host@example.com",
+    ENABLE_ZOOM_CLOUD_RECORDING: false
   },
   fetch: vi.fn()
 }));
@@ -31,6 +32,7 @@ describe("Zoom Server-to-Server meeting integration", () => {
     mocks.env.ZOOM_CLIENT_ID = "client-id";
     mocks.env.ZOOM_CLIENT_SECRET = "client-secret";
     mocks.env.ZOOM_HOST_USER_ID = "host@example.com";
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = false;
     vi.stubGlobal("fetch", mocks.fetch);
   });
 
@@ -64,7 +66,19 @@ describe("Zoom Server-to-Server meeting integration", () => {
       type: 2,
       settings: { join_before_host: false, waiting_room: true, mute_upon_entry: true }
     });
+    expect(JSON.parse(mocks.fetch.mock.calls[1]?.[1].body).settings).not.toHaveProperty("auto_recording");
     expect(JSON.stringify(meeting)).not.toContain("transient-access-token");
+  });
+
+  it("adds automatic cloud recording intent only when the feature flag is on", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.fetch
+      .mockResolvedValueOnce(jsonResponse({ access_token: "transient-access-token" }))
+      .mockResolvedValueOnce(jsonResponse({ id: 12345678901, password: "pass", join_url: "https://zoom.us/j/123" }));
+
+    await createZoomMeetingIfConfigured({ consultationId: "consultation-1", scheduledAt: null });
+
+    expect(JSON.parse(mocks.fetch.mock.calls[1]?.[1].body).settings.auto_recording).toBe("cloud");
   });
 
   it("fails without logging or returning OAuth secrets when OAuth fails", async () => {

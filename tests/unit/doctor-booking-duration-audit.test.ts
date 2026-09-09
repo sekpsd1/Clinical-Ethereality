@@ -28,6 +28,9 @@ vi.mock("@/features/identity-verification/service", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ "user-agent": "unit-test" })
+}));
 
 const { createConsultationBookingAction } = await import(
   "@/features/consultations/booking/actions"
@@ -71,6 +74,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       },
       doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
       notification: { create: vi.fn().mockResolvedValue({}) },
+      telemedicineConsent: { create: vi.fn().mockResolvedValue({ id: "consent-1" }) },
       user: {
         findUnique: vi.fn().mockResolvedValue({
           fullName: "Patient Example",
@@ -95,6 +99,8 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     const formData = new FormData();
     formData.set("availabilityId", "availability-1");
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
+    formData.set("telemedicineConsentAccepted", "on");
+    formData.set("telemedicineConsentVersion", "2026-09-09");
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow(
       "redirected",
@@ -139,6 +145,8 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     const formData = new FormData();
     formData.set("availabilityId", "availability-1");
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
+    formData.set("telemedicineConsentAccepted", "on");
+    formData.set("telemedicineConsentVersion", "2026-09-09");
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
 
@@ -181,6 +189,8 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     formData.set("availabilityId", "availability-1");
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
     formData.set("doctorId", selectedDoctorId);
+    formData.set("telemedicineConsentAccepted", "on");
+    formData.set("telemedicineConsentVersion", "2026-09-09");
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
 

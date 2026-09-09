@@ -39,6 +39,12 @@ export async function acceptCustomerConsentAction(formData: FormData): Promise<v
     return;
   }
 
+  // Telemedicine consent is accepted only inside a specific booking
+  // transaction; an account-level record must never satisfy that gate.
+  if (document.type === "teleconsultation") {
+    return;
+  }
+
   const headerStore = await headers();
   const ipAddress = getClientIp(headerStore);
   const userAgent = headerStore.get("user-agent");

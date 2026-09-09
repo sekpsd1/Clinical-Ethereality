@@ -384,19 +384,22 @@ async function upsertConsultationMessages({ consultationId, customerId, doctorUs
       consultationId,
       senderId: doctorUserId,
       body: "สวัสดีค่ะ วันนี้มีอาการหรือคำถามอะไรที่อยากให้หมอช่วยดูเป็นพิเศษไหมคะ",
-      createdAt: new Date("2026-05-20T03:31:00.000Z")
+      createdAt: new Date("2026-05-20T03:31:00.000Z"),
+      retentionUntil: new Date("2031-05-20T03:31:00.000Z")
     },
     {
       consultationId,
       senderId: customerId,
       body: "อยากปรึกษาเรื่องผลตรวจและขั้นตอนดูแลต่อหลังซื้อชุดตรวจค่ะ",
-      createdAt: new Date("2026-05-20T03:32:00.000Z")
+      createdAt: new Date("2026-05-20T03:32:00.000Z"),
+      retentionUntil: new Date("2031-05-20T03:32:00.000Z")
     },
     {
       consultationId,
       senderId: doctorUserId,
       body: "ได้ค่ะ หมอจะดูประวัติและแบบประเมินก่อน แล้วสรุปแนวทางให้ในห้องปรึกษานี้",
-      createdAt: new Date("2026-05-20T03:33:00.000Z")
+      createdAt: new Date("2026-05-20T03:33:00.000Z"),
+      retentionUntil: new Date("2031-05-20T03:33:00.000Z")
     }
   ];
 

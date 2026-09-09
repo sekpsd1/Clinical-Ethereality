@@ -5,9 +5,11 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   applyAttendance: vi.fn(),
+  applyRecording: vi.fn(),
   writeAuditLog: vi.fn(),
   env: {
-    ZOOM_WEBHOOK_SECRET: "webhook-secret" as string | undefined
+    ZOOM_WEBHOOK_SECRET: "webhook-secret" as string | undefined,
+    ENABLE_ZOOM_CLOUD_RECORDING: false
   }
 }));
 
@@ -36,6 +38,17 @@ vi.mock("@/features/consultations/attendance/webhook-service", async (importOrig
   };
 });
 
+vi.mock("@/features/consultations/recordings/webhook-service", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/features/consultations/recordings/webhook-service")
+  >();
+
+  return {
+    ...actual,
+    applyZoomRecordingCompletedEvent: mocks.applyRecording
+  };
+});
+
 import { POST } from "@/app/api/webhooks/zoom/route";
 
 function signedRequest(body: string, timestamp = String(Math.floor(Date.now() / 1000))) {
@@ -58,7 +71,9 @@ describe("Zoom webhook route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.env.ZOOM_WEBHOOK_SECRET = "webhook-secret";
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = false;
     mocks.applyAttendance.mockResolvedValue({ duplicate: false, consultationId: "consultation-1" });
+    mocks.applyRecording.mockResolvedValue({ duplicate: false, consultationId: "consultation-1", recordingCount: 1 });
   });
 
   it("rejects a request with an invalid signature before accessing the database", async () => {
@@ -296,5 +311,44 @@ describe("Zoom webhook route", () => {
         }
       })
     });
+  });
+
+  it("ignores recording events without database access while the feature flag is off", async () => {
+    const body = JSON.stringify({ event: "recording.completed", event_ts: Date.now(), payload: {} });
+    const response = await POST(signedRequest(body));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, ignored: true });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid recording payload when recording is enabled", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    const body = JSON.stringify({ event: "recording.completed", event_ts: Date.now(), payload: {} });
+    const response = await POST(signedRequest(body));
+
+    expect(response.status).toBe(400);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("applies a valid recording event in a serializable transaction", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.transaction.mockImplementation(async (callback: (client: object) => unknown) => callback({}));
+    const body = JSON.stringify({
+      event: "recording.completed",
+      event_ts: Date.now(),
+      payload: {
+        object: {
+          id: "12345678901",
+          uuid: "meeting-uuid",
+          recording_files: [{ id: "file-1", file_type: "MP4", recording_type: "speaker_view", status: "completed" }]
+        }
+      }
+    });
+    const response = await POST(signedRequest(body));
+
+    expect(response.status).toBe(200);
+    expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
+    expect(mocks.applyRecording).toHaveBeenCalledWith({}, expect.objectContaining({ meetingId: "12345678901" }));
   });
 });

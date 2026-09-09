@@ -46,6 +46,8 @@ describe("role permissions", () => {
     ["customer", "community:create:self"],
     ["doctor", "consultation:read:assigned"],
     ["doctor", "prescription:create:assigned"],
+    ["doctor", "consultation-recording:read:assigned"],
+    ["doctor", "consultation-recording:download:assigned"],
     ["pharmacist", "profile:read:self"],
     ["pharmacist", "profile:update:self"],
     ["admin", "admin:access"],
@@ -65,6 +67,8 @@ describe("role permissions", () => {
     ["pharmacist", "consultation:update:assigned"],
     ["pharmacist", "community:moderate"],
     ["customer", "consultation:manual-create"],
+    ["customer", "consultation-recording:read:assigned"],
+    ["customer", "consultation-recording:download:assigned"],
     ["doctor", "consultation:manual-create"],
     ["pharmacist", "consultation:manual-create"]
   ] satisfies Array<[Role, Permission]>)("denies %s from using %s", (role, permission) => {

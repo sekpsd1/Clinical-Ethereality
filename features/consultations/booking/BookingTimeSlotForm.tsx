@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { CalendarCheck } from "lucide-react";
 import {
   createConsultationBookingAction,
@@ -9,6 +10,7 @@ import {
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 import { BookingIdentityVerification } from "@/features/identity-verification/BookingIdentityVerification";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
+import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 
 const staticTimeSlots = ["09:00", "09:15", "09:30", "09:45", "10:00", "10:15"];
 
@@ -31,17 +33,20 @@ function getStaticSlot(slot: string): BookingSlot {
   };
 }
 
-export function BookingTimeSlotForm({ data, verification, bookingError, rescheduleConsultationId }: { data: DoctorBookingData; verification: PatientVerificationStatus; bookingError: string | null; rescheduleConsultationId?: string }) {
+export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookingError, rescheduleConsultationId }: { data: DoctorBookingData; verification: PatientVerificationStatus; canSelfConsent: boolean; bookingError: string | null; rescheduleConsultationId?: string }) {
   const slots = useMemo(() => (data.slots.length > 0 ? data.slots : staticTimeSlots.map(getStaticSlot)), [data.slots]);
   const hasRealSlots = data.slots.length > 0 && !data.unavailable;
   const firstAvailableSlot = slots.find((slot) => slot.status === "available");
   const hasBookableSlots = hasRealSlots && Boolean(firstAvailableSlot);
   const [selectedDate, setSelectedDate] = useState(firstAvailableSlot?.dateLabel ?? slots[0]?.dateLabel ?? "");
   const [selectedSlotKey, setSelectedSlotKey] = useState(firstAvailableSlot?.slotKey ?? "");
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const selectedSlot = slots.find((slot) => slot.slotKey === selectedSlotKey);
 
   const availableDates = useMemo(() => Array.from(new Set(slots.map((slot) => slot.dateLabel))), [slots]);
   const filteredSlots = slots.filter((slot) => slot.dateLabel === selectedDate);
+  const isAdult = canSelfConsent;
+  const requiresNewConsent = !rescheduleConsultationId;
 
   function selectDate(dateLabel: string) {
     const firstSlot = slots.find((slot) => slot.dateLabel === dateLabel && slot.status === "available");
@@ -90,9 +95,36 @@ export function BookingTimeSlotForm({ data, verification, bookingError, reschedu
 
         {!verification.isVerified ? <BookingIdentityVerification status={verification} /> : null}
 
+        {requiresNewConsent && verification.isVerified ? (
+          isAdult ? (
+            <label className="flex gap-3 rounded-[20px] border border-primary/20 bg-white/75 p-4 text-sm leading-6 text-[#3e494a] shadow-sm">
+              <input
+                type="checkbox"
+                name="telemedicineConsentAccepted"
+                required
+                checked={consentAccepted}
+                onChange={(event) => setConsentAccepted(event.target.checked)}
+                className="mt-1 size-5 shrink-0 accent-primary"
+              />
+              <span>
+                ข้าพเจ้าอ่านและยอมรับ{" "}
+                <Link href="/telemedicine-consent" target="_blank" className="font-bold text-primary underline underline-offset-4">
+                  ความยินยอม Telemedicine
+                </Link>{" "}
+                ฉบับ {TELEMEDICINE_CONSENT_VERSION} ซึ่งครอบคลุมการบันทึกเสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส และเก็บรักษา 5 ปี
+              </span>
+            </label>
+          ) : (
+            <p className="rounded-[20px] border border-danger/20 bg-danger/5 p-4 text-sm font-semibold leading-6 text-danger">
+              ผู้มีอายุต่ำกว่า 18 ปีไม่สามารถให้ความยินยอมเองได้ การจองต้องได้รับความยินยอมจากผู้ปกครองตามกฎหมาย กรุณาติดต่อแอดมินก่อนดำเนินการ
+            </p>
+          )
+        ) : null}
+
         <input type="hidden" name="availabilityId" value={hasRealSlots ? selectedSlot?.id ?? "" : ""} />
         <input type="hidden" name="scheduledAt" value={hasRealSlots ? selectedSlot?.scheduledAt ?? "" : ""} />
         <input type="hidden" name="doctorId" value={data.doctor?.id ?? ""} />
+        {requiresNewConsent ? <input type="hidden" name="telemedicineConsentVersion" value={TELEMEDICINE_CONSENT_VERSION} /> : null}
 
         <div className="grid grid-cols-2 gap-3">
           {filteredSlots.map((slot) => {
@@ -129,7 +161,7 @@ export function BookingTimeSlotForm({ data, verification, bookingError, reschedu
         <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-4">
           <button
             type="submit"
-            disabled={!hasBookableSlots || !selectedSlot || !verification.isVerified}
+            disabled={!hasBookableSlots || !selectedSlot || !verification.isVerified || (requiresNewConsent && (!isAdult || !consentAccepted))}
             className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient text-base font-bold leading-6 text-white shadow-booking disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck aria-hidden="true" className="size-5" strokeWidth={2.2} />
