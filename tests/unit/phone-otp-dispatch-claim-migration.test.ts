@@ -20,7 +20,7 @@ describe("phone OTP dispatch claim migration", () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { SMS_OTP_MIGRATION_TARGET } = require("../../scripts/plesk-runtime-migration-runner.cjs");
 
-    expect(schema).toContain("phoneOtpDispatchClaimedUntil DateTime? @db.DateTime(3)");
+    expect(schema).toMatch(/phoneOtpDispatchClaimedUntil\s+DateTime\?\s+@db\.DateTime\(3\)/);
     expect(SMS_OTP_SCHEMA_MIGRATIONS).toContain(migrationName);
     expect(SMS_OTP_MIGRATION_TARGET).toBe(migrationName);
   });

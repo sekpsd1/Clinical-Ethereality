@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { ArrowLeft, Mail, Phone, ShieldCheck } from "lucide-react";
 import { CANONICAL_APP_URL, clinicController } from "@/features/legal/public-documents";
 
@@ -44,9 +45,9 @@ export function PublicLegalPage({
             ))}
           </div>
           <nav className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#bdc9ca]/30 pt-4">
-            <Link href="/privacy-policy" className="font-bold text-primary">นโยบายความเป็นส่วนตัว</Link>
-            <Link href="/telemedicine-consent" className="font-bold text-primary">ความยินยอม Telemedicine</Link>
-            <Link href="/contact" className="font-bold text-primary">ติดต่อเรา</Link>
+            <Link href={"/privacy-policy" as Route} className="font-bold text-primary">นโยบายความเป็นส่วนตัว</Link>
+            <Link href={"/telemedicine-consent" as Route} className="font-bold text-primary">ความยินยอม Telemedicine</Link>
+            <Link href={"/contact" as Route} className="font-bold text-primary">ติดต่อเรา</Link>
           </nav>
         </footer>
       </div>

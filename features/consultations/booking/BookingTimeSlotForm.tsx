@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { CalendarCheck } from "lucide-react";
 import {
   createConsultationBookingAction,
@@ -108,7 +109,7 @@ export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookin
               />
               <span>
                 ข้าพเจ้าอ่านและยอมรับ{" "}
-                <Link href="/telemedicine-consent" target="_blank" className="font-bold text-primary underline underline-offset-4">
+                <Link href={"/telemedicine-consent" as Route} target="_blank" className="font-bold text-primary underline underline-offset-4">
                   ความยินยอม Telemedicine
                 </Link>{" "}
                 ฉบับ {TELEMEDICINE_CONSENT_VERSION} ซึ่งครอบคลุมการบันทึกเสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส และเก็บรักษา 5 ปี

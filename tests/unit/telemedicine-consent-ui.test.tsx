@@ -22,6 +22,7 @@ const data: DoctorBookingData = {
 const verification = {
   fullName: "Customer Test",
   dateOfBirth: "2000-01-01",
+  nationalId: "1101700207030",
   phone: "0812345678",
   phoneVerifiedAt: "2030-01-01T00:00:00.000Z",
   isVerified: true

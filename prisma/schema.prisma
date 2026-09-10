@@ -205,50 +205,50 @@ enum ConsultationMessageStatus {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  lineUserId    String        @unique
-  displayName   String?
-  fullName      String?       @db.VarChar(191)
-  dateOfBirth   DateTime?     @db.Date
-  nationalId    String?       @unique @db.VarChar(13)
-  email         String?
-  phone         String?
-  normalizedPhone String?     @unique @db.VarChar(20)
-  phoneVerifiedAt DateTime?
-  phoneOtpDispatchClaimedUntil DateTime? @db.DateTime(3)
-  avatarUrl     String?
-  role          UserRole      @default(customer)
-  status        AccountStatus @default(active)
-  rewardBalance Int           @default(0)
-  lastLoginAt   DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                           String        @id @default(cuid())
+  lineUserId                   String        @unique
+  displayName                  String?
+  fullName                     String?       @db.VarChar(191)
+  dateOfBirth                  DateTime?     @db.Date
+  nationalId                   String?       @unique @db.VarChar(13)
+  email                        String?
+  phone                        String?
+  normalizedPhone              String?       @unique @db.VarChar(20)
+  phoneVerifiedAt              DateTime?
+  phoneOtpDispatchClaimedUntil DateTime?     @db.DateTime(3)
+  avatarUrl                    String?
+  role                         UserRole      @default(customer)
+  status                       AccountStatus @default(active)
+  rewardBalance                Int           @default(0)
+  lastLoginAt                  DateTime?
+  createdAt                    DateTime      @default(now())
+  updatedAt                    DateTime      @updatedAt
 
-  authSessions        AuthSession[]
-  doctorProfile       Doctor?
-  pharmacistProfile   Pharmacist?
-  consultations       Consultation[]        @relation("PatientConsultations")
-  consultAssessments  ConsultAssessment[]
-  prescriptions       Prescription[]        @relation("PatientPrescriptions")
-  orders              Order[]
-  shippingAddresses   ShippingAddress[]
-  articles            Article[]             @relation("ArticleAuthor")
-  comments            Comment[]
-  likes               Like[]
-  savedArticles       SavedArticle[]
-  communityReports    CommunityReport[]     @relation("CommunityReportReporter")
-  reviewedReports     CommunityReport[]     @relation("CommunityReportReviewer")
-  notifications       Notification[]
-  rewardPoints        RewardPoint[]
-  consentRecords      ConsentRecord[]
-  telemedicineConsents TelemedicineConsent[]
-  auditLogs           AuditLog[]            @relation("ActorAuditLogs")
-  reviewedPayments    Payment[]             @relation("PaymentReviewer")
-  refundedPayments    Payment[]             @relation("PaymentRefunder")
-  updatedInventory    Inventory[]           @relation("InventoryUpdater")
-  updatedShipments    ShipmentTracking[]    @relation("ShipmentUpdater")
-  fileAttachments     FileAttachment[]
-  sentConsultMessages ConsultationMessage[] @relation("ConsultationMessageSender")
+  authSessions                AuthSession[]
+  doctorProfile               Doctor?
+  pharmacistProfile           Pharmacist?
+  consultations               Consultation[]               @relation("PatientConsultations")
+  consultAssessments          ConsultAssessment[]
+  prescriptions               Prescription[]               @relation("PatientPrescriptions")
+  orders                      Order[]
+  shippingAddresses           ShippingAddress[]
+  articles                    Article[]                    @relation("ArticleAuthor")
+  comments                    Comment[]
+  likes                       Like[]
+  savedArticles               SavedArticle[]
+  communityReports            CommunityReport[]            @relation("CommunityReportReporter")
+  reviewedReports             CommunityReport[]            @relation("CommunityReportReviewer")
+  notifications               Notification[]
+  rewardPoints                RewardPoint[]
+  consentRecords              ConsentRecord[]
+  telemedicineConsents        TelemedicineConsent[]
+  auditLogs                   AuditLog[]                   @relation("ActorAuditLogs")
+  reviewedPayments            Payment[]                    @relation("PaymentReviewer")
+  refundedPayments            Payment[]                    @relation("PaymentRefunder")
+  updatedInventory            Inventory[]                  @relation("InventoryUpdater")
+  updatedShipments            ShipmentTracking[]           @relation("ShipmentUpdater")
+  fileAttachments             FileAttachment[]
+  sentConsultMessages         ConsultationMessage[]        @relation("ConsultationMessageSender")
   phoneVerificationChallenges PhoneVerificationChallenge[]
 
   @@index([role])
@@ -257,16 +257,16 @@ model User {
 }
 
 model PhoneVerificationChallenge {
-  id                         String   @id @default(cuid())
-  userId                     String
-  normalizedPhone            String   @db.VarChar(20)
-  providerChallengeCiphertext String  @db.Text
-  expiresAt                  DateTime
-  attemptCount               Int      @default(0)
-  requestedAt                DateTime @default(now())
-  verifiedAt                 DateTime?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  id                          String    @id @default(cuid())
+  userId                      String
+  normalizedPhone             String    @db.VarChar(20)
+  providerChallengeCiphertext String    @db.Text
+  expiresAt                   DateTime
+  attemptCount                Int       @default(0)
+  requestedAt                 DateTime  @default(now())
+  verifiedAt                  DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -338,18 +338,18 @@ model Doctor {
 }
 
 model DoctorAvailability {
-  id          String   @id @default(cuid())
-  doctorId    String
-  weekday     Int
-  startTime   String   @db.VarChar(5)
-  endTime     String   @db.VarChar(5)
-  slotMinutes Int      @default(30)
+  id            String    @id @default(cuid())
+  doctorId      String
+  weekday       Int
+  startTime     String    @db.VarChar(5)
+  endTime       String    @db.VarChar(5)
+  slotMinutes   Int       @default(30)
   effectiveFrom DateTime? @db.Date
   effectiveTo   DateTime? @db.Date
-  isActive    Boolean  @default(true)
-  notes       String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive      Boolean   @default(true)
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
@@ -395,32 +395,32 @@ model Pharmacist {
 }
 
 model Consultation {
-  id                    String             @id @default(cuid())
-  patientId             String
-  doctorId              String
-  assessmentId          String?
-  slotLockId            String?            @unique
-  bookedDurationMinutes Int?
-  status                ConsultationStatus @default(requested)
-  scheduledAt           DateTime?
-  zoomMeetingId         String?
-  zoomPassword          String?            @db.VarChar(120)
-  zoomJoinUrl           String?            @db.Text
-  summary               String?            @db.Text
-  completionOutcome     ConsultationCompletionOutcome?
-  noShowReason          ConsultationNoShowReason?
+  id                           String                                @id @default(cuid())
+  patientId                    String
+  doctorId                     String
+  assessmentId                 String?
+  slotLockId                   String?                               @unique
+  bookedDurationMinutes        Int?
+  status                       ConsultationStatus                    @default(requested)
+  scheduledAt                  DateTime?
+  zoomMeetingId                String?
+  zoomPassword                 String?                               @db.VarChar(120)
+  zoomJoinUrl                  String?                               @db.Text
+  summary                      String?                               @db.Text
+  completionOutcome            ConsultationCompletionOutcome?
+  noShowReason                 ConsultationNoShowReason?
   prescriptionOutcomeStatus    ConsultationPrescriptionOutcomeStatus @default(pending_doctor_summary)
   prescriptionOutcomeUpdatedAt DateTime?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  createdAt                    DateTime                              @default(now())
+  updatedAt                    DateTime                              @updatedAt
 
-  patient       User                  @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
-  doctor        Doctor                @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  assessment    ConsultAssessment?    @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  slotLock      ConsultationSlotLock? @relation(fields: [slotLockId], references: [id], onDelete: SetNull)
-  prescriptions Prescription[]
-  messages      ConsultationMessage[]
-  payment       Payment?
+  patient                User                                @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor                 Doctor                              @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  assessment             ConsultAssessment?                  @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  slotLock               ConsultationSlotLock?               @relation(fields: [slotLockId], references: [id], onDelete: SetNull)
+  prescriptions          Prescription[]
+  messages               ConsultationMessage[]
+  payment                Payment?
   attendanceCredentials  ConsultationAttendanceCredential[]
   attendanceEvents       ConsultationAttendanceEvent[]
   telemedicineConsent    TelemedicineConsent?
