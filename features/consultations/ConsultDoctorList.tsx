@@ -3,7 +3,7 @@ import { Search, Star } from "lucide-react";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/consultations/doctor-list/types";
 
-const filterChips = ["ตรวจ HPV", "สูตินรีเวช", "Telemedicine", "ปรึกษาทั่วไป"];
+const filterChips = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"];
 
 export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
   return (
@@ -28,20 +28,24 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
         </div>
       ) : null}
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filterChips.map((chip, index) => (
-          <button
-            key={chip}
-            type="button"
-            className={
-              index === 0
-                ? "min-h-8 shrink-0 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
-                : "min-h-8 shrink-0 rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
-            }
-          >
-            {chip}
-          </button>
-        ))}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-center text-lg font-bold text-primary">Telemedicine</h1>
+
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {filterChips.map((chip, index) => (
+            <button
+              key={chip}
+              type="button"
+              className={
+                index === 0
+                  ? "min-h-8 shrink-0 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
+                  : "min-h-8 shrink-0 rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
+              }
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 pt-2">

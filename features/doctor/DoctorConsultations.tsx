@@ -10,6 +10,8 @@ import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
 
+const telemedicineServices = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"] as const;
+
 const consultationStatusLabels: Record<string, string> = {
   cancelled: "ยกเลิกแล้ว",
   completed: "เสร็จสิ้น",
@@ -110,6 +112,26 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
             </div>
           </div>
         ))}
+      </section>
+
+      <section aria-labelledby="doctor-telemedicine-title" className="flex flex-col gap-3">
+        <h2 id="doctor-telemedicine-title" className="font-headline text-lg font-bold text-text">
+          Telemedicine
+        </h2>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {telemedicineServices.map((service, index) => (
+            <span
+              key={service}
+              className={
+                index === 0
+                  ? "inline-flex min-h-8 shrink-0 items-center rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
+                  : "inline-flex min-h-8 shrink-0 items-center rounded-full border border-border bg-white px-4 text-xs font-bold text-primary"
+              }
+            >
+              {service}
+            </span>
+          ))}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">
