@@ -168,4 +168,12 @@ When coding starts:
 - Run build and lint before completion when scripts are available
 - If build or lint cannot be run, explain why in the final response
 
+## Agent Coordination
+
+- For work that can be split into independent tasks and completed in parallel, use sub-agents proactively.
+- The main agent must coordinate task boundaries, prevent overlapping edits, and remain responsible for integrating all results.
+- The main agent must review and verify sub-agent work before considering the task complete.
+- The main agent alone is responsible for the final pre-deployment checks and deployment unless the user explicitly assigns deployment differently.
+- Keep small, tightly coupled, sequential, or single-surface browser tasks with the main agent when delegation would add coordination overhead or risk conflicting changes.
+
 Do not introduce full application scaffolding until the user asks for implementation.
