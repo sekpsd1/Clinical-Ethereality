@@ -74,6 +74,7 @@ function createRequest(
 const validBody = {
   fullName: "Test Customer",
   dateOfBirth: "2000-01-01",
+  nationalId: "1101700203450",
   phone: "0812345678"
 };
 
@@ -122,6 +123,7 @@ describe("phone OTP request route", () => {
       createRequest({
         fullName: "",
         dateOfBirth: "not-a-date",
+        nationalId: "secret-national-id-value",
         phone: "secret-phone-value"
       })
     );
@@ -131,6 +133,7 @@ describe("phone OTP request route", () => {
     expectRouteFailure("request_schema", 400);
     const serializedDiagnostics = JSON.stringify(mocks.writeSmsOtpRouteStatus.mock.calls);
     expect(serializedDiagnostics).not.toContain("secret-phone-value");
+    expect(serializedDiagnostics).not.toContain("secret-national-id-value");
     expect(serializedDiagnostics).not.toContain("not-a-date");
   });
 

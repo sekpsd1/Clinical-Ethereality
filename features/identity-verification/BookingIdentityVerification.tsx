@@ -26,6 +26,7 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
   const router = useRouter();
   const [fullName, setFullName] = useState(status.fullName ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(status.dateOfBirth ?? "");
+  const [nationalId, setNationalId] = useState(status.nationalId ?? "");
   const [phone, setPhone] = useState(status.phone ?? "");
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [phoneLabel, setPhoneLabel] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
       setPending(true);
       setMessage(null);
       try {
-        const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, phone });
+        const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, nationalId, phone });
         if (!result.ok) {
           setMessage(result.message ?? "ยังไม่สามารถส่งรหัสได้");
           return result;
@@ -112,13 +113,16 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         </span>
         <div>
           <h2 id="booking-identity-title" className="text-base font-extrabold text-text">ยืนยันข้อมูลก่อนจองแพทย์</h2>
-          <p className="mt-1 text-xs leading-5 text-muted">กรอกชื่อ-นามสกุล วันเกิด และยืนยันเบอร์มือถือด้วย SMS OTP เพื่อจองครั้งแรก</p>
+          <p className="mt-1 text-xs leading-5 text-muted">กรอกชื่อ-นามสกุล เลขบัตรประชาชน วันเกิด และยืนยันเบอร์มือถือด้วย SMS OTP เพื่อจองครั้งแรก</p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3">
         <label className="text-xs font-bold text-text">ชื่อ-นามสกุล
           <input value={fullName} onChange={(event) => updateIdentityInput(setFullName, event.target.value)} autoComplete="name" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
+        </label>
+        <label className="text-xs font-bold text-text">เลขบัตรประชาชน
+          <input value={nationalId} onChange={(event) => updateIdentityInput(setNationalId, event.target.value.replace(/\D/g, "").slice(0, 13))} inputMode="numeric" autoComplete="off" placeholder="1234567890123" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />
         </label>
         <label className="text-xs font-bold text-text">วันเดือนปีเกิด
           <input value={dateOfBirth} onChange={(event) => updateIdentityInput(setDateOfBirth, event.target.value)} type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-medium outline-none focus:border-primary" />

@@ -273,7 +273,7 @@ function ProductHero({ product }: { product: StoreProductDetailItem }) {
           </div>
           <div className="absolute left-1/2 top-[39%] w-[90%] -translate-x-1/2 text-center">
             <p className="line-clamp-2 text-[10px] font-extrabold leading-tight text-white">{product.name}</p>
-            <p className="mt-1 text-[6px] font-bold uppercase tracking-wide text-[#d7faff]">Clinical Ethereality</p>
+            <p className="mt-1 text-[6px] font-bold uppercase tracking-wide text-[#d7faff]">Clinical lab service</p>
           </div>
           <div className="absolute left-[16%] top-[12%] h-[70%] w-[13%] rounded-full bg-white/20 blur-sm" />
         </div>

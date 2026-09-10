@@ -3,7 +3,7 @@ import { z } from "zod";
 const optionalUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
 
 export const envSchema = z.object({
-  NEXT_PUBLIC_APP_NAME: z.string().default("Clinical Ethereality"),
+  NEXT_PUBLIC_APP_NAME: z.string().default("Clinical lab service"),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1).optional(),
   JWT_SECRET: z.string().min(32).optional(),

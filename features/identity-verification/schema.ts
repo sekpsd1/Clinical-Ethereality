@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeThaiNationalId } from "@/lib/identity/thai-national-id";
 import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -9,6 +10,14 @@ export const requestPhoneVerificationSchema = z.object({
     const date = new Date(`${value}T00:00:00.000Z`);
     return !Number.isNaN(date.getTime()) && date <= new Date();
   }, "วันเกิดไม่ถูกต้อง"),
+  nationalId: z.string().trim().min(1, "กรุณาระบุเลขบัตรประชาชน").refine((value) => {
+    try {
+      normalizeThaiNationalId(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, "กรุณาระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง"),
   phone: z.string().trim().min(1, "กรุณาระบุเบอร์โทรศัพท์").refine((value) => {
     try {
       normalizeThaiMobileNumber(value);

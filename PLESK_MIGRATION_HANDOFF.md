@@ -62,7 +62,7 @@ Required for hosted testing:
 
 ```text
 NODE_ENV=production
-NEXT_PUBLIC_APP_NAME=Clinical Ethereality
+NEXT_PUBLIC_APP_NAME=Clinical lab service
 NEXT_PUBLIC_APP_URL=https://app.bccgroup-thailand.com
 DATABASE_URL=mysql://USER:PASSWORD@HOST:PORT/DATABASE
 JWT_SECRET=<secure random secret>

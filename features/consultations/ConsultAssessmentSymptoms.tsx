@@ -2,32 +2,32 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Brain, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Thermometer, Waves } from "lucide-react";
+import { ArrowLeft, CircleAlert, ChevronLeft, ChevronRight, Droplets, MoreHorizontal, MoreVertical, Hand } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
 const symptomOptions = [
   {
-    id: "headache",
-    title: "ปวดหัว",
-    description: "รู้สึกหนักหัว หรือปวดตุบๆ",
-    icon: Brain
+    id: "rash_or_sore",
+    title: "มีตุ่ม ผื่น หรือแผล",
+    description: "พบตุ่ม ผื่น หรือแผลบนผิวหนัง",
+    icon: CircleAlert
   },
   {
-    id: "fever",
-    title: "ไข้/หนาวสั่น",
-    description: "ตัวร้อน ครั่นเนื้อครั่นตัว",
-    icon: Thermometer
+    id: "itching_or_redness",
+    title: "คันหรือบวมแดง",
+    description: "รู้สึกคัน บวม หรือมีรอยแดง",
+    icon: Hand
   },
   {
-    id: "cough",
-    title: "ไอ/เจ็บคอ",
-    description: "ระคายเคืองคอ มีเสมหะ",
-    icon: Waves
+    id: "urinary_symptoms",
+    title: "ปัสสาวะผิดปกติ",
+    description: "มีอาการแสบขัด ปวด หรือปัสสาวะเปลี่ยนไป",
+    icon: Droplets
   },
   {
     id: "other",
-    title: "อื่นๆ",
-    description: "ระบุอาการเพิ่มเติมภายหลัง",
+    title: "อื่นๆ โปรดระบุ",
+    description: "อาการอื่นนอกเหนือจากตัวเลือกข้างต้น",
     icon: MoreHorizontal
   }
 ] as const;

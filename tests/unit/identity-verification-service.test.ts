@@ -155,7 +155,7 @@ describe("patient phone verification diagnostics", () => {
         })
     );
 
-    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
     const first = requestPatientPhoneVerification("customer-1", input);
     const second = requestPatientPhoneVerification("customer-1", input);
 
@@ -180,6 +180,7 @@ describe("patient phone verification diagnostics", () => {
       requestPatientPhoneVerification("customer-1", {
         fullName: "Test Patient",
         dateOfBirth: "1990-01-02",
+        nationalId: "1101700203450",
         phone: "0812345678"
       })
     ).resolves.toMatchObject({ challengeId: "challenge-1" });
@@ -202,7 +203,7 @@ describe("patient phone verification diagnostics", () => {
     mocks.requestSmsOtp.mockRejectedValueOnce(
       new SmsOtpError("PROVIDER_REJECTED", providerDiagnostic(400, "provider_rejected"))
     );
-    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
 
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
       code: "OTP_REJECTED"
@@ -221,7 +222,7 @@ describe("patient phone verification diagnostics", () => {
     mocks.requestSmsOtp.mockRejectedValueOnce(
       new SmsOtpError("PROVIDER_UNAVAILABLE", providerDiagnostic(null, category))
     );
-    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
 
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
       code: "OTP_UNAVAILABLE"
@@ -241,7 +242,7 @@ describe("patient phone verification diagnostics", () => {
 
   it("retains the claim after post-provider persistence failure", async () => {
     mocks.transaction.mockRejectedValueOnce(new Error("private persistence failure"));
-    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" };
+    const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
 
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toThrow(
       "private persistence failure"
@@ -266,7 +267,7 @@ describe("patient phone verification diagnostics", () => {
     await expect(
       requestPatientPhoneVerification(
         "customer-secret-id",
-        { fullName: "patient-name-must-not-log", dateOfBirth: "1990-01-02", phone: "0812345678" },
+        { fullName: "patient-name-must-not-log", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" },
         { diagnosticLogger }
       )
     ).rejects.toBe(rawError);
@@ -296,6 +297,7 @@ describe("patient phone verification diagnostics", () => {
         {
           fullName: "patient-name-must-not-log",
           dateOfBirth: "1990-01-02",
+          nationalId: "1101700203450",
           phone: "0812345678"
         },
         { diagnosticLogger }
@@ -315,6 +317,7 @@ describe("patient phone verification diagnostics", () => {
     for (const forbidden of [
       "must-not-log",
       "patient-name",
+      "1101700203450",
       "0812345678",
       "1990-01-02",
       "provider-token",
@@ -341,9 +344,10 @@ describe("patient phone verification diagnostics", () => {
         requestPatientPhoneVerification(
           "customer-secret-id",
           {
-            fullName: "patient-name-must-not-log",
-            dateOfBirth: "1990-01-02",
-            phone: "0812345678"
+          fullName: "patient-name-must-not-log",
+          dateOfBirth: "1990-01-02",
+          nationalId: "1101700203450",
+          phone: "0812345678"
           },
           { diagnosticLogger }
         )
@@ -365,6 +369,7 @@ describe("patient phone verification diagnostics", () => {
         "customer-secret-id",
         "must-not-log",
         "patient-name",
+        "1101700203450",
         "0812345678",
         "1990-01-02"
       ]) {
@@ -381,7 +386,7 @@ describe("patient phone verification diagnostics", () => {
     await expect(
       requestPatientPhoneVerification(
         "customer-1",
-        { fullName: "Test Patient", dateOfBirth: "1990-01-02", phone: "0812345678" },
+        { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" },
         { diagnosticLogger }
       )
     ).rejects.toThrow("first raw error");

@@ -2,7 +2,7 @@
 
 ## Project
 
-Clinical Ethereality
+Clinical lab service
 
 ## Phase
 
@@ -11,6 +11,10 @@ Production Doctor smoke UAT, the non-recording Zoom Basic Controlled Production 
 The project now contains a Next.js 15, React 19, TypeScript, and Tailwind CSS modular monolith with the reviewed Stitch screens, LINE LIFF/JWT authentication, Prisma/MySQL persistence, and role-protected customer, doctor, pharmacist, and admin workflows. The Doctor flow now includes assigned-patient detail access, full linked pre-consult assessments, persisted consultation payments, guarded appointment lifecycle transitions, audited structured prescriptions, in-app messages and notifications, and a Production-validated Zoom Meeting SDK room.
 
 ## Current Decisions
+
+- Clinical lab service naming and intake updates (code complete, release pending, 2026-09-10): human-visible application branding now uses `Clinical lab service`; repository, package, URL, LINE, Zoom, email sender, legal, and deployment identifiers remain unchanged. The customer assessment now offers only `มีตุ่ม ผื่น หรือแผล`, `คันหรือบวมแดง`, `ปัสสาวะผิดปกติ`, and `อื่นๆ โปรดระบุ`; the last item remains a selectable option without a free-text field. Customer booking identity intake now requires name, Thai national ID, date of birth, and SMS-verified mobile number. The additive migration `20260910160000_add_patient_national_id` leaves existing IDs null so existing users can add one on their next booking identity check; it has not been applied to Production, and no application deployment occurred in this code task.
+
+- UAT/test-data deletion authority (2026-09-10): all currently visible application records—including customer, doctor, pharmacist, and admin accounts; profile and assessment data; payments and payment evidence; appointments; consultations; prescriptions; orders; and related workflow records—are test/UAT data, not retained Production records. When the owner explicitly requests deletion of a named record, flow, or test data, remove it and its dependent test data so it no longer appears in the application and is not retained merely for audit/history. Do not preserve AuditLog records solely to retain deleted test data. This supersedes earlier test-data reset guidance that required preserving history/audit for the current UAT environment. Before a destructive operation, still verify the exact target and the caller's authority, then use the scoped deletion path that preserves referential integrity; do not broaden deletion to unrelated records.
 
 - Consultation prescription outcome (code complete, release pending, 2026-09-08): each Consultation now has an additive, auditable outcome with exactly `รอแพทย์สรุป`, `มีใบสั่งยา`, or `ไม่มีใบสั่งยา`. Existing rows default to `รอแพทย์สรุป` without inferring or backfilling a medical result. Only the assigned Doctor may explicitly update the outcome after the Consultation is `completed`; Customer and Admin actors cannot mutate it. `มีใบสั่งยา` requires a real active Prescription and is set atomically when the existing doctor-issued Prescription service creates or reissues one. An active Prescription and `ไม่มีใบสั่งยา` are mutually exclusive through Serializable transactions and compare-and-swap guards. The assigned Doctor can non-destructively correct `ไม่มีใบสั่งยา` back to pending, with every persisted transition recorded in generic audit metadata without patient details. The Doctor consultation queue provides the three-option control and clear feedback; the existing Customer prescription-status area reads only the signed-in Customer's completed Consultation outcomes. Schedule/calendar views intentionally do not read or render this medical outcome. The additive migration `20260908120000_add_consultation_prescription_outcome`, application deployment, and Production UAT remain separately gated and were not performed in this code task.
 

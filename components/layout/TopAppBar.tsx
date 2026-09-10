@@ -8,7 +8,7 @@ export function TopAppBar() {
         <div className="flex items-center gap-3">
           <Menu aria-hidden="true" className="size-[18px] text-primary" strokeWidth={2.25} />
           <p className="font-display text-base font-extrabold tracking-normal text-primary">
-            Clinical Ethereality
+            Clinical lab service
           </p>
         </div>
         <div className="relative size-8 overflow-hidden rounded-full border border-primary/10 p-px">

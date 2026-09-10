@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { getAppEnv } from "@/lib/env/schema";
+import { normalizeThaiNationalId } from "@/lib/identity/thai-national-id";
 import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -29,6 +30,7 @@ type PatientVerificationRequestOptions = {
 export type PatientVerificationStatus = {
   fullName: string | null;
   dateOfBirth: string | null;
+  nationalId: string | null;
   phone: string | null;
   phoneVerifiedAt: string | null;
   isVerified: boolean;
@@ -40,6 +42,7 @@ export class PatientVerificationError extends Error {
       | "CONFIGURATION_ERROR"
       | "PROFILE_REQUIRED"
       | "PHONE_IN_USE"
+      | "NATIONAL_ID_IN_USE"
       | "RATE_LIMITED"
       | "CHALLENGE_NOT_FOUND"
       | "CHALLENGE_EXPIRED"
@@ -230,15 +233,17 @@ function toDateOfBirth(value: string): Date {
 function toStatus(user: {
   fullName: string | null;
   dateOfBirth: Date | null;
+  nationalId: string | null;
   phone: string | null;
   normalizedPhone: string | null;
   phoneVerifiedAt: Date | null;
 } | null): PatientVerificationStatus {
-  const isVerified = Boolean(user?.fullName && user.dateOfBirth && user.phone && user.normalizedPhone && user.phoneVerifiedAt);
+  const isVerified = Boolean(user?.fullName && user.dateOfBirth && user.nationalId && user.phone && user.normalizedPhone && user.phoneVerifiedAt);
 
   return {
     fullName: user?.fullName ?? null,
     dateOfBirth: user?.dateOfBirth?.toISOString().slice(0, 10) ?? null,
+    nationalId: user?.nationalId ?? null,
     phone: user?.phone ?? null,
     phoneVerifiedAt: user?.phoneVerifiedAt?.toISOString() ?? null,
     isVerified
@@ -251,6 +256,7 @@ export async function getPatientVerificationStatus(userId: string): Promise<Pati
     select: {
       fullName: true,
       dateOfBirth: true,
+      nationalId: true,
       phone: true,
       normalizedPhone: true,
       phoneVerifiedAt: true
@@ -278,9 +284,10 @@ export async function requestPatientPhoneVerification(
   }
 
   const normalizedPhone = normalizeThaiMobileNumber(input.phone);
+  const nationalId = normalizeThaiNationalId(input.nationalId);
   const dateOfBirth = toDateOfBirth(input.dateOfBirth);
   const requestStartedAt = new Date();
-  const [user, existingPhoneOwner] = await runRequestPreflightBatch(
+  const [user, existingIdentityOwner] = await runRequestPreflightBatch(
     {
       component: "user_lookup",
       operation: () =>
@@ -293,8 +300,11 @@ export async function requestPatientPhoneVerification(
       component: "phone_owner_lookup",
       operation: () =>
         prisma.user.findFirst({
-          where: { normalizedPhone: normalizedPhone.e164, id: { not: userId } },
-          select: { id: true }
+          where: {
+            id: { not: userId },
+            OR: [{ normalizedPhone: normalizedPhone.e164 }, { nationalId }]
+          },
+          select: { normalizedPhone: true, nationalId: true }
         })
     },
     options.diagnosticLogger
@@ -303,7 +313,10 @@ export async function requestPatientPhoneVerification(
   if (!user) {
     throw new PatientVerificationError("PROFILE_REQUIRED");
   }
-  if (existingPhoneOwner) {
+  if (existingIdentityOwner?.nationalId === nationalId) {
+    throw new PatientVerificationError("NATIONAL_ID_IN_USE");
+  }
+  if (existingIdentityOwner?.normalizedPhone === normalizedPhone.e164) {
     throw new PatientVerificationError("PHONE_IN_USE");
   }
 
@@ -311,7 +324,7 @@ export async function requestPatientPhoneVerification(
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
-        data: { fullName: input.fullName, dateOfBirth, phone: normalizedPhone.local }
+        data: { fullName: input.fullName, dateOfBirth, nationalId, phone: normalizedPhone.local }
       });
       await writeAuditLog(tx, {
         actorId: userId,
@@ -380,6 +393,7 @@ export async function requestPatientPhoneVerification(
           data: {
             fullName: input.fullName,
             dateOfBirth,
+            nationalId,
             phone: normalizedPhone.local,
             normalizedPhone: normalizedPhone.e164,
             phoneVerifiedAt: null
@@ -475,6 +489,7 @@ export function getPatientVerificationMessage(error: unknown): { status: number;
     CONFIGURATION_ERROR: { status: 503, message: "ระบบยืนยันเบอร์โทรยังไม่พร้อมใช้งาน" },
     PROFILE_REQUIRED: { status: 400, message: "กรุณากรอกข้อมูลให้ครบก่อนยืนยันเบอร์โทร" },
     PHONE_IN_USE: { status: 409, message: "เบอร์นี้ใช้ยืนยันกับบัญชีอื่นแล้ว" },
+    NATIONAL_ID_IN_USE: { status: 409, message: "เลขบัตรประชาชนนี้ใช้กับบัญชีอื่นแล้ว" },
     RATE_LIMITED: { status: 429, message: "กรุณารอก่อนขอรหัสอีกครั้ง" },
     CHALLENGE_NOT_FOUND: { status: 404, message: "ไม่พบคำขอยืนยันเบอร์โทร" },
     CHALLENGE_EXPIRED: { status: 410, message: "รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่" },

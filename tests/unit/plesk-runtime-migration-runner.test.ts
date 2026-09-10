@@ -11,6 +11,7 @@ const {
   ZOOM_ATTENDANCE_GATE_MIGRATION_TARGET,
   BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET,
   CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
+  PATIENT_NATIONAL_ID_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -283,6 +284,23 @@ describe("Plesk runtime migration runner", () => {
     expect(loggers.errors).toEqual([
       "[plesk-migration] Allowlisted migration is not the current source migration; standalone server will not start."
     ]);
+  });
+
+  it("allows the reviewed patient-national-ID migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
+      PATIENT_NATIONAL_ID_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: PATIENT_NATIONAL_ID_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
   });
 
   it("fails closed and never logs secrets when Prisma migration fails", () => {

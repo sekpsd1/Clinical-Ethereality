@@ -136,7 +136,7 @@ function mapProductDetail(product: ProductWithInventory): StoreProductDetailItem
     featured: false,
     longDescription:
       product.description ??
-      "ผลิตภัณฑ์นี้อยู่ในแคตตาล็อก Clinical Ethereality และควรใช้งานตามคำแนะนำของทีมคลินิกหรือเภสัชกร",
+        "ผลิตภัณฑ์นี้อยู่ในแคตตาล็อก Clinical lab service และควรใช้งานตามคำแนะนำของทีมคลินิกหรือเภสัชกร",
     usageInstructions: product.usageInstructions,
     fdaNumber: product.fdaNumber,
     warnings: product.warnings,

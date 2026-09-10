@@ -242,9 +242,9 @@ export function LineLiffLogin({
     <main className="flex min-h-dvh items-center justify-center bg-app px-6 text-text">
       <section className="w-full max-w-sm rounded-[24px] border border-white/50 bg-white/80 p-6 text-center shadow-glass backdrop-blur-topbar">
         <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-          CE
+          CL
         </div>
-        <h1 className="font-headline text-xl font-bold text-primary">Clinical Ethereality</h1>
+        <h1 className="font-headline text-xl font-bold text-primary">Clinical lab service</h1>
         <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
         {state !== "error" ? (
           <div className="mx-auto mt-6 size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden="true" />

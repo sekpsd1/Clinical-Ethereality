@@ -1,12 +1,12 @@
-# Clinical Ethereality
+# Clinical lab service
 
-Clinical Ethereality is a web application for clinical aesthetics commerce, consultation, and care coordination. The product should help customers browse products, consult doctors, receive prescriptions, track orders, and participate in a moderated community while giving doctors, pharmacists, and admins the operational tools they need.
+Clinical lab service is a web application for clinical aesthetics commerce, consultation, and care coordination. The product should help customers browse products, consult doctors, receive prescriptions, track orders, and participate in a moderated community while giving doctors, pharmacists, and admins the operational tools they need.
 
 This repository is currently in the planning and architecture phase. Do not generate the full app until the project direction, stack, data model, and initial workflows are confirmed.
 
 ## Project Purpose
 
-Clinical Ethereality will provide a secure clinical marketplace and care platform for aesthetics, wellness, or pharmacy-adjacent services. It should combine product discovery, doctor consultation, prescription workflow, pharmacy fulfillment, order tracking, and community participation in one polished experience.
+Clinical lab service will provide a secure clinical marketplace and care platform for aesthetics, wellness, or pharmacy-adjacent services. It should combine product discovery, doctor consultation, prescription workflow, pharmacy fulfillment, order tracking, and community participation in one polished experience.
 
 The app should support:
 
@@ -132,7 +132,7 @@ Preferred first implementation path:
 
 ## System Architecture
 
-Clinical Ethereality should use a modular monolith architecture inside a single Next.js application. This keeps the MVP simple to deploy on Vercel while still separating business domains cleanly enough to scale later.
+Clinical lab service should use a modular monolith architecture inside a single Next.js application. This keeps the MVP simple to deploy on Vercel while still separating business domains cleanly enough to scale later.
 
 Primary layers:
 

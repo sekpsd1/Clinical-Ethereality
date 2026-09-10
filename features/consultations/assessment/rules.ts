@@ -3,10 +3,10 @@ import type { AssessmentDuration, AssessmentRecommendation, AssessmentSymptom } 
 const clientDoctorSpecialty = "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์";
 
 export const symptomLabels: Record<AssessmentSymptom, string> = {
-  headache: "ปวดหัว",
-  fever: "ไข้/หนาวสั่น",
-  cough: "ไอ/เจ็บคอ",
-  other: "อื่นๆ"
+  rash_or_sore: "มีตุ่ม ผื่น หรือแผล",
+  itching_or_redness: "คันหรือบวมแดง",
+  urinary_symptoms: "ปัสสาวะผิดปกติ",
+  other: "อื่นๆ โปรดระบุ"
 };
 
 export const durationLabels: Record<AssessmentDuration, string> = {
@@ -16,23 +16,23 @@ export const durationLabels: Record<AssessmentDuration, string> = {
 };
 
 const recommendationBySymptom: Record<AssessmentSymptom, AssessmentRecommendation> = {
-  headache: {
-    topic: "อาการปวดหัว",
+  rash_or_sore: {
+    topic: "ตุ่ม ผื่น หรือแผล",
     specialty: clientDoctorSpecialty,
     reason:
-      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการเบื้องต้น ซักประวัติ และแนะนำว่าควรดูแลต่อหรือพบแพทย์เฉพาะทางเพิ่มเติมหรือไม่"
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินลักษณะและความรุนแรงของอาการ ซักประวัติ และแนะนำแนวทางดูแลที่เหมาะสม"
   },
-  fever: {
-    topic: "ไข้หรือหนาวสั่น",
+  itching_or_redness: {
+    topic: "คันหรือบวมแดง",
     specialty: clientDoctorSpecialty,
     reason:
-      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินความรุนแรงของอาการ ตรวจประวัติร่วม และแนะนำแนวทางดูแลที่เหมาะสมก่อนเลือกขั้นตอนถัดไป"
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการผิวหนังเบื้องต้น ตรวจประวัติร่วม และแนะนำแนวทางดูแลที่เหมาะสม"
   },
-  cough: {
-    topic: "ไอหรือเจ็บคอ",
+  urinary_symptoms: {
+    topic: "ปัสสาวะผิดปกติ",
     specialty: clientDoctorSpecialty,
     reason:
-      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการระบบทางเดินหายใจเบื้องต้น และแนะนำว่าควรติดตามอาการหรือรับการตรวจเพิ่มเติมหรือไม่"
+      "เราแนะนำให้เริ่มจากแพทย์เทเลเมดิซีนของคลินิกเพื่อประเมินอาการเบื้องต้น และแนะนำว่าควรติดตามอาการหรือรับการตรวจเพิ่มเติมหรือไม่"
   },
   other: {
     topic: "อาการอื่นๆ",

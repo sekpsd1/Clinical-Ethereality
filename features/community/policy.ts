@@ -42,7 +42,7 @@ export function getPublicCommunityAuthor(input: {
   role: UserRole;
 }): string {
   if (input.role === "doctor" || input.role === "pharmacist" || input.role === "admin") {
-    return input.displayName?.trim() || "ทีม Clinical Ethereality";
+    return input.displayName?.trim() || "ทีม Clinical lab service";
   }
 
   return `สมาชิก ${input.id.slice(-4).toUpperCase()}`;

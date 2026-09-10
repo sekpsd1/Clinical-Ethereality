@@ -206,6 +206,7 @@ model User {
   displayName   String?
   fullName      String?       @db.VarChar(191)
   dateOfBirth   DateTime?     @db.Date
+  nationalId    String?       @unique @db.VarChar(13)
   email         String?
   phone         String?
   normalizedPhone String?     @unique @db.VarChar(20)

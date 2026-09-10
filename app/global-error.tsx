@@ -19,7 +19,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
         <main className="min-h-screen bg-background px-6 py-10 text-text">
           <section className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center gap-5">
             <p className="text-sm font-medium uppercase tracking-[0.12em] text-muted">
-              Clinical Ethereality
+              Clinical lab service
             </p>
             <div className="space-y-3">
               <h1 className="text-2xl font-semibold">เกิดข้อผิดพลาด</h1>

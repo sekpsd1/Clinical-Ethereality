@@ -6,8 +6,8 @@ describe("doctor patient assessment answers", () => {
     expect(
       mapAssessmentAnswers({
         symptom: {
-          value: "fever",
-          label: "ไข้/หนาวสั่น"
+          value: "itching_or_redness",
+          label: "คันหรือบวมแดง"
         },
         duration: {
           value: "1-3days",
@@ -17,8 +17,8 @@ describe("doctor patient assessment answers", () => {
     ).toEqual([
       {
         key: "symptom",
-        label: "ไข้/หนาวสั่น",
-        value: "fever"
+        label: "คันหรือบวมแดง",
+        value: "itching_or_redness"
       },
       {
         key: "duration",

@@ -209,7 +209,7 @@ describe("feature validation schemas", () => {
   it("validates consult assessment answers and maps recommendation topics", () => {
     expect(
       submitConsultAssessmentSchema.safeParse({
-        symptom: "headache",
+        symptom: "rash_or_sore",
         duration: "1-3days"
       }).success
     ).toBe(true);
@@ -219,8 +219,8 @@ describe("feature validation schemas", () => {
         duration: "1-3days"
       }).success
     ).toBe(false);
-    expect(getAssessmentRecommendation("cough", "more3days")).toMatchObject({
-      topic: "ไอหรือเจ็บคอ",
+    expect(getAssessmentRecommendation("urinary_symptoms", "more3days")).toMatchObject({
+      topic: "ปัสสาวะผิดปกติ",
       specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์"
     });
   });

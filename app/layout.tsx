@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Clinical Ethereality",
+  title: "Clinical lab service",
   description: "Secure clinical aesthetics consultation, commerce, pharmacy, and community workflows."
 };
 

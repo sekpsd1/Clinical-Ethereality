@@ -147,15 +147,15 @@ test.describe("customer mobile smoke", () => {
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "อาการเบื้องต้นที่คุณรู้สึกตอนนี้คืออะไร?" })).toBeVisible();
     await expect(page.getByRole("button", { name: /ถัดไป$/ })).toBeDisabled();
-    await page.getByRole("radio", { name: /ปวดหัว/ }).click();
-    await expect(page.getByRole("radio", { name: /ปวดหัว/ })).toHaveAttribute("aria-checked", "true");
-    await expect(page.getByRole("link", { name: /ถัดไป/ })).toHaveAttribute("href", "/consult/assessment/duration?symptom=headache");
+    await page.getByRole("radio", { name: /มีตุ่ม ผื่น หรือแผล/ }).click();
+    await expect(page.getByRole("radio", { name: /มีตุ่ม ผื่น หรือแผล/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("link", { name: /ถัดไป/ })).toHaveAttribute("href", "/consult/assessment/duration?symptom=rash_or_sore");
     await page.getByRole("link", { name: /ถัดไป/ }).click();
-    await expect(page).toHaveURL(/\/consult\/assessment\/duration\?symptom=headache$/);
+    await expect(page).toHaveURL(/\/consult\/assessment\/duration\?symptom=rash_or_sore$/);
   });
 
   test("/consult/assessment/duration enables the next action after selecting a duration", async ({ page }) => {
-    await page.goto("/consult/assessment/duration?symptom=headache");
+    await page.goto("/consult/assessment/duration?symptom=rash_or_sore");
 
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
@@ -170,7 +170,7 @@ test.describe("customer mobile smoke", () => {
 
   test("/consult/assessment/duration redirects staff sessions to local role selection instead of throwing", async ({ page }) => {
     await signInAs(page, "doctor");
-    await page.goto("/consult/assessment/duration?symptom=headache");
+    await page.goto("/consult/assessment/duration?symptom=rash_or_sore");
 
     await expectNoAppError(page);
     await page.getByRole("radio", { name: /น้อยกว่า 24 ชม./ }).click();
