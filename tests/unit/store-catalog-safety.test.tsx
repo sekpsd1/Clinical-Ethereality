@@ -219,6 +219,18 @@ describe("store marketplace URL filters", () => {
 });
 
 describe("store catalog component safety", () => {
+  it("does not render the skincare category on the Store page", () => {
+    const html = renderToStaticMarkup(
+      <HealthMarketplace data={{ category: "", query: "", products: [] }} />
+    );
+
+    expect(html).not.toContain("ดูแลผิวและสกินแคร์");
+    expect(html).toContain("ยาและเวชภัณฑ์");
+    expect(html).toContain("วิตามินและอาหารเสริม");
+    expect(html).toContain("อุปกรณ์สุขภาพ");
+    expect(html).toContain("สินค้าอื่น ๆ");
+  });
+
   it("renders distinct empty and error states without purchasable fallback products", () => {
     const emptyHtml = renderToStaticMarkup(
       <HealthMarketplace data={{ category: "", query: "", products: [] }} />

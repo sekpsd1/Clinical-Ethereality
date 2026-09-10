@@ -23,10 +23,12 @@ const categoryIcons: Record<ProductCategory, typeof ClipboardPlus> = {
   other: Syringe
 };
 
-const categories: Category[] = productCategories.map((category) => ({
-  ...category,
-  icon: categoryIcons[category.value]
-}));
+const categories: Category[] = productCategories
+  .filter((category) => category.value !== "skincare")
+  .map((category) => ({
+    ...category,
+    icon: categoryIcons[category.value]
+  }));
 
 export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
   const marketplaceProducts = data.products;
