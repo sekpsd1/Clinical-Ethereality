@@ -109,7 +109,8 @@
 - [x] Implement logout
 - [x] Implement session handling
 - [x] Add versioned legal and consent acceptance records
-- [x] Deploy per-booking adult Telemedicine self-consent, under-18 guardian blocking, public privacy/contact/consent pages, and the feature-flagged private Zoom recording metadata/access/audit foundation; Production migration and route smoke passed on 2026-09-10, while Zoom recording scopes/events and `ENABLE_ZOOM_CLOUD_RECORDING` remain separately gated and disabled
+- [x] Deploy per-booking adult Telemedicine self-consent, under-18 guardian blocking, public privacy/contact/consent pages, and private Zoom recording metadata/access/audit support; on 2026-09-10 apply the Production migration, add the least-privilege recording scopes and `recording.completed` webhook event, enable account/host Cloud Automatic Recording with host pause/stop disabled, set `ENABLE_ZOOM_CLOUD_RECORDING=true`, restart Production, and pass the HTTP 200 health check
+- [ ] Complete one fresh two-party Production Consultation UAT through the normal customer and Doctor flow and verify automatic cloud recording, signed webhook ingestion, authorized playback/download, and access denial outside the assigned Doctor/Admin roles; do not insert a synthetic appointment solely for this check without separate approval
 - [x] Implement doctor, pharmacist, and admin invitation flow
 - [x] Define customer, doctor, pharmacist, and admin roles
 - [x] Add initial route-level role boundaries for doctors, pharmacists, and admins
