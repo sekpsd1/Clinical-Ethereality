@@ -17,6 +17,7 @@ import { AdminCustomerAssessmentResetButton } from "@/features/admin/AdminCustom
 import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import type { AdminCustomerDetailData } from "@/features/admin/customers/types";
+import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
 
 const accountStatusLabels = {
   active: "ใช้งานอยู่",
@@ -253,6 +254,12 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
                   valueClassName="whitespace-normal"
                 />
               </div>
+              {consultation.status === "completed" || consultation.recordings.length > 0 ? (
+                <ConsultationRecordingsPanel
+                  consultationId={consultation.id}
+                  recordings={consultation.recordings}
+                />
+              ) : null}
               <p className="mt-3 text-[11px] font-semibold text-muted">
                 {consultation.assessmentId ? "มีแบบประเมินผูกกับนัดหมาย" : "นัดหมายนี้ไม่มีแบบประเมิน"}
               </p>

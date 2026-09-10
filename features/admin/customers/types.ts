@@ -1,6 +1,7 @@
 import type { AccountStatus, ConsultationStatus } from "@prisma/client";
 import type { AdminCustomerJourneyTone } from "@/features/admin/customers/status";
 import type { Role } from "@/lib/permissions/roles";
+import type { ConsultationRecordingListItem } from "@/features/consultations/recordings/presentation";
 
 export type AdminCustomerAssessment = {
   id: string;
@@ -26,6 +27,7 @@ export type AdminCustomerConsultation = {
   scheduledAt: string | null;
   createdAt: string;
   assessmentId: string | null;
+  recordings: ConsultationRecordingListItem[];
 };
 
 export type AdminCustomerListItem = {

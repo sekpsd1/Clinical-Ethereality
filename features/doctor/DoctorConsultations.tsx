@@ -8,6 +8,7 @@ import { DoctorPrescriptionOutcomeForm } from "@/features/doctor/DoctorPrescript
 import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultationControls";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
+import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
 
 const consultationStatusLabels: Record<string, string> = {
   cancelled: "ยกเลิกแล้ว",
@@ -178,6 +179,12 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
               </div>
 
               <ActionRow consultation={consultation} />
+              {consultation.status === "completed" || consultation.recordings.length > 0 ? (
+                <ConsultationRecordingsPanel
+                  consultationId={consultation.id}
+                  recordings={consultation.recordings}
+                />
+              ) : null}
               <DoctorConsultationControls consultation={consultation} />
 
               {consultation.status === "completed" && consultation.canUpdatePrescriptionOutcome ? (

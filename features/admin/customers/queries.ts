@@ -13,6 +13,7 @@ import type {
   AdminCustomersData
 } from "@/features/admin/customers/types";
 import { staffFileEntityTypes } from "@/features/staff-files/types";
+import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
 
 type CustomerListRecord = Awaited<ReturnType<typeof getCustomerListRecords>>[number];
 type CustomerDetailRecord = NonNullable<Awaited<ReturnType<typeof getCustomerDetailRecord>>>;
@@ -55,6 +56,20 @@ function consultationInclude() {
             displayName: true
           }
         }
+      }
+    },
+    recordings: {
+      orderBy: { createdAt: "asc" as const },
+      take: 30,
+      select: {
+        id: true,
+        recordingType: true,
+        fileType: true,
+        fileSizeBytes: true,
+        startedAt: true,
+        endedAt: true,
+        retentionUntil: true,
+        createdAt: true
       }
     }
   } as const;
@@ -194,7 +209,8 @@ function mapConsultation(consultation: CustomerConsultationRecord): AdminCustome
     doctorSpecialty: consultation.doctor.specialty ?? "ปรึกษาออนไลน์",
     scheduledAt: formatDate(consultation.scheduledAt),
     createdAt: formatDate(consultation.createdAt) ?? "",
-    assessmentId: consultation.assessmentId
+    assessmentId: consultation.assessmentId,
+    recordings: consultation.recordings.map(mapConsultationRecording)
   };
 }
 

@@ -18,6 +18,7 @@ import {
   getAttendanceStatusCopy,
   getConsultationAttendanceState
 } from "@/features/consultations/attendance/state";
+import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
 import type {
   DoctorConsultationItem,
   DoctorConsultationsData,
@@ -88,6 +89,23 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
           meetingUuidHash: true,
           participantSessionHash: true,
           occurredAt: true
+        }
+      },
+      recordings: {
+        orderBy: [
+          { startedAt: "asc" as const },
+          { createdAt: "asc" as const }
+        ],
+        take: 30,
+        select: {
+          id: true,
+          recordingType: true,
+          fileType: true,
+          fileSizeBytes: true,
+          startedAt: true,
+          endedAt: true,
+          retentionUntil: true,
+          createdAt: true
         }
       }
     }
@@ -458,6 +476,7 @@ function mapConsultation(
           expiresAt: formatDate(consultation.assessment.expiresAt) ?? ""
         }
       : null,
+    recordings: consultation.recordings.map(mapConsultationRecording),
     createdAt: formatDate(consultation.createdAt) ?? ""
   };
 }

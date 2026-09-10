@@ -5,6 +5,7 @@ import type {
   PrescriptionStatus
 } from "@prisma/client";
 import type { PrescriptionMedicationItem } from "@/features/prescriptions/items";
+import type { ConsultationRecordingListItem } from "@/features/consultations/recordings/presentation";
 
 export type DoctorPrescriptionProduct = {
   id: string;
@@ -69,6 +70,7 @@ export type DoctorConsultationItem = {
         expiresAt: string;
       }
     | null;
+  recordings: ConsultationRecordingListItem[];
   createdAt: string;
 };
 

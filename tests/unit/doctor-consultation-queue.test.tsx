@@ -67,6 +67,7 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
     latestPrescriptionMedication: null,
     latestChatMessage: null,
     assessment: null,
+    recordings: [],
     createdAt: "1 ส.ค. 2569 11:21"
   };
 }
@@ -205,5 +206,37 @@ describe("Doctor consultation queue", () => {
     expect(html).toContain("รอแพทย์สรุป");
     expect(html).not.toContain("data-outcome-form");
     expect(html).not.toContain("<option");
+  });
+
+  it("shows protected recording actions on a completed consultation", () => {
+    const completed = consultation("completed", "30 นาที");
+    completed.recordings = [
+      {
+        id: "recording-video-1",
+        kind: "video",
+        title: "วิดีโอผู้พูด",
+        fileTypeLabel: "MP4",
+        fileSizeLabel: "12 MB",
+        recordedAtLabel: "3 ส.ค. 2569 09:00",
+        durationLabel: "30 นาที",
+        retentionUntilLabel: "3 ส.ค. 2574"
+      }
+    ];
+    const data: DoctorConsultationsData = {
+      consultations: [completed],
+      prescriptionProducts: [],
+      summary: {
+        scheduled: 0,
+        live: 0,
+        completed: 1
+      }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html).toContain("บันทึกการปรึกษา");
+    expect(html).toContain("วิดีโอผู้พูด");
+    expect(html).toContain("/api/consultations/consultation-completed/recordings/recording-video-1");
+    expect(html).toContain("?download=1");
   });
 });
