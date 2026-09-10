@@ -3,7 +3,7 @@ import { LegalSection, PublicLegalPage } from "@/features/legal/PublicLegalPage"
 import { telemedicineConsentDocument } from "@/features/legal/public-documents";
 
 export const metadata: Metadata = {
-  title: "ความยินยอม Telemedicine | Clinical Ethereality",
+  title: "ความยินยอม Telemedicine | Clinical lab service",
   alternates: { canonical: "/telemedicine-consent" }
 };
 

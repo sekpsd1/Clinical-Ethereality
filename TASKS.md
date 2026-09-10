@@ -109,7 +109,7 @@
 - [x] Implement logout
 - [x] Implement session handling
 - [x] Add versioned legal and consent acceptance records
-- [x] Add per-booking adult Telemedicine self-consent, under-18 guardian blocking, public privacy/contact/consent pages, and feature-flagged private Zoom recording metadata/access/audit foundation; migration and Zoom Pro/Production activation remain separately gated
+- [x] Deploy per-booking adult Telemedicine self-consent, under-18 guardian blocking, public privacy/contact/consent pages, and the feature-flagged private Zoom recording metadata/access/audit foundation; Production migration and route smoke passed on 2026-09-10, while Zoom recording scopes/events and `ENABLE_ZOOM_CLOUD_RECORDING` remain separately gated and disabled
 - [x] Implement doctor, pharmacist, and admin invitation flow
 - [x] Define customer, doctor, pharmacist, and admin roles
 - [x] Add initial route-level role boundaries for doctors, pharmacists, and admins

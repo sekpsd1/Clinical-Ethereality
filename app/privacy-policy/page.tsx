@@ -3,7 +3,7 @@ import { LegalSection, PublicLegalPage } from "@/features/legal/PublicLegalPage"
 import { clinicController } from "@/features/legal/public-documents";
 
 export const metadata: Metadata = {
-  title: "นโยบายความเป็นส่วนตัว | Clinical Ethereality",
+  title: "นโยบายความเป็นส่วนตัว | Clinical lab service",
   alternates: { canonical: "/privacy-policy" }
 };
 
@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
     <PublicLegalPage
       eyebrow="Privacy Policy"
       title="นโยบายความเป็นส่วนตัว"
-      intro={`${clinicController.name} เป็นผู้ควบคุมข้อมูลส่วนบุคคลสำหรับบริการบน Clinical Ethereality`}
+      intro={`${clinicController.name} เป็นผู้ควบคุมข้อมูลส่วนบุคคลสำหรับบริการบน Clinical lab service`}
     >
       <LegalSection title="ข้อมูลที่เราใช้">
         <p>เราใช้ข้อมูลบัญชีและการติดต่อ ข้อมูลการจองและชำระเงิน ตลอดจนข้อมูลสุขภาพ การสนทนา ใบสั่งยา และไฟล์ที่จำเป็นต่อการให้บริการอย่างปลอดภัย</p>

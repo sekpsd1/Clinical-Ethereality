@@ -3,7 +3,7 @@ import { LegalSection, PublicLegalPage } from "@/features/legal/PublicLegalPage"
 import { clinicController } from "@/features/legal/public-documents";
 
 export const metadata: Metadata = {
-  title: "ติดต่อเรา | Clinical Ethereality",
+  title: "ติดต่อเรา | Clinical lab service",
   alternates: { canonical: "/contact" }
 };
 

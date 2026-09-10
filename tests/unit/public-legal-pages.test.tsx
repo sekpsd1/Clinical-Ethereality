@@ -1,10 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import ContactPage from "@/app/contact/page";
-import PrivacyPolicyPage from "@/app/privacy-policy/page";
-import TelemedicineConsentPage from "@/app/telemedicine-consent/page";
+import ContactPage, { metadata as contactMetadata } from "@/app/contact/page";
+import PrivacyPolicyPage, { metadata as privacyMetadata } from "@/app/privacy-policy/page";
+import TelemedicineConsentPage, { metadata as consentMetadata } from "@/app/telemedicine-consent/page";
 
 describe("public legal and contact pages", () => {
+  it("uses the current customer-facing brand on every public page", () => {
+    expect(contactMetadata.title).toBe("ติดต่อเรา | Clinical lab service");
+    expect(privacyMetadata.title).toBe("นโยบายความเป็นส่วนตัว | Clinical lab service");
+    expect(consentMetadata.title).toBe("ความยินยอม Telemedicine | Clinical lab service");
+    expect(renderToStaticMarkup(<PrivacyPolicyPage />)).toContain("บริการบน Clinical lab service");
+  });
+
   it("publishes the approved controller and contact details without an auth wrapper", () => {
     const html = renderToStaticMarkup(<ContactPage />);
     expect(html).toContain("บางกอกไซโตเจเนติกซ์คลินิกเฉพาะทางด้านเวชกรรมสูตินรีเวช");
