@@ -154,6 +154,26 @@ test.describe("customer mobile smoke", () => {
     await expect(page).toHaveURL(/\/consult\/assessment\/duration\?symptom=rash_or_sore$/);
   });
 
+  test("/consult/assessment/symptoms requires and preserves an other-symptom detail", async ({ page }) => {
+    await page.goto("/consult/assessment/symptoms");
+
+    await page.getByRole("radio", { name: /อื่นๆ โปรดระบุ/ }).click();
+    const detail = page.getByRole("textbox", { name: "ระบุอาการอื่นๆ" });
+    await expect(detail).toBeVisible();
+    await expect(page.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+
+    await detail.fill("เจ็บท้องน้อย");
+    const next = page.getByRole("link", { name: "ถัดไป" });
+    await expect(next).toHaveAttribute("href", "/consult/assessment/duration?symptom=other");
+    await next.click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/duration\?symptom=other$/);
+    await expect(page.locator('input[name="symptomDetail"]')).toHaveValue("เจ็บท้องน้อย");
+
+    await page.getByRole("link", { name: "กลับไปหน้าอาการเบื้องต้น" }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/symptoms\?symptom=other$/);
+    await expect(page.getByRole("textbox", { name: "ระบุอาการอื่นๆ" })).toHaveValue("เจ็บท้องน้อย");
+  });
+
   test("/consult/assessment/duration enables the next action after selecting a duration", async ({ page }) => {
     await page.goto("/consult/assessment/duration?symptom=rash_or_sore");
 

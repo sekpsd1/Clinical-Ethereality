@@ -9,7 +9,7 @@ import { hasPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { getAppEnv } from "@/lib/env/schema";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
-import { durationLabels, getAssessmentRecommendation, symptomLabels } from "@/features/consultations/assessment/rules";
+import { durationLabels, getAssessmentRecommendation, getAssessmentSymptomLabel } from "@/features/consultations/assessment/rules";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -37,13 +37,15 @@ export async function submitConsultAssessmentAction(formData: FormData): Promise
   }
 
   const recommendation = getAssessmentRecommendation(parsed.data.symptom, parsed.data.duration);
+  const symptomDetail = parsed.data.symptom === "other" ? parsed.data.symptomDetail : undefined;
+  const symptomLabel = getAssessmentSymptomLabel(parsed.data.symptom, symptomDetail);
 
   const assessment = await prisma.$transaction(async (tx) => {
     const record = await tx.consultAssessment.create({
       data: {
         userId: session.userId,
         symptom: parsed.data.symptom,
-        symptomLabel: symptomLabels[parsed.data.symptom],
+        symptomLabel,
         duration: parsed.data.duration,
         durationLabel: durationLabels[parsed.data.duration],
         recommendationTopic: recommendation.topic,
@@ -52,7 +54,8 @@ export async function submitConsultAssessmentAction(formData: FormData): Promise
         answersJson: {
           symptom: {
             value: parsed.data.symptom,
-            label: symptomLabels[parsed.data.symptom]
+            label: symptomLabel,
+            ...(symptomDetail ? { detail: symptomDetail } : {})
           },
           duration: {
             value: parsed.data.duration,

@@ -15,6 +15,14 @@ export const durationLabels: Record<AssessmentDuration, string> = {
   more3days: "มากกว่า 3 วัน"
 };
 
+export function getAssessmentSymptomLabel(symptom: AssessmentSymptom, symptomDetail?: string): string {
+  if (symptom === "other") {
+    return `อื่นๆ: ${symptomDetail?.trim() ?? ""}`;
+  }
+
+  return symptomLabels[symptom];
+}
+
 const recommendationBySymptom: Record<AssessmentSymptom, AssessmentRecommendation> = {
   rash_or_sore: {
     topic: "ตุ่ม ผื่น หรือแผล",
@@ -56,9 +64,9 @@ export function getAssessmentRecommendation(symptom: AssessmentSymptom, duration
 }
 
 export function isAssessmentSymptom(value: unknown): value is AssessmentSymptom {
-  return typeof value === "string" && value in symptomLabels;
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(symptomLabels, value);
 }
 
 export function isAssessmentDuration(value: unknown): value is AssessmentDuration {
-  return typeof value === "string" && value in durationLabels;
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(durationLabels, value);
 }

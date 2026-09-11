@@ -49,6 +49,7 @@ vi.mock("@/features/identity-verification/service", async (importOriginal) => {
 });
 
 import { POST } from "@/app/api/identity/phone-otp/request/route";
+import { PatientVerificationError } from "@/features/identity-verification/service";
 
 function createRequest(
   body: Record<string, unknown>,
@@ -114,7 +115,8 @@ describe("phone OTP request route", () => {
     mocks.requestPatientPhoneVerification.mockResolvedValue({
       challengeId: "challenge-1",
       phoneLabel: "safe-label",
-      expiresAt: "2026-08-27T02:00:00.000Z"
+      expiresAt: "2026-08-27T02:00:00.000Z",
+      retryAfterSeconds: 60
     });
   });
 
@@ -283,6 +285,30 @@ describe("phone OTP request route", () => {
     expect(JSON.stringify(mocks.writeSmsOtpRouteStatus.mock.calls)).not.toContain("private service detail");
   });
 
+  it.each([
+    ["RATE_LIMITED", 429, 17, "กรุณารอก่อนขอรหัสอีกครั้ง"],
+    ["OTP_UNAVAILABLE", 503, 42, "ผู้ให้บริการ OTP ไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง"],
+    ["OTP_REQUEST_UNAVAILABLE", 503, 35, "ระบบยังไม่สามารถเตรียมการยืนยัน OTP ได้ กรุณาลองใหม่ภายหลัง"]
+  ] as const)(
+    "returns a trusted Retry-After value for %s",
+    async (code, expectedStatus, retryAfterSeconds, expectedMessage) => {
+      mocks.requestPatientPhoneVerification.mockRejectedValue(
+        new PatientVerificationError(code, retryAfterSeconds)
+      );
+
+      const response = await POST(createRequest(validBody));
+
+      expect(response.status).toBe(expectedStatus);
+      expect(response.headers.get("Retry-After")).toBe(String(retryAfterSeconds));
+      await expect(response.json()).resolves.toEqual({
+        ok: false,
+        message: expectedMessage,
+        retryAfterSeconds
+      });
+      expectRouteFailure("service_dispatch", expectedStatus);
+    }
+  );
+
   it("does not overwrite a more specific service diagnostic", async () => {
     const serviceDiagnostic = {
       stage: "request_preflight" as const,
@@ -323,6 +349,7 @@ describe("phone OTP request route", () => {
     const response = await POST(createRequest(validBody));
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, retryAfterSeconds: 60 });
     expect(mocks.rotateSessionFromToken).not.toHaveBeenCalled();
     expect(mocks.writeSmsOtpRouteStatus.mock.calls.map(([event]) => event)).toEqual([
       { routeComponent: "session_lookup", status: "started" },

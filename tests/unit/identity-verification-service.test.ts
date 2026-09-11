@@ -159,7 +159,7 @@ describe("patient phone verification diagnostics", () => {
     const first = requestPatientPhoneVerification("customer-1", input);
     const second = requestPatientPhoneVerification("customer-1", input);
 
-    await expect(second).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    await expect(second).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 60 });
     expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
 
     resolveProvider?.({
@@ -168,7 +168,10 @@ describe("patient phone verification diagnostics", () => {
       reference: "provider-refno-must-not-log",
       phoneLabel: "masked-phone-must-not-log"
     });
-    await expect(first).resolves.toMatchObject({ challengeId: "challenge-1" });
+    await expect(first).resolves.toMatchObject({
+      challengeId: "challenge-1",
+      retryAfterSeconds: 60
+    });
     expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
   });
 
@@ -198,6 +201,84 @@ describe("patient phone verification diagnostics", () => {
     });
   });
 
+  it("rereads and reports the remaining server-side dispatch-claim cooldown when the preflight value is stale", async () => {
+    const activeClaim = new Date("2026-08-27T04:00:17.000Z");
+    configureAtomicClaim(activeClaim);
+    mocks.userFindUnique
+      .mockResolvedValueOnce({
+        normalizedPhone: null,
+        phoneVerifiedAt: null,
+        phoneOtpDispatchClaimedUntil: null
+      })
+      .mockResolvedValueOnce({ phoneOtpDispatchClaimedUntil: activeClaim });
+
+    await expect(
+      requestPatientPhoneVerification("customer-1", {
+        fullName: "Test Patient",
+        dateOfBirth: "1990-01-02",
+        nationalId: "1101700203450",
+        phone: "0812345678"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 17 });
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+  });
+
+  it("prefers a superseding dispatch claim over an earlier future preflight value", async () => {
+    const earlierClaim = new Date("2026-08-27T04:00:17.000Z");
+    const latestClaim = new Date("2026-08-27T04:00:45.000Z");
+    configureAtomicClaim(latestClaim);
+    mocks.userFindUnique
+      .mockResolvedValueOnce({
+        normalizedPhone: null,
+        phoneVerifiedAt: null,
+        phoneOtpDispatchClaimedUntil: earlierClaim
+      })
+      .mockResolvedValueOnce({ phoneOtpDispatchClaimedUntil: latestClaim });
+
+    await expect(
+      requestPatientPhoneVerification("customer-1", {
+        fullName: "Test Patient",
+        dateOfBirth: "1990-01-02",
+        nationalId: "1101700203450",
+        phone: "0812345678"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 45 });
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+  });
+
+  it("reports the remaining resend cooldown from the latest persisted challenge", async () => {
+    mocks.challengeFindFirst.mockResolvedValue({
+      requestedAt: new Date("2026-08-27T03:59:43.000Z")
+    });
+
+    await expect(
+      requestPatientPhoneVerification("customer-1", {
+        fullName: "Test Patient",
+        dateOfBirth: "1990-01-02",
+        nationalId: "1101700203450",
+        phone: "0812345678"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 43 });
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+  });
+
+  it("reports the remaining hourly request-window cooldown", async () => {
+    mocks.challengeFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ requestedAt: new Date("2026-08-27T03:15:30.000Z") });
+    mocks.challengeCount.mockResolvedValue(3);
+
+    await expect(
+      requestPatientPhoneVerification("customer-1", {
+        fullName: "Test Patient",
+        dateOfBirth: "1990-01-02",
+        nationalId: "1101700203450",
+        phone: "0812345678"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 930 });
+    expect(mocks.requestSmsOtp).not.toHaveBeenCalled();
+  });
+
   it("releases a definitively rejected provider claim for a controlled retry", async () => {
     const claim = configureAtomicClaim();
     mocks.requestSmsOtp.mockRejectedValueOnce(
@@ -225,10 +306,12 @@ describe("patient phone verification diagnostics", () => {
     const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
 
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
-      code: "OTP_UNAVAILABLE"
+      code: "OTP_UNAVAILABLE",
+      retryAfterSeconds: 60
     });
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
-      code: "RATE_LIMITED"
+      code: "RATE_LIMITED",
+      retryAfterSeconds: 60
     });
     expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
 
@@ -244,11 +327,13 @@ describe("patient phone verification diagnostics", () => {
     mocks.transaction.mockRejectedValueOnce(new Error("private persistence failure"));
     const input = { fullName: "Test Patient", dateOfBirth: "1990-01-02", nationalId: "1101700203450", phone: "0812345678" };
 
-    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toThrow(
-      "private persistence failure"
-    );
     await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
-      code: "RATE_LIMITED"
+      code: "OTP_REQUEST_UNAVAILABLE",
+      retryAfterSeconds: 60
+    });
+    await expect(requestPatientPhoneVerification("customer-1", input)).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      retryAfterSeconds: 60
     });
     expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
 
@@ -302,7 +387,7 @@ describe("patient phone verification diagnostics", () => {
         },
         { diagnosticLogger }
       )
-    ).rejects.toThrow("database password=must-not-log");
+    ).rejects.toMatchObject({ code: "OTP_REQUEST_UNAVAILABLE", retryAfterSeconds: 60 });
 
     expect(mocks.requestSmsOtp).toHaveBeenCalledTimes(1);
     expect(mocks.transaction).toHaveBeenCalledTimes(1);

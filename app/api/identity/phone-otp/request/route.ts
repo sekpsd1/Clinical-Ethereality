@@ -123,10 +123,21 @@ export async function POST(request: NextRequest) {
         : 503;
       writeRouteStatus("failed", applicationHttpStatus);
     }
+    const retryAfterSeconds = "retryAfterSeconds" in response ? response.retryAfterSeconds : undefined;
     return finalizeResponse(
       NextResponse.json(
-        { ok: false, message: response.message },
-        { status: response.status, headers: { "Cache-Control": "no-store" } }
+        {
+          ok: false,
+          message: response.message,
+          ...(retryAfterSeconds ? { retryAfterSeconds } : {})
+        },
+        {
+          status: response.status,
+          headers: {
+            "Cache-Control": "no-store",
+            ...(retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : {})
+          }
+        }
       )
     );
   }

@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, History, Info, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 import { submitConsultAssessmentAction } from "@/features/consultations/assessment/actions";
+import {
+  clearOtherSymptomDraft,
+  getBrowserSessionDraftStorage,
+  readOtherSymptomDraft
+} from "@/features/consultations/assessment/draft";
 import type { AssessmentSymptom } from "@/features/consultations/assessment/types";
 
 const durationOptions = [
@@ -28,15 +34,35 @@ const durationOptions = [
   }
 ] as const;
 
-export function ConsultAssessmentDuration({ selectedSymptom }: { selectedSymptom: AssessmentSymptom | null }) {
+export function ConsultAssessmentDuration({
+  selectedSymptom
+}: {
+  selectedSymptom: AssessmentSymptom | null;
+}) {
   const [selectedDuration, setSelectedDuration] = useState<string | null>(null);
+  const [symptomDetail, setSymptomDetail] = useState("");
+  const hasRequiredSymptomDetail = selectedSymptom !== "other" || symptomDetail.trim().length > 0;
+  const symptomStepHref: Route = selectedSymptom
+    ? `/consult/assessment/symptoms?symptom=${selectedSymptom}`
+    : "/consult/assessment/symptoms";
+
+  useEffect(() => {
+    const storage = getBrowserSessionDraftStorage();
+    if (selectedSymptom === "other") {
+      setSymptomDetail(readOtherSymptomDraft(storage));
+      return;
+    }
+
+    clearOtherSymptomDraft(storage);
+    setSymptomDetail("");
+  }, [selectedSymptom]);
 
   return (
     <section className="relative min-h-dvh overflow-hidden bg-[#f7f9fb] px-6 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-28 text-[#191c1e]">
       <div className="fixed inset-x-0 top-0 z-30 mx-auto flex h-20 max-w-mobile items-center justify-between bg-[#f2f4f6]/70 px-7 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
         <div className="flex min-w-0 items-center gap-4">
           <Link
-            href="/consult/assessment/symptoms"
+            href={symptomStepHref}
             aria-label="กลับไปหน้าอาการเบื้องต้น"
             className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#006067] transition-colors hover:bg-[#006067]/10"
           >
@@ -130,21 +156,25 @@ export function ConsultAssessmentDuration({ selectedSymptom }: { selectedSymptom
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-mobile items-center justify-between rounded-t-[24px] bg-[#f2f4f6]/80 px-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-10px_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
         <Link
-          href="/consult/assessment/symptoms"
+          href={symptomStepHref}
           className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80 transition-colors hover:text-[#006067]"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />
           <span className="font-label text-xs">ก่อนหน้า</span>
         </Link>
-        <form action={submitConsultAssessmentAction}>
+        <form
+          action={submitConsultAssessmentAction}
+          onSubmit={() => clearOtherSymptomDraft(getBrowserSessionDraftStorage())}
+        >
           <input type="hidden" name="symptom" value={selectedSymptom ?? ""} />
+          {selectedSymptom === "other" ? <input type="hidden" name="symptomDetail" value={symptomDetail} /> : null}
           <input type="hidden" name="duration" value={selectedDuration ?? ""} />
           <button
             type="submit"
-            disabled={!selectedDuration || !selectedSymptom}
+            disabled={!selectedDuration || !selectedSymptom || !hasRequiredSymptomDetail}
             className={cn(
               "flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 transition-all",
-              selectedDuration && selectedSymptom
+              selectedDuration && selectedSymptom && hasRequiredSymptomDetail
                 ? "scale-105 rounded-full bg-[#006067] px-8 text-white shadow-lg shadow-[#006067]/20"
                 : "cursor-not-allowed text-[#3e494a]/40"
             )}

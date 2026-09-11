@@ -49,11 +49,17 @@ export class PatientVerificationError extends Error {
       | "ATTEMPTS_EXHAUSTED"
       | "CHALLENGE_INVALIDATED"
       | "OTP_REJECTED"
-      | "OTP_UNAVAILABLE"
+      | "OTP_REQUEST_UNAVAILABLE"
+      | "OTP_UNAVAILABLE",
+    public readonly retryAfterSeconds?: number
   ) {
     super(code);
     this.name = "PatientVerificationError";
   }
+}
+
+function getRetryAfterSeconds(retryAt: Date, now: Date): number {
+  return Math.max(1, Math.ceil((retryAt.getTime() - now.getTime()) / 1000));
 }
 
 function getChallengeCipherKey(): Buffer {
@@ -93,10 +99,12 @@ function decryptProviderChallenge(value: string): string {
   }
 }
 
-function mapOtpError(error: unknown): PatientVerificationError {
+function mapOtpError(error: unknown, retryAfterSeconds?: number): PatientVerificationError {
   if (error instanceof SmsOtpError) {
     if (error.code === "CONFIGURATION_ERROR") return new PatientVerificationError("CONFIGURATION_ERROR");
-    if (error.code === "PROVIDER_UNAVAILABLE") return new PatientVerificationError("OTP_UNAVAILABLE");
+    if (error.code === "PROVIDER_UNAVAILABLE") {
+      return new PatientVerificationError("OTP_UNAVAILABLE", retryAfterSeconds);
+    }
   }
 
   return new PatientVerificationError("OTP_REJECTED");
@@ -173,9 +181,34 @@ async function runRequestPreflightBatch<A, B>(
   ];
 }
 
+async function getRequestWindowRetryAfterSeconds(
+  userId: string,
+  windowStartedAt: Date,
+  requestStartedAt: Date,
+  diagnosticLogger?: SmsOtpDiagnosticLogger
+): Promise<number> {
+  try {
+    const oldestChallenge = await prisma.phoneVerificationChallenge.findFirst({
+      where: { userId, requestedAt: { gte: windowStartedAt } },
+      orderBy: { requestedAt: "asc" },
+      select: { requestedAt: true }
+    });
+    return oldestChallenge
+      ? getRetryAfterSeconds(
+          new Date(oldestChallenge.requestedAt.getTime() + requestWindowMs),
+          requestStartedAt
+        )
+      : Math.ceil(requestWindowMs / 1000);
+  } catch (error) {
+    writeRequestPreflightFailure("request_count_lookup", error, diagnosticLogger);
+    throw error;
+  }
+}
+
 async function claimPhoneOtpDispatch(
   userId: string,
   claimedAt: Date,
+  currentClaimedUntil: Date | null | undefined,
   diagnosticLogger?: SmsOtpDiagnosticLogger
 ): Promise<Date> {
   const claimedUntil = new Date(claimedAt.getTime() + resendDelayMs);
@@ -199,7 +232,28 @@ async function claimPhoneOtpDispatch(
   }
 
   if (claimed.count !== 1) {
-    throw new PatientVerificationError("RATE_LIMITED");
+    let activeClaimedUntil = currentClaimedUntil;
+    let refreshedClaim = false;
+    try {
+      const latestUserClaim = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phoneOtpDispatchClaimedUntil: true }
+      });
+      if (latestUserClaim && "phoneOtpDispatchClaimedUntil" in latestUserClaim) {
+        activeClaimedUntil = latestUserClaim.phoneOtpDispatchClaimedUntil;
+        refreshedClaim = true;
+      }
+    } catch {
+      // The atomic claim already proved this request is rate limited. If the
+      // best-effort expiry lookup fails, retain the bounded preflight fallback.
+    }
+    const retryAfterSeconds =
+      activeClaimedUntil && activeClaimedUntil > claimedAt
+        ? getRetryAfterSeconds(activeClaimedUntil, claimedAt)
+        : refreshedClaim
+          ? 1
+          : Math.ceil(resendDelayMs / 1000);
+    throw new PatientVerificationError("RATE_LIMITED", retryAfterSeconds);
   }
 
   return claimedUntil;
@@ -277,7 +331,10 @@ export async function requestPatientPhoneVerification(
   userId: string,
   input: RequestPhoneVerificationInput,
   options: PatientVerificationRequestOptions = {}
-): Promise<{ challengeId: string; phoneLabel: string; expiresAt: string } | { alreadyVerified: true }> {
+): Promise<
+  { challengeId: string; phoneLabel: string; expiresAt: string; retryAfterSeconds: number }
+  | { alreadyVerified: true }
+> {
   const env = getAppEnv();
   if (!getSmsOtpReadiness(env).isConfigured || !env.SMS_OTP_CHALLENGE_ENCRYPTION_KEY) {
     throw new PatientVerificationError("CONFIGURATION_ERROR");
@@ -293,7 +350,7 @@ export async function requestPatientPhoneVerification(
       operation: () =>
         prisma.user.findUnique({
           where: { id: userId },
-          select: { normalizedPhone: true, phoneVerifiedAt: true }
+          select: { normalizedPhone: true, phoneVerifiedAt: true, phoneOtpDispatchClaimedUntil: true }
         })
     },
     {
@@ -358,14 +415,28 @@ export async function requestPatientPhoneVerification(
   );
 
   if (recentChallenge && requestStartedAt.getTime() - recentChallenge.requestedAt.getTime() < resendDelayMs) {
-    throw new PatientVerificationError("RATE_LIMITED");
+    throw new PatientVerificationError(
+      "RATE_LIMITED",
+      getRetryAfterSeconds(new Date(recentChallenge.requestedAt.getTime() + resendDelayMs), requestStartedAt)
+    );
   }
   if (requestCount >= maxRequestsPerWindow) {
-    throw new PatientVerificationError("RATE_LIMITED");
+    const retryAfterSeconds = await getRequestWindowRetryAfterSeconds(
+      userId,
+      new Date(requestStartedAt.getTime() - requestWindowMs),
+      requestStartedAt,
+      options.diagnosticLogger
+    );
+    throw new PatientVerificationError("RATE_LIMITED", retryAfterSeconds);
   }
 
   const claimedAt = new Date();
-  const claimedUntil = await claimPhoneOtpDispatch(userId, claimedAt, options.diagnosticLogger);
+  const claimedUntil = await claimPhoneOtpDispatch(
+    userId,
+    claimedAt,
+    user.phoneOtpDispatchClaimedUntil,
+    options.diagnosticLogger
+  );
   let providerChallenge;
   try {
     providerChallenge = await requestSmsOtp(normalizedPhone.local, {
@@ -373,58 +444,78 @@ export async function requestPatientPhoneVerification(
       diagnosticLogger: options.diagnosticLogger
     });
   } catch (error) {
-    if (mayReleaseDispatchClaim(error)) {
+    const releasesDispatchClaim = mayReleaseDispatchClaim(error);
+    if (releasesDispatchClaim) {
       await releasePhoneOtpDispatchClaim(userId, claimedUntil);
     }
-    throw mapOtpError(error);
+    throw mapOtpError(
+      error,
+      releasesDispatchClaim ? undefined : getRetryAfterSeconds(claimedUntil, new Date())
+    );
   }
 
   const expiresAt = new Date(claimedAt.getTime() + otpTtlMs);
-  const challenge = await runRequestPersistenceStage(
-    "request_persistence",
-    () =>
-      prisma.$transaction(async (tx) => {
-        await tx.phoneVerificationChallenge.updateMany({
-          where: { userId, verifiedAt: null, expiresAt: { gt: claimedAt } },
-          data: { expiresAt: claimedAt }
-        });
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            fullName: input.fullName,
-            dateOfBirth,
-            nationalId,
-            phone: normalizedPhone.local,
-            normalizedPhone: normalizedPhone.e164,
-            phoneVerifiedAt: null
-          }
-        });
-        const created = await tx.phoneVerificationChallenge.create({
-          data: {
-            userId,
-            normalizedPhone: normalizedPhone.e164,
-            providerChallengeCiphertext: encryptProviderChallenge(providerChallenge.providerChallengeId),
-            expiresAt,
-            requestedAt: claimedAt
-          },
-          select: { id: true }
-        });
-        await writeAuditLog(tx, {
-          actorId: userId,
-          action: "patient_verification.otp.request",
-          entityType: "user",
-          entityId: userId,
-          metadata: {
-            provider: providerChallenge.provider,
-            phoneChanged: user.normalizedPhone !== normalizedPhone.e164
-          }
-        });
-        return created;
-      }),
-    options.diagnosticLogger
-  );
+  let challenge: { id: string };
+  try {
+    challenge = await runRequestPersistenceStage(
+      "request_persistence",
+      () =>
+        prisma.$transaction(async (tx) => {
+          await tx.phoneVerificationChallenge.updateMany({
+            where: { userId, verifiedAt: null, expiresAt: { gt: claimedAt } },
+            data: { expiresAt: claimedAt }
+          });
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              fullName: input.fullName,
+              dateOfBirth,
+              nationalId,
+              phone: normalizedPhone.local,
+              normalizedPhone: normalizedPhone.e164,
+              phoneVerifiedAt: null
+            }
+          });
+          const created = await tx.phoneVerificationChallenge.create({
+            data: {
+              userId,
+              normalizedPhone: normalizedPhone.e164,
+              providerChallengeCiphertext: encryptProviderChallenge(providerChallenge.providerChallengeId),
+              expiresAt,
+              requestedAt: claimedAt
+            },
+            select: { id: true }
+          });
+          await writeAuditLog(tx, {
+            actorId: userId,
+            action: "patient_verification.otp.request",
+            entityType: "user",
+            entityId: userId,
+            metadata: {
+              provider: providerChallenge.provider,
+              phoneChanged: user.normalizedPhone !== normalizedPhone.e164
+            }
+          });
+          return created;
+        }),
+      options.diagnosticLogger
+    );
+  } catch (error) {
+    if (error instanceof PatientVerificationError) {
+      throw error;
+    }
+    throw new PatientVerificationError(
+      "OTP_REQUEST_UNAVAILABLE",
+      getRetryAfterSeconds(claimedUntil, new Date())
+    );
+  }
 
-  return { challengeId: challenge.id, phoneLabel: providerChallenge.phoneLabel, expiresAt: expiresAt.toISOString() };
+  return {
+    challengeId: challenge.id,
+    phoneLabel: providerChallenge.phoneLabel,
+    expiresAt: expiresAt.toISOString(),
+    retryAfterSeconds: getRetryAfterSeconds(claimedUntil, new Date())
+  };
 }
 
 export async function verifyPatientPhoneVerification(userId: string, challengeId: string, code: string): Promise<void> {
@@ -482,7 +573,11 @@ export async function verifyPatientPhoneVerification(userId: string, challengeId
   if (!verified) throw new PatientVerificationError("CHALLENGE_INVALIDATED");
 }
 
-export function getPatientVerificationMessage(error: unknown): { status: number; message: string } {
+export function getPatientVerificationMessage(error: unknown): {
+  status: number;
+  message: string;
+  retryAfterSeconds?: number;
+} {
   if (!(error instanceof PatientVerificationError)) return { status: 503, message: "ยังไม่สามารถยืนยันเบอร์โทรได้ กรุณาลองใหม่" };
 
   const messages: Record<PatientVerificationError["code"], { status: number; message: string }> = {
@@ -496,7 +591,11 @@ export function getPatientVerificationMessage(error: unknown): { status: number;
     ATTEMPTS_EXHAUSTED: { status: 429, message: "ลองรหัสเกินกำหนด กรุณาขอรหัสใหม่" },
     CHALLENGE_INVALIDATED: { status: 409, message: "คำขอยืนยันนี้ใช้ไม่ได้แล้ว กรุณาขอรหัสใหม่" },
     OTP_REJECTED: { status: 400, message: "รหัส OTP ไม่ถูกต้องหรือไม่สามารถยืนยันได้" },
+    OTP_REQUEST_UNAVAILABLE: { status: 503, message: "ระบบยังไม่สามารถเตรียมการยืนยัน OTP ได้ กรุณาลองใหม่ภายหลัง" },
     OTP_UNAVAILABLE: { status: 503, message: "ผู้ให้บริการ OTP ไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง" }
   };
-  return messages[error.code];
+  const response = messages[error.code];
+  return error.retryAfterSeconds
+    ? { ...response, retryAfterSeconds: error.retryAfterSeconds }
+    : response;
 }

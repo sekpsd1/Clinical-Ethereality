@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
+import {
+  clearOtherSymptomDraft,
+  getBrowserSessionDraftStorage
+} from "@/features/consultations/assessment/draft";
 
 type LogoutButtonProps = {
   redirectTo?: string;
@@ -19,6 +23,7 @@ export function LogoutButton({
 
   async function handleLogout() {
     setIsLoggingOut(true);
+    clearOtherSymptomDraft(getBrowserSessionDraftStorage());
 
     await fetch("/api/auth/logout", {
       method: "POST"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
@@ -9,8 +9,21 @@ import {
   runSingleFlight,
   type SingleFlightLock
 } from "@/features/identity-verification/single-flight";
+import {
+  DEFAULT_OTP_RETRY_AFTER_SECONDS,
+  resolveOtpRetryAfterSeconds
+} from "@/features/identity-verification/otp-retry";
 
-type ApiResult = { ok: boolean; message?: string; challengeId?: string; phoneLabel?: string; alreadyVerified?: true };
+type ApiPayload = {
+  ok: boolean;
+  message?: string;
+  challengeId?: string;
+  phoneLabel?: string;
+  alreadyVerified?: true;
+  retryAfterSeconds?: number;
+};
+
+type ApiResult = ApiPayload & { httpStatus: number; retryAfterSeconds?: number };
 
 async function postJson(url: string, body: Record<string, string>): Promise<ApiResult> {
   const response = await fetch(url, {
@@ -19,8 +32,31 @@ async function postJson(url: string, body: Record<string, string>): Promise<ApiR
     body: JSON.stringify(body),
     cache: "no-store"
   });
-  return (await response.json().catch(() => ({ ok: false, message: "ยังไม่สามารถดำเนินการได้" }))) as ApiResult;
+  const responseBody: unknown = await response.json().catch(() => ({
+    ok: false,
+    message: "ยังไม่สามารถดำเนินการได้"
+  }));
+  const parsed: ApiPayload = responseBody &&
+    typeof responseBody === "object" &&
+    !Array.isArray(responseBody) &&
+    "ok" in responseBody &&
+    typeof responseBody.ok === "boolean"
+    ? responseBody as ApiPayload
+    : { ok: false, message: "ยังไม่สามารถดำเนินการได้" };
+  const retryAfterSeconds = resolveOtpRetryAfterSeconds({
+    status: response.status,
+    bodyValue: parsed.retryAfterSeconds,
+    headerValue: response.headers.get("Retry-After")
+  });
+
+  return {
+    ...parsed,
+    httpStatus: response.status,
+    ...(retryAfterSeconds === null ? {} : { retryAfterSeconds })
+  };
 }
+
+type OtpCooldownReason = "sent" | "delivery-uncertain" | "rate-limited";
 
 export function BookingIdentityVerification({ status }: { status: PatientVerificationStatus }) {
   const router = useRouter();
@@ -33,19 +69,53 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [resendReady, setResendReady] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [cooldownReason, setCooldownReason] = useState<OtpCooldownReason | null>(null);
   const requestInFlight = useRef<SingleFlightLock["current"]>("idle");
-  const resendCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otpCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
 
-  function startResendCooldown() {
-    setResendReady(false);
-    if (resendCooldownTimer.current) {
-      clearTimeout(resendCooldownTimer.current);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (otpCooldownTimer.current) {
+        clearTimeout(otpCooldownTimer.current);
+      }
+    };
+  }, []);
+
+  function startOtpCooldown(seconds: number, reason: OtpCooldownReason) {
+    if (!isMounted.current) return;
+
+    const safeSeconds = Math.max(1, Math.ceil(seconds));
+    const cooldownEndsAt = Date.now() + safeSeconds * 1_000;
+
+    if (otpCooldownTimer.current) {
+      clearTimeout(otpCooldownTimer.current);
     }
-    resendCooldownTimer.current = setTimeout(() => {
-      resendCooldownTimer.current = null;
-      setResendReady(true);
-    }, 60_000);
+    setCooldownReason(reason);
+    setCooldownSeconds(safeSeconds);
+
+    const updateCountdown = () => {
+      if (!isMounted.current) return;
+
+      const remaining = Math.max(0, Math.ceil((cooldownEndsAt - Date.now()) / 1_000));
+      setCooldownSeconds(remaining);
+
+      if (remaining === 0) {
+        otpCooldownTimer.current = null;
+        setCooldownReason(null);
+        if (reason !== "sent") {
+          setMessage("สามารถขอรหัส OTP อีกครั้งได้แล้ว");
+        }
+        return;
+      }
+
+      otpCooldownTimer.current = setTimeout(updateCountdown, 1_000);
+    };
+
+    otpCooldownTimer.current = setTimeout(updateCountdown, 1_000);
   }
 
   function updateIdentityInput(setter: (value: string) => void, value: string) {
@@ -61,6 +131,12 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         const result = await postJson("/api/identity/phone-otp/request", { fullName, dateOfBirth, nationalId, phone });
         if (!result.ok) {
           setMessage(result.message ?? "ยังไม่สามารถส่งรหัสได้");
+          if (result.retryAfterSeconds !== undefined) {
+            startOtpCooldown(
+              result.retryAfterSeconds,
+              result.httpStatus === 503 ? "delivery-uncertain" : "rate-limited"
+            );
+          }
           return result;
         }
         if (result.alreadyVerified) {
@@ -69,7 +145,7 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
         }
         setChallengeId(result.challengeId ?? null);
         setPhoneLabel(result.phoneLabel ?? null);
-        startResendCooldown();
+        startOtpCooldown(result.retryAfterSeconds ?? DEFAULT_OTP_RETRY_AFTER_SECONDS, "sent");
         setMessage("ส่งรหัส OTP แล้ว กรุณากรอกรหัสเพื่อยืนยันเบอร์โทร");
         return result;
       } catch {
@@ -140,20 +216,34 @@ export function BookingIdentityVerification({ status }: { status: PatientVerific
           <button type="button" disabled={pending || code.length < 4} onClick={verifyOtp} className="mt-3 flex h-11 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white disabled:opacity-50">
             {pending ? "กำลังยืนยัน..." : "ยืนยันรหัส OTP"}
           </button>
-          <button type="button" disabled={pending || !resendReady} onClick={resendOtp} className="mt-3 flex h-11 w-full items-center justify-center rounded-full border border-primary/30 bg-white text-sm font-bold text-primary disabled:opacity-50">
-            {resendReady ? "ส่ง OTP อีกครั้ง" : "ส่ง OTP อีกครั้ง (รอ 60 วินาที)"}
+          <button type="button" disabled={pending || cooldownSeconds > 0} onClick={resendOtp} className="mt-3 flex h-11 w-full items-center justify-center rounded-full border border-primary/30 bg-white text-sm font-bold text-primary disabled:opacity-50">
+            {cooldownSeconds > 0 ? `ส่ง OTP อีกครั้ง (รอ ${cooldownSeconds} วินาที)` : "ส่ง OTP อีกครั้ง"}
           </button>
           <p className="mt-2 text-center text-[11px] leading-5 text-muted">
-            {resendReady ? "ไม่ได้รับรหัส? กดส่ง OTP อีกครั้งได้" : "เพื่อความปลอดภัย สามารถส่ง OTP อีกครั้งได้หลัง 60 วินาที"}
+            {cooldownSeconds > 0
+              ? `เพื่อความปลอดภัย สามารถส่ง OTP อีกครั้งได้ใน ${cooldownSeconds} วินาที`
+              : "ไม่ได้รับรหัส? กดส่ง OTP อีกครั้งได้"}
           </p>
         </div>
       ) : (
-        <button type="button" disabled={pending} onClick={requestOtp} className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white disabled:opacity-50">
-          {pending ? "กำลังขอรหัส..." : "ขอรหัส SMS OTP"}
+        <button type="button" disabled={pending || cooldownSeconds > 0} onClick={requestOtp} className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white disabled:opacity-50">
+          {pending
+            ? "กำลังขอรหัส..."
+            : cooldownSeconds > 0
+              ? `ขอรหัสอีกครั้งใน ${cooldownSeconds} วินาที`
+              : "ขอรหัส SMS OTP"}
         </button>
       )}
 
-      {message ? <p role="status" className="mt-3 text-xs font-semibold leading-5 text-muted">{message}</p> : null}
+      {message || (cooldownReason !== null && cooldownReason !== "sent" && cooldownSeconds > 0) ? (
+        <p role="status" className="mt-3 text-xs font-semibold leading-5 text-muted">
+          {cooldownReason === "delivery-uncertain" && cooldownSeconds > 0
+            ? `${message ?? "ยังไม่สามารถยืนยันการส่งรหัสได้"} ระบบอาจส่ง OTP แล้ว กรุณาตรวจสอบ SMS และรออีก ${cooldownSeconds} วินาทีก่อนขอรหัสใหม่เพื่อป้องกันการส่งซ้ำ`
+            : cooldownReason === "rate-limited" && cooldownSeconds > 0
+              ? `${message ?? "มีคำขอ OTP ก่อนหน้านี้"} กรุณารออีก ${cooldownSeconds} วินาทีก่อนขอรหัสใหม่`
+              : message}
+        </p>
+      ) : null}
       <p className="mt-3 text-[11px] leading-5 text-muted">OTP ยืนยันเพียงการเข้าถึงบัญชี LINE และเบอร์โทรนี้ ไม่ใช่การพิสูจน์ตัวตนตามเอกสาร</p>
     </section>
   );

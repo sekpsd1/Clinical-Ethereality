@@ -4,7 +4,11 @@ import { upsertProductSchema } from "@/features/admin/products/schema";
 import { cartMutationSchema } from "@/features/cart/schema";
 import { articleIdSchema, commentSchema, reportContentSchema } from "@/features/community/article/schema";
 import { communityPostSchema } from "@/features/community/schema";
-import { getAssessmentRecommendation } from "@/features/consultations/assessment/rules";
+import {
+  getAssessmentRecommendation,
+  getAssessmentSymptomLabel,
+  isAssessmentSymptom
+} from "@/features/consultations/assessment/rules";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
@@ -223,10 +227,34 @@ describe("feature validation schemas", () => {
         duration: "1-3days"
       }).success
     ).toBe(false);
+    expect(
+      submitConsultAssessmentSchema.safeParse({
+        symptom: "other",
+        symptomDetail: "   ",
+        duration: "1-3days"
+      }).success
+    ).toBe(false);
+    expect(
+      submitConsultAssessmentSchema.parse({
+        symptom: "other",
+        symptomDetail: "  เจ็บท้องน้อย  ",
+        duration: "1-3days"
+      }).symptomDetail
+    ).toBe("เจ็บท้องน้อย");
+    expect(
+      submitConsultAssessmentSchema.safeParse({
+        symptom: "other",
+        symptomDetail: "อ".repeat(101),
+        duration: "1-3days"
+      }).success
+    ).toBe(false);
+    expect(getAssessmentSymptomLabel("other", " เจ็บท้องน้อย ")).toBe("อื่นๆ: เจ็บท้องน้อย");
     expect(getAssessmentRecommendation("urinary_symptoms", "more3days")).toMatchObject({
       topic: "ปัสสาวะผิดปกติ",
       specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์"
     });
+    expect(isAssessmentSymptom("other")).toBe(true);
+    expect(isAssessmentSymptom("toString")).toBe(false);
   });
 
   it("validates in-app consultation chat messages", () => {

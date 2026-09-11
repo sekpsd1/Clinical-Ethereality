@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, ChevronLeft, ChevronRight, Droplets, MoreHorizontal, MoreVertical, Hand } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
+import { assessmentSymptomDetailMaxLength } from "@/features/consultations/assessment/constants";
+import {
+  clearOtherSymptomDraft,
+  getBrowserSessionDraftStorage,
+  readOtherSymptomDraft,
+  writeOtherSymptomDraft
+} from "@/features/consultations/assessment/draft";
+import type { AssessmentSymptom } from "@/features/consultations/assessment/types";
 
 const symptomOptions = [
   {
@@ -32,8 +40,45 @@ const symptomOptions = [
   }
 ] as const;
 
-export function ConsultAssessmentSymptoms() {
-  const [selectedSymptom, setSelectedSymptom] = useState<string | null>(null);
+export function ConsultAssessmentSymptoms({
+  initialSelectedSymptom = null
+}: {
+  initialSelectedSymptom?: AssessmentSymptom | null;
+}) {
+  const [selectedSymptom, setSelectedSymptom] = useState<AssessmentSymptom | null>(initialSelectedSymptom);
+  const [symptomDetail, setSymptomDetail] = useState("");
+  const trimmedSymptomDetail = symptomDetail.trim();
+  const canContinue = Boolean(selectedSymptom) && (selectedSymptom !== "other" || trimmedSymptomDetail.length > 0);
+  const durationHref = selectedSymptom ? `/consult/assessment/duration?symptom=${selectedSymptom}` : null;
+
+  useEffect(() => {
+    const storage = getBrowserSessionDraftStorage();
+    if (initialSelectedSymptom === "other") {
+      setSymptomDetail(readOtherSymptomDraft(storage));
+      return;
+    }
+
+    clearOtherSymptomDraft(storage);
+    setSymptomDetail("");
+  }, [initialSelectedSymptom]);
+
+  function updateSymptomDetail(detail: string) {
+    setSymptomDetail(detail);
+    writeOtherSymptomDraft(getBrowserSessionDraftStorage(), detail);
+  }
+
+  function selectSymptom(symptom: AssessmentSymptom) {
+    setSelectedSymptom(symptom);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("symptom", symptom);
+    window.history.replaceState(window.history.state, "", url);
+
+    if (symptom !== "other") {
+      setSymptomDetail("");
+      clearOtherSymptomDraft(getBrowserSessionDraftStorage());
+    }
+  }
 
   return (
     <section className="relative min-h-dvh overflow-hidden bg-[#f7f9fb] px-6 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-28 text-[#191c1e]">
@@ -88,7 +133,7 @@ export function ConsultAssessmentSymptoms() {
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setSelectedSymptom(option.id)}
+                onClick={() => selectSymptom(option.id)}
                 className={cn(
                   "group flex min-h-[128px] w-full items-center gap-6 rounded-[24px] border bg-white p-8 text-left shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,96,103,0.08)]",
                   active ? "-translate-y-1 border-2 border-[#006067] bg-[#006067]/[0.04]" : "border-[#bdc9ca]/15"
@@ -110,6 +155,29 @@ export function ConsultAssessmentSymptoms() {
             );
           })}
         </div>
+
+        {selectedSymptom === "other" ? (
+          <label className="mt-6 block rounded-[24px] border border-[#006067]/20 bg-white p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+            <span className="block font-headline text-base font-extrabold text-[#191c1e]">โปรดระบุอาการ</span>
+            <span className="mt-1 block font-body text-sm leading-6 text-[#3e494a]/70">
+              กรุณาอธิบายอาการหลักที่ต้องการปรึกษา
+            </span>
+            <textarea
+              name="symptomDetail"
+              value={symptomDetail}
+              onChange={(event) => updateSymptomDetail(event.target.value)}
+              maxLength={assessmentSymptomDetailMaxLength}
+              rows={3}
+              required
+              aria-label="ระบุอาการอื่นๆ"
+              className="mt-4 w-full resize-none rounded-[16px] border border-[#bdc9ca]/40 bg-[#f7f9fb] px-4 py-3 font-body text-base text-[#191c1e] outline-none transition-colors placeholder:text-[#3e494a]/40 focus:border-[#006067] focus:ring-2 focus:ring-[#006067]/10"
+              placeholder="เช่น เจ็บท้องน้อย มีตกขาวผิดปกติ"
+            />
+            <span className="mt-2 block text-right font-label text-xs text-[#3e494a]/50">
+              {symptomDetail.length}/{assessmentSymptomDetailMaxLength}
+            </span>
+          </label>
+        ) : null}
       </main>
 
       <div className="pointer-events-none fixed bottom-0 right-0 -z-10 size-[420px] translate-x-1/3 translate-y-1/3 rounded-full bg-[#006067]/5 blur-[100px]" />
@@ -122,9 +190,9 @@ export function ConsultAssessmentSymptoms() {
           <ChevronLeft aria-hidden="true" className="size-5" />
           <span className="font-label text-xs">ก่อนหน้า</span>
         </Link>
-        {selectedSymptom ? (
+        {canContinue && durationHref ? (
           <a
-            href={`/consult/assessment/duration?symptom=${selectedSymptom}`}
+            href={durationHref}
             className="flex min-w-14 scale-105 flex-col items-center justify-center gap-1 rounded-full bg-[#006067] px-8 py-2 text-white shadow-lg shadow-[#006067]/20 transition-all"
           >
             <ChevronRight aria-hidden="true" className="size-5" />
