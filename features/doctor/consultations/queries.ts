@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireDoctorSession } from "@/lib/auth/guards";
 import { getDoctorPatientReference } from "@/features/doctor/patient-reference";
 import { parsePrescriptionItems } from "@/features/prescriptions/items";
-import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
+import { isLiveConsultationOpenForRole } from "@/features/consultations/waiting-room/access";
 import {
   formatDoctorConsultationDuration,
   getLegacyDurationAvailabilityIds,
@@ -416,7 +416,12 @@ function mapConsultation(
       : getAttendanceStatusCopy(attendanceState, "doctor");
   const canOpenConsultRoom =
     workflow.canOpenConsultRoom &&
-    isLiveConsultationOpen(consultation.status, consultation.scheduledAt);
+    isLiveConsultationOpenForRole(
+      "doctor",
+      consultation.status,
+      consultation.scheduledAt,
+      now
+    );
 
   return {
     id: consultation.id,

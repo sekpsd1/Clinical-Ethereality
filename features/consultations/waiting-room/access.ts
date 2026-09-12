@@ -1,5 +1,9 @@
 export type WaitingRoomLifecycleStatus = "scheduled" | "live";
 
+export type LiveConsultationRole = "customer" | "doctor";
+
+export const DOCTOR_CONSULTATION_EARLY_START_MS = 5 * 60 * 1000;
+
 export type WaitingRoomTiming = {
   canEnterLive: boolean;
   countdownTitle: string;
@@ -8,7 +12,7 @@ export type WaitingRoomTiming = {
 
 export type LiveConsultationParticipant = {
   userId: string;
-  role: "customer" | "doctor";
+  role: LiveConsultationRole;
 };
 
 export type LiveConsultationAccessRecord = {
@@ -26,12 +30,43 @@ export function isLiveConsultationOpen(
   return status === "live" && Boolean(scheduledAt && scheduledAt.getTime() <= now.getTime());
 }
 
+export function getLiveConsultationScheduledAtCutoff(
+  role: LiveConsultationRole,
+  now = new Date()
+): Date {
+  return role === "doctor"
+    ? new Date(now.getTime() + DOCTOR_CONSULTATION_EARLY_START_MS)
+    : now;
+}
+
+export function isLiveConsultationOpenForRole(
+  role: LiveConsultationRole,
+  status: string,
+  scheduledAt: Date | null,
+  now = new Date()
+): boolean {
+  return (
+    status === "live" &&
+    Boolean(
+      scheduledAt &&
+        scheduledAt.getTime() <= getLiveConsultationScheduledAtCutoff(role, now).getTime()
+    )
+  );
+}
+
 export function canParticipantAccessLiveConsultation(
   participant: LiveConsultationParticipant,
   consultation: LiveConsultationAccessRecord,
   now = new Date()
 ): boolean {
-  if (!isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)) {
+  if (
+    !isLiveConsultationOpenForRole(
+      participant.role,
+      consultation.status,
+      consultation.scheduledAt,
+      now
+    )
+  ) {
     return false;
   }
 

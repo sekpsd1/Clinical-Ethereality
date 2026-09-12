@@ -264,6 +264,25 @@ describe("canParticipantAccessLiveConsultation", () => {
     ).toBe(false);
   });
 
+  it("permits only the assigned doctor during the five-minute early-start window", () => {
+    const duringDoctorEarlyStart = new Date("2030-01-01T09:56:00.000Z");
+
+    expect(
+      canParticipantAccessLiveConsultation(
+        { userId: "doctor-user-1", role: "doctor" },
+        liveConsultation,
+        duringDoctorEarlyStart
+      )
+    ).toBe(true);
+    expect(
+      canParticipantAccessLiveConsultation(
+        { userId: "patient-1", role: "customer" },
+        liveConsultation,
+        duringDoctorEarlyStart
+      )
+    ).toBe(false);
+  });
+
   it("denies scheduled, completed, and live-before-time records", () => {
     const participant = { userId: "patient-1", role: "customer" } as const;
 

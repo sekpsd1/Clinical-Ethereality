@@ -48,6 +48,7 @@ import {
 } from "@/features/consultations/zoom/external-handoff";
 
 const now = new Date("2030-01-01T10:01:00.000Z");
+const duringDoctorEarlyStart = new Date("2030-01-01T09:56:00.000Z");
 const consultation = {
   id: "consultation-1",
   zoomMeetingId: "12345678901"
@@ -89,6 +90,47 @@ describe("Zoom external-browser handoff", () => {
       status: "live",
       scheduledAt: { lte: now }
     });
+  });
+
+  it("issues an external handoff to the assigned doctor during the five-minute early-start window", async () => {
+    mocks.session = {
+      userId: "doctor-1",
+      role: "doctor",
+      displayName: "Dr A"
+    };
+
+    const handoff = await issueZoomExternalHandoff("consultation-1", {
+      now: duringDoctorEarlyStart
+    });
+
+    expect(handoff.ticket).toMatch(/^v1\.[0-9a-f-]{36}\.[A-Za-z0-9_-]{40,64}$/);
+    expect(mocks.transactionClient.consultation.findFirst.mock.calls[0]?.[0].where).toMatchObject({
+      doctor: {
+        userId: "doctor-1",
+        user: { role: "doctor", status: "active" }
+      },
+      status: "live",
+      scheduledAt: { lte: new Date("2030-01-01T10:01:00.000Z") }
+    });
+    expect(mocks.transactionClient.authSession.create.mock.calls[0]?.[0].data).toMatchObject({
+      userId: "doctor-1",
+      userAgent: "zoom-handoff-ticket:v1:doctor:consultation-1"
+    });
+  });
+
+  it("keeps the customer external handoff blocked until the scheduled time", async () => {
+    mocks.transactionClient.consultation.findFirst.mockResolvedValue(null);
+
+    await expect(
+      issueZoomExternalHandoff("consultation-1", { now: duringDoctorEarlyStart })
+    ).rejects.toBeInstanceOf(ZoomExternalHandoffError);
+
+    expect(mocks.transactionClient.consultation.findFirst.mock.calls[0]?.[0].where).toMatchObject({
+      patientId: "customer-1",
+      status: "live",
+      scheduledAt: { lte: duringDoctorEarlyStart }
+    });
+    expect(mocks.transactionClient.authSession.create).not.toHaveBeenCalled();
   });
 
   it("rejects non-participant roles before reading appointment data", async () => {

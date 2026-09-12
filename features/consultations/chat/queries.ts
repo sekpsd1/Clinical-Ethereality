@@ -2,7 +2,10 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { isZoomMeetingSdkConfigured } from "@/lib/zoom/meeting-sdk";
-import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
+import {
+  getLiveConsultationScheduledAtCutoff,
+  isLiveConsultationOpenForRole
+} from "@/features/consultations/waiting-room/access";
 import type { LiveConsultationChatData } from "@/features/consultations/chat/types";
 import {
   getAttendanceStatusCopy,
@@ -70,7 +73,7 @@ export async function getLiveConsultationChat(
               },
               status: "live",
               scheduledAt: {
-                lte: now
+                lte: getLiveConsultationScheduledAtCutoff(session.role, now)
               }
             }
           : {
@@ -78,7 +81,7 @@ export async function getLiveConsultationChat(
               patientId: session.userId,
               status: "live",
               scheduledAt: {
-                lte: now
+                lte: getLiveConsultationScheduledAtCutoff(session.role, now)
               }
             },
       include: {
@@ -114,7 +117,12 @@ export async function getLiveConsultationChat(
 
     if (
       !consultation ||
-      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+      !isLiveConsultationOpenForRole(
+        session.role,
+        consultation.status,
+        consultation.scheduledAt,
+        now
+      )
     ) {
       return sessionEmptyData;
     }

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { getLiveConsultationScheduledAtCutoff } from "@/features/consultations/waiting-room/access";
 
 export type ZoomConsultationViewer = {
   userId: string;
@@ -15,7 +16,7 @@ export function buildZoomConsultationAccessWhere(
     id: consultationId,
     status: "live" as const,
     scheduledAt: {
-      lte: now
+      lte: getLiveConsultationScheduledAtCutoff(viewer.role, now)
     }
   };
 

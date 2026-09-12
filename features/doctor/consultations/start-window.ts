@@ -1,4 +1,6 @@
-export const DOCTOR_CONSULTATION_EARLY_START_MS = 5 * 60 * 1000;
+import { DOCTOR_CONSULTATION_EARLY_START_MS } from "@/features/consultations/waiting-room/access";
+
+export { DOCTOR_CONSULTATION_EARLY_START_MS } from "@/features/consultations/waiting-room/access";
 
 export type DoctorConsultationStartWindow = {
   canStart: boolean;

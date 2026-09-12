@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 import { issueZoomMeetingSdkSignature } from "@/lib/zoom/meeting-sdk";
 import { getZoomHostZakIfConfigured } from "@/lib/zoom/meetings";
-import { isLiveConsultationOpen } from "@/features/consultations/waiting-room/access";
+import { isLiveConsultationOpenForRole } from "@/features/consultations/waiting-room/access";
 import { createZoomAttendanceCredential } from "@/features/consultations/attendance/identity";
 import {
   buildZoomConsultationAccessWhere,
@@ -62,7 +62,12 @@ export async function getZoomMeetingLaunchAccess(
 
     if (
       !consultation?.zoomMeetingId ||
-      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+      !isLiveConsultationOpenForRole(
+        session.role,
+        consultation.status,
+        consultation.scheduledAt,
+        now
+      )
     ) {
       return {
         available: false,
@@ -147,7 +152,12 @@ async function getZoomMeetingJoinDataForViewer(
 
     if (
       !consultation?.zoomMeetingId ||
-      !isLiveConsultationOpen(consultation.status, consultation.scheduledAt, now)
+      !isLiveConsultationOpenForRole(
+        viewer.role,
+        consultation.status,
+        consultation.scheduledAt,
+        now
+      )
     ) {
       return {
         available: false,

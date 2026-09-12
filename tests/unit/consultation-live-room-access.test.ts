@@ -23,6 +23,7 @@ vi.mock("@/lib/zoom/meeting-sdk", () => ({
 const { getLiveConsultationChat } = await import("@/features/consultations/chat/queries");
 
 const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+const duringDoctorEarlyStart = new Date("2030-01-01T09:56:00.000Z");
 
 function session(role: "customer" | "doctor" | "admin", userId: string) {
   return {
@@ -151,12 +152,50 @@ describe("getLiveConsultationChat direct URL access", () => {
     expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({
       doctor: { userId: "doctor-user-1" },
       status: "live",
-      scheduledAt: { lte: scheduledAt }
+      scheduledAt: { lte: new Date("2030-01-01T10:05:00.000Z") }
     });
     expect(result).toMatchObject({
       consultationId: "consultation-uat",
       viewerRole: "doctor",
       canSend: true
+    });
+  });
+
+  it("permits the assigned doctor during the five-minute early-start window", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("doctor", "doctor-user-1"));
+    mocks.findFirst.mockResolvedValue(consultationRecord("live"));
+
+    const result = await getLiveConsultationChat("consultation-uat", duringDoctorEarlyStart);
+
+    expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({
+      doctor: { userId: "doctor-user-1" },
+      status: "live",
+      scheduledAt: { lte: new Date("2030-01-01T10:01:00.000Z") }
+    });
+    expect(result).toMatchObject({
+      consultationId: "consultation-uat",
+      viewerRole: "doctor",
+      canSend: true,
+      videoHref: "/consult/live/zoom?consultation=consultation-uat"
+    });
+  });
+
+  it("keeps the customer chat and video blocked until the scheduled time after an early doctor start", async () => {
+    mocks.getCurrentSession.mockResolvedValue(session("customer", "patient-1"));
+    mocks.findFirst.mockResolvedValue(consultationRecord("live"));
+
+    const result = await getLiveConsultationChat("consultation-uat", duringDoctorEarlyStart);
+
+    expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({
+      patientId: "patient-1",
+      status: "live",
+      scheduledAt: { lte: duringDoctorEarlyStart }
+    });
+    expect(result).toMatchObject({
+      consultationId: null,
+      canSend: false,
+      videoHref: null,
+      messages: []
     });
   });
 });

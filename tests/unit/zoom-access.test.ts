@@ -31,6 +31,7 @@ import {
 } from "@/features/consultations/zoom/queries";
 
 const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+const duringDoctorEarlyStart = new Date("2030-01-01T09:56:00.000Z");
 const afterAppointment = new Date("2030-01-01T10:01:00.000Z");
 
 describe("Zoom consultation access", () => {
@@ -58,7 +59,7 @@ describe("Zoom consultation access", () => {
     expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({
       doctor: { userId: "doctor-1" },
       status: "live",
-      scheduledAt: { lte: afterAppointment }
+      scheduledAt: { lte: new Date("2030-01-01T10:06:00.000Z") }
     });
     expect(mocks.signature).toHaveBeenCalledWith("12345678901", 1);
     expect(mocks.zak).toHaveBeenCalledOnce();
@@ -92,6 +93,59 @@ describe("Zoom consultation access", () => {
     expect(mocks.signature).not.toHaveBeenCalled();
     expect(mocks.zak).not.toHaveBeenCalled();
     expect(data).toMatchObject({ available: true, consultationId: "consultation-1" });
+  });
+
+  it("lets the assigned doctor launch and join during the five-minute early-start window", async () => {
+    mocks.session = { userId: "doctor-1", role: "doctor", displayName: "Dr A" };
+
+    const launch = await getZoomMeetingLaunchAccess("consultation-1", duringDoctorEarlyStart);
+    const join = await getZoomMeetingJoinData("consultation-1", duringDoctorEarlyStart);
+
+    expect(mocks.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          doctor: expect.objectContaining({ userId: "doctor-1" }),
+          status: "live",
+          scheduledAt: { lte: new Date("2030-01-01T10:01:00.000Z") }
+        })
+      })
+    );
+    expect(mocks.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          doctor: expect.objectContaining({ userId: "doctor-1" }),
+          status: "live",
+          scheduledAt: { lte: new Date("2030-01-01T10:01:00.000Z") }
+        })
+      })
+    );
+    expect(launch).toMatchObject({ available: true, consultationId: "consultation-1" });
+    expect(join).toMatchObject({ available: true, zak: "host-zak", userName: "Dr A" });
+    expect(mocks.signature).toHaveBeenCalledWith("12345678901", 1);
+  });
+
+  it("keeps the customer blocked from Zoom until the scheduled time even after the doctor starts early", async () => {
+    mocks.session = { userId: "customer-1", role: "customer", displayName: "Customer" };
+
+    const launch = await getZoomMeetingLaunchAccess("consultation-1", duringDoctorEarlyStart);
+    const join = await getZoomMeetingJoinData("consultation-1", duringDoctorEarlyStart);
+
+    expect(mocks.findFirst.mock.calls[0]?.[0].where).toMatchObject({
+      patientId: "customer-1",
+      status: "live",
+      scheduledAt: { lte: duringDoctorEarlyStart }
+    });
+    expect(mocks.findFirst.mock.calls[1]?.[0].where).toMatchObject({
+      patientId: "customer-1",
+      status: "live",
+      scheduledAt: { lte: duringDoctorEarlyStart }
+    });
+    expect(launch).toMatchObject({ available: false });
+    expect(join).toMatchObject({ available: false });
+    expect(mocks.signature).not.toHaveBeenCalled();
+    expect(mocks.zak).not.toHaveBeenCalled();
   });
 
   it("blocks role mismatches before querying consultation data", async () => {
