@@ -62,6 +62,16 @@ Implementation structure:
 
 Treat patient data, prescriptions, patient logs, payment records, order records, community moderation records, images, and attachments as sensitive.
 
+### Current Test/UAT deletion direction
+
+The product owner confirmed on 2026-09-12 that every record currently in this system is Test/UAT data, including Admin, Doctor, Pharmacist, Customer, appointment, consultation, payment, and payment-evidence records. Until the owner explicitly declares that real customer or production business data has started:
+
+- An explicit request to delete an exact user or record means permanent deletion from the database and private file storage.
+- Do not substitute suspension, archive, soft delete, reset markers, or retained deletion audit records for the requested deletion.
+- Delete the selected record's dependent Test/UAT data and related audit history in the same scoped operation.
+- Resolve the exact target before executing so a different record is not deleted; this target check is not a reason to preserve data the owner asked to remove.
+- Admin user deletion must be available through the Admin UI and must not depend on a Plesk environment allowlist.
+
 When implementation begins:
 
 - Model role ownership and role-based access through the agreed main entities

@@ -107,8 +107,8 @@ export function ConsultPaymentCheckout({
         ) : (
           <PaymentStateCard
             tone="danger"
-            title="ไม่พบรายการปรึกษา"
-            body="ลิงก์ชำระเงินนี้อาจหมดอายุ ถูกย้าย หรือเป็นของบัญชีอื่น"
+            title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว"
+            body="รายการปรึกษาอาจถูกลบ หรือลิงก์นี้ไม่สามารถเข้าถึงได้แล้ว"
             href="/consult"
             cta="กลับไปหน้าปรึกษา"
           />
@@ -161,8 +161,8 @@ function PaymentStatusNotice({ data }: { data: ConsultationPaymentData }) {
       tone: "warning" as const
     },
     not_found: {
-      title: "ไม่พบรายการปรึกษา",
-      body: "กรุณาเปิดหน้าชำระเงินจากหน้ารายละเอียดนัดหมาย",
+      title: "ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว",
+      body: "กรุณากลับไปหน้าปรึกษาแล้วเลือกรายการใหม่",
       tone: "danger" as const
     }
   };

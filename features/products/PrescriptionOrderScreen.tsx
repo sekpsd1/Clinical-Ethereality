@@ -80,7 +80,7 @@ export function PrescriptionOrderScreen({ data, orderStatus, addresses = [] }: {
             )}
           </>
         ) : (
-          <StateCard title="ไม่พบใบสั่งยา" body="ใบสั่งยานี้อาจถูกย้าย ถูกยกเลิก หรือไม่ใช่ของบัญชีที่กำลังเข้าสู่ระบบ" />
+          <StateCard title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว" body="ใบสั่งยาอาจถูกลบ ยกเลิก หรือคุณไม่มีสิทธิ์เข้าถึง" />
         )}
       </main>
     </section>

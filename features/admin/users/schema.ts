@@ -4,6 +4,8 @@ export const adminUserIdSchema = z.object({
   userId: z.string().min(1)
 });
 
+export const deleteUserSchema = adminUserIdSchema;
+
 export const approveStaffRoleSchema = adminUserIdSchema.extend({
   role: z.enum(["doctor", "pharmacist", "admin"])
 });

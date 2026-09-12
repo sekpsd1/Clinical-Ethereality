@@ -31,8 +31,8 @@ export function CustomerOrderDetail({ order, unavailable }: CustomerOrderDetailP
 
         {!unavailable && !order ? (
           <EmptyState
-            title="ไม่พบคำสั่งซื้อนี้"
-            body="คำสั่งซื้ออาจไม่อยู่ในบัญชีนี้ หรือยังไม่มีข้อมูลสำหรับแสดงรายละเอียด"
+            title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว"
+            body="คำสั่งซื้ออาจถูกลบ หรือคุณไม่มีสิทธิ์เข้าถึง"
             icon={<PackageCheck aria-hidden="true" className="size-5" />}
             action={<BackToOrdersLink />}
             className="mt-8 bg-white/75"

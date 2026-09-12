@@ -108,7 +108,7 @@ describe("customer advice log", () => {
 
     expect(data).toEqual({ advice: null });
     expect(mocks.attachmentFindFirst).not.toHaveBeenCalled();
-    expect(html).toContain("ไม่พบสรุปผลการปรึกษา");
+    expect(html).toContain("ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว");
     expect(html).toContain('href="/consult"');
   });
 

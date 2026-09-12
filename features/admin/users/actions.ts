@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { assertPermission } from "@/lib/permissions";
 import {
   approveStaffRoleSchema,
+  deleteUserSchema,
   updateUserRoleSchema,
   updateUserStatusSchema
 } from "@/features/admin/users/schema";
@@ -16,6 +18,11 @@ import {
 } from "@/features/staff-files/service";
 import { staffFileEntityTypes, type StaffFileKind } from "@/features/staff-files/types";
 import { uploadAdminStaffFile } from "@/features/admin/users/staff-files";
+import {
+  cleanupDeletedUserFiles,
+  deleteUserPermanently,
+  UserDeletionError
+} from "@/features/admin/users/delete-service";
 
 export type AdminUserActionState = {
   status: "idle" | "success" | "error";
@@ -24,6 +31,75 @@ export type AdminUserActionState = {
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
+}
+
+export async function deleteUserPermanentlyAction(
+  _previousState: AdminUserActionState,
+  formData: FormData
+): Promise<AdminUserActionState> {
+  const session = await requireAdminSession();
+  assertPermission(session, "user:delete");
+  const parsed = deleteUserSchema.safeParse(formDataToObject(formData));
+
+  if (!parsed.success) {
+    return { status: "error", message: "บัญชีผู้ใช้ที่เลือกไม่ถูกต้อง" };
+  }
+
+  if (parsed.data.userId === session.userId) {
+    return {
+      status: "error",
+      message: "ให้ผู้ดูแลระบบอีกบัญชีเป็นผู้ลบบัญชีที่กำลังใช้งานอยู่"
+    };
+  }
+
+  try {
+    const result = await prisma.$transaction(
+      (tx) =>
+        deleteUserPermanently(tx, {
+          actorId: session.userId,
+          userId: parsed.data.userId
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    await cleanupDeletedUserFiles(result.files);
+  } catch (error) {
+    if (error instanceof UserDeletionError) {
+      return {
+        status: "error",
+        message:
+          error.code === "SELF_DELETE"
+            ? "ให้ผู้ดูแลระบบอีกบัญชีเป็นผู้ลบบัญชีที่กำลังใช้งานอยู่"
+            : "ไม่พบบัญชีผู้ใช้ที่ต้องการลบ"
+      };
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return {
+        status: "error",
+        message: "มีรายการอื่นกำลังเปลี่ยนข้อมูล กรุณากดลบอีกครั้ง"
+      };
+    }
+
+    return {
+      status: "error",
+      message: "ไม่สามารถลบบัญชีผู้ใช้ได้ กรุณาลองอีกครั้ง"
+    };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/consult");
+  revalidatePath("/store");
+  revalidatePath("/community");
+  revalidatePath("/profile");
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/audit");
+
+  return {
+    status: "success",
+    message: "ลบบัญชีและข้อมูลที่เกี่ยวข้องออกจากระบบถาวรแล้ว"
+  };
 }
 
 export async function approveStaffRoleAction(

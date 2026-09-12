@@ -521,4 +521,15 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Revalidate the JWT identity against the active customer row at Consult entry so a reset tester is sent directly through LINE login and receives a new User even while the old access cookie has not expired.
 - [x] Cover permission, target confirmation, allowlist denial, staff-profile denial, stale Preview, data-conflict denial, dependent deletion, session removal, identity deletion, and inventory reconciliation with focused tests.
 - [x] Push commit `b4eb8ac` to `origin/main` and deploy it through Plesk without a migration: Pull/Deploy, non-migration preflight, dependency and Zoom-client install, 64-route host build, one restart, and health HTTP 200/`status: ok` passed. The reset allowlist remains unconfigured and no account or business data was mutated.
-- [ ] Before use, add only the exact approved UAT LINE user ID to `CUSTOMER_TEST_RESET_LINE_USER_IDS`, deploy separately, Preview the target counts and stock effects, obtain mutation approval, reset one account, and verify fresh LINE login plus deleted test records. Never add a real customer identity to the allowlist.
+- [x] Superseded before activation: do not configure `CUSTOMER_TEST_RESET_LINE_USER_IDS`; the owner replaced this allowlisted reset model with direct permanent Admin deletion for all current Test/UAT users.
+
+## Admin permanent user deletion (code only, 2026-09-12)
+
+- [x] Replace the Plesk allowlist/reset workflow with a shared Admin `ลบถาวร` button on customer detail and personnel cards for Customer, Doctor, Pharmacist, and Admin accounts.
+- [x] Require the dedicated `user:delete` permission and explicit irreversible confirmation; require another Admin to delete the currently signed-in Admin account.
+- [x] Permanently delete the exact User and dependent Test/UAT database rows, related AuditLog rows, payment evidence metadata, and known private payment/community/staff files without creating a deletion audit or tombstone.
+- [x] Remove doctor consultations/schedules/slot locks and pharmacist-linked prescriptions as applicable, and reconcile owned Store-order inventory by order lifecycle without failing on Test/UAT payment-state inconsistencies.
+- [x] Remove `CUSTOMER_TEST_RESET_LINE_USER_IDS` and all runtime allowlist dependency; no schema or migration is required.
+- [x] Remove other users' notifications whose metadata references records deleted with the target account, preserve unrelated notifications, and show a neutral deleted-or-unavailable state for stale links instead of an application error.
+- [x] Pass 51 focused tests, all 1,155 unit tests with 6 skips, TypeScript typecheck, ESLint, and the 64-page production build.
+- [ ] Commit/push/deploy only after explicit release approval; do not delete any current user or business data as part of the code release.

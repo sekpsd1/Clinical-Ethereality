@@ -82,8 +82,8 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
           </>
         ) : (
           <StateCard
-            title="ไม่พบนัดหมาย"
-            body="นัดหมายนี้อาจถูกย้าย ยกเลิก หรือเป็นของบัญชีอื่น"
+            title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว"
+            body="นัดหมายอาจถูกลบ ยกเลิก หรือคุณไม่มีสิทธิ์เข้าถึง"
             href="/consult"
             cta="กลับไปหน้าปรึกษา"
           />

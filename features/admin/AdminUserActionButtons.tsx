@@ -4,8 +4,9 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { CheckCircle2, Save, XCircle } from "lucide-react";
+import { CheckCircle2, Save, Trash2, XCircle } from "lucide-react";
 import {
+  deleteUserPermanentlyAction,
   updateUserRoleAction,
   updateUserStatusAction
 } from "@/features/admin/users/actions";
@@ -17,6 +18,7 @@ type AdminUserActionButtonsProps = {
   user: Pick<AdminUserApprovalItem, "id" | "name" | "currentRole" | "requestedRole" | "status" | "staffStatus">;
   isCurrentUser: boolean;
   allowReactivation?: boolean;
+  redirectOnDelete?: Route;
   redirectOnRoleChange?: Route;
 };
 
@@ -29,6 +31,7 @@ export function AdminUserActionButtons({
   user,
   isCurrentUser,
   allowReactivation = false,
+  redirectOnDelete,
   redirectOnRoleChange
 }: AdminUserActionButtonsProps) {
   const router = useRouter();
@@ -38,14 +41,31 @@ export function AdminUserActionButtons({
   const [approveState, setApproveState] = useState<AdminUserActionState>(initialActionState);
   const [approvePending, setApprovePending] = useState(false);
   const [roleState, roleAction] = useActionState(updateUserRoleAction, initialActionState);
+  const [deleteState, deleteAction] = useActionState(deleteUserPermanentlyAction, initialActionState);
   const actionState =
-    roleState.status !== "idle" ? roleState : approveState.status !== "idle" ? approveState : suspendState;
+    deleteState.status !== "idle"
+      ? deleteState
+      : roleState.status !== "idle"
+        ? roleState
+        : approveState.status !== "idle"
+          ? approveState
+          : suspendState;
 
   useEffect(() => {
     if (roleState.status === "success" && redirectOnRoleChange) {
       router.push(redirectOnRoleChange);
     }
   }, [redirectOnRoleChange, roleState.status, router]);
+
+  useEffect(() => {
+    if (deleteState.status !== "success") return;
+
+    if (redirectOnDelete) {
+      router.push(redirectOnDelete);
+    } else {
+      router.refresh();
+    }
+  }, [deleteState.status, redirectOnDelete, router]);
 
   async function handleApprove() {
     setApprovePending(true);
@@ -149,6 +169,21 @@ export function AdminUserActionButtons({
                 />
               </form>
             ) : null}
+            <form
+              action={deleteAction}
+              onSubmit={(event) => {
+                if (
+                  !window.confirm(
+                    `ลบบัญชี ${user.name} และข้อมูลที่เกี่ยวข้องทั้งหมดออกจากระบบถาวร? การดำเนินการนี้ย้อนกลับไม่ได้`
+                  )
+                ) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <input type="hidden" name="userId" value={user.id} />
+              <DeleteUserButton userName={user.name} />
+            </form>
           </div>
           {isPendingApproval && isStaffRoleRequest ? (
             <p className="max-w-[480px] text-right text-[11px] font-semibold leading-5 text-muted">
@@ -169,6 +204,23 @@ export function AdminUserActionButtons({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function DeleteUserButton({ userName }: { userName: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      className="inline-flex h-9 items-center gap-1.5 rounded-[8px] border border-danger/25 bg-danger/10 px-3 text-xs font-bold text-danger disabled:opacity-60"
+      aria-label={`ลบบัญชี ${userName} ถาวร`}
+      disabled={pending}
+      title="ลบบัญชีและข้อมูลที่เกี่ยวข้องถาวร"
+    >
+      <Trash2 aria-hidden="true" className="size-4" strokeWidth={2.1} />
+      <span>{pending ? "กำลังลบ" : "ลบถาวร"}</span>
+    </button>
   );
 }
 

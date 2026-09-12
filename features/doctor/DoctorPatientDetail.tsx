@@ -34,7 +34,7 @@ export function DoctorPatientDetail({ data }: { data: DoctorPatientDetailData })
   }
 
   if (!data.patient) {
-    return <DetailEmptyState title="ไม่พบข้อมูลผู้ป่วย" body="ผู้ป่วยรายนี้ไม่ได้อยู่ในคิวที่มอบหมายให้บัญชีแพทย์ปัจจุบัน" />;
+    return <DetailEmptyState title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว" body="บัญชีผู้ป่วยอาจถูกลบ หรือไม่ได้อยู่ในคิวของแพทย์ปัจจุบัน" />;
   }
 
   return (

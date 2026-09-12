@@ -14,7 +14,6 @@ import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminCustomerAssessmentResetButton } from "@/features/admin/AdminCustomerAssessmentResetButton";
-import { AdminCustomerTestReset } from "@/features/admin/AdminCustomerTestReset";
 import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import type { AdminCustomerDetailData } from "@/features/admin/customers/types";
@@ -40,8 +39,8 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
   if (!data.customer) {
     return (
       <DetailEmptyState
-        title="ไม่พบข้อมูลลูกค้า"
-        body="รายการนี้อาจไม่มีอยู่ หรือไม่ใช่บัญชีลูกค้า"
+        title="ข้อมูลนี้ถูกลบหรือไม่มีอยู่แล้ว"
+        body="บัญชีอาจถูกลบ หรือรายการนี้ไม่ใช่บัญชีลูกค้า"
       />
     );
   }
@@ -115,6 +114,7 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
           </div>
           <AdminUserActionButtons
             isCurrentUser={customer.id === currentUserId}
+            redirectOnDelete="/admin/customers"
             redirectOnRoleChange="/admin/users?status=approved"
             user={{
               id: customer.id,
@@ -292,8 +292,6 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
           </div>
         </section>
       ) : null}
-
-      <AdminCustomerTestReset customerId={customer.id} />
     </div>
   );
 }

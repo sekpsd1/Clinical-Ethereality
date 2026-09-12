@@ -51,6 +51,7 @@ describe("role permissions", () => {
     ["pharmacist", "profile:read:self"],
     ["pharmacist", "profile:update:self"],
     ["admin", "admin:access"],
+    ["admin", "user:delete"],
     ["admin", "payment:review"],
     ["admin", "consultation:manual-create"]
   ] satisfies Array<[Role, Permission]>)("allows %s to use %s", (role, permission) => {
@@ -66,6 +67,8 @@ describe("role permissions", () => {
     ["pharmacist", "order:fulfill"],
     ["pharmacist", "consultation:update:assigned"],
     ["pharmacist", "community:moderate"],
+    ["customer", "user:delete"],
+    ["doctor", "user:delete"],
     ["customer", "consultation:manual-create"],
     ["customer", "consultation-recording:read:assigned"],
     ["customer", "consultation-recording:download:assigned"],
