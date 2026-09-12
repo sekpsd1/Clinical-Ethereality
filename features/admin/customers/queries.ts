@@ -14,6 +14,7 @@ import type {
 } from "@/features/admin/customers/types";
 import { staffFileEntityTypes } from "@/features/staff-files/types";
 import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
+import { formatCustomerReference } from "@/features/admin/customers/reference";
 
 type CustomerListRecord = Awaited<ReturnType<typeof getCustomerListRecords>>[number];
 type CustomerDetailRecord = NonNullable<Awaited<ReturnType<typeof getCustomerDetailRecord>>>;
@@ -188,12 +189,6 @@ function formatDate(date: Date | null): string | null {
     timeStyle: "short",
     hourCycle: "h23"
   }).format(date);
-}
-
-function formatCustomerReference(lineUserId: string): string {
-  const suffix = lineUserId.slice(-6);
-
-  return `LINE •••${suffix}`;
 }
 
 function mapConsultation(consultation: CustomerConsultationRecord): AdminCustomerConsultation {

@@ -95,6 +95,14 @@ export async function readPrivatePaymentSlip(storageKey: string): Promise<Uint8A
   return new Uint8Array(await readFile(resolvePaymentSlipPath(storageKey)));
 }
 
+export async function deletePrivatePaymentSlip(storageKey: string | null | undefined): Promise<void> {
+  if (!storageKey) {
+    return;
+  }
+
+  await unlink(resolvePaymentSlipPath(storageKey)).catch(() => undefined);
+}
+
 export function validatePaymentSlipUpload(file: File): { extension: string; mimeType: PaymentSlipMimeType } {
   if (!file || file.size === 0) {
     throw new PaymentSlipError("FILE_EMPTY");

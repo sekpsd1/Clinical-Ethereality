@@ -14,6 +14,7 @@ import Link from "next/link";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminCustomerAssessmentResetButton } from "@/features/admin/AdminCustomerAssessmentResetButton";
+import { AdminCustomerTestReset } from "@/features/admin/AdminCustomerTestReset";
 import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import type { AdminCustomerDetailData } from "@/features/admin/customers/types";
@@ -291,6 +292,8 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
           </div>
         </section>
       ) : null}
+
+      <AdminCustomerTestReset customerId={customer.id} />
     </div>
   );
 }

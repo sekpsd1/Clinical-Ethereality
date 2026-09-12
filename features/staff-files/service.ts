@@ -133,6 +133,14 @@ export async function readStaffFile(storageKey: string): Promise<Uint8Array> {
   return new Uint8Array(await readFile(resolveStaffStoragePath(storageKey)));
 }
 
+export async function deleteStaffFile(storageKey: string | null | undefined): Promise<void> {
+  if (!storageKey) {
+    return;
+  }
+
+  await unlink(resolveStaffStoragePath(storageKey)).catch(() => undefined);
+}
+
 export async function storeStaffFiles(input: {
   actorId: string;
   ownerId: string;

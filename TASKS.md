@@ -511,3 +511,12 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Define schedule-preflight behavior: ignore only pending Consultation payments whose linked Consultation is cancelled and whose strict reset marker has matching Consultation/Payment IDs; every ordinary or malformed pending payment continues blocking schedule deactivation.
 - [x] Cover permission, exact-target/no-PII preview, non-test denial, lifecycle/lock safety, race handling, idempotency, pending-payment preservation, and schedule-preflight marker behavior with focused unit tests.
 - [ ] Before any Production reset, run read-only preview for each exact target, obtain separate mutation approval, execute one target at a time, verify Consultation/audit/payment-marker/slot outcomes after each transaction, and stop on any mismatch. Do not commit, deploy, or mutate Production as part of the code-only review.
+## Admin repeatable UAT customer reset (code only, 2026-09-12)
+
+- [x] Add an Admin-only Preview and typed-confirmation flow on customer detail, protected by the dedicated `customer:test-reset` permission and an exact server-side LINE ID allowlist.
+- [x] Delete clinical, consultation, prescription, Store, community, consent, file, reward, notification, session, OTP, and related UAT data in dependency-safe order before deleting the LINE-linked User; remove the deleted flow's audit history and retain only a minimized reset event.
+- [x] Reconcile Store inventory exactly once: release pending reservations, restore consumed units from paid/fulfillment states, and make inconsistent order/payment/inventory state fail closed.
+- [x] Bind execution to a deterministic Preview fingerprint and customer row lock so changes between Preview and confirmation cancel the entire transaction.
+- [x] Revalidate the JWT identity against the active customer row at Consult entry so a reset tester is sent directly through LINE login and receives a new User even while the old access cookie has not expired.
+- [x] Cover permission, target confirmation, allowlist denial, staff-profile denial, stale Preview, data-conflict denial, dependent deletion, session removal, identity deletion, and inventory reconciliation with focused tests.
+- [ ] Before use, add only the exact approved UAT LINE user ID to `CUSTOMER_TEST_RESET_LINE_USER_IDS`, deploy separately, Preview the target counts and stock effects, obtain mutation approval, reset one account, and verify fresh LINE login plus deleted test records. Never add a real customer identity to the allowlist.

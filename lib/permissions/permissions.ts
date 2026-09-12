@@ -7,6 +7,7 @@ export const permissions = [
   "consultation:create:self",
   "consultation:manual-create",
   "consultation:test-reset",
+  "customer:test-reset",
   "consultation:read:self",
   "consultation:read:assigned",
   "consultation:update:assigned",
