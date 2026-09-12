@@ -150,7 +150,7 @@ describe("protected-route transparent session refresh", () => {
   });
 
   it.each([
-    ["customer", "/admin/users", "/consult/assessment"],
+    ["customer", "/admin/users", "/consult"],
     ["doctor", "/pharmacist/prescriptions", "/doctor/consultations"],
     ["pharmacist", "/doctor/consultations", "/pharmacist/prescriptions"]
   ] as const)("routes a valid %s session away from a mismatched staff boundary", async (role, path, home) => {

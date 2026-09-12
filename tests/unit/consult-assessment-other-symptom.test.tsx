@@ -35,6 +35,26 @@ describe("other symptom assessment UI", () => {
     expect(html).toContain("disabled");
   });
 
+  it("carries the selected doctor through assessment URLs without putting health detail in the URL", () => {
+    const doctorId = "ck12345678901234567890123";
+    const symptomHtml = renderToStaticMarkup(
+      createElement(ConsultAssessmentSymptoms, {
+        initialSelectedSymptom: "rash_or_sore",
+        doctorId
+      })
+    );
+    const durationHtml = renderToStaticMarkup(
+      createElement(ConsultAssessmentDuration, {
+        selectedSymptom: "rash_or_sore",
+        doctorId
+      })
+    );
+
+    expect(symptomHtml).toContain(`doctorId=${doctorId}`);
+    expect(durationHtml).toContain(`name="doctorId" value="${doctorId}"`);
+    expect(durationHtml).not.toContain("symptomDetail=");
+  });
+
   it("round-trips the draft through bounded session storage helpers", () => {
     const values = new Map<string, string>();
     const storage = {

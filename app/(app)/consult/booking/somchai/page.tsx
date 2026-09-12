@@ -6,6 +6,12 @@ import {
 import { requireCurrentSession } from "@/lib/auth/session";
 import { getPatientVerificationStatus } from "@/features/identity-verification/service";
 import { isAtLeast18 } from "@/features/consultations/consent/policy";
+import { getActiveConsultAssessmentForUser } from "@/features/consultations/assessment/queries";
+import {
+  getAssessmentConsentPath,
+  normalizeAssessmentDoctorId
+} from "@/features/consultations/assessment/routes";
+import { redirect } from "next/navigation";
 
 export default async function DoctorBookingPage({
   searchParams
@@ -22,10 +28,17 @@ export default async function DoctorBookingPage({
     session.userId,
     params.reschedule
   );
-  const [data, verification] = await Promise.all([
+  const [data, verification, activeAssessment] = await Promise.all([
     getDoctorBookingData(reschedule?.doctorId ?? params.doctorId),
-    getPatientVerificationStatus(session.userId)
+    getPatientVerificationStatus(session.userId),
+    reschedule || session.userId.startsWith("dev:")
+      ? null
+      : getActiveConsultAssessmentForUser(session.userId)
   ]);
+
+  if (!reschedule && !session.userId.startsWith("dev:") && !activeAssessment) {
+    redirect(getAssessmentConsentPath(normalizeAssessmentDoctorId(params.doctorId)));
+  }
 
   return (
     <DoctorBooking

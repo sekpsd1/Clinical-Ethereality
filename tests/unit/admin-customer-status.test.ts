@@ -6,11 +6,14 @@ import {
 } from "@/features/admin/customers/status";
 
 describe("admin customer journey status", () => {
-  it("keeps an assessment active only until its expiry time", () => {
+  it("keeps an assessment active only while it is both unexpired and less than 24 hours old", () => {
     const now = new Date("2026-07-29T10:00:00.000Z");
+    const recent = new Date("2026-07-28T10:00:01.000Z");
+    const exactly24HoursOld = new Date("2026-07-28T10:00:00.000Z");
 
-    expect(isAssessmentActive(new Date("2026-07-29T10:00:01.000Z"), now)).toBe(true);
-    expect(isAssessmentActive(new Date("2026-07-29T10:00:00.000Z"), now)).toBe(false);
+    expect(isAssessmentActive(new Date("2026-07-29T10:00:01.000Z"), recent, now)).toBe(true);
+    expect(isAssessmentActive(new Date("2026-07-29T10:00:00.000Z"), recent, now)).toBe(false);
+    expect(isAssessmentActive(new Date("2026-08-04T10:00:00.000Z"), exactly24HoursOld, now)).toBe(false);
   });
 
   it("shows that an assessment is waiting for booking before a consultation exists", () => {

@@ -27,6 +27,15 @@ import {
   createTelemedicineConsent,
   TelemedicineConsentError
 } from "@/features/consultations/consent/service";
+import { getAssessmentConsentPath } from "@/features/consultations/assessment/routes";
+import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
+
+class ConsultAssessmentRequiredError extends Error {
+  constructor(readonly doctorId: string) {
+    super("A current pre-consult assessment is required.");
+    this.name = "ConsultAssessmentRequiredError";
+  }
+}
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -247,12 +256,7 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       const activeAssessment = session.userId.startsWith("dev:")
         ? null
         : await tx.consultAssessment.findFirst({
-            where: {
-              userId: session.userId,
-              expiresAt: {
-                gt: new Date()
-              }
-            },
+            where: getActiveConsultAssessmentWhere(session.userId, now),
             orderBy: {
               completedAt: "desc"
             },
@@ -264,6 +268,10 @@ export async function createConsultationBookingAction(formData: FormData): Promi
               recommendationSpecialty: true
             }
           });
+
+      if (!session.userId.startsWith("dev:") && !activeAssessment) {
+        throw new ConsultAssessmentRequiredError(doctorId);
+      }
 
       const consultation = await tx.consultation.create({
         data: {
@@ -329,6 +337,10 @@ export async function createConsultationBookingAction(formData: FormData): Promi
 
     consultationId = result.id;
   } catch (error) {
+    if (error instanceof ConsultAssessmentRequiredError) {
+      redirect(getAssessmentConsentPath(error.doctorId));
+    }
+
     if (error instanceof PatientVerificationError) {
       redirect(getBookingPath(parsed.data.doctorId, "identity_required"));
     }

@@ -6,6 +6,7 @@ import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { formDataToObject, type FormActionState } from "@/lib/actions/server-actions";
 import { resetCustomerAssessmentsSchema } from "@/features/admin/customers/schema";
+import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
 
 export type AdminCustomerAssessmentActionState = FormActionState;
 
@@ -42,12 +43,7 @@ export async function resetCustomerAssessmentsAction(
       }
 
       const activeAssessments = await tx.consultAssessment.findMany({
-        where: {
-          userId: customer.id,
-          expiresAt: {
-            gt: now
-          }
-        },
+        where: getActiveConsultAssessmentWhere(customer.id, now),
         select: {
           id: true
         }

@@ -1,7 +1,7 @@
 import type { Role } from "@/lib/permissions/roles";
 
 const roleHomePaths: Record<Role, string> = {
-  customer: "/consult/assessment",
+  customer: "/consult",
   doctor: "/doctor/consultations",
   pharmacist: "/pharmacist/prescriptions",
   admin: "/admin"

@@ -38,7 +38,7 @@
 - [x] Receive health-data, teleconsultation, prescription, and pharmacy consent wording
 - [x] Receive company name, tax ID, billing address, parcel sender address, and support contact
 - [x] Receive doctor bio, education, specialty, license number, consultation fee, schedule, supported consult modes, and official profile photo; exact license values and documents stay outside git
-- [x] Finalize pre-doctor assessment recommendation mapping with the received real doctor profile; 4 Stitch export pages, persistence, 7-day reuse, booking attachment, doctor-visible summary, and recommended doctor handoff are implemented
+- [x] Finalize pre-doctor assessment recommendation mapping with the received real doctor profile; 4 Stitch export pages, persistence, 24-hour reuse, booking attachment, doctor-visible summary, and recommended doctor handoff are implemented
 - [ ] Receive the completed structured product catalog using `PRODUCT_CATALOG_TEMPLATE.csv`, including category, short/full descriptions, prices, images, stock, prescription-required flags, warnings, storage rules, and FDA status/numbers; the client-ready request guide is in `CLIENT_PRODUCT_DATA_REQUEST.md`
 - [x] Approve the 10 received HPV/STIs home-test and self-swab seed products as the first Client UAT catalog, allowing corrections after client review; confirmed UAT inputs are the package variants, prices, two received product images, VAT/shipping note, and non-prescription direction. The later stock instruction applies only to 9 physical SKUs (8 HPV/STIs plus ColpoFix): quantity `500` and low-stock threshold `80`; exclude LBC, Test/UAT, and archived products. Production inventory remains unchanged until separately approved.
 - [x] Confirm clinic-as-pharmacy MVP operations: a doctor-issued prescription can be ordered immediately without a pharmacist approval gate; Admin staff prepare medicine, pack, ship, and record fulfillment statuses, while the Pharmacist role remains available as read-only operational context
@@ -327,7 +327,8 @@
 - [x] Add admin customer and assessment oversight with privacy-scoped summary and detail views
 - [x] Let admins request a fresh customer assessment by expiring active assessments non-destructively with audit logging
 - [x] Add a guarded operator script and back up/reset the localhost assessment, appointment, consultation-message, prescription, slot-lock, and related-notification test data while preserving users, products, inventory, orders, and audit history
-- [x] Require an active customer assessment before allowing direct access to `/consult`
+- [x] Make `/consult` the Customer entry screen, then require explicit health-data consent and a current 24-hour assessment only when starting a new Doctor booking; preserve the selected Doctor through assessment and enforce the gate again server-side
+- [ ] After explicit release approval, deploy the Consult-first/health-consent/24-hour assessment flow and run authenticated mobile Customer UAT without using real health data
 - [x] Make localhost Customer QA use an active database customer from the Plesk copy, remove seed-ID coupling from approved-doctor booking, and fall back safely when host-only doctor photo bytes are unavailable
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability

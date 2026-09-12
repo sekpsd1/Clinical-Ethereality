@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import { ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, History, Info, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 import { submitConsultAssessmentAction } from "@/features/consultations/assessment/actions";
@@ -12,6 +11,7 @@ import {
   readOtherSymptomDraft
 } from "@/features/consultations/assessment/draft";
 import type { AssessmentSymptom } from "@/features/consultations/assessment/types";
+import { getAssessmentSymptomsBackPath } from "@/features/consultations/assessment/routes";
 
 const durationOptions = [
   {
@@ -35,16 +35,16 @@ const durationOptions = [
 ] as const;
 
 export function ConsultAssessmentDuration({
-  selectedSymptom
+  selectedSymptom,
+  doctorId
 }: {
   selectedSymptom: AssessmentSymptom | null;
+  doctorId?: string | null;
 }) {
   const [selectedDuration, setSelectedDuration] = useState<string | null>(null);
   const [symptomDetail, setSymptomDetail] = useState("");
   const hasRequiredSymptomDetail = selectedSymptom !== "other" || symptomDetail.trim().length > 0;
-  const symptomStepHref: Route = selectedSymptom
-    ? `/consult/assessment/symptoms?symptom=${selectedSymptom}`
-    : "/consult/assessment/symptoms";
+  const symptomStepHref = getAssessmentSymptomsBackPath(selectedSymptom, doctorId);
 
   useEffect(() => {
     const storage = getBrowserSessionDraftStorage();
@@ -169,6 +169,7 @@ export function ConsultAssessmentDuration({
           <input type="hidden" name="symptom" value={selectedSymptom ?? ""} />
           {selectedSymptom === "other" ? <input type="hidden" name="symptomDetail" value={symptomDetail} /> : null}
           <input type="hidden" name="duration" value={selectedDuration ?? ""} />
+          {doctorId ? <input type="hidden" name="doctorId" value={doctorId} /> : null}
           <button
             type="submit"
             disabled={!selectedDuration || !selectedSymptom || !hasRequiredSymptomDetail}

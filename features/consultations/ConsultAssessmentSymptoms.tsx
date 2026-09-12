@@ -12,6 +12,10 @@ import {
   writeOtherSymptomDraft
 } from "@/features/consultations/assessment/draft";
 import type { AssessmentSymptom } from "@/features/consultations/assessment/types";
+import {
+  getAssessmentConsentPath,
+  getAssessmentDurationPath
+} from "@/features/consultations/assessment/routes";
 
 const symptomOptions = [
   {
@@ -41,15 +45,18 @@ const symptomOptions = [
 ] as const;
 
 export function ConsultAssessmentSymptoms({
-  initialSelectedSymptom = null
+  initialSelectedSymptom = null,
+  doctorId
 }: {
   initialSelectedSymptom?: AssessmentSymptom | null;
+  doctorId?: string | null;
 }) {
   const [selectedSymptom, setSelectedSymptom] = useState<AssessmentSymptom | null>(initialSelectedSymptom);
   const [symptomDetail, setSymptomDetail] = useState("");
   const trimmedSymptomDetail = symptomDetail.trim();
   const canContinue = Boolean(selectedSymptom) && (selectedSymptom !== "other" || trimmedSymptomDetail.length > 0);
-  const durationHref = selectedSymptom ? `/consult/assessment/duration?symptom=${selectedSymptom}` : null;
+  const durationHref = selectedSymptom ? getAssessmentDurationPath(selectedSymptom, doctorId) : null;
+  const consentHref = getAssessmentConsentPath(doctorId);
 
   useEffect(() => {
     const storage = getBrowserSessionDraftStorage();
@@ -85,7 +92,7 @@ export function ConsultAssessmentSymptoms({
       <div className="fixed inset-x-0 top-0 z-30 mx-auto flex h-20 max-w-mobile items-center justify-between bg-[#f2f4f6]/70 px-7 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
         <div className="flex min-w-0 items-center gap-4">
           <Link
-            href="/consult/assessment"
+            href={consentHref}
             aria-label="กลับไปหน้าเริ่มต้นแบบประเมิน"
             className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#006067] transition-colors hover:bg-[#006067]/10"
           >
@@ -184,7 +191,7 @@ export function ConsultAssessmentSymptoms({
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-mobile items-center justify-between rounded-t-[24px] bg-[#f2f4f6]/80 px-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-10px_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
         <Link
-          href="/consult/assessment"
+          href={consentHref}
           className="flex min-w-14 flex-col items-center justify-center gap-1 px-3 py-2 text-[#3e494a]/80 transition-colors hover:text-[#006067]"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />

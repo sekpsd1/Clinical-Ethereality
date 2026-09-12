@@ -1,4 +1,5 @@
 import type { ConsultationStatus } from "@prisma/client";
+import { isConsultAssessmentActive } from "@/features/consultations/assessment/validity";
 
 export type AdminCustomerJourneyTone = "neutral" | "success" | "warning" | "danger";
 
@@ -50,8 +51,8 @@ export function getAdminConsultationStatusCopy(status: ConsultationStatus): Admi
   return consultationStatusCopy[status];
 }
 
-export function isAssessmentActive(expiresAt: Date, now = new Date()): boolean {
-  return expiresAt.getTime() > now.getTime();
+export function isAssessmentActive(expiresAt: Date, completedAt: Date, now = new Date()): boolean {
+  return isConsultAssessmentActive({ expiresAt, completedAt }, now);
 }
 
 export function getCustomerJourneyLabel(input: {

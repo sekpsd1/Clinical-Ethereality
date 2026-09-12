@@ -47,7 +47,15 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     vi.setSystemTime(new Date("2030-01-06T00:00:00.000Z"));
     const tx = {
       auditLog: { create: vi.fn().mockResolvedValue({}) },
-      consultAssessment: { findFirst: vi.fn().mockResolvedValue(null) },
+      consultAssessment: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "assessment-1",
+          symptomLabel: "มีตุ่ม ผื่น หรือแผล",
+          durationLabel: "น้อยกว่า 24 ชม.",
+          recommendationTopic: "ปรึกษาอาการ",
+          recommendationSpecialty: "สูตินรีแพทย์"
+        })
+      },
       consultation: {
         create: vi.fn().mockResolvedValue({ id: "consultation-1" }),
         findFirst: vi.fn().mockResolvedValue(null),
@@ -110,6 +118,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       data: expect.objectContaining({
         bookedDurationMinutes: 60,
         doctorId: "doctor-1",
+        assessmentId: "assessment-1",
         slotLockId: "slot-lock-1",
       }),
       select: { id: true },

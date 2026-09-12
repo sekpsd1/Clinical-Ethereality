@@ -170,7 +170,7 @@ test.describe("transparent protected-route session refresh", () => {
   });
 
   for (const [role, path, home, finalPath] of [
-    ["customer", "/admin/users", "/consult/assessment", "/consult"],
+    ["customer", "/admin/users", "/consult", "/consult"],
     ["doctor", "/pharmacist/prescriptions", "/doctor/consultations", "/doctor/consultations"],
     ["pharmacist", "/doctor/consultations", "/pharmacist/prescriptions", "/pharmacist/prescriptions"]
   ] as const) {

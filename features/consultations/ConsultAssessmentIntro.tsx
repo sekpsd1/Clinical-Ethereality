@@ -1,9 +1,20 @@
 import Link from "next/link";
-import { ArrowRight, Clock3 } from "lucide-react";
+import { ArrowRight, Clock3, ShieldCheck } from "lucide-react";
+import { acceptConsultAssessmentHealthConsentAction } from "@/features/consultations/assessment/actions";
+import {
+  CONSULT_ASSESSMENT_HEALTH_CONSENT_VERSION,
+  consultAssessmentHealthConsent
+} from "@/features/consultations/assessment/consent";
 
 const clinicianImageUrl = "/images/consult-assessment/intro-hero.png";
 
-export function ConsultAssessmentIntro() {
+export function ConsultAssessmentIntro({
+  doctorId,
+  consentRequired = false
+}: {
+  doctorId?: string | null;
+  consentRequired?: boolean;
+}) {
   return (
     <section className="relative min-h-dvh w-full overflow-hidden bg-[#f7f9fb] text-[#191c1e]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#d0fbff_0%,#f7f9fb_42%,#ffffff_100%)]" />
@@ -45,17 +56,60 @@ export function ConsultAssessmentIntro() {
               </p>
             </div>
 
-            <div className="mt-12 w-full space-y-7">
-              <Link
-                href="/consult/assessment/symptoms"
-                className="flex min-h-[68px] w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-5 font-headline text-[1.125rem] font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
-              >
-                <span className="whitespace-nowrap">เริ่มทำแบบประเมิน</span>
-                <ArrowRight aria-hidden="true" className="size-7" strokeWidth={2.4} />
-              </Link>
+            <div className="mt-10 w-full space-y-6 text-left">
+              <div className="rounded-[24px] border border-[#006067]/15 bg-white/70 p-5">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-[#006067]" strokeWidth={2.2} />
+                  <div>
+                    <h3 className="font-headline text-base font-extrabold text-[#191c1e]">
+                      {consultAssessmentHealthConsent.title}
+                    </h3>
+                    <p className="mt-2 font-body text-sm leading-6 text-[#3e494a]">
+                      {consultAssessmentHealthConsent.summary}
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-4 space-y-2 pl-5 font-body text-sm leading-6 text-[#3e494a]">
+                  {consultAssessmentHealthConsent.bullets.map((bullet) => (
+                    <li key={bullet} className="list-disc">
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-              <p className="px-4 font-label text-xs leading-6 tracking-[0.12em] text-[#6e797a]/70">
-                การดำเนินการต่อแสดงว่าคุณยอมรับ{" "}
+              {consentRequired ? (
+                <p role="alert" className="rounded-[16px] bg-[#fff4e5] px-4 py-3 text-center font-body text-sm text-[#7a4b00]">
+                  กรุณายืนยันความยินยอมก่อนแจ้งอาการ
+                </p>
+              ) : null}
+
+              <form action={acceptConsultAssessmentHealthConsentAction} className="space-y-6">
+                <input type="hidden" name="version" value={CONSULT_ASSESSMENT_HEALTH_CONSENT_VERSION} />
+                {doctorId ? <input type="hidden" name="doctorId" value={doctorId} /> : null}
+                <label className="flex cursor-pointer items-start gap-3 rounded-[20px] border border-[#006067]/20 bg-white px-4 py-4">
+                  <input
+                    type="checkbox"
+                    name="healthDataConsentAccepted"
+                    required
+                    className="mt-1 size-5 shrink-0 accent-[#006067]"
+                  />
+                  <span className="font-body text-sm leading-6 text-[#3e494a]">
+                    ข้าพเจ้าได้อ่านและยินยอมให้เก็บและใช้ข้อมูลอาการและข้อมูลสุขภาพตามวัตถุประสงค์ข้างต้น
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  className="flex min-h-[68px] w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-5 font-headline text-[1.125rem] font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
+                >
+                  <span className="whitespace-nowrap">ยินยอมและแจ้งอาการ</span>
+                  <ArrowRight aria-hidden="true" className="size-7" strokeWidth={2.4} />
+                </button>
+              </form>
+
+              <p className="px-4 text-center font-label text-xs leading-6 tracking-[0.08em] text-[#6e797a]/70">
+                อ่านรายละเอียดเพิ่มเติมใน{" "}
                 <Link href="/profile/settings?section=privacy" className="underline decoration-[#006067]/30 underline-offset-4">
                   นโยบายความเป็นส่วนตัว
                 </Link>{" "}

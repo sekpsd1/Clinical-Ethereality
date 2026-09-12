@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { ActiveConsultAssessment, AssessmentDuration, AssessmentSymptom } from "@/features/consultations/assessment/types";
+import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
 
 function mapActiveAssessment(assessment: {
   id: string;
@@ -37,12 +38,7 @@ export async function getActiveConsultAssessmentForUser(userId: string): Promise
 
   try {
     const assessment = await prisma.consultAssessment.findFirst({
-      where: {
-        userId,
-        expiresAt: {
-          gt: new Date()
-        }
-      },
+      where: getActiveConsultAssessmentWhere(userId),
       orderBy: {
         completedAt: "desc"
       },

@@ -224,7 +224,7 @@ function mapAssessment(assessment: CustomerAssessmentRecord): AdminCustomerAsses
     recommendationReason: assessment.recommendationReason,
     completedAt: formatDate(assessment.completedAt) ?? "",
     expiresAt: formatDate(assessment.expiresAt) ?? "",
-    isActive: isAssessmentActive(assessment.expiresAt),
+    isActive: isAssessmentActive(assessment.expiresAt, assessment.completedAt),
     linkedConsultationId: assessment.consultations[0]?.id ?? null
   };
 }

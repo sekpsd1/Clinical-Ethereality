@@ -137,7 +137,11 @@ test.describe("customer mobile smoke", () => {
     await expectNoAppError(page);
     await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "แบบประเมิน Aura Health" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /เริ่มทำแบบประเมิน/ })).toHaveAttribute("href", "/consult/assessment/symptoms");
+    await expect(page.getByRole("checkbox")).toBeVisible();
+    await expect(page.getByRole("button", { name: /ยินยอมและแจ้งอาการ/ })).toBeVisible();
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: /ยินยอมและแจ้งอาการ/ }).click();
+    await expect(page).toHaveURL(/\/consult\/assessment\/symptoms$/);
   });
 
   test("/consult/assessment/symptoms enables the next action after selecting a symptom", async ({ page }) => {

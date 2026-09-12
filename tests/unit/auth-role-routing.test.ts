@@ -7,7 +7,7 @@ import {
 
 describe("role-aware authentication routing", () => {
   it.each([
-    ["customer", "/consult/assessment"],
+    ["customer", "/consult"],
     ["doctor", "/doctor/consultations"],
     ["pharmacist", "/pharmacist/prescriptions"],
     ["admin", "/admin"]
@@ -29,7 +29,7 @@ describe("role-aware authentication routing", () => {
   });
 
   it.each([
-    ["customer", "/admin/users", "/consult/assessment"],
+    ["customer", "/admin/users", "/consult"],
     ["doctor", "/pharmacist/prescriptions", "/doctor/consultations"],
     ["pharmacist", "/doctor/consultations", "/pharmacist/prescriptions"]
   ] as const)("keeps %s out of mismatched staff next routes", (role, requestedPath, expectedPath) => {

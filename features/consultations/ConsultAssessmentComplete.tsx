@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MoreVertical, ShieldCheck } from "lucide-react";
 import type { ActiveConsultAssessment } from "@/features/consultations/assessment/types";
+import { getConsultBookingPath } from "@/features/consultations/assessment/routes";
 
-export function ConsultAssessmentComplete({ assessment }: { assessment?: ActiveConsultAssessment | null }) {
+export function ConsultAssessmentComplete({
+  assessment,
+  doctorId
+}: {
+  assessment?: ActiveConsultAssessment | null;
+  doctorId?: string | null;
+}) {
   const recommendationSpecialty = assessment?.recommendationSpecialty ?? "แพทย์ที่เหมาะสม";
   const recommendationReason =
     assessment?.recommendationReason ??
@@ -51,10 +58,10 @@ export function ConsultAssessmentComplete({ assessment }: { assessment?: ActiveC
 
           <section className="pt-2">
             <Link
-              href="/consult?recommended=assessment"
+              href={doctorId ? getConsultBookingPath(doctorId) : "/consult?recommended=assessment"}
               className="flex min-h-[68px] w-full items-center justify-center gap-4 rounded-full bg-[linear-gradient(135deg,#006067_0%,#007b83_100%)] px-6 font-headline text-lg font-extrabold tracking-normal text-white shadow-[0_18px_34px_rgba(0,96,103,0.24)] transition-transform active:scale-[0.98]"
             >
-              <span>ดูรายชื่อแพทย์ที่แนะนำ</span>
+              <span>{doctorId ? "ดำเนินการจองแพทย์" : "ดูรายชื่อแพทย์ที่แนะนำ"}</span>
               <ArrowRight aria-hidden="true" className="size-7" strokeWidth={2.4} />
             </Link>
             <p className="mt-4 font-label text-sm italic leading-6 tracking-normal text-[#3e494a]/60">
