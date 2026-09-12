@@ -523,7 +523,7 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Push commit `b4eb8ac` to `origin/main` and deploy it through Plesk without a migration: Pull/Deploy, non-migration preflight, dependency and Zoom-client install, 64-route host build, one restart, and health HTTP 200/`status: ok` passed. The reset allowlist remains unconfigured and no account or business data was mutated.
 - [x] Superseded before activation: do not configure `CUSTOMER_TEST_RESET_LINE_USER_IDS`; the owner replaced this allowlisted reset model with direct permanent Admin deletion for all current Test/UAT users.
 
-## Admin permanent user deletion (code only, 2026-09-12)
+## Admin permanent user deletion (deployed, 2026-09-12)
 
 - [x] Replace the Plesk allowlist/reset workflow with a shared Admin `ลบถาวร` button on customer detail and personnel cards for Customer, Doctor, Pharmacist, and Admin accounts.
 - [x] Require the dedicated `user:delete` permission and explicit irreversible confirmation; require another Admin to delete the currently signed-in Admin account.
@@ -532,4 +532,4 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Remove `CUSTOMER_TEST_RESET_LINE_USER_IDS` and all runtime allowlist dependency; no schema or migration is required.
 - [x] Remove other users' notifications whose metadata references records deleted with the target account, preserve unrelated notifications, and show a neutral deleted-or-unavailable state for stale links instead of an application error.
 - [x] Pass 51 focused tests, all 1,155 unit tests with 6 skips, TypeScript typecheck, ESLint, and the 64-page production build.
-- [ ] Commit/push/deploy only after explicit release approval; do not delete any current user or business data as part of the code release.
+- [x] Push commit `5739ea7` to `origin/main` and deploy through Plesk without a migration or environment change: Pull/Deploy, non-migration preflight, clean dependency and Zoom-client install, 64-route host build, one restart, health `status: ok`, and the Production stale-link smoke check all passed. No current user or business data was deleted as part of the release.
