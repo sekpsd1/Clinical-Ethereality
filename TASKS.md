@@ -328,7 +328,8 @@
 - [x] Let admins request a fresh customer assessment by expiring active assessments non-destructively with audit logging
 - [x] Add a guarded operator script and back up/reset the localhost assessment, appointment, consultation-message, prescription, slot-lock, and related-notification test data while preserving users, products, inventory, orders, and audit history
 - [x] Make `/consult` the Customer entry screen, then require explicit health-data consent and a current 24-hour assessment only when starting a new Doctor booking; preserve the selected Doctor through assessment and enforce the gate again server-side
-- [ ] After explicit release approval, deploy the Consult-first/health-consent/24-hour assessment flow and run authenticated mobile Customer UAT without using real health data
+- [x] Deploy the Consult-first/health-consent/24-hour assessment flow at `bf72e83`; Plesk Pull/Deploy, the 64-route host build, one restart, health HTTP 200, and anonymous entry redirects passed without a schema migration or Production business-data mutation
+- [ ] Run authenticated mobile Customer UAT of the deployed Consult-first flow without using real health data
 - [x] Make localhost Customer QA use an active database customer from the Plesk copy, remove seed-ID coupling from approved-doctor booking, and fall back safely when host-only doctor photo bytes are unavailable
 - [ ] Back up and run the confirmed test-flow reset against the Plesk database after production database access is provided and the exact target database is verified
 - [x] Build admin schedule editor for doctor availability
