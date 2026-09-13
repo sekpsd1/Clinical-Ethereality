@@ -5,9 +5,10 @@ Use this file to coordinate Codex chats and Antigravity without duplicating work
 ## Sources Of Truth
 
 1. `AGENTS.md` — repository and safety rules.
-2. `PROJECT_STATE.md` — current product decisions, completed work, constraints, and known risks.
-3. `TASKS.md` — active backlog and task status.
-4. This file — chat roles, handoff format, and Git working rules.
+2. This file — stable collaboration method, handoff format, and Git working rules.
+3. `TASK_CONTROL.md` — the live task registry, model-routing rules, approval gates, and current task for each role.
+4. `PROJECT_STATE.md` — current product decisions, completed work, constraints, and known risks.
+5. `TASKS.md` — active backlog and task status.
 
 `CHAT_HANDOFF.md` is historical only. Do not treat its old branch, setup, or next-step details as the current project state.
 
@@ -16,10 +17,10 @@ Use this file to coordinate Codex chats and Antigravity without duplicating work
 | Chat | Mode | Owns | Does not own |
 | --- | --- | --- | --- |
 | **Project Controller** (the user-designated status chat) | Plan mode | Priorities, architecture decisions, task briefs, cross-feature review, final acceptance plan | Editing product code, committing, deploying |
-| **Store ระบบ 6** | Normal | Customer store, catalog, cart, checkout, payment/order tracking, and store-specific tests | Admin operations, doctor/prescription authoring, community |
-| **Admin ระบบ 4** | Normal | `admin` operations: users, schedules, payments, orders, products, inventory, moderation, audit, admin notifications | Customer store UI/checkout, doctor UI, community UI |
-| **Doctor ระบบ 4** | Normal | Doctor consultations, assigned patients, consultation records, doctor prescriptions, doctor-side tests | Admin fulfillment, customer store checkout, community |
-| **Community ระบบ 2** | Normal | Community articles, posts, comments, moderation-facing content behavior, community notifications/profile content | Store, doctor, admin operations |
+| **Store owner task** | Normal | Customer store, catalog, cart, checkout, payment/order tracking, and store-specific tests | Admin operations, doctor/prescription authoring, community |
+| **Admin owner task** | Normal | `admin` operations: users, schedules, payments, orders, products, inventory, moderation, audit, admin notifications | Customer store UI/checkout, doctor UI, community UI |
+| **Doctor owner task** | Normal | Doctor consultations, assigned patients, consultation records, doctor prescriptions, doctor-side tests | Admin fulfillment, customer store checkout, community |
+| **Community owner task** | Normal | Community articles, posts, comments, moderation-facing content behavior, community notifications/profile content | Store, doctor, admin operations |
 | **Customer Flow** | Normal | End-to-end customer-flow QA, reproduction steps, acceptance criteria, and only explicitly assigned isolated fixes | Owning broad shared features or editing other chats' active files |
 | **Antigravity** | Worker | One self-contained, written task on its own branch | Product decisions, unreviewed merge/deploy, concurrent edits to an active Codex task |
 
@@ -27,13 +28,25 @@ The **Customer Flow** chat is a QA/integration owner by default because customer
 
 ## Core Rules
 
-1. One active writer per feature or file area. Never let two chats or Antigravity edit the same area at the same time.
-2. Every implementation task has one bounded outcome, acceptance criteria, and a named owner.
-3. Use a dedicated branch for a task. Do not commit directly to `main`.
-4. Before a task edits code, inspect only the relevant files plus the applicable parts of `PROJECT_STATE.md` and `TASKS.md`.
-5. On completion, run relevant checks, commit the scoped change, and return the handoff format below.
-6. The Project Controller reviews changes that affect more than one feature, permissions, payments, health data, schema, authentication, deployment, or Git integration.
-7. Do not share API keys, passwords, tokens, production database credentials, or patient data in any chat prompt or committed file.
+1. Before starting work or sending a handoff, every task must read `AGENTS.md`, this file, and `TASK_CONTROL.md`, then inspect the live Codex task list and reuse the matching current task when one exists.
+2. One active writer per feature or file area. Never let two chats or Antigravity edit the same area at the same time.
+3. Every implementation task has one bounded outcome, acceptance criteria, and a named owner.
+4. Use a dedicated branch for a task. Do not commit directly to `main`.
+5. Before a task edits code, inspect only the relevant files plus the applicable parts of `PROJECT_STATE.md` and `TASKS.md`.
+6. On completion, run relevant checks, commit the scoped change, and return the handoff format below.
+7. The Project Controller performs planning, routing, and review only. It must not edit product code, commit, push, or deploy, and it reviews changes that affect more than one feature, permissions, payments, health data, schema, authentication, deployment, or Git integration.
+8. Do not share API keys, passwords, tokens, production database credentials, patient data, or raw provider payloads in any chat prompt or committed file.
+
+## Current Task Selection
+
+`TASK_CONTROL.md` is the required live registry before any task starts work or the Project Controller routes work. This file deliberately does **not** hard-code a task number as the current owner.
+
+1. Match the project and feature owner first.
+2. For tasks in the same numbered title family, use the one with the greatest number. For example, `Doctor ระบบ 5` supersedes `Doctor ระบบ 4`.
+3. A topic suffix such as `— แก้ไขระบบล็อกอิน` makes task retrieval easier but does not override feature ownership.
+4. A user may explicitly select an older task. Tasks in different projects, or titles outside the same numbered family, are not interchangeable.
+5. Before starting work, tell the owner which existing task will be reused (or why a new one is needed), the selected model, the scope, the checks, and the production boundary.
+6. If the registry, task list, and handoff disagree, stop and resolve the routing; never guess from an outdated handoff.
 
 ## Task Routing: Codex Or Antigravity
 
@@ -70,7 +83,7 @@ Paste the applicable prompt at the beginning of a new Codex chat. Replace the te
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You are the project controller in Plan mode. Read AGENTS.md, AI_WORKFLOW.md, and the relevant latest sections of PROJECT_STATE.md and TASKS.md. Do not edit code, commit, deploy, or run migrations.
+You are the project controller in Plan mode. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and the relevant latest sections of PROJECT_STATE.md and TASKS.md. Do not edit code, commit, push, deploy, or run migrations.
 
 Your job: maintain the current project picture, decide task order, identify cross-feature risks, and write a precise task brief for the named worker chat or Antigravity.
 
@@ -79,48 +92,48 @@ Current request: [describe the goal]
 Return: recommendation, scope boundaries, acceptance criteria, risks, test expectations, and a copy-ready worker prompt.
 ```
 
-### Store ระบบ 6
+### Store owner task
 
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You own the Store feature. Read AGENTS.md, AI_WORKFLOW.md, and only the Store/order/payment/inventory sections relevant to this task in PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
+You own the Store feature. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the Store/order/payment/inventory sections relevant to this task in PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
 
 Task: [paste the approved task brief]
 
 Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not change Admin, Doctor, Community, architecture, migrations, production settings, or deployment unless the brief explicitly says so. Run relevant checks, commit the scoped change, then return the standard handoff.
 ```
 
-### Admin ระบบ 4
+### Admin owner task
 
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You own Admin operations. Read AGENTS.md, AI_WORKFLOW.md, and only the relevant Admin/permissions/fulfillment sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
+You own Admin operations. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Admin/permissions/fulfillment sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
 
 Task: [paste the approved task brief]
 
 Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not alter customer Store screens, Doctor screens, Community screens, architecture, migrations, production settings, or deployment unless explicitly assigned. Run relevant checks, commit the scoped change, then return the standard handoff.
 ```
 
-### Doctor ระบบ 4
+### Doctor owner task
 
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You own Doctor workflows. Read AGENTS.md, AI_WORKFLOW.md, and only the relevant Doctor/consultation/prescription/privacy sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
+You own Doctor workflows. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Doctor/consultation/prescription/privacy sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
 
 Task: [paste the approved task brief]
 
 Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not alter Admin fulfillment, customer checkout, Community, architecture, migrations, production settings, or deployment unless explicitly assigned. Protect patient data and enforce permissions server-side. Run relevant checks, commit the scoped change, then return the standard handoff.
 ```
 
-### Community ระบบ 2
+### Community owner task
 
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You own Community workflows. Read AGENTS.md, AI_WORKFLOW.md, and only the relevant Community/profile/notification/moderation sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
+You own Community workflows. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Community/profile/notification/moderation sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
 
 Task: [paste the approved task brief]
 
@@ -132,7 +145,7 @@ Before editing, state the files and boundaries you will touch. Work on a dedicat
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-You are the customer-flow QA and integration chat. Read AGENTS.md, AI_WORKFLOW.md, and the relevant customer-flow sections of PROJECT_STATE.md and TASKS.md. Preserve finalized Stitch UI and do not make broad cross-feature edits.
+You are the customer-flow QA and integration chat. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and the relevant customer-flow sections of PROJECT_STATE.md and TASKS.md. Preserve finalized Stitch UI and do not make broad cross-feature edits.
 
 Task: [paste the approved task brief]
 
@@ -144,7 +157,7 @@ First reproduce or inspect the flow and report: expected behavior, actual behavi
 ```txt
 Project: C:\Projects\clinical-ethereality
 
-Read AGENTS.md and AI_WORKFLOW.md first. Read only the relevant sections of PROJECT_STATE.md and TASKS.md. Work on a dedicated branch and do not touch files outside the task scope.
+Read AGENTS.md, AI_WORKFLOW.md, and TASK_CONTROL.md first. Read only the relevant sections of PROJECT_STATE.md and TASKS.md. Work on a dedicated branch and do not touch files outside the task scope.
 
 Task: [paste the precise task brief from the Project Controller]
 
@@ -194,15 +207,4 @@ Name every controller chat `สรุปสถานะโปรเจกต์ 
 
 The announcement is required: a previously opened old chat does not become active again merely because it is viewed or receives a message.
 
-
-## Auto Model Routing
-
-Use the lowest model/thinking level that is appropriate for the task. This routing is a default, not a guarantee of credit or price, and may be overridden when the owner specifies a model or effort.
-
-- Luna High: summaries, read-only audits/QA, image/document inspection, and high-volume low-risk work.
-- Terra Medium: UI, CRUD, tests, and general coding.
-- Sol Medium: integrations, RCA, and bounded deploy/migration work with a clear plan.
-- Sol High: security/auth/payment, complex migration/recovery, or Production incidents.
-- Ultra/Max: never select automatically; require separate owner approval.
-- Escalate only when there is evidence of greater complexity, risk, or failure, and state the reason in the handoff.
-- The Project Controller selects model/thinking when assigning each task; workers must not change it without a reason or expand scope.
+The live controller title and its task ID are recorded in `TASK_CONTROL.md`. It is the Project Controller task with the greatest `N` in the `สรุปสถานะโปรเจกต์ N` family, after the required controller-update announcement.

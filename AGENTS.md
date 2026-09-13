@@ -6,6 +6,13 @@ This repository is in the planning phase for Clinical Ethereality, a secure web 
 
 Do not generate the full app yet. The current task is to preserve planning, architecture, user roles, and product direction until the user explicitly asks to start implementation.
 
+## AI Workflow Governance
+
+- Before starting work or sending a handoff, every task must read `AI_WORKFLOW.md` and `TASK_CONTROL.md`, inspect the live Codex task list, and reuse the matching current task when one exists instead of creating a duplicate.
+- The Project Controller is limited to planning, routing, and review. It must not edit product code, commit, push, or deploy.
+- Keep one active writer per feature or file area, preserve the approval boundaries in `TASK_CONTROL.md`, and never place secrets, credentials, patient data, or raw provider payloads in prompts or committed files.
+- Every worker must finish with the Standard Handoff defined in `AI_WORKFLOW.md`.
+
 ## Product Direction
 
 Clinical Ethereality should feel:
