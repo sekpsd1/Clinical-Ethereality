@@ -23,11 +23,11 @@ Before starting or sending work, every task must:
 
 | Role | Current task | Task ID | Scope | Default model | Status |
 |---|---|---|---|---|---|
-| Project Controller | `สรุปสถานะโปรเจกต์ 14` | `01a095f7-be0a-7662-bee4-a6b4d4b984d9` | Planning, routing, review, approvals, release status | Terra High | Active; successor to `สรุปสถานะโปรเจกต์ 13` until Controller 15 is created and announced |
+| Project Controller | `สรุปสถานะโปรเจกต์ 15 — Project Controller` | `01a098ac-0b5a-7602-892c-85164d0bc07c` | Planning, routing, review, approvals, release status | Terra High | Active; announced successor to `สรุปสถานะโปรเจกต์ 14` |
 | Admin owner | `Admin ระบบ 6` | `01a070da-b7b1-7373-80d1-8be0a4f40828` | Admin users, schedules, payments, orders, products, inventory, moderation, audit, and notifications | Terra Medium | Latest Admin owner; reuse before creating another Admin task |
 | Admin manual | `อัปเดตคู่มือ Admin พร้อมภาพ` | `01a09876-30a2-76e1-aaaa-da0cdc3a233b` | Current Admin manual and image work | Luna High | Word document complete and visually verified at 7 pages; not committed, pushed, or deployed |
 | Superseded manual | `คู่มือการใช้งาน Clinical Ethereality` | `01a0655e-fe11-72d3-b0a9-ef2b4f6852ea` | Historical manual work only | Luna High | Superseded/dormant; do not route new writing here or create a concurrent writer |
-| Doctor | `Doctor ระบบ 5` | `01a06c7f-c9b3-7111-9390-292f47230839` | Consultation prescription outcome | Sol High | Production deployed successfully; manual role-based UAT pending |
+| Doctor | `Doctor ระบบ 5` | `01a06c7f-c9b3-7111-9390-292f47230839` | Consultation recording mobile external handoff | Sol High | Code complete locally; Controller review, release, and mobile device UAT pending |
 | Zoom integration | `แก้ไข Zoom นอก LINE Mini App` | `01a079aa-206c-7042-981b-63052916c6af` | Doctor Zoom room preparation window | Sol Medium | Production deployed successfully; mobile role-based UAT pending |
 | Telemedicine consent and recording | `Telemedicine Consent และ Recording 1` | Not present in the current 50-task live view | Per-booking consent, recording metadata, access control, and provider-ready integration | Sol High | Implementation complete at `faee419`; controller review and 29 targeted tests passed; merge, push, migration, Zoom enablement, and Production deploy are not authorized |
 

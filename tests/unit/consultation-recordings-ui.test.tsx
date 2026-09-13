@@ -29,7 +29,7 @@ describe("consultation recording presentation", () => {
     expect(item.retentionUntilLabel).toBeTruthy();
   });
 
-  it("renders protected view and download actions for each recording", () => {
+  it("renders client handoff actions without raw protected recording anchors", () => {
     const recording = mapConsultationRecording({
       id: "recording-video-1",
       recordingType: "speaker_view",
@@ -51,8 +51,8 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("1 ไฟล์");
     expect(html).toContain("เปิดดู");
     expect(html).toContain("ดาวน์โหลด");
-    expect(html).toContain("/api/consultations/consultation-1/recordings/recording-video-1");
-    expect(html).toContain("?download=1");
+    expect(html).not.toContain("href=\"/api/consultations/");
+    expect(html).toContain("aria-live=\"polite\"");
     expect(html).toContain("เฉพาะแอดมินและแพทย์ผู้รับผิดชอบเคสนี้เท่านั้น");
   });
 

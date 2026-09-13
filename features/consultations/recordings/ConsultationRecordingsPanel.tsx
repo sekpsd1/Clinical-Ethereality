@@ -1,8 +1,6 @@
 import {
   AudioLines,
   ChevronDown,
-  Download,
-  ExternalLink,
   FileText,
   MessageSquareText,
   ShieldCheck,
@@ -13,6 +11,7 @@ import type {
   ConsultationRecordingKind,
   ConsultationRecordingListItem
 } from "@/features/consultations/recordings/presentation";
+import { RecordingHandoffActions } from "@/features/consultations/recordings/RecordingHandoffActions";
 
 const recordingIcons: Record<ConsultationRecordingKind, typeof Video> = {
   audio: AudioLines,
@@ -21,11 +20,6 @@ const recordingIcons: Record<ConsultationRecordingKind, typeof Video> = {
   transcript: FileText,
   video: Video
 };
-
-function buildRecordingHref(consultationId: string, recordingId: string, download = false): string {
-  const base = `/api/consultations/${encodeURIComponent(consultationId)}/recordings/${encodeURIComponent(recordingId)}`;
-  return download ? `${base}?download=1` : base;
-}
 
 export function ConsultationRecordingsPanel({
   consultationId,
@@ -93,23 +87,8 @@ export function ConsultationRecordingsPanel({
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <a
-                    href={buildRecordingHref(consultationId, recording.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[8px] bg-primary/10 px-3 text-xs font-bold text-primary"
-                  >
-                    <ExternalLink aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-                    เปิดดู
-                  </a>
-                  <a
-                    href={buildRecordingHref(consultationId, recording.id, true)}
-                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[8px] bg-primary px-3 text-xs font-bold text-white"
-                  >
-                    <Download aria-hidden="true" className="size-3.5" strokeWidth={2.1} />
-                    ดาวน์โหลด
-                  </a>
+                <div className="mt-3">
+                  <RecordingHandoffActions consultationId={consultationId} recordingId={recording.id} />
                 </div>
               </li>
             );

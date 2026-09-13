@@ -262,7 +262,8 @@ describe("Doctor consultation queue", () => {
 
     expect(html).toContain("บันทึกการปรึกษา");
     expect(html).toContain("วิดีโอผู้พูด");
-    expect(html).toContain("/api/consultations/consultation-completed/recordings/recording-video-1");
-    expect(html).toContain("?download=1");
+    expect(html).toContain("เปิดดู");
+    expect(html).toContain("ดาวน์โหลด");
+    expect(html).not.toContain("href=\"/api/consultations/consultation-completed/recordings/recording-video-1");
   });
 });

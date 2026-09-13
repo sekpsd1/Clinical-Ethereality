@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { PublicSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
@@ -10,21 +11,27 @@ export type AuthorizedRecording = {
   fileType: string;
   recordingType: string;
   zoomMeetingId: string;
+  fileSizeBytes: bigint | null;
 };
 
-export async function getAuthorizedRecording(
-  session: PublicSession | null,
+export type RecordingViewer = Pick<PublicSession, "userId" | "role">;
+
+type RecordingLookupClient = Pick<Prisma.TransactionClient, "consultationRecording" | "user">;
+
+export async function findAuthorizedRecordingWithClient(
+  client: RecordingLookupClient,
+  session: RecordingViewer | null,
   consultationId: string,
   recordingId: string
 ): Promise<AuthorizedRecording | null> {
   if (!session || (session.role !== "admin" && session.role !== "doctor")) return null;
 
   const [activeUser, recording] = await Promise.all([
-    prisma.user.findFirst({
+    client.user.findFirst({
       where: { id: session.userId, role: session.role, status: "active" },
       select: { id: true }
     }),
-    prisma.consultationRecording.findFirst({
+    client.consultationRecording.findFirst({
       where: {
         id: recordingId,
         consultationId,
@@ -37,6 +44,7 @@ export async function getAuthorizedRecording(
         providerRecordingId: true,
         fileType: true,
         recordingType: true,
+        fileSizeBytes: true,
         consultation: { select: { zoomMeetingId: true } }
       }
     })
@@ -51,12 +59,21 @@ export async function getAuthorizedRecording(
     providerRecordingId: recording.providerRecordingId,
     fileType: recording.fileType,
     recordingType: recording.recordingType,
-    zoomMeetingId: recording.consultation.zoomMeetingId
+    zoomMeetingId: recording.consultation.zoomMeetingId,
+    fileSizeBytes: recording.fileSizeBytes
   };
 }
 
+export async function getAuthorizedRecording(
+  session: RecordingViewer | null,
+  consultationId: string,
+  recordingId: string
+): Promise<AuthorizedRecording | null> {
+  return findAuthorizedRecordingWithClient(prisma, session, consultationId, recordingId);
+}
+
 export async function auditRecordingAccess(
-  session: PublicSession,
+  session: RecordingViewer,
   recording: AuthorizedRecording,
   mode: "view" | "download"
 ): Promise<void> {

@@ -25,6 +25,7 @@ const recording = {
   providerRecordingId: "provider-file-1",
   fileType: "mp4",
   recordingType: "speaker_view",
+  fileSizeBytes: BigInt(1024),
   consultation: { zoomMeetingId: "12345678901" }
 };
 
