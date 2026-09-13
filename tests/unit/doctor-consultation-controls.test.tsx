@@ -294,28 +294,33 @@ describe("Doctor consultation controls", () => {
     expect(html).toContain("disabled");
   });
 
-  it("hides completion actions until server attendance evidence is eligible", () => {
+  it("keeps completion visible, disabled, and non-submittable until attendance evidence is eligible", async () => {
     workflowMocks.useActionState.mockReturnValue([
       { status: "idle", message: "" },
       workflowMocks.dispatch,
       false
     ]);
-    const html = renderToStaticMarkup(
-      <DoctorConsultationControls
-        consultation={consultation("live", {
-          label: "Zoom ยืนยันแพทย์แล้ว • รอผู้ป่วย",
-          description: "ต้องรอต่อเนื่องอีกประมาณ 8 นาที",
-          tone: "warning",
-          normalCompletionEligible: false,
-          noShowCompletionEligible: false,
-          noShowRemainingSeconds: 480
-        })}
-      />
-    );
+    const waitingConsultation = consultation("live", {
+      label: "Zoom ยืนยันแพทย์แล้ว • รอผู้ป่วย",
+      description: "ต้องรอต่อเนื่องอีกประมาณ 8 นาที",
+      tone: "warning",
+      normalCompletionEligible: false,
+      noShowCompletionEligible: false,
+      noShowRemainingSeconds: 480
+    });
+    const component = DoctorConsultationControls({ consultation: waitingConsultation });
+    const html = renderToStaticMarkup(component);
+    const result = await submitForm(findWorkflowForm(component));
 
     expect(html).toContain("รอผู้ป่วย");
-    expect(html).not.toContain("ยืนยันจบการปรึกษา");
+    expect(html).toContain("ยืนยันจบการปรึกษา");
+    expect(html).toContain('type="button"');
+    expect(html).toContain("disabled");
+    expect(html).toContain('aria-describedby="attendance-status-consultation-1 attendance-description-consultation-1 attendance-reason-consultation-1"');
+    expect(html).not.toContain('name="transition"');
     expect(html).not.toContain("ยืนยันไม่มาตามนัด");
+    expect(result.prevented).toBe(true);
+    expect(workflowMocks.dispatch).not.toHaveBeenCalled();
   });
 
   it("shows the normal completion control when refreshed attendance props become eligible", () => {
@@ -340,9 +345,16 @@ describe("Doctor consultation controls", () => {
       <DoctorConsultationControls consultation={consultation("live")} />
     );
 
-    expect(waitingHtml).not.toContain("ยืนยันจบการปรึกษา");
+    expect(waitingHtml).toContain("ยืนยันจบการปรึกษา");
+    expect(waitingHtml).toContain('type="button"');
+    expect(waitingHtml).toContain("disabled");
     expect(eligibleHtml).toContain("Zoom ยืนยันผู้เข้าร่วมครบแล้ว");
     expect(eligibleHtml).toContain("ยืนยันจบการปรึกษา");
+    expect(eligibleHtml).toContain('type="submit"');
+    expect(eligibleHtml).toContain('name="summary"');
+    expect(eligibleHtml.match(/<button[^>]*type="submit"[^>]*>/)?.[0]).not.toMatch(
+      /\sdisabled(?:="")?(?=\s|>)/
+    );
   });
 
   it("shows only the controlled no-show action after server eligibility", () => {
@@ -366,6 +378,7 @@ describe("Doctor consultation controls", () => {
 
     expect(html).toContain("customer_did_not_join");
     expect(html).toContain("ยืนยันไม่มาตามนัด");
+    expect(html).not.toContain("ยืนยันจบการปรึกษา");
     expect(html).not.toContain("name=\"summary\"");
   });
 

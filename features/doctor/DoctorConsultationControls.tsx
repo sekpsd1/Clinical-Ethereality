@@ -113,12 +113,20 @@ export function DoctorConsultationControls({
       : canCompleteNoShow
         ? "complete_no_show"
         : null;
+  const attendanceStatusId = `attendance-status-${consultation.id}`;
+  const attendanceDescriptionId = `attendance-description-${consultation.id}`;
+  const attendanceReasonId = `attendance-reason-${consultation.id}`;
 
   return (
     <form
       action={formAction}
       className="mt-4 rounded-[8px] border border-primary/15 bg-white/70 p-3"
       onSubmit={(event) => {
+        if (transition === null) {
+          event.preventDefault();
+          return;
+        }
+
         if (
           transition === "complete" &&
           !window.confirm(
@@ -143,8 +151,10 @@ export function DoctorConsultationControls({
       {isCompleting ? (
         <>
           <div className="rounded-[8px] border border-primary/10 bg-primary/5 p-3">
-            <p className="text-xs font-bold text-primary">{consultation.attendance.label}</p>
-            <p className="mt-1 text-[11px] font-semibold leading-5 text-muted">
+            <p id={attendanceStatusId} className="text-xs font-bold text-primary">
+              {consultation.attendance.label}
+            </p>
+            <p id={attendanceDescriptionId} className="mt-1 text-[11px] font-semibold leading-5 text-muted">
               {consultation.attendance.description}
             </p>
           </div>
@@ -185,7 +195,10 @@ export function DoctorConsultationControls({
               </p>
             </>
           ) : (
-            <p className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-muted">
+            <p
+              id={attendanceReasonId}
+              className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-muted"
+            >
               <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               ปุ่มจบจะเปิดเมื่อ Zoom ยืนยันผู้เข้าร่วมครบ หรือยืนยันช่วงเวลารอของแพทย์ครบตามกติกา
             </p>
@@ -225,6 +238,13 @@ export function DoctorConsultationControls({
               transition={transition}
               disabled={transition === "start" && !canStartConsultation}
             />
+          ) : isCompleting ? (
+            <WorkflowSubmitButton
+              transition="complete"
+              disabled
+              submittable={false}
+              describedBy={`${attendanceStatusId} ${attendanceDescriptionId} ${attendanceReasonId}`}
+            />
           ) : null
         )}
       </div>
@@ -234,10 +254,14 @@ export function DoctorConsultationControls({
 
 function WorkflowSubmitButton({
   transition,
-  disabled = false
+  disabled = false,
+  submittable = true,
+  describedBy
 }: {
   transition: "start" | "complete" | "complete_no_show";
   disabled?: boolean;
+  submittable?: boolean;
+  describedBy?: string;
 }) {
   const { pending } = useFormStatus();
   const complete = transition !== "start";
@@ -245,8 +269,9 @@ function WorkflowSubmitButton({
 
   return (
     <button
-      type="submit"
+      type={submittable ? "submit" : "button"}
       disabled={pending || disabled}
+      aria-describedby={describedBy}
       className={cn(
         "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60",
         complete

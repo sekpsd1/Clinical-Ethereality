@@ -6,7 +6,14 @@ import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/q
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 vi.mock("@/features/doctor/DoctorConsultationControls", () => ({
-  DoctorConsultationControls: () => null
+  DoctorConsultationControls: ({ consultation }: { consultation: DoctorConsultationItem }) =>
+    consultation.status === "live" ? (
+      <div data-consultation-controls>
+        <button type="button" disabled>
+          ยืนยันจบการปรึกษา
+        </button>
+      </div>
+    ) : null
 }));
 
 vi.mock("@/features/doctor/DoctorConsultationQueueAutoRefresh", () => ({
@@ -16,7 +23,7 @@ vi.mock("@/features/doctor/DoctorConsultationQueueAutoRefresh", () => ({
 }));
 
 vi.mock("@/features/doctor/DoctorPrescriptionForm", () => ({
-  DoctorPrescriptionForm: () => null
+  DoctorPrescriptionForm: () => <div data-prescription-section>รายการยา</div>
 }));
 
 vi.mock("@/features/doctor/DoctorPrescriptionOutcomeForm", () => ({
@@ -79,6 +86,22 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
 }
 
 describe("Doctor consultation queue", () => {
+  it("keeps the visible disabled live completion action before the prescription section", () => {
+    const data: DoctorConsultationsData = {
+      consultations: [consultation("live", "30 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 0, live: 1, completed: 0 }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const completionIndex = html.indexOf("ยืนยันจบการปรึกษา");
+    const prescriptionIndex = html.indexOf("data-prescription-section");
+
+    expect(completionIndex).toBeGreaterThan(-1);
+    expect(html.slice(completionIndex - 120, completionIndex)).toContain("disabled");
+    expect(prescriptionIndex).toBeGreaterThan(completionIndex);
+  });
+
   it("enables attendance refresh only while a live consultation is present", () => {
     const liveData: DoctorConsultationsData = {
       consultations: [consultation("live", "30 นาที")],
