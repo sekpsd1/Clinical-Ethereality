@@ -318,6 +318,33 @@ describe("Doctor consultation controls", () => {
     expect(html).not.toContain("ยืนยันไม่มาตามนัด");
   });
 
+  it("shows the normal completion control when refreshed attendance props become eligible", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+    const waitingHtml = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={consultation("live", {
+          label: "รอการยืนยันจาก Zoom",
+          description: "ยังไม่มีหลักฐานผู้เข้าร่วม",
+          tone: "neutral",
+          normalCompletionEligible: false,
+          noShowCompletionEligible: false,
+          noShowRemainingSeconds: 600
+        })}
+      />
+    );
+    const eligibleHtml = renderToStaticMarkup(
+      <DoctorConsultationControls consultation={consultation("live")} />
+    );
+
+    expect(waitingHtml).not.toContain("ยืนยันจบการปรึกษา");
+    expect(eligibleHtml).toContain("Zoom ยืนยันผู้เข้าร่วมครบแล้ว");
+    expect(eligibleHtml).toContain("ยืนยันจบการปรึกษา");
+  });
+
   it("shows only the controlled no-show action after server eligibility", () => {
     workflowMocks.useActionState.mockReturnValue([
       { status: "idle", message: "" },

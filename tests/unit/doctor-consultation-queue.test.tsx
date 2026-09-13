@@ -9,6 +9,12 @@ vi.mock("@/features/doctor/DoctorConsultationControls", () => ({
   DoctorConsultationControls: () => null
 }));
 
+vi.mock("@/features/doctor/DoctorConsultationQueueAutoRefresh", () => ({
+  DoctorConsultationQueueAutoRefresh: ({ enabled }: { enabled: boolean }) => (
+    <span data-queue-auto-refresh={String(enabled)} />
+  )
+}));
+
 vi.mock("@/features/doctor/DoctorPrescriptionForm", () => ({
   DoctorPrescriptionForm: () => null
 }));
@@ -73,6 +79,26 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
 }
 
 describe("Doctor consultation queue", () => {
+  it("enables attendance refresh only while a live consultation is present", () => {
+    const liveData: DoctorConsultationsData = {
+      consultations: [consultation("live", "30 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 0, live: 1, completed: 0 }
+    };
+    const completedData: DoctorConsultationsData = {
+      consultations: [consultation("completed", "30 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 0, live: 0, completed: 1 }
+    };
+
+    expect(renderToStaticMarkup(createElement(DoctorConsultations, { data: liveData }))).toContain(
+      'data-queue-auto-refresh="true"'
+    );
+    expect(
+      renderToStaticMarkup(createElement(DoctorConsultations, { data: completedData }))
+    ).toContain('data-queue-auto-refresh="false"');
+  });
+
   it("shows the approved Telemedicine services in the requested order", () => {
     const data: DoctorConsultationsData = {
       consultations: [],

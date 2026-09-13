@@ -9,6 +9,7 @@ import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultation
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
+import { DoctorConsultationQueueAutoRefresh } from "@/features/doctor/DoctorConsultationQueueAutoRefresh";
 
 const telemedicineServices = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"] as const;
 
@@ -74,6 +75,9 @@ function getIssuedPrescriptionStatus(consultation: DoctorConsultationItem): stri
 }
 
 export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
+  const hasLiveConsultation = data.consultations.some(
+    (consultation) => consultation.status === "live"
+  );
   const summaryItems = [
     {
       label: "พร้อมตรวจ",
@@ -94,6 +98,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
 
   return (
     <div className="flex flex-col gap-5">
+      <DoctorConsultationQueueAutoRefresh enabled={hasLiveConsultation} />
       <section className="-mx-4 bg-primary-gradient px-4 py-5 text-white shadow-booking">
         <p className="text-label font-bold uppercase text-white/75">งานแพทย์</p>
         <h2 className="mt-1 font-headline text-2xl font-bold">คิวปรึกษา</h2>
