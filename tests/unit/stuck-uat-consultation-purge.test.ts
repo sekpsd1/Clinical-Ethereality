@@ -22,6 +22,7 @@ function makeSnapshot() {
     scheduledAt: new Date(`2026-09-${number < 3 ? "10" : "11"}T03:00:00.000Z`),
     slotLockId: `lock-${number}`,
     zoomMeetingId: `meeting-${number}`,
+    doctorId: `doctor-${number}`,
     doctorUserId: `doctor-user-${number}`,
     updatedAt: new Date("2026-09-13T00:00:00.000Z")
   }));
@@ -47,7 +48,11 @@ function makeSnapshot() {
     })),
     recordingWebhookEvents: Array.from({ length: 5 }, (_, index) => row(`webhook-${index}`, `live-${(index % 3) + 1}`)),
     telemedicineConsents: [1, 2, 3].map((number) => row(`consent-${number}`, `live-${number}`)),
-    payments: [1, 2, 3].map((number) => row(`payment-${number}`, `live-${number}`)),
+    payments: [1, 2, 3].map((number) => ({
+      ...row(`payment-${number}`, `live-${number}`),
+      privateFileSubmissionAttachmentId: null as string | null,
+      manualAppointmentAttachmentId: null as string | null
+    })),
     prescriptions: [],
     slotLocks: [1, 2, 3].map((number) => ({ id: `lock-${number}`, updatedAt: new Date("2026-09-13T00:00:00.000Z") })),
     privateAttachments: [1, 2, 3].map((number) => ({
@@ -57,9 +62,14 @@ function makeSnapshot() {
       entityType: "payment_slip",
       entityId: `payment-${number}`,
       storagePaymentId: `payment-${number}`,
-      storageKey: `opaque-${number}`,
+      storageUrl: `/api/payments/slips/attachment-${number}`,
+      storageKey: purge.expectedStorageKey(customerId, `payment-${number}`, `attachment-${number}`, "png"),
       mimeType: "image/png",
       byteSize: 8,
+      storageProvider: "plesk_private_local",
+      visibility: "private",
+      paymentKind: "consultation",
+      submissionSource: null as string | null,
       updatedAt: new Date("2026-09-13T00:00:00.000Z")
     })),
     otherScopedAttachments: [] as Array<{
@@ -69,9 +79,14 @@ function makeSnapshot() {
       entityType: string;
       entityId: string;
       storagePaymentId: string;
+      storageUrl: string;
       storageKey: string;
       mimeType: string;
       byteSize: number;
+      storageProvider: string;
+      visibility: string;
+      paymentKind: string;
+      submissionSource: string | null;
       updatedAt: Date;
     }>,
     relatedNotifications: [] as Array<{
@@ -146,6 +161,143 @@ describe("stuck UAT consultation purge guard", () => {
     });
     expect(runner.parseZoomHandoffMarker("Mozilla/5.0 normal login session")).toBeNull();
     expect(runner.parseZoomHandoffMarker("zoom-handoff-ticket:v1:admin:live-1234")).toBeNull();
+  });
+
+  it("minimizes only exact application-generated payment and attachment markers", () => {
+    expect(runner.minimizePaymentVerificationPayload({
+      submissionSource: "private_file",
+      submittedEvidence: {
+        attachmentId: "attachment-1",
+        submittedAt: "2026-09-13T00:00:00.000Z",
+        type: "private_file"
+      },
+      manualAppointmentIntake: {
+        version: 1,
+        source: "admin_manual_appointment",
+        attachmentId: "attachment-2",
+        createdAt: "2026-09-13T00:00:00.000Z",
+        createdById: "admin-1",
+        reasonCode: "provider_unavailable",
+        transferredAt: "2026-09-12T23:00:00.000Z"
+      }
+    })).toEqual({
+      privateFileSubmissionAttachmentId: "attachment-1",
+      manualAppointmentAttachmentId: "attachment-2"
+    });
+    expect(runner.minimizePaymentVerificationPayload({
+      submissionSource: "private_file",
+      submittedEvidence: { attachmentId: "attachment-1", type: "url" },
+      manualAppointmentIntake: { version: 2, source: "admin_manual_appointment", attachmentId: "attachment-2" }
+    })).toEqual({ privateFileSubmissionAttachmentId: null, manualAppointmentAttachmentId: null });
+    expect(runner.minimizeAttachmentMetadata({
+      storageProvider: "plesk_private_local",
+      visibility: "private",
+      paymentKind: "consultation",
+      submissionSource: "admin_manual_appointment",
+      ignored: "raw-value"
+    })).toEqual({
+      storageProvider: "plesk_private_local",
+      visibility: "private",
+      paymentKind: "consultation",
+      submissionSource: "admin_manual_appointment"
+    });
+  });
+
+  it("accepts exactly the three application-generated private payment paths", () => {
+    const canonical = makeSnapshot();
+    expect(() => purge.assertSnapshot(canonical)).not.toThrow();
+
+    const consultationProvisional = makeSnapshot();
+    consultationProvisional.payments[0].privateFileSubmissionAttachmentId = "attachment-1";
+    consultationProvisional.privateAttachments[0].storageKey = purge.expectedStorageKey(
+      consultationProvisional.customer.id,
+      "consultation-live-1",
+      "attachment-1",
+      "png"
+    );
+    expect(() => purge.assertSnapshot(consultationProvisional)).not.toThrow();
+
+    const manualAppointment = makeSnapshot();
+    manualAppointment.payments[0].manualAppointmentAttachmentId = "attachment-1";
+    manualAppointment.privateAttachments[0].submissionSource = "admin_manual_appointment";
+    manualAppointment.privateAttachments[0].storageKey = purge.expectedStorageKey(
+      manualAppointment.customer.id,
+      `manual-appointment:${manualAppointment.liveConsultations[0].doctorId}:${manualAppointment.liveConsultations[0].scheduledAt.toISOString()}`,
+      "attachment-1",
+      "png"
+    );
+    expect(() => purge.assertSnapshot(manualAppointment)).not.toThrow();
+  });
+
+  it("rejects forged or mismatched private payment path bindings", () => {
+    const manualSnapshot = () => {
+      const snapshot = makeSnapshot();
+      snapshot.payments[0].manualAppointmentAttachmentId = "attachment-1";
+      snapshot.privateAttachments[0].submissionSource = "admin_manual_appointment";
+      snapshot.privateAttachments[0].storageKey = purge.expectedStorageKey(
+        snapshot.customer.id,
+        `manual-appointment:${snapshot.liveConsultations[0].doctorId}:${snapshot.liveConsultations[0].scheduledAt.toISOString()}`,
+        "attachment-1",
+        "png"
+      );
+      return snapshot;
+    };
+
+    for (const mutate of [
+      (snapshot: ReturnType<typeof makeSnapshot>) => { snapshot.payments[0].consultationId = "live-2"; },
+      (snapshot: ReturnType<typeof makeSnapshot>) => {
+        snapshot.privateAttachments[0].entityId = "payment-2";
+        snapshot.privateAttachments[0].storagePaymentId = "payment-2";
+      },
+      (snapshot: ReturnType<typeof makeSnapshot>) => { snapshot.payments[0].manualAppointmentAttachmentId = "attachment-forged"; },
+      (snapshot: ReturnType<typeof makeSnapshot>) => { snapshot.liveConsultations[0].doctorId = "doctor-forged"; },
+      (snapshot: ReturnType<typeof makeSnapshot>) => { snapshot.liveConsultations[0].scheduledAt = new Date("2026-09-10T04:00:00.000Z"); },
+      (snapshot: ReturnType<typeof makeSnapshot>) => { snapshot.privateAttachments[0].storageKey = "payments/forged/path.png"; }
+    ]) {
+      const snapshot = manualSnapshot();
+      mutate(snapshot);
+      expect(() => purge.assertSnapshot(snapshot)).toThrowError(
+        expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+      );
+    }
+
+    const metadataMismatch = makeSnapshot();
+    metadataMismatch.privateAttachments[0].storageProvider = "public";
+    expect(() => purge.assertSnapshot(metadataMismatch)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_METADATA_INVALID" })
+    );
+
+    const storageUrlMismatch = makeSnapshot();
+    storageUrlMismatch.privateAttachments[0].storageUrl = "/api/payments/slips/attachment-forged";
+    expect(() => purge.assertSnapshot(storageUrlMismatch)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_STORAGE_URL_INVALID" })
+    );
+
+    const missingConsultationMarker = makeSnapshot();
+    missingConsultationMarker.privateAttachments[0].storageKey = purge.expectedStorageKey(
+      missingConsultationMarker.customer.id,
+      "consultation-live-1",
+      "attachment-1",
+      "png"
+    );
+    expect(() => purge.assertSnapshot(missingConsultationMarker)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+    );
+
+    const ambiguousContext = makeSnapshot();
+    ambiguousContext.payments[0].id = "consultation-live-1";
+    ambiguousContext.payments[0].privateFileSubmissionAttachmentId = "attachment-1";
+    ambiguousContext.privateAttachments[0].entityId = "consultation-live-1";
+    ambiguousContext.privateAttachments[0].storagePaymentId = "consultation-live-1";
+    ambiguousContext.privateAttachments[0].storageKey = purge.expectedStorageKey(
+      ambiguousContext.customer.id,
+      "consultation-live-1",
+      "attachment-1",
+      "png"
+    );
+    expect(() => purge.assertSnapshot(ambiguousContext)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+    );
   });
 
   it("is dry-run by default and exposes aggregate-only output", async () => {
@@ -234,10 +386,10 @@ describe("stuck UAT consultation purge guard", () => {
     const snapshot = makeSnapshot();
     const attachment = snapshot.privateAttachments[0];
     attachment.storageKey = purge.expectedStorageKey(attachment.ownerId, attachment.entityId, attachment.id, "png");
-    await expect(purge.validatePrivateAttachmentFile({ root: path.resolve("safe-root"), attachment, referenceCount: 2 })).rejects.toMatchObject({ code: "PRIVATE_FILE_NOT_EXCLUSIVE" });
+    await expect(purge.validatePrivateAttachmentFile({ root: path.resolve("safe-root"), snapshot, attachment, referenceCount: 2 })).rejects.toMatchObject({ code: "PRIVATE_FILE_NOT_EXCLUSIVE" });
 
     attachment.storageKey = purge.expectedStorageKey("wrong-owner", attachment.entityId, attachment.id, "png");
-    await expect(purge.validatePrivateAttachmentFile({ root: path.resolve("safe-root"), attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" });
+    await expect(purge.validatePrivateAttachmentFile({ root: path.resolve("safe-root"), snapshot, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" });
   });
 
   it("checks private-file image magic before allowing deletion", async () => {
@@ -249,9 +401,9 @@ describe("stuck UAT consultation purge guard", () => {
     await mkdir(path.dirname(filePath), { recursive: true });
     try {
       await writeFile(filePath, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1 })).resolves.toMatchObject({ alreadyAbsent: false });
+      await expect(purge.validatePrivateAttachmentFile({ root, snapshot, attachment, referenceCount: 1 })).resolves.toMatchObject({ alreadyAbsent: false });
       await writeFile(filePath, Buffer.from("not-png!"));
-      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_MAGIC_MISMATCH" });
+      await expect(purge.validatePrivateAttachmentFile({ root, snapshot, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_MAGIC_MISMATCH" });
     } finally {
       expect(path.resolve(root).startsWith(`${path.resolve(os.tmpdir())}${path.sep}`)).toBe(true);
       await rm(root, { recursive: true, force: true });
@@ -260,11 +412,12 @@ describe("stuck UAT consultation purge guard", () => {
 
   it("requires recovery mode for a missing private file", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "clinical-purge-test-"));
-    const attachment = makeSnapshot().privateAttachments[0];
+    const snapshot = makeSnapshot();
+    const attachment = snapshot.privateAttachments[0];
     attachment.storageKey = purge.expectedStorageKey(attachment.ownerId, attachment.entityId, attachment.id, "png");
     try {
-      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_MISSING_WITHOUT_RESUME" });
-      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1, allowMissing: true })).resolves.toMatchObject({ alreadyAbsent: true });
+      await expect(purge.validatePrivateAttachmentFile({ root, snapshot, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_MISSING_WITHOUT_RESUME" });
+      await expect(purge.validatePrivateAttachmentFile({ root, snapshot, attachment, referenceCount: 1, allowMissing: true })).resolves.toMatchObject({ alreadyAbsent: true });
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -167,6 +167,9 @@ function assertSnapshot(snapshot) {
   if (snapshot.privateAttachments.some((row) => row.entityType !== "payment_slip" || !paymentIds.has(row.entityId))) {
     fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
   }
+  for (const attachment of snapshot.privateAttachments) {
+    assertPrivateAttachmentBinding(snapshot, attachment);
+  }
   if (
     snapshot.otherScopedAttachments.some(
       (row) =>
@@ -238,6 +241,48 @@ function expectedStorageKey(ownerId, paymentId, attachmentId, extension) {
   return `payments/${owner}/${payment}/${attachmentId}.${extension}`;
 }
 
+function assertPrivateAttachmentBinding(snapshot, attachment) {
+  const payment = snapshot.payments.find((row) => row.id === attachment.entityId);
+  const consultation = payment
+    ? snapshot.liveConsultations.find((row) => row.id === payment.consultationId)
+    : null;
+  if (!payment || !consultation || attachment.storagePaymentId !== payment.id) {
+    fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
+  }
+  if (
+    attachment.storageProvider !== "plesk_private_local" ||
+    attachment.visibility !== "private" ||
+    attachment.paymentKind !== "consultation" ||
+    (attachment.submissionSource !== null && attachment.submissionSource !== "admin_manual_appointment")
+  ) {
+    fail("PRIVATE_FILE_METADATA_INVALID");
+  }
+  if (attachment.storageUrl !== `/api/payments/slips/${attachment.id}`) {
+    fail("PRIVATE_FILE_STORAGE_URL_INVALID");
+  }
+
+  const extension = extensionForMime(attachment.mimeType);
+  const candidateContextIds = [payment.id];
+  if (payment.privateFileSubmissionAttachmentId === attachment.id) {
+    candidateContextIds.push(`consultation-${consultation.id}`);
+  }
+  if (
+    attachment.submissionSource === "admin_manual_appointment" &&
+    payment.manualAppointmentAttachmentId === attachment.id
+  ) {
+    candidateContextIds.push(
+      `manual-appointment:${consultation.doctorId}:${new Date(consultation.scheduledAt).toISOString()}`
+    );
+  }
+  const matches = candidateContextIds.filter(
+    (contextId) =>
+      attachment.storageKey ===
+      expectedStorageKey(attachment.ownerId, contextId, attachment.id, extension)
+  );
+  if (matches.length !== 1) fail("PRIVATE_FILE_OWNERSHIP_INVALID");
+  return matches[0];
+}
+
 function extensionForMime(mimeType) {
   if (mimeType === "image/jpeg") return "jpg";
   if (mimeType === "image/png") return "png";
@@ -260,13 +305,10 @@ function resolvePrivatePath(root, storageKey) {
   return resolved;
 }
 
-async function validatePrivateAttachmentFile({ root, attachment, referenceCount, allowMissing = false }) {
+async function validatePrivateAttachmentFile({ root, snapshot, attachment, referenceCount, allowMissing = false }) {
   if (referenceCount !== 1) fail("PRIVATE_FILE_NOT_EXCLUSIVE");
   if (!attachment.storageKey || !attachment.mimeType) fail("PRIVATE_FILE_METADATA_INVALID");
-  const extension = extensionForMime(attachment.mimeType);
-  if (attachment.storageKey !== expectedStorageKey(attachment.ownerId, attachment.storagePaymentId, attachment.id, extension)) {
-    fail("PRIVATE_FILE_OWNERSHIP_INVALID");
-  }
+  assertPrivateAttachmentBinding(snapshot, attachment);
   const filePath = resolvePrivatePath(root, attachment.storageKey);
   let rootRealPath;
   try {
@@ -385,6 +427,7 @@ module.exports = {
   PurgeGuardError,
   aggregateSnapshot,
   assertExpectedCounts,
+  assertPrivateAttachmentBinding,
   assertSnapshot,
   deleteValidatedPrivateFile,
   executePurge,

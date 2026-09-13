@@ -75,6 +75,60 @@ function metadataConsultationId(value) {
   return typeof value.consultationId === "string" ? value.consultationId : null;
 }
 
+function jsonObject(value) {
+  return value && !Array.isArray(value) && typeof value === "object" ? value : null;
+}
+
+function exactIsoDate(value) {
+  if (typeof value !== "string") return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.toISOString() === value;
+}
+
+function minimizePaymentVerificationPayload(value) {
+  const payload = jsonObject(value);
+  const evidence = jsonObject(payload?.submittedEvidence);
+  const privateFileSubmissionAttachmentId =
+    payload?.submissionSource === "private_file" &&
+    evidence?.type === "private_file" &&
+    typeof evidence.attachmentId === "string" &&
+    evidence.attachmentId.length > 0 &&
+    exactIsoDate(evidence.submittedAt)
+      ? evidence.attachmentId
+      : null;
+
+  const intake = jsonObject(payload?.manualAppointmentIntake);
+  const validManualReasonCodes = new Set([
+    "provider_unavailable",
+    "provider_timeout",
+    "provider_result_ambiguous"
+  ]);
+  const manualAppointmentAttachmentId =
+    intake?.version === 1 &&
+    intake?.source === "admin_manual_appointment" &&
+    typeof intake.attachmentId === "string" &&
+    intake.attachmentId.length > 0 &&
+    typeof intake.createdById === "string" &&
+    intake.createdById.length > 0 &&
+    exactIsoDate(intake.createdAt) &&
+    exactIsoDate(intake.transferredAt) &&
+    validManualReasonCodes.has(intake.reasonCode)
+      ? intake.attachmentId
+      : null;
+
+  return { privateFileSubmissionAttachmentId, manualAppointmentAttachmentId };
+}
+
+function minimizeAttachmentMetadata(value) {
+  const metadata = jsonObject(value);
+  return {
+    storageProvider: typeof metadata?.storageProvider === "string" ? metadata.storageProvider : null,
+    visibility: typeof metadata?.visibility === "string" ? metadata.visibility : null,
+    paymentKind: typeof metadata?.paymentKind === "string" ? metadata.paymentKind : null,
+    submissionSource: typeof metadata?.submissionSource === "string" ? metadata.submissionSource : null
+  };
+}
+
 function zoomHandoffMarkers(consultations) {
   return consultations.flatMap((consultation) => [
     `zoom-handoff-ticket:v1:customer:${consultation.id}`,
@@ -111,6 +165,7 @@ async function buildSnapshot(db, lineUserId) {
         scheduledAt: true,
         slotLockId: true,
         zoomMeetingId: true,
+        doctorId: true,
         updatedAt: true,
         doctor: { select: { userId: true } }
       },
@@ -144,7 +199,10 @@ async function buildSnapshot(db, lineUserId) {
     db.consultationRecording.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, provider: true, providerRecordingId: true, updatedAt: true } }),
     db.consultationRecordingWebhookEvent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, createdAt: true } }),
     db.telemedicineConsent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } }),
-    db.payment.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } }),
+    db.payment.findMany({
+      where: { consultationId: { in: consultationIds } },
+      select: { id: true, consultationId: true, verificationPayload: true, updatedAt: true }
+    }),
     db.prescription.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } })
   ]);
 
@@ -162,7 +220,20 @@ async function buildSnapshot(db, lineUserId) {
           { entityId: { in: prescriptionIds } }
         ]
       },
-      select: { id: true, ownerId: true, purpose: true, status: true, entityType: true, entityId: true, storageKey: true, mimeType: true, byteSize: true, updatedAt: true }
+      select: {
+        id: true,
+        ownerId: true,
+        purpose: true,
+        status: true,
+        entityType: true,
+        entityId: true,
+        storageUrl: true,
+        storageKey: true,
+        mimeType: true,
+        byteSize: true,
+        metadataJson: true,
+        updatedAt: true
+      }
     }),
     db.orderItem.count({ where: { prescriptionId: { in: prescriptionIds } } }),
     db.notification.findMany({
@@ -177,15 +248,20 @@ async function buildSnapshot(db, lineUserId) {
       select: { id: true, userId: true, userAgent: true, updatedAt: true, user: { select: { role: true } } }
     })
   ]);
-  const paymentByConsultation = new Map(payments.map((payment) => [payment.consultationId, payment.id]));
+  const minimizedPayments = payments.map(({ verificationPayload, ...payment }) => ({
+    ...payment,
+    ...minimizePaymentVerificationPayload(verificationPayload)
+  }));
+  const paymentByConsultation = new Map(minimizedPayments.map((payment) => [payment.consultationId, payment.id]));
   const consultationByPrescription = new Map(prescriptions.map((prescription) => [prescription.id, prescription.consultationId]));
-  const scopedAttachments = attachmentRows.map((attachment) => {
+  const scopedAttachments = attachmentRows.map(({ metadataJson, ...attachment }) => {
     const directPaymentId = paymentIds.includes(attachment.entityId) ? attachment.entityId : null;
     const consultationId = consultationIds.includes(attachment.entityId)
       ? attachment.entityId
       : consultationByPrescription.get(attachment.entityId);
     return {
       ...attachment,
+      ...minimizeAttachmentMetadata(metadataJson),
       storagePaymentId: directPaymentId || paymentByConsultation.get(consultationId) || null
     };
   });
@@ -241,7 +317,7 @@ async function buildSnapshot(db, lineUserId) {
     recordings,
     recordingWebhookEvents,
     telemedicineConsents,
-    payments,
+    payments: minimizedPayments,
     prescriptions,
     slotLocks,
     privateAttachments,
@@ -349,6 +425,7 @@ function createFileAdapter(prisma) {
         validated.push(
           await validatePrivateAttachmentFile({
             root: storageRoot,
+            snapshot,
             attachment,
             referenceCount,
             allowMissing: recoveryMode
@@ -564,6 +641,8 @@ module.exports = {
   createFileAdapter,
   createZoomAdapter,
   metadataConsultationId,
+  minimizeAttachmentMetadata,
+  minimizePaymentVerificationPayload,
   parseArguments,
   parseExpectedCounts,
   parseZoomHandoffMarker,
