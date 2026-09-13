@@ -40,6 +40,8 @@ export type RecordingExternalAccess = {
   mode: RecordingAccessMode;
 };
 
+export type RecordingExternalAuditResult = "audited" | "already_audited" | "invalid";
+
 export class RecordingExternalHandoffError extends Error {
   constructor(message = "Recording access is invalid, expired, or unavailable.") {
     super(message);
@@ -335,39 +337,83 @@ export async function getRecordingExternalAccess(
 export async function auditExternalRecordingAccessOnce(
   access: RecordingExternalAccess,
   now = new Date()
-): Promise<boolean> {
-  if (access.auditState === "audited") return false;
+): Promise<RecordingExternalAuditResult> {
+  const auditedMarker = access.auditState === "pending"
+    ? access.marker.replace(/:pending$/, ":audited")
+    : access.marker;
+  if (!auditedMarker.endsWith(":audited")) return "invalid";
+
+  if (access.auditState === "pending") {
+    const claimResult = await prisma.$transaction(async (tx) => {
+      const recording = await findAuthorizedRecordingWithClient(
+        tx,
+        access.viewer,
+        access.recording.consultationId,
+        access.recording.id
+      );
+      if (!recording) return "invalid" as const;
+
+      const claimed = await tx.authSession.updateMany({
+        where: {
+          id: access.sessionId,
+          userId: access.viewer.userId,
+          refreshTokenHash: access.tokenHash,
+          status: "active",
+          userAgent: access.marker,
+          expiresAt: { gt: now },
+          user: { is: { id: access.viewer.userId, role: access.viewer.role, status: "active" } }
+        },
+        data: { userAgent: auditedMarker }
+      });
+      if (claimed.count !== 1) return "cas_missed" as const;
+
+      await writeAuditLog(tx, {
+        actorId: access.viewer.userId,
+        action: access.mode === "download" ? "consultation_recording.download" : "consultation_recording.view",
+        entityType: "consultation_recording",
+        entityId: recording.id,
+        metadata: {
+          consultationId: recording.consultationId,
+          provider: recording.provider,
+          mode: access.mode,
+          externalSession: true
+        }
+      });
+
+      return "audited" as const;
+    });
+
+    if (claimResult !== "cas_missed") return claimResult;
+  }
 
   return prisma.$transaction(async (tx) => {
-    const auditedMarker = access.marker.replace(/:pending$/, ":audited");
-    const claimed = await tx.authSession.updateMany({
-      where: {
-        id: access.sessionId,
-        userId: access.viewer.userId,
-        refreshTokenHash: access.tokenHash,
-        status: "active",
-        userAgent: access.marker,
-        expiresAt: { gt: now },
-        user: { is: { id: access.viewer.userId, role: access.viewer.role, status: "active" } }
-      },
-      data: { userAgent: auditedMarker }
+    const sessionRecord = await tx.authSession.findUnique({
+      where: { id: access.sessionId },
+      include: { user: { select: { id: true, role: true, status: true } } }
     });
-    if (claimed.count !== 1) return false;
+    const viewer = sessionRecord ? toViewer(sessionRecord.user) : null;
 
-    await writeAuditLog(tx, {
-      actorId: access.viewer.userId,
-      action: access.mode === "download" ? "consultation_recording.download" : "consultation_recording.view",
-      entityType: "consultation_recording",
-      entityId: access.recording.id,
-      metadata: {
-        consultationId: access.recording.consultationId,
-        provider: access.recording.provider,
-        mode: access.mode,
-        externalSession: true
-      }
-    });
+    if (
+      !sessionRecord ||
+      !viewer ||
+      viewer.userId !== access.viewer.userId ||
+      viewer.role !== access.viewer.role ||
+      sessionRecord.userId !== access.viewer.userId ||
+      sessionRecord.status !== "active" ||
+      sessionRecord.expiresAt <= now ||
+      sessionRecord.userAgent !== auditedMarker ||
+      !hashesMatch(sessionRecord.refreshTokenHash, access.tokenHash)
+    ) {
+      return "invalid";
+    }
 
-    return true;
+    const recording = await findAuthorizedRecordingWithClient(
+      tx,
+      access.viewer,
+      access.recording.consultationId,
+      access.recording.id
+    );
+    return recording ? "already_audited" : "invalid";
   });
 }
 

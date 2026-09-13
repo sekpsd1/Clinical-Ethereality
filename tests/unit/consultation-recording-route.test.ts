@@ -56,6 +56,7 @@ describe("private consultation recording route", () => {
     mocks.session = null;
     mocks.authorize.mockResolvedValue(null);
     mocks.external.mockResolvedValue(null);
+    mocks.auditExternal.mockResolvedValue("audited");
     mocks.open.mockResolvedValue({
       body: new Response("private-bytes").body,
       contentType: "video/mp4",
@@ -96,6 +97,47 @@ describe("private consultation recording route", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("private-bytes");
     expect(mocks.auditExternal).toHaveBeenCalledWith(externalAccess);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("serves a concurrent range request only after the same session is revalidated as already audited", async () => {
+    mocks.external.mockResolvedValue({ ...externalAccess, auditState: "audited" });
+    mocks.auditExternal.mockResolvedValue("already_audited");
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1", {
+        headers: { range: "bytes=8-15" }
+      }),
+      { params }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("private-bytes");
+    expect(mocks.auditExternal).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed after provider open when the external audit claim is invalid", async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    mocks.external.mockResolvedValue(externalAccess);
+    mocks.auditExternal.mockResolvedValue("invalid");
+    mocks.open.mockResolvedValue({
+      body: { cancel } as unknown as ReadableStream<Uint8Array>,
+      contentType: "video/mp4",
+      contentLength: "13",
+      contentRange: null,
+      acceptRanges: "bytes",
+      status: 200
+    });
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1"),
+      { params }
+    );
+
+    expect(mocks.open).toHaveBeenCalledOnce();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Authentication required." });
+    expect(cancel).toHaveBeenCalledOnce();
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 

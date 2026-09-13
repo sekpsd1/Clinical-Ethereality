@@ -60,7 +60,14 @@ export async function GET(
       range.kind === "valid" ? { range: range.value } : undefined
     );
     if (externalAccess) {
-      await auditExternalRecordingAccessOnce(externalAccess);
+      const auditResult = await auditExternalRecordingAccessOnce(externalAccess);
+      if (auditResult === "invalid") {
+        await content.body?.cancel().catch(() => undefined);
+        return NextResponse.json(
+          { error: "Authentication required." },
+          { status: 401, headers: { "Cache-Control": "private, no-store" } }
+        );
+      }
     } else if (mainViewer) {
       await auditRecordingAccess(mainViewer, recording, mode);
     }

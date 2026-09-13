@@ -71,12 +71,20 @@ describe("recording external-browser handoff", () => {
     });
     mocks.tx.authSession.findUnique.mockImplementation(async () => authRecord);
     mocks.tx.authSession.updateMany.mockImplementation(async ({ where, data }) => {
+      const user = authRecord?.user as { id?: string; role?: string; status?: string } | undefined;
+      const minimumExpiry = where.expiresAt?.gt as Date | undefined;
       if (
         !authRecord ||
         authRecord.id !== where.id ||
         authRecord.userAgent !== where.userAgent ||
         authRecord.refreshTokenHash !== where.refreshTokenHash ||
-        authRecord.status !== "active"
+        authRecord.status !== "active" ||
+        (minimumExpiry && (authRecord.expiresAt as Date) <= minimumExpiry) ||
+        (where.user?.is && (
+          user?.id !== where.user.is.id ||
+          user?.role !== where.user.is.role ||
+          user?.status !== where.user.is.status
+        ))
       ) {
         return { count: 0 };
       }
@@ -216,11 +224,57 @@ describe("recording external-browser handoff", () => {
     const firstAccess = await getRecordingExternalAccess("consultation-1", "recording-1", "view", now);
     const secondAccess = await getRecordingExternalAccess("consultation-1", "recording-1", "view", now);
 
-    await expect(auditExternalRecordingAccessOnce(firstAccess!, now)).resolves.toBe(true);
-    await expect(auditExternalRecordingAccessOnce(secondAccess!, now)).resolves.toBe(false);
+    await expect(auditExternalRecordingAccessOnce(firstAccess!, now)).resolves.toBe("audited");
+    await expect(auditExternalRecordingAccessOnce(secondAccess!, now)).resolves.toBe("already_audited");
     expect(
       mocks.writeAuditLog.mock.calls.filter((call) => call[1].action === "consultation_recording.view")
     ).toHaveLength(1);
+  });
+
+  it.each(["expired", "revoked", "inactive", "marker_mismatch"] as const)(
+    "fails closed when the pending access CAS loses to %s rather than a completed audit",
+    async (failure) => {
+      const handoff = await issueRecordingExternalHandoff("consultation-1", "recording-1", "view", { now });
+      const exchanged = await exchangeRecordingExternalHandoff(
+        handoff.ticket,
+        "consultation-1",
+        "recording-1",
+        "view",
+        now
+      );
+      mocks.cookieName = getRecordingExternalCookieName("view");
+      mocks.cookieValue = exchanged.externalSessionToken;
+      const access = await getRecordingExternalAccess("consultation-1", "recording-1", "view", now);
+
+      if (failure === "expired") authRecord!.expiresAt = new Date(now.getTime() - 1);
+      if (failure === "revoked") authRecord!.status = "revoked";
+      if (failure === "inactive") {
+        (authRecord!.user as { status: string }).status = "suspended";
+      }
+      if (failure === "marker_mismatch") authRecord!.userAgent = "recording-external-session:v1:doctor:tampered:audited";
+
+      await expect(auditExternalRecordingAccessOnce(access!, now)).resolves.toBe("invalid");
+      expect(
+        mocks.writeAuditLog.mock.calls.filter((call) => call[1].action === "consultation_recording.view")
+      ).toHaveLength(0);
+    }
+  );
+
+  it("fails closed when the exact doctor assignment changes before the access audit claim", async () => {
+    const handoff = await issueRecordingExternalHandoff("consultation-1", "recording-1", "view", { now });
+    const exchanged = await exchangeRecordingExternalHandoff(
+      handoff.ticket,
+      "consultation-1",
+      "recording-1",
+      "view",
+      now
+    );
+    mocks.cookieName = getRecordingExternalCookieName("view");
+    mocks.cookieValue = exchanged.externalSessionToken;
+    const access = await getRecordingExternalAccess("consultation-1", "recording-1", "view", now);
+    mocks.tx.consultationRecording.findFirst.mockResolvedValueOnce(null);
+
+    await expect(auditExternalRecordingAccessOnce(access!, now)).resolves.toBe("invalid");
   });
 
   it("uses separate exact-path cookies for view and download", () => {
