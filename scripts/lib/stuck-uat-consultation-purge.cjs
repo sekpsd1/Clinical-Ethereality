@@ -19,6 +19,9 @@ const COUNT_KEYS = Object.freeze([
   "prescriptions",
   "slotLocks",
   "privateAttachments",
+  "otherScopedAttachments",
+  "relatedNotifications",
+  "zoomHandoffSessions",
   "directAuditRows"
 ]);
 
@@ -69,6 +72,9 @@ function aggregateSnapshot(snapshot) {
     prescriptions: snapshot.prescriptions.length,
     slotLocks: snapshot.slotLocks.length,
     privateAttachments: snapshot.privateAttachments.length,
+    otherScopedAttachments: snapshot.otherScopedAttachments.length,
+    relatedNotifications: snapshot.relatedNotifications.length,
+    zoomHandoffSessions: snapshot.zoomHandoffSessions.length,
     directAuditRows: snapshot.directAuditRows.length
   };
 }
@@ -88,6 +94,9 @@ function fingerprintSnapshot(snapshot) {
     prescriptions: sortRecords(snapshot.prescriptions),
     slotLocks: sortRecords(snapshot.slotLocks),
     privateAttachments: sortRecords(snapshot.privateAttachments),
+    otherScopedAttachments: sortRecords(snapshot.otherScopedAttachments),
+    relatedNotifications: sortRecords(snapshot.relatedNotifications),
+    zoomHandoffSessions: sortRecords(snapshot.zoomHandoffSessions),
     directAuditRows: sortRecords(snapshot.directAuditRows)
   };
   return createHash("sha256").update(JSON.stringify(canonicalize(sensitiveEnvelope))).digest("hex");
@@ -113,8 +122,13 @@ function assertSnapshot(snapshot) {
     ...snapshot.payments.map((row) => row.id),
     ...snapshot.prescriptions.map((row) => row.id),
     ...snapshot.slotLocks.map((row) => row.id),
-    ...snapshot.privateAttachments.map((row) => row.id)
+    ...snapshot.privateAttachments.map((row) => row.id),
+    ...snapshot.otherScopedAttachments.map((row) => row.id),
+    ...snapshot.relatedNotifications.map((row) => row.id),
+    ...snapshot.zoomHandoffSessions.map((row) => row.id)
   ]);
+  const consultationById = new Map(snapshot.liveConsultations.map((row) => [row.id, row]));
+  const allowedNotificationTypes = new Set(["consultation", "payment", "prescription"]);
 
   for (const row of [...snapshot.liveConsultations, ...snapshot.scheduledConsultations]) {
     if (row.patientId !== snapshot.customer.id) fail("CROSS_CUSTOMER_CONSULTATION");
@@ -139,16 +153,53 @@ function assertSnapshot(snapshot) {
   if (snapshot.directAuditRows.some((row) => !row.entityId || !scopedEntityIds.has(row.entityId))) {
     fail("AUDIT_SCOPE_VIOLATION");
   }
+  const allAttachments = [...snapshot.privateAttachments, ...snapshot.otherScopedAttachments];
   if (
-    snapshot.privateAttachments.some(
+    allAttachments.some(
       (row) =>
         row.ownerId !== snapshot.customer.id ||
-        row.entityType !== "payment_slip" ||
         row.purpose !== "payment_slip" ||
-        !paymentIds.has(row.entityId)
+        !paymentIds.has(row.storagePaymentId)
     )
   ) {
     fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
+  }
+  if (snapshot.privateAttachments.some((row) => row.entityType !== "payment_slip" || !paymentIds.has(row.entityId))) {
+    fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
+  }
+  if (
+    snapshot.otherScopedAttachments.some(
+      (row) =>
+        !(
+          (row.entityType === "payment" && paymentIds.has(row.entityId)) ||
+          (row.entityType === "consultation" && liveIds.has(row.entityId)) ||
+          (row.entityType === "prescription" && snapshot.prescriptions.some((item) => item.id === row.entityId))
+        )
+    )
+  ) {
+    fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
+  }
+  for (const notification of snapshot.relatedNotifications) {
+    const consultation = consultationById.get(notification.metadataConsultationId);
+    if (
+      !consultation ||
+      !allowedNotificationTypes.has(notification.type) ||
+      (notification.userId !== snapshot.customer.id && notification.userId !== consultation.doctorUserId)
+    ) {
+      fail("NOTIFICATION_SCOPE_VIOLATION");
+    }
+  }
+  for (const session of snapshot.zoomHandoffSessions) {
+    const consultation = consultationById.get(session.markerConsultationId);
+    const expectedUserId = session.markerRole === "customer" ? snapshot.customer.id : consultation?.doctorUserId;
+    if (
+      !consultation ||
+      (session.markerRole !== "customer" && session.markerRole !== "doctor") ||
+      session.userId !== expectedUserId ||
+      session.userRole !== session.markerRole
+    ) {
+      fail("ZOOM_HANDOFF_SESSION_SCOPE_VIOLATION");
+    }
   }
   if (snapshot.linkedOrderItems > 0) fail("PRESCRIPTION_HAS_COMMERCE_DEPENDENCY");
   return snapshot;
@@ -162,9 +213,11 @@ function assertExpectedCounts(actual, expected) {
   }
 }
 
-function validateExecutionConfirmation({ execute, confirmation, fingerprint, expectedCounts, actualCounts }) {
+function validateExecutionConfirmation({ execute, confirmation, fingerprint, expectedCounts, actualCounts, resume }) {
+  if (resume && !execute) fail("RESUME_REQUIRES_EXECUTE");
   if (!execute) return;
   if (!/^[a-f0-9]{64}$/.test(fingerprint) || confirmation !== fingerprint) fail("FINGERPRINT_CONFIRMATION_REQUIRED");
+  if (resume !== undefined && resume !== fingerprint) fail("RESUME_FINGERPRINT_MISMATCH");
   assertExpectedCounts(actualCounts, expectedCounts);
 }
 
@@ -207,11 +260,11 @@ function resolvePrivatePath(root, storageKey) {
   return resolved;
 }
 
-async function validatePrivateAttachmentFile({ root, attachment, referenceCount }) {
+async function validatePrivateAttachmentFile({ root, attachment, referenceCount, allowMissing = false }) {
   if (referenceCount !== 1) fail("PRIVATE_FILE_NOT_EXCLUSIVE");
   if (!attachment.storageKey || !attachment.mimeType) fail("PRIVATE_FILE_METADATA_INVALID");
   const extension = extensionForMime(attachment.mimeType);
-  if (attachment.storageKey !== expectedStorageKey(attachment.ownerId, attachment.entityId, attachment.id, extension)) {
+  if (attachment.storageKey !== expectedStorageKey(attachment.ownerId, attachment.storagePaymentId, attachment.id, extension)) {
     fail("PRIVATE_FILE_OWNERSHIP_INVALID");
   }
   const filePath = resolvePrivatePath(root, attachment.storageKey);
@@ -237,9 +290,22 @@ async function validatePrivateAttachmentFile({ root, attachment, referenceCount 
     }
     return { filePath, fileRealPath, rootRealPath, alreadyAbsent: false };
   } catch (error) {
-    if (error && error.code === "ENOENT") return { filePath, rootRealPath, alreadyAbsent: true };
+    if (error && error.code === "ENOENT" && allowMissing) return { filePath, rootRealPath, alreadyAbsent: true };
+    if (error && error.code === "ENOENT") fail("PRIVATE_FILE_MISSING_WITHOUT_RESUME");
     throw error;
   }
+}
+
+function validateProviderRecordingSet(expectedIds, actualIds, recoveryMode) {
+  const expected = [...expectedIds].sort();
+  const actual = [...actualIds].sort();
+  if (new Set(actual).size !== actual.length || actual.some((id) => !expected.includes(id))) {
+    fail("ZOOM_RECORDING_MAPPING_DRIFT");
+  }
+  if (!recoveryMode && JSON.stringify(actual) !== JSON.stringify(expected)) {
+    fail("ZOOM_RECORDING_MISSING_WITHOUT_RESUME");
+  }
+  return actual;
 }
 
 async function deleteValidatedPrivateFile(validated) {
@@ -283,17 +349,20 @@ async function executePurge(input) {
     confirmation: input.confirmation,
     fingerprint,
     expectedCounts: input.expectedCounts,
-    actualCounts: counts
+    actualCounts: counts,
+    resume: input.resume
   });
   if (!input.execute) return safeReport("dry-run", input.snapshot);
   validateBackupGate(input.backupGate, input.now);
+  validateBackupGate(input.fileBackupGate, input.now);
 
   const fresh = assertSnapshot(await input.reinspect());
   if (fingerprintSnapshot(fresh) !== fingerprint) fail("FINGERPRINT_DRIFT");
   assertExpectedCounts(aggregateSnapshot(fresh), input.expectedCounts);
 
-  await input.provider.validate(fresh);
-  const validatedFiles = await input.files.validate(fresh);
+  const recoveryMode = input.resume !== undefined;
+  await input.provider.validate(fresh, { recoveryMode });
+  const validatedFiles = await input.files.validate(fresh, { recoveryMode });
   await input.provider.remove(fresh);
   await input.files.remove(validatedFiles);
   await input.database.remove(fresh, fingerprint, input.expectedCounts);
@@ -303,11 +372,12 @@ async function executePurge(input) {
     verification.remainingLiveConsultations !== 0 ||
     verification.remainingScopedDependencies !== 0 ||
     verification.scheduledConsultations !== 2 ||
+    verification.totalScheduledConsultations !== 2 ||
     verification.customerExists !== true
   ) {
     fail("POST_PURGE_VERIFICATION_FAILED");
   }
-  return safeReport("executed", fresh, { verified: true });
+  return safeReport("executed", fresh, { verified: true, recoveryMode });
 }
 
 module.exports = {
@@ -324,5 +394,6 @@ module.exports = {
   safeReport,
   validateBackupGate,
   validateExecutionConfirmation,
+  validateProviderRecordingSet,
   validatePrivateAttachmentFile
 };

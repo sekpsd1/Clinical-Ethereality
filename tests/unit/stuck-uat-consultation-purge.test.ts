@@ -22,6 +22,7 @@ function makeSnapshot() {
     scheduledAt: new Date(`2026-09-${number < 3 ? "10" : "11"}T03:00:00.000Z`),
     slotLockId: `lock-${number}`,
     zoomMeetingId: `meeting-${number}`,
+    doctorUserId: `doctor-user-${number}`,
     updatedAt: new Date("2026-09-13T00:00:00.000Z")
   }));
   return {
@@ -55,11 +56,37 @@ function makeSnapshot() {
       purpose: "payment_slip",
       entityType: "payment_slip",
       entityId: `payment-${number}`,
+      storagePaymentId: `payment-${number}`,
       storageKey: `opaque-${number}`,
       mimeType: "image/png",
       byteSize: 8,
       updatedAt: new Date("2026-09-13T00:00:00.000Z")
     })),
+    otherScopedAttachments: [] as Array<{
+      id: string;
+      ownerId: string;
+      purpose: string;
+      entityType: string;
+      entityId: string;
+      storagePaymentId: string;
+      storageKey: string;
+      mimeType: string;
+      byteSize: number;
+      updatedAt: Date;
+    }>,
+    relatedNotifications: [] as Array<{
+      id: string;
+      userId: string;
+      type: string;
+      metadataConsultationId: string;
+    }>,
+    zoomHandoffSessions: [] as Array<{
+      id: string;
+      userId: string;
+      userRole: string;
+      markerRole: string;
+      markerConsultationId: string;
+    }>,
     directAuditRows: Array.from({ length: 65 }, (_, index) => ({ id: `audit-${index}`, entityType: "consultation", entityId: `live-${(index % 3) + 1}` })),
     linkedOrderItems: 0
   };
@@ -79,6 +106,7 @@ function harness(snapshot = makeSnapshot()) {
       confirmation: fingerprint,
       expectedCounts,
       backupGate: { verified: true, reference: "backup-opaque-reference", createdAt: "2026-09-13T00:00:00.000Z" },
+      fileBackupGate: { verified: true, reference: "file-backup-opaque-reference", createdAt: "2026-09-13T00:00:00.000Z" },
       now: new Date("2026-09-13T00:10:00.000Z"),
       reinspect: vi.fn(async () => snapshot),
       provider: {
@@ -95,6 +123,7 @@ function harness(snapshot = makeSnapshot()) {
           remainingLiveConsultations: 0,
           remainingScopedDependencies: 0,
           scheduledConsultations: 2,
+          totalScheduledConsultations: 2,
           customerExists: true
         }))
       }
@@ -105,6 +134,18 @@ function harness(snapshot = makeSnapshot()) {
 describe("stuck UAT consultation purge guard", () => {
   it("parses an invocation with no flags as dry-run", () => {
     expect(runner.parseArguments([])).toEqual({ execute: false });
+  });
+
+  it("matches only exact structured notification references and Zoom handoff markers", () => {
+    expect(runner.metadataConsultationId({ consultationId: "live-1", href: "/consult/live" })).toBe("live-1");
+    expect(runner.metadataConsultationId({ href: "/consult/live?consultation=live-1" })).toBeNull();
+    expect(runner.metadataConsultationId({ nested: { consultationId: "live-1" } })).toBeNull();
+    expect(runner.parseZoomHandoffMarker("zoom-handoff-ticket:v1:customer:live-1234")).toEqual({
+      markerRole: "customer",
+      markerConsultationId: "live-1234"
+    });
+    expect(runner.parseZoomHandoffMarker("Mozilla/5.0 normal login session")).toBeNull();
+    expect(runner.parseZoomHandoffMarker("zoom-handoff-ticket:v1:admin:live-1234")).toBeNull();
   });
 
   it("is dry-run by default and exposes aggregate-only output", async () => {
@@ -153,6 +194,40 @@ describe("stuck UAT consultation purge guard", () => {
     expect(() => purge.assertSnapshot(snapshot)).toThrowError(expect.objectContaining({ code: "DEPENDENCY_SCOPE_VIOLATION" }));
   });
 
+  it("accepts only exact notification recipients/types and Zoom handoff session markers", () => {
+    const snapshot = makeSnapshot();
+    snapshot.relatedNotifications.push({
+      id: "notification-1",
+      userId: snapshot.customer.id,
+      type: "consultation",
+      metadataConsultationId: "live-1"
+    });
+    snapshot.zoomHandoffSessions.push({
+      id: "handoff-1",
+      userId: "doctor-user-1",
+      userRole: "doctor",
+      markerRole: "doctor",
+      markerConsultationId: "live-1"
+    });
+    expect(() => purge.assertSnapshot(snapshot)).not.toThrow();
+
+    snapshot.relatedNotifications[0].userId = "unrelated-user";
+    expect(() => purge.assertSnapshot(snapshot)).toThrowError(expect.objectContaining({ code: "NOTIFICATION_SCOPE_VIOLATION" }));
+    snapshot.relatedNotifications[0].userId = snapshot.customer.id;
+    snapshot.zoomHandoffSessions[0].markerConsultationId = "scheduled-1";
+    expect(() => purge.assertSnapshot(snapshot)).toThrowError(expect.objectContaining({ code: "ZOOM_HANDOFF_SESSION_SCOPE_VIOLATION" }));
+  });
+
+  it("fails closed for an unsupported directly scoped attachment", () => {
+    const snapshot = makeSnapshot();
+    snapshot.otherScopedAttachments.push({
+      ...snapshot.privateAttachments[0],
+      id: "other-attachment",
+      purpose: "clinical_image"
+    });
+    expect(() => purge.assertSnapshot(snapshot)).toThrowError(expect.objectContaining({ code: "PRIVATE_ATTACHMENT_SCOPE_VIOLATION" }));
+  });
+
   it("rejects path traversal, incorrect ownership, and shared private files", async () => {
     expect(() => purge.resolvePrivatePath(path.resolve("safe-root"), "../escape.png")).toThrowError(expect.objectContaining({ code: "PRIVATE_FILE_PATH_ESCAPE" }));
 
@@ -183,6 +258,35 @@ describe("stuck UAT consultation purge guard", () => {
     }
   });
 
+  it("requires recovery mode for a missing private file", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "clinical-purge-test-"));
+    const attachment = makeSnapshot().privateAttachments[0];
+    attachment.storageKey = purge.expectedStorageKey(attachment.ownerId, attachment.entityId, attachment.id, "png");
+    try {
+      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1 })).rejects.toMatchObject({ code: "PRIVATE_FILE_MISSING_WITHOUT_RESUME" });
+      await expect(purge.validatePrivateAttachmentFile({ root, attachment, referenceCount: 1, allowMissing: true })).resolves.toMatchObject({ alreadyAbsent: true });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("requires recovery mode for partial provider state and rejects unexpected IDs", () => {
+    expect(() => purge.validateProviderRecordingSet(["one", "two"], ["one"], false)).toThrowError(expect.objectContaining({ code: "ZOOM_RECORDING_MISSING_WITHOUT_RESUME" }));
+    expect(purge.validateProviderRecordingSet(["one", "two"], ["one"], true)).toEqual(["one"]);
+    expect(() => purge.validateProviderRecordingSet(["one", "two"], ["unexpected"], true)).toThrowError(expect.objectContaining({ code: "ZOOM_RECORDING_MAPPING_DRIFT" }));
+  });
+
+  it("binds recovery mode to the exact confirmed fingerprint", async () => {
+    const state = harness();
+    await expect(purge.executePurge({ ...state.input, resume: "0".repeat(64) })).rejects.toMatchObject({ code: "RESUME_FINGERPRINT_MISMATCH" });
+
+    const recovery = harness();
+    const result = await purge.executePurge({ ...recovery.input, resume: recovery.fingerprint });
+    expect(result).toMatchObject({ mode: "executed", verified: true });
+    expect(recovery.input.provider.validate).toHaveBeenCalledWith(recovery.input.snapshot, { recoveryMode: true });
+    expect(recovery.input.files.validate).toHaveBeenCalledWith(recovery.input.snapshot, { recoveryMode: true });
+  });
+
   it("fails closed before files and DB when provider validation fails", async () => {
     const state = harness();
     state.input.provider.validate = vi.fn(async () => { throw new Error("provider unavailable"); });
@@ -191,14 +295,18 @@ describe("stuck UAT consultation purge guard", () => {
     expect(state.input.database.remove).not.toHaveBeenCalled();
   });
 
-  it("reports a transaction failure after provider/files and supports a clean retry", async () => {
+  it("reports a transaction failure after provider/files and resumes with the same fingerprint", async () => {
     const state = harness();
     state.input.database.remove = vi.fn().mockRejectedValueOnce(new Error("transaction failed")).mockImplementationOnce(async () => state.calls.push("database.remove"));
     await expect(purge.executePurge(state.input)).rejects.toThrow("transaction failed");
     expect(state.calls).toEqual(["provider.validate", "files.validate", "provider.remove", "files.remove"]);
 
     state.calls.length = 0;
-    await expect(purge.executePurge(state.input)).resolves.toMatchObject({ mode: "executed", verified: true });
+    await expect(purge.executePurge({ ...state.input, resume: state.fingerprint })).resolves.toMatchObject({
+      mode: "executed",
+      verified: true,
+      recoveryMode: true
+    });
     expect(state.calls).toEqual(["provider.validate", "files.validate", "provider.remove", "files.remove", "database.remove"]);
   });
 
@@ -214,6 +322,7 @@ describe("stuck UAT consultation purge guard", () => {
       remainingLiveConsultations: 0,
       remainingScopedDependencies: 0,
       scheduledConsultations: 1,
+      totalScheduledConsultations: 1,
       customerExists: true
     }));
     await expect(purge.executePurge(state.input)).rejects.toMatchObject({ code: "POST_PURGE_VERIFICATION_FAILED" });

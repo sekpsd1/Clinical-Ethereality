@@ -12,6 +12,7 @@ const {
   deleteValidatedPrivateFile,
   executePurge,
   fingerprintSnapshot,
+  validateProviderRecordingSet,
   validatePrivateAttachmentFile
 } = require("./lib/stuck-uat-consultation-purge.cjs");
 
@@ -69,6 +70,25 @@ function ids(rows) {
   return rows.map((row) => row.id);
 }
 
+function metadataConsultationId(value) {
+  if (!value || Array.isArray(value) || typeof value !== "object") return null;
+  return typeof value.consultationId === "string" ? value.consultationId : null;
+}
+
+function zoomHandoffMarkers(consultations) {
+  return consultations.flatMap((consultation) => [
+    `zoom-handoff-ticket:v1:customer:${consultation.id}`,
+    `zoom-external-session:v1:customer:${consultation.id}`,
+    `zoom-handoff-ticket:v1:doctor:${consultation.id}`,
+    `zoom-external-session:v1:doctor:${consultation.id}`
+  ]);
+}
+
+function parseZoomHandoffMarker(value) {
+  const match = /^(zoom-handoff-ticket|zoom-external-session):v1:(customer|doctor):([A-Za-z0-9_-]{8,191})$/.exec(value || "");
+  return match ? { markerRole: match[2], markerConsultationId: match[3] } : null;
+}
+
 function directAuditWhere(groups) {
   const entityIds = Object.values(groups).flat();
   return entityIds.length ? { entityId: { in: entityIds } } : { id: { in: [] } };
@@ -81,10 +101,19 @@ async function buildSnapshot(db, lineUserId) {
   });
   if (!customer) fail("TARGET_NOT_EXACT_CUSTOMER");
 
-  const [liveConsultations, scheduledConsultations] = await Promise.all([
+  const [liveRows, scheduledConsultations] = await Promise.all([
     db.consultation.findMany({
       where: { patientId: customer.id, status: "live" },
-      select: { id: true, patientId: true, status: true, scheduledAt: true, slotLockId: true, zoomMeetingId: true, updatedAt: true },
+      select: {
+        id: true,
+        patientId: true,
+        status: true,
+        scheduledAt: true,
+        slotLockId: true,
+        zoomMeetingId: true,
+        updatedAt: true,
+        doctor: { select: { userId: true } }
+      },
       orderBy: { id: "asc" }
     }),
     db.consultation.findMany({
@@ -93,6 +122,10 @@ async function buildSnapshot(db, lineUserId) {
       orderBy: { id: "asc" }
     })
   ]);
+  const liveConsultations = liveRows.map(({ doctor, ...consultation }) => ({
+    ...consultation,
+    doctorUserId: doctor.userId
+  }));
   const consultationIds = ids(liveConsultations);
 
   const [
@@ -118,26 +151,83 @@ async function buildSnapshot(db, lineUserId) {
   const paymentIds = ids(payments);
   const prescriptionIds = ids(prescriptions);
   const slotLockIds = liveConsultations.flatMap((row) => (row.slotLockId ? [row.slotLockId] : []));
-  const [slotLocks, privateAttachments, linkedOrderItems] = await Promise.all([
+  const notificationUserIds = [...new Set([customer.id, ...liveConsultations.map((row) => row.doctorUserId)])];
+  const [slotLocks, attachmentRows, linkedOrderItems, notificationCandidates, zoomHandoffSessionRows] = await Promise.all([
     db.consultationSlotLock.findMany({ where: { id: { in: slotLockIds } }, select: { id: true, updatedAt: true } }),
     db.fileAttachment.findMany({
-      where: { entityType: "payment_slip", purpose: "payment_slip", entityId: { in: paymentIds } },
-      select: { id: true, ownerId: true, purpose: true, entityType: true, entityId: true, storageKey: true, mimeType: true, byteSize: true, updatedAt: true }
+      where: {
+        OR: [
+          { entityId: { in: consultationIds } },
+          { entityId: { in: paymentIds } },
+          { entityId: { in: prescriptionIds } }
+        ]
+      },
+      select: { id: true, ownerId: true, purpose: true, status: true, entityType: true, entityId: true, storageKey: true, mimeType: true, byteSize: true, updatedAt: true }
     }),
-    db.orderItem.count({ where: { prescriptionId: { in: prescriptionIds } } })
+    db.orderItem.count({ where: { prescriptionId: { in: prescriptionIds } } }),
+    db.notification.findMany({
+      where: {
+        type: { in: ["consultation", "payment", "prescription"] },
+        userId: { in: notificationUserIds }
+      },
+      select: { id: true, userId: true, type: true, metadataJson: true, createdAt: true }
+    }),
+    db.authSession.findMany({
+      where: { userAgent: { in: zoomHandoffMarkers(liveConsultations) } },
+      select: { id: true, userId: true, userAgent: true, updatedAt: true, user: { select: { role: true } } }
+    })
   ]);
+  const paymentByConsultation = new Map(payments.map((payment) => [payment.consultationId, payment.id]));
+  const consultationByPrescription = new Map(prescriptions.map((prescription) => [prescription.id, prescription.consultationId]));
+  const scopedAttachments = attachmentRows.map((attachment) => {
+    const directPaymentId = paymentIds.includes(attachment.entityId) ? attachment.entityId : null;
+    const consultationId = consultationIds.includes(attachment.entityId)
+      ? attachment.entityId
+      : consultationByPrescription.get(attachment.entityId);
+    return {
+      ...attachment,
+      storagePaymentId: directPaymentId || paymentByConsultation.get(consultationId) || null
+    };
+  });
+  const privateAttachments = scopedAttachments.filter(
+    (attachment) => attachment.entityType === "payment_slip" && paymentIds.includes(attachment.entityId)
+  );
+  const otherScopedAttachments = scopedAttachments.filter(
+    (attachment) => !privateAttachments.some((privateAttachment) => privateAttachment.id === attachment.id)
+  );
+  const consultationIdSet = new Set(consultationIds);
+  const relatedNotifications = notificationCandidates.flatMap((notification) => {
+    const consultationId = metadataConsultationId(notification.metadataJson);
+    return consultationId && consultationIdSet.has(consultationId)
+      ? [{ id: notification.id, userId: notification.userId, type: notification.type, metadataConsultationId: consultationId, createdAt: notification.createdAt }]
+      : [];
+  });
+  const zoomHandoffSessions = zoomHandoffSessionRows.map((session) => {
+    const marker = parseZoomHandoffMarker(session.userAgent);
+    if (!marker) fail("ZOOM_HANDOFF_SESSION_MARKER_INVALID");
+    return {
+      id: session.id,
+      userId: session.userId,
+      userRole: session.user.role,
+      userAgent: session.userAgent,
+      updatedAt: session.updatedAt,
+      ...marker
+    };
+  });
   const auditWhere = directAuditWhere({
     consultationIds,
     paymentIds,
     prescriptionIds,
-    attachmentIds: ids(privateAttachments),
+    attachmentIds: ids(scopedAttachments),
     recordingIds: ids(recordings),
     recordingWebhookEventIds: ids(recordingWebhookEvents),
     attendanceCredentialIds: ids(attendanceCredentials),
     attendanceEventIds: ids(attendanceEvents),
     messageIds: ids(messages),
     consentIds: ids(telemedicineConsents),
-    slotLockIds: ids(slotLocks)
+    slotLockIds: ids(slotLocks),
+    notificationIds: ids(relatedNotifications),
+    zoomHandoffSessionIds: ids(zoomHandoffSessions)
   });
   const directAuditRows = await db.auditLog.findMany({ where: auditWhere, select: { id: true, entityType: true, entityId: true, createdAt: true } });
 
@@ -155,6 +245,9 @@ async function buildSnapshot(db, lineUserId) {
     prescriptions,
     slotLocks,
     privateAttachments,
+    otherScopedAttachments,
+    relatedNotifications,
+    zoomHandoffSessions,
     directAuditRows,
     linkedOrderItems
   });
@@ -200,7 +293,7 @@ function createZoomAdapter(prisma) {
   let token;
   const state = new Map();
   return {
-    async validate(snapshot) {
+    async validate(snapshot, { recoveryMode }) {
       token = await getZoomToken();
       for (const consultation of snapshot.liveConsultations) {
         const expectedIds = snapshot.recordings
@@ -213,15 +306,15 @@ function createZoomAdapter(prisma) {
           fail("ZOOM_MEETING_MAPPING_NOT_EXCLUSIVE");
         }
         const provider = await listZoomRecordings(token, consultation.zoomMeetingId);
-        if (!provider.absent && JSON.stringify(provider.ids) !== JSON.stringify(expectedIds)) fail("ZOOM_RECORDING_MAPPING_DRIFT");
-        state.set(consultation.id, { meetingId: consultation.zoomMeetingId, providerIds: expectedIds, absent: provider.absent });
+        const providerIds = validateProviderRecordingSet(expectedIds, provider.ids, recoveryMode);
+        state.set(consultation.id, { meetingId: consultation.zoomMeetingId, expectedIds, providerIds });
       }
     },
     async remove(snapshot) {
       if (!token) fail("ZOOM_DELETE_ADAPTER_NOT_VALIDATED");
       for (const consultation of snapshot.liveConsultations) {
         const mapping = state.get(consultation.id);
-        if (!mapping || mapping.absent) continue;
+        if (!mapping) continue;
         for (const providerId of mapping.providerIds) {
           const response = await fetch(
             `https://api.zoom.us/v2/meetings/${encodeURIComponent(mapping.meetingId)}/recordings/${encodeURIComponent(providerId)}?action=delete`,
@@ -230,7 +323,8 @@ function createZoomAdapter(prisma) {
           if (response.status !== 204 && response.status !== 404) fail("ZOOM_RECORDING_DELETE_FAILED");
         }
         const after = await listZoomRecordings(token, mapping.meetingId);
-        if (!after.absent && after.ids.some((id) => mapping.providerIds.includes(id))) fail("ZOOM_RECORDING_DELETE_NOT_VERIFIED");
+        const remaining = validateProviderRecordingSet(mapping.expectedIds, after.ids, true);
+        if (remaining.length > 0) fail("ZOOM_RECORDING_DELETE_NOT_VERIFIED");
       }
     }
   };
@@ -239,7 +333,7 @@ function createZoomAdapter(prisma) {
 function createFileAdapter(prisma) {
   const root = process.env.PAYMENT_UPLOAD_DIR;
   return {
-    async validate(snapshot) {
+    async validate(snapshot, { recoveryMode }) {
       if (!root || !path.isAbsolute(root)) fail("PRIVATE_FILE_STORAGE_NOT_CONFIGURED");
       const storageRoot = path.resolve(root);
       const applicationRoot = path.resolve(process.cwd());
@@ -250,9 +344,16 @@ function createFileAdapter(prisma) {
         fail("PRIVATE_FILE_STORAGE_NOT_CONFIGURED");
       }
       const validated = [];
-      for (const attachment of snapshot.privateAttachments) {
+      for (const attachment of [...snapshot.privateAttachments, ...snapshot.otherScopedAttachments]) {
         const referenceCount = await prisma.fileAttachment.count({ where: { storageKey: attachment.storageKey } });
-        validated.push(await validatePrivateAttachmentFile({ root: storageRoot, attachment, referenceCount }));
+        validated.push(
+          await validatePrivateAttachmentFile({
+            root: storageRoot,
+            attachment,
+            referenceCount,
+            allowMissing: recoveryMode
+          })
+        );
       }
       return validated;
     },
@@ -272,7 +373,9 @@ function createDatabaseAdapter(prisma, lineUserId) {
         const consultationIds = ids(fresh.liveConsultations);
         const paymentIds = ids(fresh.payments);
         const prescriptionIds = ids(fresh.prescriptions);
-        const attachmentIds = ids(fresh.privateAttachments);
+        const attachmentIds = ids([...fresh.privateAttachments, ...fresh.otherScopedAttachments]);
+        const notificationIds = ids(fresh.relatedNotifications);
+        const zoomHandoffSessionIds = ids(fresh.zoomHandoffSessions);
         const auditIds = ids(fresh.directAuditRows);
         const slotLockIds = ids(fresh.slotLocks);
         const deleteExact = async (operation, expected) => {
@@ -283,7 +386,15 @@ function createDatabaseAdapter(prisma, lineUserId) {
         await deleteExact(tx.auditLog.deleteMany({ where: { id: { in: auditIds } } }), fresh.directAuditRows.length);
         await deleteExact(
           tx.fileAttachment.deleteMany({ where: { id: { in: attachmentIds }, ownerId: fresh.customer.id } }),
-          fresh.privateAttachments.length
+          fresh.privateAttachments.length + fresh.otherScopedAttachments.length
+        );
+        await deleteExact(
+          tx.notification.deleteMany({ where: { id: { in: notificationIds } } }),
+          fresh.relatedNotifications.length
+        );
+        await deleteExact(
+          tx.authSession.deleteMany({ where: { id: { in: zoomHandoffSessionIds } } }),
+          fresh.zoomHandoffSessions.length
         );
         await deleteExact(
           tx.consultationRecordingWebhookEvent.deleteMany({ where: { consultationId: { in: consultationIds } } }),
@@ -325,8 +436,46 @@ function createDatabaseAdapter(prisma, lineUserId) {
     },
     async verify(snapshot) {
       const consultationIds = ids(snapshot.liveConsultations);
-      const [remainingLiveConsultations, scheduledConsultations, customerExists, scoped] = await Promise.all([
+      const paymentIds = ids(snapshot.payments);
+      const prescriptionIds = ids(snapshot.prescriptions);
+      const notificationUserIds = [
+        ...new Set([snapshot.customer.id, ...snapshot.liveConsultations.map((row) => row.doctorUserId)])
+      ];
+      const auditEntityIds = ids([
+        ...snapshot.liveConsultations,
+        ...snapshot.attendanceCredentials,
+        ...snapshot.attendanceEvents,
+        ...snapshot.messages,
+        ...snapshot.recordings,
+        ...snapshot.recordingWebhookEvents,
+        ...snapshot.telemedicineConsents,
+        ...snapshot.payments,
+        ...snapshot.prescriptions,
+        ...snapshot.slotLocks,
+        ...snapshot.privateAttachments,
+        ...snapshot.otherScopedAttachments,
+        ...snapshot.relatedNotifications,
+        ...snapshot.zoomHandoffSessions
+      ]);
+      const notificationCandidates = await prisma.notification.findMany({
+        where: {
+          type: { in: ["consultation", "payment", "prescription"] },
+          userId: { in: notificationUserIds }
+        },
+        select: { metadataJson: true }
+      });
+      const relatedNotificationCount = notificationCandidates.filter((notification) =>
+        consultationIds.includes(metadataConsultationId(notification.metadataJson))
+      ).length;
+      const [remainingLiveConsultations, scheduledConsultations, totalScheduledConsultations, customerExists, scoped] = await Promise.all([
         prisma.consultation.count({ where: { id: { in: consultationIds }, patientId: snapshot.customer.id, status: "live" } }),
+        prisma.consultation.count({
+          where: {
+            id: { in: ids(snapshot.scheduledConsultations) },
+            patientId: snapshot.customer.id,
+            status: "scheduled"
+          }
+        }),
         prisma.consultation.count({ where: { patientId: snapshot.customer.id, status: "scheduled" } }),
         prisma.user.count({ where: { id: snapshot.customer.id } }),
         Promise.all([
@@ -338,14 +487,25 @@ function createDatabaseAdapter(prisma, lineUserId) {
           prisma.telemedicineConsent.count({ where: { consultationId: { in: consultationIds } } }),
           prisma.payment.count({ where: { consultationId: { in: consultationIds } } }),
           prisma.prescription.count({ where: { consultationId: { in: consultationIds } } }),
-          prisma.fileAttachment.count({ where: { id: { in: ids(snapshot.privateAttachments) } } }),
-          prisma.auditLog.count({ where: { id: { in: ids(snapshot.directAuditRows) } } }),
+          prisma.fileAttachment.count({
+            where: {
+              OR: [
+                { entityId: { in: consultationIds } },
+                { entityId: { in: paymentIds } },
+                { entityId: { in: prescriptionIds } }
+              ]
+            }
+          }),
+          prisma.authSession.count({ where: { userAgent: { in: zoomHandoffMarkers(snapshot.liveConsultations) } } }),
+          Promise.resolve(relatedNotificationCount),
+          prisma.auditLog.count({ where: { entityId: { in: auditEntityIds } } }),
           prisma.consultationSlotLock.count({ where: { id: { in: ids(snapshot.slotLocks) } } })
         ])
       ]);
       return {
         remainingLiveConsultations,
         scheduledConsultations,
+        totalScheduledConsultations,
         customerExists: customerExists === 1,
         remainingScopedDependencies: scoped.reduce((sum, count) => sum + count, 0)
       };
@@ -367,11 +527,17 @@ async function main() {
       snapshot,
       execute: args.execute,
       confirmation: args.confirm,
+      resume: args.resume,
       expectedCounts: parseExpectedCounts(args["expected-counts"]),
       backupGate: {
         verified: process.env.ADMIN_PURGE_BACKUP_VERIFIED === "true",
         reference: process.env.ADMIN_PURGE_BACKUP_REFERENCE,
         createdAt: process.env.ADMIN_PURGE_BACKUP_CREATED_AT
+      },
+      fileBackupGate: {
+        verified: process.env.ADMIN_PURGE_FILE_BACKUP_VERIFIED === "true",
+        reference: process.env.ADMIN_PURGE_FILE_BACKUP_REFERENCE,
+        createdAt: process.env.ADMIN_PURGE_FILE_BACKUP_CREATED_AT
       },
       reinspect: () => buildSnapshot(prisma, lineUserId),
       provider: createZoomAdapter(prisma),
@@ -392,4 +558,14 @@ if (require.main === module) {
   });
 }
 
-module.exports = { buildSnapshot, createDatabaseAdapter, createFileAdapter, createZoomAdapter, parseArguments, parseExpectedCounts };
+module.exports = {
+  buildSnapshot,
+  createDatabaseAdapter,
+  createFileAdapter,
+  createZoomAdapter,
+  metadataConsultationId,
+  parseArguments,
+  parseExpectedCounts,
+  parseZoomHandoffMarker,
+  zoomHandoffMarkers
+};
