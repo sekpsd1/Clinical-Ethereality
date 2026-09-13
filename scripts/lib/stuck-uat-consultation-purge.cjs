@@ -266,6 +266,20 @@ function assertPrivateAttachmentBinding(snapshot, attachment) {
   if (payment.privateFileSubmissionAttachmentId === attachment.id) {
     candidateContextIds.push(`consultation-${consultation.id}`);
   }
+  if (payment.legacyPrivateFileSubmissionAttachmentId === attachment.id) {
+    const matchingUploadAudits = snapshot.directAuditRows.filter(
+      (row) =>
+        row.action === "consultation.private_slip_uploaded" &&
+        row.entityType === "consultation" &&
+        row.entityId === consultation.id &&
+        row.uploadAttachmentId === attachment.id &&
+        row.uploadPaymentId === payment.id &&
+        row.uploadNextPaymentStatus === "pending_review"
+    );
+    if (matchingUploadAudits.length === 1) {
+      candidateContextIds.push(`consultation-${consultation.id}`);
+    }
+  }
   if (
     attachment.submissionSource === "admin_manual_appointment" &&
     payment.manualAppointmentAttachmentId === attachment.id

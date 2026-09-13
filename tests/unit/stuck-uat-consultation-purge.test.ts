@@ -51,6 +51,7 @@ function makeSnapshot() {
     payments: [1, 2, 3].map((number) => ({
       ...row(`payment-${number}`, `live-${number}`),
       privateFileSubmissionAttachmentId: null as string | null,
+      legacyPrivateFileSubmissionAttachmentId: null as string | null,
       manualAppointmentAttachmentId: null as string | null
     })),
     prescriptions: [],
@@ -102,7 +103,15 @@ function makeSnapshot() {
       markerRole: string;
       markerConsultationId: string;
     }>,
-    directAuditRows: Array.from({ length: 65 }, (_, index) => ({ id: `audit-${index}`, entityType: "consultation", entityId: `live-${(index % 3) + 1}` })),
+    directAuditRows: Array.from({ length: 65 }, (_, index) => ({
+      id: `audit-${index}`,
+      action: "consultation.other",
+      entityType: "consultation",
+      entityId: `live-${(index % 3) + 1}`,
+      uploadAttachmentId: null as string | null,
+      uploadPaymentId: null as string | null,
+      uploadNextPaymentStatus: null as string | null
+    })),
     linkedOrderItems: 0
   };
 }
@@ -182,13 +191,38 @@ describe("stuck UAT consultation purge guard", () => {
       }
     })).toEqual({
       privateFileSubmissionAttachmentId: "attachment-1",
+      legacyPrivateFileSubmissionAttachmentId: null,
       manualAppointmentAttachmentId: "attachment-2"
     });
     expect(runner.minimizePaymentVerificationPayload({
       submissionSource: "private_file",
       submittedEvidence: { attachmentId: "attachment-1", type: "url" },
       manualAppointmentIntake: { version: 2, source: "admin_manual_appointment", attachmentId: "attachment-2" }
-    })).toEqual({ privateFileSubmissionAttachmentId: null, manualAppointmentAttachmentId: null });
+    })).toEqual({
+      privateFileSubmissionAttachmentId: null,
+      legacyPrivateFileSubmissionAttachmentId: null,
+      manualAppointmentAttachmentId: null
+    });
+    expect(runner.minimizePaymentVerificationPayload({
+      submissionSource: "private_file",
+      submittedEvidence: { attachmentId: "attachment-1", type: "private_file" }
+    })).toEqual({
+      privateFileSubmissionAttachmentId: null,
+      legacyPrivateFileSubmissionAttachmentId: "attachment-1",
+      manualAppointmentAttachmentId: null
+    });
+    expect(runner.minimizePaymentVerificationPayload({
+      submissionSource: "private_file",
+      submittedEvidence: {
+        attachmentId: "attachment-1",
+        submittedAt: "not-an-iso-date",
+        type: "private_file"
+      }
+    })).toEqual({
+      privateFileSubmissionAttachmentId: null,
+      legacyPrivateFileSubmissionAttachmentId: null,
+      manualAppointmentAttachmentId: null
+    });
     expect(runner.minimizeAttachmentMetadata({
       storageProvider: "plesk_private_local",
       visibility: "private",
@@ -200,6 +234,23 @@ describe("stuck UAT consultation purge guard", () => {
       visibility: "private",
       paymentKind: "consultation",
       submissionSource: "admin_manual_appointment"
+    });
+    expect(runner.minimizeAuditRow({
+      id: "audit-upload",
+      action: "consultation.private_slip_uploaded",
+      entityType: "consultation",
+      entityId: "live-1",
+      metadataJson: {
+        attachmentId: "attachment-1",
+        paymentId: "payment-1",
+        nextPaymentStatus: "pending_review",
+        ignored: "raw-value"
+      },
+      createdAt: new Date("2026-09-13T00:00:00.000Z")
+    })).toMatchObject({
+      uploadAttachmentId: "attachment-1",
+      uploadPaymentId: "payment-1",
+      uploadNextPaymentStatus: "pending_review"
     });
   });
 
@@ -227,6 +278,85 @@ describe("stuck UAT consultation purge guard", () => {
       "png"
     );
     expect(() => purge.assertSnapshot(manualAppointment)).not.toThrow();
+  });
+
+  it("accepts a legacy missing submittedAt only with one exact scoped upload audit", () => {
+    const snapshot = makeSnapshot();
+    snapshot.payments[0].legacyPrivateFileSubmissionAttachmentId = "attachment-1";
+    snapshot.privateAttachments[0].storageKey = purge.expectedStorageKey(
+      snapshot.customer.id,
+      "consultation-live-1",
+      "attachment-1",
+      "png"
+    );
+    snapshot.directAuditRows.push({
+      id: "audit-upload",
+      action: "consultation.private_slip_uploaded",
+      entityType: "consultation",
+      entityId: "live-1",
+      uploadAttachmentId: "attachment-1",
+      uploadPaymentId: "payment-1",
+      uploadNextPaymentStatus: "pending_review"
+    });
+
+    expect(() => purge.assertSnapshot(snapshot)).not.toThrow();
+  });
+
+  it("rejects legacy missing submittedAt when any upload-audit binding is absent or forged", () => {
+    const legacySnapshot = () => {
+      const snapshot = makeSnapshot();
+      snapshot.payments[0].legacyPrivateFileSubmissionAttachmentId = "attachment-1";
+      snapshot.privateAttachments[0].storageKey = purge.expectedStorageKey(
+        snapshot.customer.id,
+        "consultation-live-1",
+        "attachment-1",
+        "png"
+      );
+      snapshot.directAuditRows.push({
+        id: "audit-upload",
+        action: "consultation.private_slip_uploaded",
+        entityType: "consultation",
+        entityId: "live-1",
+        uploadAttachmentId: "attachment-1",
+        uploadPaymentId: "payment-1",
+        uploadNextPaymentStatus: "pending_review"
+      });
+      return snapshot;
+    };
+
+    const withoutAudit = legacySnapshot();
+    withoutAudit.directAuditRows.pop();
+    expect(() => purge.assertSnapshot(withoutAudit)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+    );
+
+    for (const mutate of [
+      (snapshot: ReturnType<typeof legacySnapshot>) => { snapshot.directAuditRows.at(-1)!.uploadAttachmentId = "attachment-forged"; },
+      (snapshot: ReturnType<typeof legacySnapshot>) => { snapshot.directAuditRows.at(-1)!.uploadPaymentId = "payment-forged"; },
+      (snapshot: ReturnType<typeof legacySnapshot>) => { snapshot.directAuditRows.at(-1)!.entityId = "live-2"; },
+      (snapshot: ReturnType<typeof legacySnapshot>) => { snapshot.privateAttachments[0].storageKey = "payments/forged/path.png"; }
+    ]) {
+      const snapshot = legacySnapshot();
+      mutate(snapshot);
+      expect(() => purge.assertSnapshot(snapshot)).toThrowError(
+        expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+      );
+    }
+
+    const wrongOwner = legacySnapshot();
+    wrongOwner.privateAttachments[0].ownerId = "customer-forged";
+    expect(() => purge.assertSnapshot(wrongOwner)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_ATTACHMENT_SCOPE_VIOLATION" })
+    );
+
+    const duplicateAudit = legacySnapshot();
+    duplicateAudit.directAuditRows.push({
+      ...duplicateAudit.directAuditRows.at(-1)!,
+      id: "audit-upload-duplicate"
+    });
+    expect(() => purge.assertSnapshot(duplicateAudit)).toThrowError(
+      expect.objectContaining({ code: "PRIVATE_FILE_OWNERSHIP_INVALID" })
+    );
   });
 
   it("rejects forged or mismatched private payment path bindings", () => {

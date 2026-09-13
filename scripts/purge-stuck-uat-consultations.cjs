@@ -88,12 +88,17 @@ function exactIsoDate(value) {
 function minimizePaymentVerificationPayload(value) {
   const payload = jsonObject(value);
   const evidence = jsonObject(payload?.submittedEvidence);
-  const privateFileSubmissionAttachmentId =
+  const hasExactPrivateFileBinding =
     payload?.submissionSource === "private_file" &&
     evidence?.type === "private_file" &&
     typeof evidence.attachmentId === "string" &&
-    evidence.attachmentId.length > 0 &&
-    exactIsoDate(evidence.submittedAt)
+    evidence.attachmentId.length > 0;
+  const privateFileSubmissionAttachmentId =
+    hasExactPrivateFileBinding && exactIsoDate(evidence.submittedAt)
+      ? evidence.attachmentId
+      : null;
+  const legacyPrivateFileSubmissionAttachmentId =
+    hasExactPrivateFileBinding && !Object.hasOwn(evidence, "submittedAt")
       ? evidence.attachmentId
       : null;
 
@@ -116,7 +121,11 @@ function minimizePaymentVerificationPayload(value) {
       ? intake.attachmentId
       : null;
 
-  return { privateFileSubmissionAttachmentId, manualAppointmentAttachmentId };
+  return {
+    privateFileSubmissionAttachmentId,
+    legacyPrivateFileSubmissionAttachmentId,
+    manualAppointmentAttachmentId
+  };
 }
 
 function minimizeAttachmentMetadata(value) {
@@ -126,6 +135,28 @@ function minimizeAttachmentMetadata(value) {
     visibility: typeof metadata?.visibility === "string" ? metadata.visibility : null,
     paymentKind: typeof metadata?.paymentKind === "string" ? metadata.paymentKind : null,
     submissionSource: typeof metadata?.submissionSource === "string" ? metadata.submissionSource : null
+  };
+}
+
+function minimizeAuditRow({ metadataJson, ...row }) {
+  const metadata = jsonObject(metadataJson);
+  const isPrivateSlipUpload =
+    row.action === "consultation.private_slip_uploaded" &&
+    row.entityType === "consultation";
+  return {
+    ...row,
+    uploadAttachmentId:
+      isPrivateSlipUpload && typeof metadata?.attachmentId === "string"
+        ? metadata.attachmentId
+        : null,
+    uploadPaymentId:
+      isPrivateSlipUpload && typeof metadata?.paymentId === "string"
+        ? metadata.paymentId
+        : null,
+    uploadNextPaymentStatus:
+      isPrivateSlipUpload && typeof metadata?.nextPaymentStatus === "string"
+        ? metadata.nextPaymentStatus
+        : null
   };
 }
 
@@ -305,7 +336,19 @@ async function buildSnapshot(db, lineUserId) {
     notificationIds: ids(relatedNotifications),
     zoomHandoffSessionIds: ids(zoomHandoffSessions)
   });
-  const directAuditRows = await db.auditLog.findMany({ where: auditWhere, select: { id: true, entityType: true, entityId: true, createdAt: true } });
+  const directAuditRows = (
+    await db.auditLog.findMany({
+      where: auditWhere,
+      select: {
+        id: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        metadataJson: true,
+        createdAt: true
+      }
+    })
+  ).map(minimizeAuditRow);
 
   return assertSnapshot({
     customer,
@@ -642,6 +685,7 @@ module.exports = {
   createZoomAdapter,
   metadataConsultationId,
   minimizeAttachmentMetadata,
+  minimizeAuditRow,
   minimizePaymentVerificationPayload,
   parseArguments,
   parseExpectedCounts,
