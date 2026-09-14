@@ -63,6 +63,7 @@ export function SavedArticles({ data }: { data: SavedCommunityArticlesData }) {
                 icon={article.authorRole === "customer" ? "review" : "verified"}
                 authorIcon={article.authorRole === "customer" ? "account" : "medical"}
                 href={`/community/${article.slug}`}
+                pinned={article.pinned}
               />
             ))
           )}

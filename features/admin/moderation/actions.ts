@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateModerationItemSchema } from "@/features/admin/moderation/schema";
 import { getModerationNextStatus, getReportResolutionStatus } from "@/features/admin/moderation/rules";
+import { lockPinnedArticleRange } from "@/features/community/pinning/service";
 
 export type AdminModerationActionState = {
   status: "idle" | "success" | "error";
@@ -72,6 +74,7 @@ export async function updateModerationItemAction(
       let nextStatus = "";
 
       if (itemType === "article") {
+        await lockPinnedArticleRange(tx);
         const item = await tx.article.findUnique({
           where: {
             id: itemId
@@ -101,7 +104,13 @@ export async function updateModerationItemAction(
           },
           data: {
             status: nextStatus as "published" | "hidden" | "archived",
-            publishedAt: action === "restore" && !item.publishedAt ? new Date() : undefined
+            publishedAt: action === "restore" && !item.publishedAt ? new Date() : undefined,
+            ...(action === "hide" || action === "archive"
+              ? {
+                  pinnedAt: null,
+                  pinnedById: null
+                }
+              : {})
           }
         });
       } else {
@@ -206,6 +215,8 @@ export async function updateModerationItemAction(
           nextStatus
         }
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
   } catch {
     return {

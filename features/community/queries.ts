@@ -43,6 +43,16 @@ type ArticleSummaryRecord = Prisma.ArticleGetPayload<{
   include: typeof articleSummaryInclude;
 }>;
 
+export const standardCommunityArticleOrder = [
+  { publishedAt: "desc" },
+  { createdAt: "desc" }
+] satisfies Prisma.ArticleOrderByWithRelationInput[];
+
+export const communityFeedArticleOrder = [
+  { pinnedAt: "desc" },
+  ...standardCommunityArticleOrder
+] satisfies Prisma.ArticleOrderByWithRelationInput[];
+
 function createPublishedWhere(input: {
   category?: string;
   query?: string;
@@ -95,6 +105,7 @@ function mapArticleSummary(article: ArticleSummaryRecord, session: PublicSession
     likesCount: article.likes.length,
     commentsCount: article.comments.length,
     coverImageUrl: article.coverImageUrl,
+    pinned: Boolean(article.pinnedAt),
     likedByViewer: article.likes.some((like) => like.userId === session.userId),
     savedByViewer: article.savedBy.some((saved) => saved.userId === session.userId),
     ownedByViewer: article.authorId === session.userId
@@ -105,20 +116,29 @@ async function findPublishedArticles(input: {
   category?: string;
   query?: string;
   take?: number;
+  orderBy?: Prisma.ArticleOrderByWithRelationInput[];
 }) {
   return prisma.article.findMany({
     where: createPublishedWhere(input),
-    orderBy: [
-      {
-        publishedAt: "desc"
-      },
-      {
-        createdAt: "desc"
-      }
-    ],
+    orderBy: input.orderBy ?? standardCommunityArticleOrder,
     take: input.take ?? 30,
     include: articleSummaryInclude
   });
+}
+
+async function isActiveAdminViewer(session: PublicSession): Promise<boolean> {
+  if (session.role !== "admin") return false;
+
+  const admin = await prisma.user.findFirst({
+    where: {
+      id: session.userId,
+      role: "admin",
+      status: "active"
+    },
+    select: { id: true }
+  });
+
+  return Boolean(admin);
 }
 
 export async function getCommunityHub(
@@ -128,25 +148,37 @@ export async function getCommunityHub(
   noStore();
 
   try {
-    const records = await findPublishedArticles({
-      category: selectedCategory || undefined,
-      take: 30
-    });
+    const category = selectedCategory || undefined;
+    const [records, featuredRecords, canManagePins] = await Promise.all([
+      findPublishedArticles({
+        category,
+        take: 30,
+        orderBy: communityFeedArticleOrder
+      }),
+      findPublishedArticles({
+        category,
+        take: 30
+      }),
+      isActiveAdminViewer(session)
+    ]);
     const posts = records.map((article) => mapArticleSummary(article, session));
+    const featuredCandidates = featuredRecords.map((article) => mapArticleSummary(article, session));
 
     return {
       posts,
       featured:
-        posts.find((post) => post.authorRole !== "customer") ??
-        posts[0] ??
+        featuredCandidates.find((post) => post.authorRole !== "customer") ??
+        featuredCandidates[0] ??
         null,
-      selectedCategory
+      selectedCategory,
+      canManagePins
     };
   } catch {
     return {
       posts: [],
       featured: null,
       selectedCategory,
+      canManagePins: false,
       unavailable: true
     };
   }
@@ -164,22 +196,27 @@ export async function searchCommunityArticles(
   const category = input.category?.trim() ?? "";
 
   try {
-    const records = await findPublishedArticles({
-      query,
-      category: category || undefined,
-      take: 50
-    });
+    const [records, canManagePins] = await Promise.all([
+      findPublishedArticles({
+        query,
+        category: category || undefined,
+        take: 50
+      }),
+      isActiveAdminViewer(session)
+    ]);
 
     return {
       query,
       category,
-      results: records.map((article) => mapArticleSummary(article, session))
+      results: records.map((article) => mapArticleSummary(article, session)),
+      canManagePins
     };
   } catch {
     return {
       query,
       category,
       results: [],
+      canManagePins: false,
       unavailable: true
     };
   }

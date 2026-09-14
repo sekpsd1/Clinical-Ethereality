@@ -23,6 +23,8 @@ import {
 } from "@/features/admin/moderation/filters";
 import { communityReportReasons } from "@/features/community/policy";
 import type { AdminModerationData, AdminModerationQueueItem } from "@/features/admin/moderation/types";
+import { AdminPinnedPostsManager } from "@/features/admin/AdminPinnedPostsManager";
+import type { AdminPinnedPostsData } from "@/features/community/pinning/types";
 
 const itemTypeLabels = {
   article: "บทความ",
@@ -44,7 +46,7 @@ function getStatusTone(status: AdminModerationQueueItem["status"]): "neutral" | 
   return "neutral";
 }
 
-export function AdminModeration({ data }: { data: AdminModerationData }) {
+export function AdminModeration({ data, pinnedPosts }: { data: AdminModerationData; pinnedPosts?: AdminPinnedPostsData }) {
   const [filters, setFilters] = useState<AdminModerationFilters>(defaultAdminModerationFilters);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<AdminModerationQueueItem | null>(null);
@@ -96,6 +98,8 @@ export function AdminModeration({ data }: { data: AdminModerationData }) {
           </div>
         ))}
       </section>
+
+      {pinnedPosts ? <AdminPinnedPostsManager data={pinnedPosts} /> : null}
 
       <ModerationFilters filters={filters} onChange={setFilters} resultCount={filteredItems.length} />
 

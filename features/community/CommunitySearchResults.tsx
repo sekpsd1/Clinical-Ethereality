@@ -4,6 +4,7 @@ import { ArrowLeft, Search, X } from "lucide-react";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { communityCategories } from "@/features/community/policy";
+import { CommunityPostActionsMenu } from "@/features/community/pinning/ArticlePinControls";
 import type { CommunitySearchData } from "@/features/community/types";
 
 export function CommunitySearchResults({ data }: { data: CommunitySearchData }) {
@@ -96,6 +97,15 @@ export function CommunitySearchResults({ data }: { data: CommunitySearchData }) 
                 icon={result.authorRole === "customer" ? "review" : "verified"}
                 authorIcon={result.authorRole === "customer" ? "account" : "medical"}
                 href={`/community/${result.slug}`}
+                pinned={result.pinned}
+                actions={data.canManagePins ? (
+                  <CommunityPostActionsMenu
+                    articleId={result.id}
+                    editHref={result.ownedByViewer ? `/community/${result.slug}/edit` : undefined}
+                    pinned={result.pinned}
+                    canManagePins
+                  />
+                ) : undefined}
               />
             ))
           )}

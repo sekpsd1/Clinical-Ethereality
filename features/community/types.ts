@@ -17,6 +17,7 @@ export type CommunityPostSummary = {
   likesCount: number;
   commentsCount: number;
   coverImageUrl: string | null;
+  pinned: boolean;
   likedByViewer: boolean;
   savedByViewer: boolean;
   ownedByViewer: boolean;
@@ -26,6 +27,7 @@ export type CommunityHubData = {
   posts: CommunityPostSummary[];
   featured: CommunityPostSummary | null;
   selectedCategory: string;
+  canManagePins: boolean;
   unavailable?: boolean;
 };
 
@@ -33,6 +35,7 @@ export type CommunitySearchData = {
   query: string;
   category: string;
   results: CommunityPostSummary[];
+  canManagePins: boolean;
   unavailable?: boolean;
 };
 

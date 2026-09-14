@@ -233,6 +233,7 @@ model User {
   orders                      Order[]
   shippingAddresses           ShippingAddress[]
   articles                    Article[]                    @relation("ArticleAuthor")
+  pinnedArticles              Article[]                    @relation("ArticlePinnedBy")
   comments                    Comment[]
   likes                       Like[]
   savedArticles               SavedArticle[]
@@ -820,6 +821,7 @@ model FileAttachment {
 model Article {
   id            String        @id @default(cuid())
   authorId      String
+  pinnedById    String?
   title         String
   slug          String        @unique
   category      String?       @db.VarChar(80)
@@ -827,19 +829,23 @@ model Article {
   body          String        @db.Text
   status        ArticleStatus @default(draft)
   publishedAt   DateTime?
+  pinnedAt      DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   author   User              @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  pinnedBy User?             @relation("ArticlePinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
   comments Comment[]
   likes    Like[]
   savedBy  SavedArticle[]
   reports  CommunityReport[]
 
   @@index([authorId])
+  @@index([pinnedById])
   @@index([status])
   @@index([category])
   @@index([publishedAt])
+  @@index([status, pinnedAt, publishedAt, createdAt], map: "Article_status_pin_publish_idx")
 }
 
 model Comment {

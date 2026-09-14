@@ -388,6 +388,7 @@
 - [x] Build admin moderation workflow with keep, hide, archive, audit, and customer notification outcomes
 - [x] Minimize admin moderation steps
 - [x] Refine `/admin/moderation` UX with pending-first ordering and count, default-hidden Test/UAT and archived records, search/type/reason/status filters, explicit view/hide/archive controls, a detail side panel, non-mutating bulk selection preparation, and confirmed recoverable archiving
+- [x] Add code-complete active-Admin Community pinning for up to three published articles system-wide: Serializable indexed range locking, idempotent state changes, minimized audit and pin-only owner notification, Hub-only pinned ordering with category preservation, shared Pin badges and accessible Admin Feed/Search menus, a separate searchable Moderation manager, and atomic hide/archive auto-unpin with restore remaining unpinned. The additive migration is committed as a file only; no migration, backfill, Production change, push, deploy, or restart was performed.
 - [x] Build notifications
 - [x] Back customer notification center with Prisma notifications
 - [x] Build reward points earning and spending rules

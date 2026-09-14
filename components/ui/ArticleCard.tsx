@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
-import { BadgeCheck, BriefcaseMedical, Heart, Image as ImageIcon, UserRound } from "lucide-react";
+import { BadgeCheck, BriefcaseMedical, Heart, Image as ImageIcon, Pin, UserRound } from "lucide-react";
 
 type ArticleCardIcon = "verified" | "review" | "medical";
 type ArticleCardAuthorIcon = "person" | "account" | "medical";
@@ -19,6 +19,8 @@ type ArticleCardProps = {
   icon: ArticleCardIcon;
   authorIcon: ArticleCardAuthorIcon;
   href?: string;
+  pinned?: boolean;
+  actions?: React.ReactNode;
 };
 
 export function ArticleCard({
@@ -33,11 +35,13 @@ export function ArticleCard({
   badgeTone,
   icon,
   authorIcon,
-  href
+  href,
+  pinned = false,
+  actions
 }: ArticleCardProps) {
   const content = (
-    <article className="group overflow-hidden rounded-[24px] border border-white/10 bg-white shadow-[0_4px_40px_rgba(0,96,103,0.06)] transition-all duration-300">
-      <div className="relative h-[198px] overflow-hidden">
+    <>
+      <div className="relative h-[198px] overflow-hidden rounded-t-[24px]">
         <Image
           alt={imageAlt}
           className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -45,15 +49,24 @@ export function ArticleCard({
           sizes="(max-width: 430px) 100vw, 344px"
           src={imageSrc}
         />
-        {badge ? (
-          <div
-            className={
-              badgeTone === "teal"
-                ? "absolute right-4 top-4 rounded-full bg-teal-600/80 px-3 py-1 text-[12px] font-bold uppercase text-white backdrop-blur-[24px]"
-                : "absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold uppercase text-primary backdrop-blur-[24px]"
-            }
-          >
-            {badge}
+        {badge || pinned ? (
+          <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
+            {pinned ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/90 px-3 py-1 text-[12px] font-bold text-white backdrop-blur-[24px]">
+                <Pin aria-hidden="true" className="size-3 fill-white" /> ปักหมุด
+              </span>
+            ) : null}
+            {badge ? (
+              <span
+                className={
+                  badgeTone === "teal"
+                    ? "rounded-full bg-teal-600/80 px-3 py-1 text-[12px] font-bold uppercase text-white backdrop-blur-[24px]"
+                    : "rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold uppercase text-primary backdrop-blur-[24px]"
+                }
+              >
+                {badge}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -80,10 +93,15 @@ export function ArticleCard({
           </div>
         </div>
       </div>
-    </article>
+    </>
   );
 
-  return href ? <Link href={href as Route}>{content}</Link> : content;
+  return (
+    <article className="group relative rounded-[24px] border border-white/10 bg-white shadow-[0_4px_40px_rgba(0,96,103,0.06)] transition-all duration-300">
+      {href ? <Link href={href as Route}>{content}</Link> : content}
+      {actions ? <div className="absolute left-4 top-4 z-20">{actions}</div> : null}
+    </article>
+  );
 }
 
 function ArticleIcon({ variant }: { variant: ArticleCardIcon }) {

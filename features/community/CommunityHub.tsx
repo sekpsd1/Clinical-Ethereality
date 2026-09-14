@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
-import { PenLine, Search } from "lucide-react";
+import { PenLine, Pin, Search } from "lucide-react";
 import { CommunityPostCard } from "@/components/ui/CommunityPostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { communityCategories } from "@/features/community/policy";
@@ -39,8 +39,13 @@ export function CommunityHub({
         {data.featured ? (
           <section className="mt-8 px-7">
             <Link href={`/community/${data.featured.slug}` as Route}>
-              <article className="overflow-hidden rounded-[24px] border border-white/20 bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
+              <article className="relative overflow-hidden rounded-[24px] border border-white/20 bg-white/70 shadow-[0_0_40px_rgba(0,96,103,0.06)] backdrop-blur-[24px]">
                 <div className="aspect-[16/10] w-full overflow-hidden bg-[linear-gradient(135deg,#53cfc2_0%,#0a9287_100%)]">
+                  {data.featured.pinned ? (
+                    <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-primary/90 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-[24px]">
+                      <Pin aria-hidden="true" className="size-3 fill-white" /> ปักหมุด
+                    </span>
+                  ) : null}
                   {data.featured.coverImageUrl ? (
                     <div className="relative h-full w-full">
                       <Image
@@ -129,6 +134,9 @@ export function CommunityHub({
                 href={`/community/${post.slug}`}
                 editHref={post.ownedByViewer ? `/community/${post.slug}/edit` : undefined}
                 imageSrc={post.coverImageUrl}
+                articleId={post.id}
+                pinned={post.pinned}
+                canManagePins={data.canManagePins}
               />
             ))
           )}

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
-import { Heart, MessageSquare, MoreHorizontal } from "lucide-react";
+import { Heart, MessageSquare, Pin } from "lucide-react";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { CommunityPostActionsMenu } from "@/features/community/pinning/ArticlePinControls";
 
 type CommunityPostCardProps = {
   title?: string;
@@ -16,6 +17,9 @@ type CommunityPostCardProps = {
   href?: string;
   editHref?: string;
   imageSrc?: string | null;
+  articleId?: string;
+  pinned?: boolean;
+  canManagePins?: boolean;
 };
 
 export function CommunityPostCard({
@@ -29,7 +33,10 @@ export function CommunityPostCard({
   portrait,
   href,
   editHref,
-  imageSrc
+  imageSrc,
+  articleId,
+  pinned = false,
+  canManagePins = false
 }: CommunityPostCardProps) {
   const detailHref = href as Route | undefined;
 
@@ -39,19 +46,21 @@ export function CommunityPostCard({
         <span className="size-10 overflow-hidden rounded-full bg-slate-200">
           <MemberPortrait variant={portrait} />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-bold text-[#191c1e]">{author}</h3>
           <p className="text-[10px] font-medium text-slate-400">{time}</p>
         </div>
-        {editHref || detailHref ? (
-          <Link
-            href={(editHref ?? detailHref) as Route}
-            aria-label={editHref ? "Edit your post" : "Open post"}
-            className="ml-auto text-slate-400"
-          >
-            <MoreHorizontal aria-hidden="true" className="size-6" />
-          </Link>
+        {pinned ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+            <Pin aria-hidden="true" className="size-3 fill-primary" /> ปักหมุด
+          </span>
         ) : null}
+        <CommunityPostActionsMenu
+          articleId={articleId ?? ""}
+          editHref={editHref}
+          pinned={pinned}
+          canManagePins={canManagePins && Boolean(articleId)}
+        />
       </div>
 
       {detailHref ? (
