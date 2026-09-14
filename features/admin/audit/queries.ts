@@ -1,11 +1,24 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminAuditLogData, AdminAuditLogItem } from "@/features/admin/audit/types";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 const PAGE_SIZE = 25;
 
-function getAuditLogs(page: number) {
+function getVisibleAuditWhere(rewardsEnabled: boolean) {
+  return rewardsEnabled
+    ? undefined
+    : {
+        NOT: [
+          { action: { startsWith: "reward." } },
+          { entityType: "reward_point" }
+        ]
+      };
+}
+
+function getAuditLogs(page: number, rewardsEnabled: boolean) {
   return prisma.auditLog.findMany({
+    where: getVisibleAuditWhere(rewardsEnabled),
     orderBy: {
       createdAt: "desc"
     },
@@ -65,12 +78,15 @@ export async function getAdminAuditLogs(requestedPage = 1): Promise<AdminAuditLo
   noStore();
 
   try {
-    const total = await prisma.auditLog.count();
+    const rewardsEnabled = isRewardPointsEnabled();
+    const where = getVisibleAuditWhere(rewardsEnabled);
+    const total = await prisma.auditLog.count({ where });
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const page = Math.min(Math.max(1, requestedPage), totalPages);
     const [records, entityCounts] = await Promise.all([
-      getAuditLogs(page),
+      getAuditLogs(page, rewardsEnabled),
       prisma.auditLog.groupBy({
+        where,
         by: ["entityType"],
         _count: {
           _all: true

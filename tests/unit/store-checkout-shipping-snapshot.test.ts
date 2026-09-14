@@ -51,7 +51,16 @@ describe("store checkout shipping snapshot", () => {
     await expect(createStoreCheckoutOrderAction(form)).rejects.toThrow("REDIRECT:/store/orders?created=order-1");
     expect(mocks.releaseExpiredStoreOrderReservations).toHaveBeenCalledWith({ userId: "customer-1" });
     expect(mocks.getSnapshot).toHaveBeenCalledWith(tx, "customer-1", "address-1");
-    expect(tx.order.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ shippingAddress: { create: expect.objectContaining({ sourceAddressId: "address-1", postalCode: "10110" }) } }) }));
+    expect(tx.order.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        subtotal: new Prisma.Decimal(200),
+        discountTotal: new Prisma.Decimal(0),
+        shippingTotal: new Prisma.Decimal(0),
+        grandTotal: new Prisma.Decimal(200),
+        shippingAddress: { create: expect.objectContaining({ sourceAddressId: "address-1", postalCode: "10110" }) },
+        payments: { create: expect.objectContaining({ amount: new Prisma.Decimal(200) }) }
+      })
+    }));
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   });
 });

@@ -36,7 +36,13 @@ function getTypeTone(type: AdminNotificationItem["type"]): "neutral" | "success"
   return "neutral";
 }
 
-export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
+export function AdminNotifications({
+  data,
+  rewardsEnabled
+}: {
+  data: AdminNotificationsData;
+  rewardsEnabled: boolean;
+}) {
   const summaryItems = [
     {
       label: "ยังไม่อ่าน",
@@ -90,7 +96,7 @@ export function AdminNotifications({ data }: { data: AdminNotificationsData }) {
             body="ตั้งค่าฐานข้อมูลและเตรียมโครงสร้างข้อมูลก่อนส่งการแจ้งเตือน"
           />
         ) : (
-          <AdminNotificationForm recipients={data.recipients} />
+          <AdminNotificationForm recipients={data.recipients} rewardsEnabled={rewardsEnabled} />
         )}
       </section>
 

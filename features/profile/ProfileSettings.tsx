@@ -42,7 +42,7 @@ const settingsItems: SettingItem[] = [
   {
     key: "notifications",
     label: "การแจ้งเตือน",
-    description: "การปรึกษา คำสั่งซื้อ การชำระเงิน และคะแนนสะสม",
+    description: "การปรึกษา คำสั่งซื้อ และการชำระเงิน",
     icon: Bell
   },
   {
@@ -102,10 +102,12 @@ const sectionDetails: Record<SettingSectionKey, { title: string; body: string; r
 export function ProfileSettings({
   consentData,
   profileData,
+  rewardsEnabled,
   section
 }: {
   consentData: CustomerConsentData;
   profileData: CustomerProfileData;
+  rewardsEnabled: boolean;
   section?: string;
 }) {
   const activeSection = getActiveSection(section);
@@ -123,7 +125,14 @@ export function ProfileSettings({
             { label: "สถานะยืนยันเบอร์", value: profileData.phoneVerifiedAt ? "ยืนยันแล้ว" : "รอยืนยัน" }
           ]
         }
-      : sectionDetails[activeSection]
+      : activeSection === "notifications"
+        ? {
+            ...sectionDetails.notifications,
+            rows: rewardsEnabled
+              ? sectionDetails.notifications.rows
+              : sectionDetails.notifications.rows.filter((row) => row.label !== "คะแนนสะสม")
+          }
+        : sectionDetails[activeSection]
     : null;
 
   return (

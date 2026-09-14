@@ -1,6 +1,7 @@
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { reverseOrderRewardPoints } from "@/features/rewards/rules";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 
 const refundableOrderStatuses: OrderStatus[] = ["paid", "preparing"];
@@ -219,10 +220,13 @@ export async function applyManualStoreRefund(
     }
   }
 
-  const reversedRewardPoints = await reverseOrderRewardPoints(tx, {
-    userId: payment.order.userId,
-    orderId: payment.order.id
-  });
+  const rewardsEnabled = isRewardPointsEnabled();
+  const reversedRewardPoints = rewardsEnabled
+    ? await reverseOrderRewardPoints(tx, {
+        userId: payment.order.userId,
+        orderId: payment.order.id
+      })
+    : 0;
 
   await tx.notification.create({
     data: {
@@ -253,7 +257,7 @@ export async function applyManualStoreRefund(
       refundAmount: refundAmount.toString(),
       refundReasonProvided: true,
       refundReferenceRecorded: true,
-      reversedRewardPoints
+      ...(rewardsEnabled ? { reversedRewardPoints } : {})
     }
   });
 

@@ -11,6 +11,7 @@ const { applyManualStoreRefund } = await import("@/features/payments/refunds");
 const describeWithLocalDatabase = process.env.RUN_LOCAL_DB_INTEGRATION === "true" ? describe : describe.skip;
 
 describeWithLocalDatabase("Manual Store refund Local DB integration", () => {
+  const previousRewardFlag = process.env.ENABLE_REWARD_POINTS;
   const fixtureKey = randomUUID();
   let customerId = "";
   let adminId = "";
@@ -19,6 +20,7 @@ describeWithLocalDatabase("Manual Store refund Local DB integration", () => {
   let paymentId = "";
 
   beforeAll(async () => {
+    process.env.ENABLE_REWARD_POINTS = "false";
     const [customer, admin] = await Promise.all([
       prisma.user.create({
         data: { lineUserId: `refund-customer-${fixtureKey}`, role: "customer", status: "active", rewardBalance: 1 },
@@ -86,9 +88,14 @@ describeWithLocalDatabase("Manual Store refund Local DB integration", () => {
       await prisma.product.deleteMany({ where: { id: productId } });
     }
     await prisma.user.deleteMany({ where: { id: { in: [customerId, adminId].filter(Boolean) } } });
+    if (previousRewardFlag === undefined) {
+      delete process.env.ENABLE_REWARD_POINTS;
+    } else {
+      process.env.ENABLE_REWARD_POINTS = previousRewardFlag;
+    }
   });
 
-  it("records one full refund, preserves the incoming reference, restores stock, and permits negative rewards", async () => {
+  it("records one full refund, preserves the incoming reference, restores stock, and leaves rewards inert", async () => {
     const outcome = await prisma.$transaction(
       (tx) =>
         applyManualStoreRefund(tx, {
@@ -120,13 +127,13 @@ describeWithLocalDatabase("Manual Store refund Local DB integration", () => {
     expect(payment.normalizedRefundReference).toBe("OUTGOINGREFUND1");
     expect(payment.refundAmount?.toString()).toBe("100");
     expect(inventory.quantity).toBe(10);
-    expect(customer.rewardBalance).toBe(-9);
-    expect(reversalCount).toBe(1);
+    expect(customer.rewardBalance).toBe(1);
+    expect(reversalCount).toBe(0);
     expect(notificationCount).toBe(1);
     expect(auditCount).toBe(1);
   });
 
-  it("is idempotent after refund and does not restore stock or rewards twice", async () => {
+  it("is idempotent after refund and keeps rewards inert", async () => {
     const outcome = await prisma.$transaction(
       (tx) =>
         applyManualStoreRefund(tx, {
@@ -147,7 +154,7 @@ describeWithLocalDatabase("Manual Store refund Local DB integration", () => {
 
     expect(outcome).toBe("already_refunded");
     expect(inventory.quantity).toBe(10);
-    expect(reversalCount).toBe(1);
+    expect(reversalCount).toBe(0);
     expect(notificationCount).toBe(1);
   });
 });

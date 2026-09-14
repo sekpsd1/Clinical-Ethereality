@@ -71,7 +71,6 @@ export type AdminCustomerDetail = {
   profilePhotoName: string | null;
   licenseProofUrl: string | null;
   licenseProofName: string | null;
-  rewardBalance: number;
   createdAt: string;
   lastLoginAt: string | null;
   recommendedDoctorName: string | null;

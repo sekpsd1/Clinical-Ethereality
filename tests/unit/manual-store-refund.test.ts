@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import {
   applyManualStoreRefund,
@@ -79,6 +79,14 @@ const refundInput = {
   refundTransactionReference: " refund-1 / bank "
 };
 
+beforeEach(() => {
+  vi.stubEnv("ENABLE_REWARD_POINTS", "false");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("manual Store refunds", () => {
   it.each(["paid", "preparing"] as const)("refunds eligible %s Store orders once", async (orderStatus) => {
     const { tx } = createTransaction({ orderStatus });
@@ -106,27 +114,22 @@ describe("manual Store refunds", () => {
       where: { productId: "product-1" },
       data: { quantity: { increment: 2 } }
     });
-    expect(tx.rewardPoint.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ direction: "adjust", points: -10, sourceId: "order-1" }) })
-    );
-    expect(tx.user.update).toHaveBeenCalledWith({
-      where: { id: "customer-1" },
-      data: { rewardBalance: { decrement: 10 } }
-    });
+    expect(tx.rewardPoint.create).not.toHaveBeenCalled();
+    expect(tx.user.update).not.toHaveBeenCalled();
     expect(tx.notification.create).toHaveBeenCalledOnce();
     expect(tx.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "payment.manual_store_refund" }) })
     );
   });
 
-  it("allows a negative reward balance rather than blocking a real refund", async () => {
+  it("does not read or change the inert reward balance during a real refund", async () => {
     const { tx } = createTransaction();
 
     await applyManualStoreRefund(tx, refundInput);
 
-    expect(tx.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { rewardBalance: { decrement: 10 } } })
-    );
+    expect(tx.rewardPoint.findFirst).not.toHaveBeenCalled();
+    expect(tx.rewardPoint.create).not.toHaveBeenCalled();
+    expect(tx.user.update).not.toHaveBeenCalled();
   });
 
   it.each([

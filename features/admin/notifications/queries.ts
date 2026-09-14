@@ -5,6 +5,7 @@ import type {
   AdminNotificationRecipient,
   AdminNotificationsData
 } from "@/features/admin/notifications/types";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 type NotificationWithUser = Awaited<ReturnType<typeof getRecentNotifications>>[number];
 
@@ -28,8 +29,9 @@ function getRecipients() {
   });
 }
 
-function getRecentNotifications() {
+function getRecentNotifications(rewardsEnabled: boolean) {
   return prisma.notification.findMany({
+    where: rewardsEnabled ? undefined : { type: { not: "reward" } },
     orderBy: {
       createdAt: "desc"
     },
@@ -83,7 +85,10 @@ export async function getAdminNotifications(): Promise<AdminNotificationsData> {
   noStore();
 
   try {
-    const [recipients, notifications] = await Promise.all([getRecipients(), getRecentNotifications()]);
+    const [recipients, notifications] = await Promise.all([
+      getRecipients(),
+      getRecentNotifications(isRewardPointsEnabled())
+    ]);
     const notificationItems = notifications.map(mapNotification);
 
     return {

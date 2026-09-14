@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import {
   applyManualPaymentReview,
@@ -37,6 +37,14 @@ const verifiedProviderResult: SlipVerificationResult = {
   }
 };
 const claimedAt = new Date("2026-07-30T12:00:00.000Z");
+
+beforeEach(() => {
+  vi.stubEnv("ENABLE_REWARD_POINTS", "false");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("payment review service", () => {
   it("keeps manually verified orders paid until an admin starts preparation", () => {
@@ -179,10 +187,10 @@ describe("payment review service", () => {
     ).toBe(0);
   });
 
-  it("awards order points only after a verified payment outcome", () => {
+  it("keeps order rewards at zero while the feature is disabled", () => {
     const amount = new Prisma.Decimal(1200);
 
-    expect(getOrderRewardPointsForPaymentOutcome("verified", amount)).toBe(120);
+    expect(getOrderRewardPointsForPaymentOutcome("verified", amount)).toBe(0);
     expect(getOrderRewardPointsForPaymentOutcome("rejected", amount)).toBe(0);
     expect(getOrderRewardPointsForPaymentOutcome("provider_error", amount)).toBe(0);
   });
@@ -541,7 +549,7 @@ describe("payment review service", () => {
     });
   });
 
-  it("persists verified payment rewards through the shared payment transaction", async () => {
+  it("persists verified payment and inventory without reward writes while rewards are disabled", async () => {
     const rewardPointCreate = vi.fn().mockResolvedValue({
       id: "reward-1"
     });
@@ -623,17 +631,10 @@ describe("payment review service", () => {
       source: "qr_payload"
     });
 
-    expect(rewardPointCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: "customer-1",
-        sourceType: "order",
-        sourceId: "order-1",
-        direction: "earn",
-        points: 120
-      })
-    });
-    expect(notificationCreate).toHaveBeenCalledTimes(2);
-    expect(tx.$queryRaw).toHaveBeenCalledOnce();
+    expect(rewardPointCreate).not.toHaveBeenCalled();
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(notificationCreate).toHaveBeenCalledTimes(1);
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
     expect(paymentUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -800,10 +801,7 @@ describe("payment review service", () => {
     expect(notificationCreate).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["verified", 1],
-    ["rejected", 0]
-  ] as const)("awards manual-review points only for %s payments", async (status, expectedRewardCreates) => {
+  it.each(["verified", "rejected"] as const)("does not award manual-review points for %s payments while rewards are disabled", async (status) => {
     const rewardPointCreate = vi.fn().mockResolvedValue({
       id: "reward-1"
     });
@@ -873,7 +871,8 @@ describe("payment review service", () => {
       transactionReference: status === "verified" ? "manual-reference-1" : undefined
     });
 
-    expect(rewardPointCreate).toHaveBeenCalledTimes(expectedRewardCreates);
+    expect(rewardPointCreate).not.toHaveBeenCalled();
+    expect(tx.user.update).not.toHaveBeenCalled();
     expect(tx.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

@@ -2,6 +2,7 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { getCustomerConsentData } from "@/features/legal/queries";
 import { ProfileSettings } from "@/features/profile/ProfileSettings";
 import { getCustomerProfileData } from "@/features/profile/queries";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 export default async function ProfileSettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
   const { section } = await searchParams;
@@ -11,5 +12,12 @@ export default async function ProfileSettingsPage({ searchParams }: { searchPara
     getCustomerProfileData(session)
   ]);
 
-  return <ProfileSettings consentData={consentData} profileData={profileData} section={section} />;
+  return (
+    <ProfileSettings
+      consentData={consentData}
+      profileData={profileData}
+      rewardsEnabled={isRewardPointsEnabled()}
+      section={section}
+    />
+  );
 }

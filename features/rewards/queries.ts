@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import type { CustomerRewardLedgerItem, CustomerRewardsData } from "@/features/rewards/types";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 type RewardRecord = Awaited<ReturnType<typeof getRewardLedger>>[number];
 
@@ -48,6 +49,15 @@ function mapLedgerItem(reward: RewardRecord): CustomerRewardLedgerItem {
 
 export async function getCustomerRewards(session: PublicSession): Promise<CustomerRewardsData> {
   noStore();
+
+  if (!isRewardPointsEnabled()) {
+    return {
+      balance: 0,
+      expiringSoon: 0,
+      ledger: [],
+      unavailable: true
+    };
+  }
 
   try {
     const [user, ledger] = await Promise.all([

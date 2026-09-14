@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdminSession } from "@/lib/auth/guards";
 import { createNotificationSchema } from "@/features/admin/notifications/schema";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 export type AdminNotificationActionState = {
   status: "idle" | "success" | "error";
@@ -25,6 +26,13 @@ export async function createNotificationAction(
     return {
       status: "error",
       message: "รายละเอียดการแจ้งเตือนไม่ถูกต้อง"
+    };
+  }
+
+  if (parsed.data.type === "reward" && !isRewardPointsEnabled()) {
+    return {
+      status: "error",
+      message: "ประเภทการแจ้งเตือนนี้ไม่พร้อมใช้งาน"
     };
   }
 

@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminDashboardData } from "@/features/admin/dashboard/types";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 type DashboardUser = Awaited<ReturnType<typeof getDashboardUsers>>[number];
 type DashboardInventoryItem = Awaited<ReturnType<typeof getLowStockInventoryItems>>[number];
@@ -58,6 +59,14 @@ function isLowStock(item: DashboardInventoryItem): boolean {
 
 function getRecentAuditLogs() {
   return prisma.auditLog.findMany({
+    where: isRewardPointsEnabled()
+      ? undefined
+      : {
+          NOT: [
+            { action: { startsWith: "reward." } },
+            { entityType: "reward_point" }
+          ]
+        },
     orderBy: {
       createdAt: "desc"
     },

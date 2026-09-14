@@ -16,7 +16,10 @@ import { acceptConsentSchema } from "@/features/legal/schema";
 import { updateProfileContactSchema } from "@/features/profile/schema";
 import { checkoutSchema } from "@/features/products/checkout/schema";
 import { getProductCategoryLabel } from "@/features/products/categories";
-import { createExternalPrescriptionOrderSchema } from "@/features/products/prescriptions/schema";
+import {
+  createExternalPrescriptionOrderSchema,
+  createPrescriptionOrderSchema
+} from "@/features/products/prescriptions/schema";
 import { getPrescriptionOrderStatusLabel, isPrescriptionOrderReady } from "@/features/products/prescriptions/readiness";
 import { staffInviteRequestSchema } from "@/features/staff-invite/schema";
 
@@ -146,6 +149,13 @@ describe("feature validation schemas", () => {
     ).toBe("f75c16fe-0f6a-4ce8-8a1a-2048fb1272da");
     expect(checkoutSchema.safeParse({ checkoutRequestId: "" }).success).toBe(false);
     expect(checkoutSchema.safeParse({ checkoutRequestId: "not-a-uuid" }).success).toBe(false);
+    expect(
+      checkoutSchema.parse({
+        checkoutRequestId: "f75c16fe-0f6a-4ce8-8a1a-2048fb1272da",
+        shippingAddressId: "address-1",
+        rewardPoints: "500"
+      })
+    ).not.toHaveProperty("rewardPoints");
   });
 
   it("validates community article interactions without accepting empty sensitive context", () => {
@@ -287,6 +297,13 @@ describe("feature validation schemas", () => {
 
   it("validates external prescription attachment metadata before ordering", () => {
     expect(
+      createPrescriptionOrderSchema.parse({
+        prescriptionId: "prescription-1",
+        shippingAddressId: "address-1",
+        rewardPoints: "500"
+      })
+    ).not.toHaveProperty("rewardPoints");
+    expect(
       createExternalPrescriptionOrderSchema.safeParse({
         productSlug: "rx-product",
         shippingAddressId: "address-1",
@@ -311,5 +328,14 @@ describe("feature validation schemas", () => {
         fileName: ""
       }).success
     ).toBe(false);
+    expect(
+      createExternalPrescriptionOrderSchema.parse({
+        productSlug: "rx-product",
+        shippingAddressId: "address-1",
+        attachmentUrl: "https://storage.example/prescriptions/rx-1.pdf",
+        fileName: "rx-1.pdf",
+        rewardDiscount: "50"
+      })
+    ).not.toHaveProperty("rewardDiscount");
   });
 });

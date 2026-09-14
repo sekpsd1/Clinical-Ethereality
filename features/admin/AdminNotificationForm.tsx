@@ -13,7 +13,13 @@ const initialActionState: AdminNotificationActionState = {
   message: ""
 };
 
-export function AdminNotificationForm({ recipients }: { recipients: AdminNotificationRecipient[] }) {
+export function AdminNotificationForm({
+  recipients,
+  rewardsEnabled
+}: {
+  recipients: AdminNotificationRecipient[];
+  rewardsEnabled: boolean;
+}) {
   const [state, action] = useActionState(createNotificationAction, initialActionState);
 
   return (
@@ -46,7 +52,7 @@ export function AdminNotificationForm({ recipients }: { recipients: AdminNotific
             <option value="payment">การชำระเงิน</option>
             <option value="prescription">ใบสั่งยา</option>
             <option value="community">ชุมชน</option>
-            <option value="reward">แต้มสะสม</option>
+            {rewardsEnabled ? <option value="reward">แต้มสะสม</option> : null}
           </select>
         </label>
         <TextField label="หัวข้อ" name="title" placeholder="หัวข้อการแจ้งเตือน" />

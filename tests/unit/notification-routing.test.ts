@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isCustomerNotificationVisible,
   resolveCustomerNotificationHref
 } from "@/features/notifications/queries";
+
+beforeEach(() => {
+  vi.stubEnv("ENABLE_REWARD_POINTS", "false");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("customer notification routing", () => {
   it("preserves the customer order list destination from order and payment metadata", () => {
@@ -38,7 +46,14 @@ describe("customer notification routing", () => {
     ).toBe("/store/orders");
   });
 
-  it("routes reward notifications to the customer rewards page", () => {
+  it("hides legacy reward notifications and never routes them to the disabled page", () => {
+    expect(
+      isCustomerNotificationVisible({
+        type: "reward",
+        metadataJson: { href: "/profile/rewards" }
+      })
+    ).toBe(false);
+
     expect(
       resolveCustomerNotificationHref({
         type: "reward",
@@ -46,7 +61,7 @@ describe("customer notification routing", () => {
           href: "/profile/rewards"
         }
       })
-    ).toBe("/profile/rewards");
+    ).toBe("/notifications");
 
     expect(
       resolveCustomerNotificationHref({
@@ -55,7 +70,7 @@ describe("customer notification routing", () => {
           href: "https://malicious.example"
         }
       })
-    ).toBe("/profile/rewards");
+    ).toBe("/notifications");
   });
 
   it("allows only internal dynamic community destinations", () => {

@@ -22,6 +22,9 @@ export const envSchema = z.object({
   THAI_QR_PROMPTPAY_ID: z.string().optional(),
   THAI_QR_PROMPTPAY_ACCOUNT_NAME: z.string().trim().min(1).optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+  ENABLE_REWARD_POINTS: z
+    .preprocess((value) => (value === "true" ? "true" : "false"), z.enum(["true", "false"]))
+    .transform((value) => value === "true"),
   STORE_RESERVATION_CLEANUP_SECRET: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(32).optional()

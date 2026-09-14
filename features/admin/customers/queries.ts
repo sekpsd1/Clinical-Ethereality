@@ -331,7 +331,6 @@ export async function getAdminCustomerDetail(customerId: string): Promise<AdminC
         profilePhotoName: profilePhoto?.fileName ?? null,
         licenseProofUrl: licenseProof?.storageUrl ?? null,
         licenseProofName: licenseProof?.fileName ?? null,
-        rewardBalance: customer.rewardBalance,
         createdAt: formatDate(customer.createdAt) ?? "",
         lastLoginAt: formatDate(customer.lastLoginAt),
         recommendedDoctorName: recommendedDoctor?.user.displayName ?? null,

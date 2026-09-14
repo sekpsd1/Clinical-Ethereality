@@ -3,6 +3,7 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
 import { buildAttachmentMetadata, type NormalizedHostedAttachment } from "@/lib/storage/attachments";
 import { awardRewardPoints, calculateOrderRewardPoints, getRewardExpiryDate } from "@/features/rewards/rules";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 import { STORE_PAYMENT_REVIEW_TTL_MS } from "@/features/orders/reservations";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 
@@ -204,7 +205,7 @@ export function getOrderRewardPointsForPaymentOutcome(
   status: PaymentStatus | "provider_error",
   amount: Prisma.Decimal
 ): number {
-  return status === "verified" ? calculateOrderRewardPoints(amount) : 0;
+  return isRewardPointsEnabled() && status === "verified" ? calculateOrderRewardPoints(amount) : 0;
 }
 
 export function getManualPaymentReviewTransition(status: ManualPaymentReviewStatus): ManualPaymentReviewTransition {

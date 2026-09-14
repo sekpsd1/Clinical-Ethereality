@@ -391,6 +391,7 @@
 - [x] Build notifications
 - [x] Back customer notification center with Prisma notifications
 - [x] Build reward points earning and spending rules
+- [x] Disable and hide reward points behind one server-authoritative exact-`true` switch that defaults/fails closed; block earn/spend/reversal, strip injected checkout reward fields, preserve payment/order/inventory/refund behavior without reward writes, safely retire the legacy customer route/notifications/Admin controls, and keep the existing RewardPoint schema/data inert without migration or deletion. Code complete locally; merge/deploy remain separately gated.
 - [x] Add audit metadata for sensitive actions
 - [x] Complete Community launch-readiness documentation and Local verification: approved Thai policy, post/comment/report/moderation/notification/image-access UAT at 390×844 with non-sensitive `[UAT]` content, retained Audit/Report history, focused Community tests, full unit suite, lint, typecheck, and production build
 

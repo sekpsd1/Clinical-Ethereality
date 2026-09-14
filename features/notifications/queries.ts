@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertRole } from "@/lib/permissions";
 import type { CustomerNotificationItem, CustomerNotificationsData } from "@/features/notifications/types";
+import { isRewardPointsEnabled } from "@/features/rewards/config";
 
 type CustomerNotificationRecord = Pick<
   Notification,
@@ -69,6 +70,10 @@ export function isCustomerNotificationVisible(
     return false;
   }
 
+  if (notification.type === "reward" && !isRewardPointsEnabled()) {
+    return false;
+  }
+
   return !(
     typeof href === "string" &&
     (href === "/doctor" ||
@@ -103,7 +108,7 @@ export function resolveCustomerNotificationHref(
     (typeof href === "string" && href.startsWith("/community/") && !href.startsWith("//")) ||
     href === "/store/orders" ||
     href === "/store" ||
-    href === "/profile/rewards" ||
+    (href === "/profile/rewards" && isRewardPointsEnabled()) ||
     href === "/consult/prescriptions" ||
     (typeof href === "string" && customerLiveConsultationHrefPattern.test(href)) ||
     (typeof href === "string" && customerAppointmentHrefPattern.test(href)) ||
@@ -133,7 +138,7 @@ export function resolveCustomerNotificationHref(
   }
 
   if (notification.type === "reward") {
-    return "/profile/rewards";
+    return isRewardPointsEnabled() ? "/profile/rewards" : "/notifications";
   }
 
   return "/notifications";

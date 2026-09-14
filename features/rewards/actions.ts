@@ -5,9 +5,11 @@ import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { spendRewardPoints, rewardRules } from "@/features/rewards/rules";
+import { assertRewardPointsEnabled } from "@/features/rewards/config";
 
 export async function redeemWellnessCreditAction(): Promise<void> {
   const session = await requireCurrentSession();
+  assertRewardPointsEnabled();
 
   await prisma.$transaction(async (tx) => {
     await spendRewardPoints(tx, {

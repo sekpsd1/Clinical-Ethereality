@@ -12,7 +12,7 @@ export function AdminAuditLog({ data }: { data: AdminAuditLogData }) {
         <p className="text-label font-bold uppercase text-white/75">บันทึกการตรวจสอบ</p>
         <h2 className="mt-2 font-headline text-2xl font-bold">ประวัติการดำเนินการสำคัญ</h2>
         <p className="mt-2 text-sm leading-6 text-white/80">
-          การชำระเงิน ใบสั่งยา การจัดส่ง สต็อก การดูแลชุมชน แต้มสะสม และบัญชีเจ้าหน้าที่ จะถูกบันทึกไว้เพื่อตรวจสอบย้อนหลัง
+          การชำระเงิน ใบสั่งยา การจัดส่ง สต็อก การดูแลชุมชน และบัญชีเจ้าหน้าที่ จะถูกบันทึกไว้เพื่อตรวจสอบย้อนหลัง
         </p>
       </section>
 

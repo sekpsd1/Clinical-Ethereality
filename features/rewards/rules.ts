@@ -1,4 +1,8 @@
 import { Prisma, type RewardPointSource } from "@prisma/client";
+import {
+  assertRewardPointsEnabled,
+  isRewardPointsEnabled
+} from "@/features/rewards/config";
 
 export const rewardRules = {
   orderEarnRate: {
@@ -35,6 +39,10 @@ export async function awardRewardPoints(
     expiresAt?: Date | null;
   }
 ): Promise<boolean> {
+  if (!isRewardPointsEnabled()) {
+    return false;
+  }
+
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`User\` WHERE \`id\` = ${input.userId} FOR UPDATE`
   );
@@ -89,6 +97,8 @@ export async function spendRewardPoints(
     points: number;
   }
 ): Promise<void> {
+  assertRewardPointsEnabled();
+
   const user = await tx.user.findUnique({
     where: {
       id: input.userId
@@ -131,6 +141,10 @@ export async function reverseOrderRewardPoints(
     orderId: string;
   }
 ): Promise<number> {
+  if (!isRewardPointsEnabled()) {
+    return 0;
+  }
+
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`User\` WHERE \`id\` = ${input.userId} FOR UPDATE`
   );
