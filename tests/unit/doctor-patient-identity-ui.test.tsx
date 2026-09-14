@@ -39,6 +39,8 @@ const consultation = {
     tone: "neutral" as const,
     normalCompletionEligible: false,
     noShowCompletionEligible: false,
+    requiredDurationMinutes: 15,
+    verifiedDoctorPresenceSeconds: 0,
     noShowRemainingSeconds: 600
   },
   canStartConsultation: true,

@@ -10,9 +10,7 @@ export function getNewScheduleDurationMinutes(existingDurationMinutes?: number |
 export function getBookedConsultationDurationMinutes(bookedDurationMinutes?: number | null): number {
   if (
     typeof bookedDurationMinutes === "number" &&
-    Number.isInteger(bookedDurationMinutes) &&
-    bookedDurationMinutes >= 10 &&
-    bookedDurationMinutes <= 240
+    CONSULTATION_DURATION_OPTIONS.some((duration) => duration === bookedDurationMinutes)
   ) {
     return bookedDurationMinutes;
   }

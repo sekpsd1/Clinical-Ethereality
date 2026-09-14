@@ -41,20 +41,25 @@ type WorkflowFormProps = {
 
 function consultation(
   status: "scheduled" | "live",
-  attendance: Pick<DoctorConsultationItem, "attendance">["attendance"] = {
-    label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว",
+  attendance: Partial<Pick<DoctorConsultationItem, "attendance">["attendance"]> = {}
+) {
+  const resolvedAttendance: Pick<DoctorConsultationItem, "attendance">["attendance"] = {
+    label: "Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว",
     description: "พร้อมจบการปรึกษา",
     tone: "success",
     normalCompletionEligible: true,
     noShowCompletionEligible: false,
-    noShowRemainingSeconds: null
-  }
-) {
+    requiredDurationMinutes: 15,
+    verifiedDoctorPresenceSeconds: 900,
+    noShowRemainingSeconds: null,
+    ...attendance
+  };
+
   return {
     id: "consultation-1",
     status,
     summary: null,
-    attendance,
+    attendance: resolvedAttendance,
     canStartConsultation: true,
     startAvailableAt: "2030-01-01T09:55:00.000Z",
     startAvailableInMs: 0
@@ -374,7 +379,7 @@ describe("Doctor consultation controls", () => {
     expect(waitingHtml).toContain("ยืนยันจบการปรึกษา");
     expect(waitingHtml).toContain('type="button"');
     expect(waitingHtml).toContain("disabled");
-    expect(eligibleHtml).toContain("Zoom ยืนยันผู้เข้าร่วมครบแล้ว");
+    expect(eligibleHtml).toContain("Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว");
     expect(eligibleHtml).toContain("ยืนยันจบการปรึกษา");
     expect(eligibleHtml).toContain('type="submit"');
     expect(eligibleHtml).toContain('name="summary"');
@@ -392,7 +397,7 @@ describe("Doctor consultation controls", () => {
     const html = renderToStaticMarkup(
       <DoctorConsultationControls
         consultation={consultation("live", {
-          label: "ยืนยันเวลารอครบ 10 นาทีแล้ว",
+          label: "ยืนยันเวลารอครบ 15 นาทีแล้ว",
           description: "พร้อมบันทึกผลไม่มาตามนัด",
           tone: "warning",
           normalCompletionEligible: false,
@@ -403,6 +408,7 @@ describe("Doctor consultation controls", () => {
     );
 
     expect(html).toContain("customer_did_not_join");
+    expect(html).toContain("แพทย์อยู่ต่อเนื่องครบ 15 นาที");
     expect(html).toContain("ยืนยันไม่มาตามนัด");
     expect(html).not.toContain("ยืนยันจบการปรึกษา");
     expect(html).not.toContain("name=\"summary\"");
@@ -418,7 +424,7 @@ describe("Doctor consultation controls", () => {
     const form = findWorkflowForm(
       DoctorConsultationControls({
         consultation: consultation("live", {
-          label: "ยืนยันเวลารอครบ 10 นาทีแล้ว",
+          label: "ยืนยันเวลารอครบ 15 นาทีแล้ว",
           description: "พร้อมบันทึกผลไม่มาตามนัด",
           tone: "warning",
           normalCompletionEligible: false,

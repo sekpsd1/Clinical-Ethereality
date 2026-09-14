@@ -186,14 +186,14 @@ export async function transitionDoctorConsultationAction(
       if (error.code === "attendance_not_verified") {
         return {
           status: "error",
-          message: "ยังจบการปรึกษาไม่ได้ เพราะ Zoom ยังไม่ยืนยันว่าแพทย์และผู้ป่วยเข้าห้องเดียวกัน"
+          message: "ยังจบการปรึกษาไม่ได้ ต้องมีหลักฐานว่าแพทย์และผู้ป่วยอยู่ในห้อง Zoom เดียวกัน และแพทย์อยู่ต่อเนื่องครบเวลานัด"
         };
       }
 
       if (error.code === "no_show_not_eligible") {
         return {
           status: "error",
-          message: "ยังบันทึกไม่มาตามนัดไม่ได้ ต้องมีเวลารอของแพทย์ที่ Zoom ยืนยันต่อเนื่องครบ 10 นาทีก่อน"
+          message: "ยังบันทึกไม่มาตามนัดไม่ได้ แพทย์ต้องอยู่ใน Zoom ต่อเนื่องครบเวลานัดก่อน"
         };
       }
 

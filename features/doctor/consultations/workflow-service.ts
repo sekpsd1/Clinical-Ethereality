@@ -3,6 +3,7 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { Role } from "@/lib/permissions/roles";
 import type { CreatedZoomMeeting } from "@/lib/zoom/meetings";
 import { getConsultationAttendanceState } from "@/features/consultations/attendance/state";
+import { getBookedConsultationDurationMinutes } from "@/features/consultations/duration-policy";
 import { getDoctorConsultationStartWindow } from "@/features/doctor/consultations/start-window";
 import {
   isCompleteVerifiedPatientIdentity,
@@ -126,6 +127,13 @@ export function getDoctorConsultationNextStatus(
     throw new DoctorConsultationWorkflowError("Consultation not found.", "not_found");
   }
 
+  if (actor.role !== "doctor" && actor.role !== "admin") {
+    throw new DoctorConsultationWorkflowError(
+      "Only an authorized doctor workflow actor can update a consultation.",
+      "inactive_actor"
+    );
+  }
+
   if (actor.role === "doctor" && consultation.doctor.userId !== actor.userId) {
     throw new DoctorConsultationWorkflowError(
       "Doctor cannot update another doctor's consultation.",
@@ -194,6 +202,7 @@ export async function applyDoctorConsultationTransition(
       patientId: true,
       status: true,
       scheduledAt: true,
+      bookedDurationMinutes: true,
       attendanceEvents: {
         select: {
           role: true,
@@ -224,39 +233,68 @@ export async function applyDoctorConsultationTransition(
       }
     }
   });
+  const now = input.now ?? new Date();
   const nextStatus = getDoctorConsultationNextStatus(
     consultation,
     {
       userId: input.actorId,
       role: input.actorRole
     },
-    input.transition
+    input.transition,
+    now
+  );
+  const actor = await tx.user.findUnique({
+    where: { id: input.actorId },
+    select: { id: true, role: true, status: true }
+  });
+
+  if (
+    !actor ||
+    actor.id !== input.actorId ||
+    actor.role !== input.actorRole ||
+    actor.status !== "active" ||
+    (actor.role !== "doctor" && actor.role !== "admin")
+  ) {
+    throw new DoctorConsultationWorkflowError(
+      "The consultation actor is no longer active or authorized.",
+      "inactive_actor"
+    );
+  }
+
+  if (
+    input.actorRole === "doctor" &&
+    (consultation!.doctor.userId !== input.actorId ||
+      consultation!.doctor.status !== "approved" ||
+      consultation!.doctor.user.status !== "active")
+  ) {
+    throw new DoctorConsultationWorkflowError(
+      "Doctor cannot update another doctor's consultation.",
+      "wrong_doctor"
+    );
+  }
+
+  const requiredDurationMinutes = getBookedConsultationDurationMinutes(
+    consultation?.bookedDurationMinutes
   );
   const attendance = getConsultationAttendanceState(
     consultation?.attendanceEvents ?? [],
     consultation?.scheduledAt ?? null,
-    input.now ?? new Date()
+    requiredDurationMinutes,
+    now
   );
 
   if (input.transition === "start") {
-    const now = input.now ?? new Date();
-    const [actor, identityRevealAudit] = await Promise.all([
-      tx.user.findUnique({
-        where: { id: input.actorId },
-        select: { id: true, role: true, status: true }
-      }),
-      tx.auditLog.findFirst({
-        where: {
-          actorId: input.actorId,
-          action: "consultation.patient_identity_view",
-          entityType: "consultation",
-          entityId: input.consultationId,
-          createdAt: { gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS) }
-        },
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true }
-      })
-    ]);
+    const identityRevealAudit = await tx.auditLog.findFirst({
+      where: {
+        actorId: input.actorId,
+        action: "consultation.patient_identity_view",
+        entityType: "consultation",
+        entityId: input.consultationId,
+        createdAt: { gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS) }
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true }
+    });
 
     assertDoctorConsultationStartIdentityGate(
       consultation as DoctorConsultationStartSnapshot,
@@ -379,10 +417,8 @@ export async function applyDoctorConsultationTransition(
             ? "no_show"
             : "normal",
       noShowReason: input.transition === "complete_no_show" ? input.noShowReason : null,
-      doctorAttendanceVerified: attendance.doctorEverJoined,
-      customerAttendanceVerified: attendance.customerEverJoined,
-      bothJoinedSameMeeting: attendance.bothJoinedSameMeeting,
-      longestVerifiedDoctorPresenceSeconds: attendance.longestVerifiedDoctorPresenceSeconds,
+      requiredDurationMinutes: attendance.requiredDurationMinutes,
+      verifiedDoctorPresenceSeconds: attendance.verifiedDoctorPresenceSeconds,
       summaryLength: input.transition === "complete" ? input.summary?.trim().length ?? 0 : 0
     }
   });

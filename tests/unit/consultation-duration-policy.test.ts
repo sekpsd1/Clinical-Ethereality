@@ -24,5 +24,6 @@ describe("consultation duration policy", () => {
     expect(getBookedConsultationDurationMinutes(30)).toBe(30);
     expect(getBookedConsultationDurationMinutes(null)).toBe(30);
     expect(getBookedConsultationDurationMinutes(0)).toBe(30);
+    expect(getBookedConsultationDurationMinutes(20)).toBe(30);
   });
 });

@@ -409,6 +409,7 @@ function mapConsultation(
   const attendanceState = getConsultationAttendanceState(
     consultation.attendanceEvents,
     consultation.scheduledAt,
+    consultation.bookedDurationMinutes,
     now
   );
   const attendanceCopy =
@@ -461,6 +462,8 @@ function mapConsultation(
       normalCompletionEligible: attendanceState.normalCompletionEligible,
       noShowCompletionEligible:
         allowNoShowCompletion && attendanceState.noShowCompletionEligible,
+      requiredDurationMinutes: attendanceState.requiredDurationMinutes,
+      verifiedDoctorPresenceSeconds: attendanceState.verifiedDoctorPresenceSeconds,
       noShowRemainingSeconds: attendanceState.noShowRemainingSeconds
     },
     prescriptionCount: consultation.prescriptions.length,

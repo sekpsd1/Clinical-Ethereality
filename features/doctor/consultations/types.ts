@@ -45,6 +45,8 @@ export type DoctorConsultationItem = {
     tone: "neutral" | "success" | "warning";
     normalCompletionEligible: boolean;
     noShowCompletionEligible: boolean;
+    requiredDurationMinutes: number;
+    verifiedDoctorPresenceSeconds: number;
     noShowRemainingSeconds: number | null;
   };
   prescriptionCount: number;

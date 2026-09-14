@@ -1,4 +1,4 @@
-export const NO_SHOW_WAIT_SECONDS = 10 * 60;
+import { getBookedConsultationDurationMinutes } from "@/features/consultations/duration-policy";
 
 export type ConsultationAttendanceEventRecord = {
   role: "doctor" | "customer";
@@ -14,8 +14,12 @@ export type ConsultationAttendanceState = {
   bothJoinedSameMeeting: boolean;
   normalCompletionEligible: boolean;
   noShowCompletionEligible: boolean;
+  requiredDurationMinutes: number;
+  requiredDoctorPresenceSeconds: number;
+  verifiedDoctorPresenceSeconds: number;
   longestVerifiedDoctorPresenceSeconds: number;
   activeDoctorPresenceSeconds: number;
+  doctorCurrentlyPresent: boolean;
   noShowRemainingSeconds: number | null;
 };
 
@@ -44,8 +48,11 @@ function intervalsOverlap(left: AttendanceInterval, right: AttendanceInterval) {
 export function getConsultationAttendanceState(
   events: ConsultationAttendanceEventRecord[],
   scheduledAt: Date | null,
+  bookedDurationMinutes?: number | null,
   now = new Date()
 ): ConsultationAttendanceState {
+  const requiredDurationMinutes = getBookedConsultationDurationMinutes(bookedDurationMinutes);
+  const requiredDoctorPresenceSeconds = requiredDurationMinutes * 60;
   const ordered = [...events].sort((left, right) => {
     const timeDifference = left.occurredAt.getTime() - right.occurredAt.getTime();
 
@@ -137,25 +144,50 @@ export function getConsultationAttendanceState(
         intervalsOverlap(doctorInterval, customerInterval)
     )
   );
+  const doctorCurrentlyPresent = [...activeSessions.values()].some(
+    (session) => session.role === "doctor"
+  );
+  const verifiedDoctorPresenceSeconds = Math.max(
+    longestVerifiedDoctorPresenceSeconds,
+    activeDoctorPresenceSeconds
+  );
+  const doctorPresenceRequirementMet =
+    verifiedDoctorPresenceSeconds >= requiredDoctorPresenceSeconds;
   const noShowCompletionEligible =
-    !customerEverJoined && longestVerifiedDoctorPresenceSeconds >= NO_SHOW_WAIT_SECONDS;
+    !customerEverJoined && doctorPresenceRequirementMet;
+  const activeIntervalRemainingSeconds = Math.max(
+    0,
+    requiredDoctorPresenceSeconds - activeDoctorPresenceSeconds
+  );
 
   return {
     doctorEverJoined,
     customerEverJoined,
     bothJoinedSameMeeting,
-    normalCompletionEligible: bothJoinedSameMeeting,
+    normalCompletionEligible: bothJoinedSameMeeting && doctorPresenceRequirementMet,
     noShowCompletionEligible,
+    requiredDurationMinutes,
+    requiredDoctorPresenceSeconds,
+    verifiedDoctorPresenceSeconds,
     longestVerifiedDoctorPresenceSeconds,
     activeDoctorPresenceSeconds,
+    doctorCurrentlyPresent,
     noShowRemainingSeconds: customerEverJoined
       ? null
-      : Math.max(
-          0,
-          NO_SHOW_WAIT_SECONDS -
-            Math.max(longestVerifiedDoctorPresenceSeconds, activeDoctorPresenceSeconds)
-        )
+      : doctorPresenceRequirementMet
+        ? 0
+        : doctorCurrentlyPresent
+          ? activeIntervalRemainingSeconds
+          : requiredDoctorPresenceSeconds
   };
+}
+
+function formatRemainingDuration(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds} วินาที`;
+  }
+
+  return `ประมาณ ${Math.ceil(seconds / 60)} นาที`;
 }
 
 export function getAttendanceStatusCopy(
@@ -164,9 +196,23 @@ export function getAttendanceStatusCopy(
 ) {
   if (state.normalCompletionEligible) {
     return {
-      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว",
-      description: "Zoom ยืนยันว่าแพทย์และผู้ป่วยเข้าห้องนัดหมายเดียวกันแล้ว",
+      label: "Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว",
+      description: `แพทย์อยู่ใน Zoom ต่อเนื่องครบ ${state.requiredDurationMinutes} นาที และเคยอยู่พร้อมผู้ป่วยในห้องนัดหมายเดียวกันแล้ว`,
       tone: "success" as const
+    };
+  }
+
+  if (state.bothJoinedSameMeeting) {
+    const remainingSeconds = state.doctorCurrentlyPresent
+      ? Math.max(0, state.requiredDoctorPresenceSeconds - state.activeDoctorPresenceSeconds)
+      : state.requiredDoctorPresenceSeconds;
+
+    return {
+      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอเวลาแพทย์",
+      description: state.doctorCurrentlyPresent
+        ? `แพทย์ต้องอยู่ใน Zoom ต่อเนื่องอีก ${formatRemainingDuration(remainingSeconds)} ให้ครบ ${state.requiredDurationMinutes} นาที`
+        : `แพทย์ออกจาก Zoom ก่อนครบเวลา ต้องเข้าห้องและอยู่ต่อเนื่องใหม่ให้ครบ ${state.requiredDurationMinutes} นาที`,
+      tone: "warning" as const
     };
   }
 
@@ -174,7 +220,7 @@ export function getAttendanceStatusCopy(
     if (state.doctorEverJoined) {
       return {
         label: "ยังไม่ยืนยันว่าอยู่ใน Zoom พร้อมกัน",
-        description: "ระบบจะเปิดขั้นตอนจบการปรึกษาหลัง Zoom ยืนยันช่วงเวลาที่แพทย์และผู้ป่วยอยู่ในห้องเดียวกันพร้อมกัน",
+        description: `ต้องมีช่วงที่แพทย์และผู้ป่วยอยู่ในห้องเดียวกันพร้อมกัน และแพทย์อยู่ต่อเนื่องครบ ${state.requiredDurationMinutes} นาที`,
         tone: "warning" as const
       };
     }
@@ -188,22 +234,20 @@ export function getAttendanceStatusCopy(
 
   if (state.noShowCompletionEligible) {
     return {
-      label: "ยืนยันเวลารอครบ 10 นาทีแล้ว",
+      label: `ยืนยันเวลารอครบ ${state.requiredDurationMinutes} นาทีแล้ว`,
       description: "ผู้ป่วยยังไม่เข้าห้อง สามารถบันทึกผลไม่มาตามนัดจากคิวแพทย์ได้",
       tone: "warning" as const
     };
   }
 
   if (state.doctorEverJoined) {
-    const minutes = Math.ceil((state.noShowRemainingSeconds ?? 0) / 60);
-
     return {
       label: viewerRole === "doctor" ? "Zoom ยืนยันแพทย์แล้ว • รอผู้ป่วย" : "แพทย์อยู่ใน Zoom แล้ว",
       description:
         viewerRole === "doctor"
-          ? state.activeDoctorPresenceSeconds >= NO_SHOW_WAIT_SECONDS
-            ? "ครบเวลารอแล้ว กรุณาออกจาก Zoom เพื่อให้ event การออกยืนยันช่วงเวลาต่อเนื่องก่อนบันทึก no-show"
-            : `ต้องรอต่อเนื่องอีกประมาณ ${minutes} นาที หากผู้ป่วยไม่เข้าห้อง`
+          ? state.doctorCurrentlyPresent
+            ? `ต้องอยู่ต่อเนื่องอีก ${formatRemainingDuration(state.noShowRemainingSeconds ?? state.requiredDoctorPresenceSeconds)} ให้ครบ ${state.requiredDurationMinutes} นาที หากผู้ป่วยไม่เข้าห้อง`
+            : `ช่วงก่อนหน้าสิ้นสุดก่อนครบเวลา ต้องเข้าห้องและอยู่ต่อเนื่องใหม่ให้ครบ ${state.requiredDurationMinutes} นาที`
           : "กรุณากดเปิดห้อง Zoom เพื่อให้ระบบยืนยันการเข้าร่วมของคุณ",
       tone: "warning" as const
     };

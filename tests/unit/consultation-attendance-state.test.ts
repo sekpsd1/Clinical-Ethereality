@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getAttendanceStatusCopy,
   getConsultationAttendanceState,
   type ConsultationAttendanceEventRecord
 } from "@/features/consultations/attendance/state";
@@ -13,155 +14,184 @@ function event(
   participantSessionHash = `${role}-session`,
   meetingUuidHash = "meeting-a"
 ): ConsultationAttendanceEventRecord {
-  return {
-    role,
-    eventType,
-    occurredAt: new Date(occurredAt),
-    participantSessionHash,
-    meetingUuidHash
-  };
+  return { role, eventType, occurredAt: new Date(occurredAt), participantSessionHash, meetingUuidHash };
 }
 
 describe("consultation Zoom attendance state", () => {
-  it("allows normal completion only while both roles overlap in the same meeting", () => {
+  it("rejects a 15-minute slot at 14:59", () => {
+    const state = getConsultationAttendanceState(
+      [event("doctor", "joined", "2030-01-01T10:00:00.000Z")], scheduledAt, 15,
+      new Date("2030-01-01T10:14:59.000Z")
+    );
+
+    expect(state.verifiedDoctorPresenceSeconds).toBe(899);
+    expect(state.noShowCompletionEligible).toBe(false);
+    expect(state.noShowRemainingSeconds).toBe(1);
+  });
+
+  it("accepts a 15-minute slot exactly at 15:00 while the verified interval is active", () => {
+    const state = getConsultationAttendanceState(
+      [event("doctor", "joined", "2030-01-01T10:00:00.000Z")], scheduledAt, 15,
+      new Date("2030-01-01T10:15:00.000Z")
+    );
+
+    expect(state.verifiedDoctorPresenceSeconds).toBe(900);
+    expect(state.noShowCompletionEligible).toBe(true);
+  });
+
+  it("does not count an early T-5 join before the scheduled time", () => {
+    const state = getConsultationAttendanceState(
+      [event("doctor", "joined", "2030-01-01T09:55:00.000Z")], scheduledAt, 15,
+      new Date("2030-01-01T10:14:59.000Z")
+    );
+
+    expect(state.activeDoctorPresenceSeconds).toBe(899);
+    expect(state.noShowCompletionEligible).toBe(false);
+  });
+
+  it("requires a late-joining doctor to remain for the full booked duration", () => {
+    const events = [event("doctor", "joined", "2030-01-01T10:07:00.000Z")];
+    const early = getConsultationAttendanceState(events, scheduledAt, 15, new Date("2030-01-01T10:21:59.000Z"));
+    const eligible = getConsultationAttendanceState(events, scheduledAt, 15, new Date("2030-01-01T10:22:00.000Z"));
+
+    expect(early.noShowCompletionEligible).toBe(false);
+    expect(eligible.noShowCompletionEligible).toBe(true);
+  });
+
+  it("does not accumulate disconnected intervals after rejoin", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z", "session-one"),
+        event("doctor", "left", "2030-01-01T10:10:00.000Z", "session-one"),
+        event("doctor", "joined", "2030-01-01T10:11:00.000Z", "session-two")
+      ], scheduledAt, 15, new Date("2030-01-01T10:16:00.000Z")
+    );
+
+    expect(state.longestVerifiedDoctorPresenceSeconds).toBe(600);
+    expect(state.activeDoctorPresenceSeconds).toBe(300);
+    expect(state.verifiedDoctorPresenceSeconds).toBe(600);
+    expect(state.noShowRemainingSeconds).toBe(600);
+    expect(state.noShowCompletionEligible).toBe(false);
+  });
+
+  it("does not allow normal completion from overlap alone", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-        event("customer", "joined", "2030-01-01T10:02:00.000Z")
-      ],
-      scheduledAt,
-      new Date("2030-01-01T10:03:00.000Z")
+        event("customer", "joined", "2030-01-01T10:01:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:14:59.000Z")
     );
 
-    expect(state.normalCompletionEligible).toBe(true);
     expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.normalCompletionEligible).toBe(false);
   });
 
-  it("does not qualify sequential attendance with no positive temporal overlap", () => {
+  it("allows normal completion after same-meeting overlap and full doctor duration", () => {
     const state = getConsultationAttendanceState(
       [
-        event("customer", "joined", "2030-01-01T10:06:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
-        event("customer", "left", "2030-01-01T10:08:00.000Z"),
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z")
-      ],
-      scheduledAt,
-      new Date("2030-01-01T10:09:00.000Z")
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+        event("customer", "joined", "2030-01-01T10:01:00.000Z"),
+        event("customer", "left", "2030-01-01T10:03:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:15:00.000Z")
     );
 
-    expect(state.doctorEverJoined).toBe(true);
-    expect(state.customerEverJoined).toBe(true);
+    expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.normalCompletionEligible).toBe(true);
+    expect(state.noShowCompletionEligible).toBe(false);
+  });
+
+  it("allows no-show after the full booked duration when the customer never joined", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:15:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:16:00.000Z")
+    );
+
+    expect(state.noShowCompletionEligible).toBe(true);
+    expect(state.normalCompletionEligible).toBe(false);
+  });
+
+  it.each([30, 45, 60])("uses a stored %i-minute booked duration", (durationMinutes) => {
+    const events = [event("doctor", "joined", "2030-01-01T10:00:00.000Z")];
+    const before = getConsultationAttendanceState(
+      events, scheduledAt, durationMinutes,
+      new Date(scheduledAt.getTime() + durationMinutes * 60_000 - 1_000)
+    );
+    const exact = getConsultationAttendanceState(
+      events, scheduledAt, durationMinutes,
+      new Date(scheduledAt.getTime() + durationMinutes * 60_000)
+    );
+
+    expect(before.noShowCompletionEligible).toBe(false);
+    expect(exact.requiredDurationMinutes).toBe(durationMinutes);
+    expect(exact.noShowCompletionEligible).toBe(true);
+  });
+
+  it.each([null, undefined, 0, 20, Number.NaN])(
+    "falls back to 30 minutes for a missing or invalid duration (%s)",
+    (durationMinutes) => {
+      const state = getConsultationAttendanceState(
+        [event("doctor", "joined", "2030-01-01T10:00:00.000Z")], scheduledAt,
+        durationMinutes, new Date("2030-01-01T10:30:00.000Z")
+      );
+
+      expect(state.requiredDurationMinutes).toBe(30);
+      expect(state.noShowCompletionEligible).toBe(true);
+    }
+  );
+
+  it("requires positive temporal overlap in the same meeting", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:15:00.000Z"),
+        event("customer", "joined", "2030-01-01T10:15:00.000Z"),
+        event("customer", "left", "2030-01-01T10:16:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:16:00.000Z")
+    );
+
     expect(state.bothJoinedSameMeeting).toBe(false);
     expect(state.normalCompletionEligible).toBe(false);
   });
 
-  it("qualifies a verified positive overlap from out-of-order closed events", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("customer", "left", "2030-01-01T10:08:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
-        event("customer", "joined", "2030-01-01T10:04:00.000Z"),
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z")
-      ],
-      scheduledAt,
-      new Date("2030-01-01T10:09:00.000Z")
-    );
-
-    expect(state.bothJoinedSameMeeting).toBe(true);
-    expect(state.normalCompletionEligible).toBe(true);
-  });
-
-  it("requires positive overlap rather than matching boundary timestamps", () => {
+  it("permanently disables no-show after any verified customer join", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:05:00.000Z"),
-        event("customer", "joined", "2030-01-01T10:05:00.000Z"),
-        event("customer", "left", "2030-01-01T10:06:00.000Z")
-      ],
-      scheduledAt,
-      new Date("2030-01-01T10:07:00.000Z")
-    );
-
-    expect(state.normalCompletionEligible).toBe(false);
-  });
-
-  it("does not combine attendance from different meeting UUIDs", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z", "doctor-session", "meeting-a"),
-        event("customer", "joined", "2030-01-01T10:02:00.000Z", "customer-session", "meeting-b")
-      ],
-      scheduledAt
-    );
-
-    expect(state.normalCompletionEligible).toBe(false);
-  });
-
-  it("denies no-show before a completed ten-minute continuous doctor interval", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:09:59.000Z")
-      ],
-      scheduledAt
-    );
-
-    expect(state.longestVerifiedDoctorPresenceSeconds).toBe(599);
-    expect(state.noShowCompletionEligible).toBe(false);
-  });
-
-  it("allows no-show after Zoom closes a continuous doctor interval of ten minutes", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("doctor", "joined", "2030-01-01T09:58:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:10:00.000Z")
-      ],
-      scheduledAt
-    );
-
-    expect(state.longestVerifiedDoctorPresenceSeconds).toBe(600);
-    expect(state.noShowCompletionEligible).toBe(true);
-  });
-
-  it("resets the continuous wait after a short interval and handles out-of-order delivery", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("doctor", "left", "2030-01-01T10:05:00.000Z", "session-one"),
-        event("doctor", "joined", "2030-01-01T10:06:00.000Z", "session-two"),
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z", "session-one"),
-        event("doctor", "left", "2030-01-01T10:16:00.000Z", "session-two")
-      ],
-      scheduledAt
-    );
-
-    expect(state.longestVerifiedDoctorPresenceSeconds).toBe(600);
-    expect(state.noShowCompletionEligible).toBe(true);
-  });
-
-  it("permanently disables no-show once customer join evidence exists", () => {
-    const state = getConsultationAttendanceState(
-      [
-        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-        event("doctor", "left", "2030-01-01T10:10:00.000Z"),
-        event("customer", "joined", "2030-01-01T10:11:00.000Z")
-      ],
-      scheduledAt
+        event("customer", "joined", "2030-01-01T10:16:00.000Z", "customer-one", "meeting-b")
+      ], scheduledAt, 15, new Date("2030-01-01T10:20:00.000Z")
     );
 
     expect(state.customerEverJoined).toBe(true);
     expect(state.noShowCompletionEligible).toBe(false);
   });
 
-  it("shows the active countdown but fails closed until a leave event proves the interval", () => {
+  it("provides a dynamic normal-completion countdown after participant overlap", () => {
     const state = getConsultationAttendanceState(
-      [event("doctor", "joined", "2030-01-01T10:00:00.000Z")],
-      scheduledAt,
-      new Date("2030-01-01T10:10:00.000Z")
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+        event("customer", "joined", "2030-01-01T10:01:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:14:59.000Z")
     );
 
-    expect(state.activeDoctorPresenceSeconds).toBe(600);
-    expect(state.noShowRemainingSeconds).toBe(0);
-    expect(state.noShowCompletionEligible).toBe(false);
+    expect(getAttendanceStatusCopy(state, "doctor")).toMatchObject({
+      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอเวลาแพทย์",
+      description: expect.stringContaining("1 วินาที")
+    });
+  });
+
+  it("provides the booked-duration no-show countdown and eligible copy", () => {
+    const waiting = getConsultationAttendanceState(
+      [event("doctor", "joined", "2030-01-01T10:00:00.000Z")], scheduledAt, 15,
+      new Date("2030-01-01T10:14:59.000Z")
+    );
+    const eligible = getConsultationAttendanceState(
+      [event("doctor", "joined", "2030-01-01T10:00:00.000Z")], scheduledAt, 15,
+      new Date("2030-01-01T10:15:00.000Z")
+    );
+
+    expect(getAttendanceStatusCopy(waiting, "doctor").description).toContain("1 วินาที");
+    expect(getAttendanceStatusCopy(eligible, "doctor").label).toBe("ยืนยันเวลารอครบ 15 นาทีแล้ว");
   });
 });

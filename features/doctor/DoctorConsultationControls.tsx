@@ -193,7 +193,7 @@ export function DoctorConsultationControls({
                 className="mt-2 min-h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text"
                 required
               >
-                <option value="customer_did_not_join">ผู้ป่วยไม่เข้าห้อง Zoom หลังแพทย์รอครบ 10 นาที</option>
+                <option value="customer_did_not_join">ผู้ป่วยไม่เข้าห้อง Zoom หลังแพทย์อยู่ต่อเนื่องครบ {consultation.attendance.requiredDurationMinutes} นาที</option>
               </select>
               <p className="mt-2 text-[11px] font-semibold leading-5 text-danger">
                 การบันทึกนี้ไม่ใช่คำแนะนำทางคลินิก และระบบจะไม่ระบุว่าผู้ป่วยเข้าร่วม
@@ -205,7 +205,7 @@ export function DoctorConsultationControls({
               className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-muted"
             >
               <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              ปุ่มจบจะเปิดเมื่อ Zoom ยืนยันผู้เข้าร่วมครบ หรือยืนยันช่วงเวลารอของแพทย์ครบตามกติกา
+              {consultation.attendance.description}
             </p>
           )}
         </>

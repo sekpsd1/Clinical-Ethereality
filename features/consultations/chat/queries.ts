@@ -133,6 +133,7 @@ export async function getLiveConsultationChat(
     const attendanceState = getConsultationAttendanceState(
       consultation.attendanceEvents,
       consultation.scheduledAt,
+      consultation.bookedDurationMinutes,
       now
     );
     const attendanceCopy = getAttendanceStatusCopy(attendanceState, session.role);

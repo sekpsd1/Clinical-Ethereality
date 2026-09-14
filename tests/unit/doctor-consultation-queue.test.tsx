@@ -91,6 +91,8 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
       tone: "neutral",
       normalCompletionEligible: false,
       noShowCompletionEligible: false,
+      requiredDurationMinutes: 15,
+      verifiedDoctorPresenceSeconds: 0,
       noShowRemainingSeconds: 600
     },
     prescriptionCount: 0,
