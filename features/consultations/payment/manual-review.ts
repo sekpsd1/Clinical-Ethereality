@@ -14,6 +14,7 @@ import {
   getSlotLockExpiresAt
 } from "@/features/consultations/booking/slots";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
+import { LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -829,7 +830,7 @@ async function applyConsultationPaymentReviewDecision(
     ? await findActiveBlockingOverrideForSlot(tx, {
         doctorId: consultation.doctorId,
         scheduledAt: consultation.scheduledAt,
-        slotMinutes: consultation.bookedDurationMinutes ?? 30
+        slotMinutes: consultation.bookedDurationMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES
       })
     : null;
   const hasActiveSlot = Boolean(

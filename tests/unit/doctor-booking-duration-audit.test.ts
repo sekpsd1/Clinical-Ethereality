@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe("createConsultationBookingAction booked-duration audit", () => {
-  it("persists the DoctorAvailability slotMinutes in consultation.book_slot within the booking transaction", async () => {
+  it("persists a 15-minute DoctorAvailability in the immutable booking duration snapshot", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-01-06T00:00:00.000Z"));
     const tx = {
@@ -75,7 +75,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
           endTime: "10:00",
           id: "availability-1",
           isActive: true,
-          slotMinutes: 60,
+          slotMinutes: 15,
           startTime: "09:00",
           weekday: 1,
         }),
@@ -116,7 +116,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
 
     expect(tx.consultation.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        bookedDurationMinutes: 60,
+        bookedDurationMinutes: 15,
         doctorId: "doctor-1",
         assessmentId: "assessment-1",
         slotLockId: "slot-lock-1",
@@ -131,7 +131,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
         metadataJson: expect.objectContaining({
           availabilityId: "availability-1",
           slotLockId: "slot-lock-1",
-          slotMinutes: 60,
+          slotMinutes: 15,
         }),
       }),
     });

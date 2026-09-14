@@ -12,6 +12,7 @@ import type { BookingSlot, DoctorBookingData } from "@/features/consultations/bo
 import { BookingIdentityVerification } from "@/features/identity-verification/BookingIdentityVerification";
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
 import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const staticTimeSlots = ["09:00", "09:15", "09:30", "09:45", "10:00", "10:15"];
 
@@ -26,7 +27,7 @@ function getStaticSlot(slot: string): BookingSlot {
     weekdayLabel: "ตัวอย่าง",
     dateLabel: "10 มิ.ย.",
     timeLabel: slot,
-    slotMinutes: 15,
+    slotMinutes: NEW_CONSULTATION_DURATION_MINUTES,
     scheduledAt: "",
     notes: "static",
     status: "available",

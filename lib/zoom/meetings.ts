@@ -1,4 +1,5 @@
 import { getAppEnv } from "@/lib/env/schema";
+import { getBookedConsultationDurationMinutes } from "@/features/consultations/duration-policy";
 
 export type CreatedZoomMeeting = {
   meetingId: string;
@@ -95,6 +96,7 @@ export function isZoomMeetingCreationConfigured(): boolean {
 export async function createZoomMeetingIfConfigured(input: {
   consultationId: string;
   scheduledAt: Date | null;
+  bookedDurationMinutes?: number | null;
 }): Promise<CreatedZoomMeeting | null> {
   const credentials = getServerToServerCredentials();
 
@@ -116,7 +118,7 @@ export async function createZoomMeetingIfConfigured(input: {
       topic: `Clinical consultation ${input.consultationId.slice(-6).toUpperCase()}`,
       type: 2,
       start_time: startTime.toISOString(),
-      duration: 30,
+      duration: getBookedConsultationDurationMinutes(input.bookedDurationMinutes),
       timezone: "Asia/Bangkok",
       settings: getZoomMeetingSettings()
     }),

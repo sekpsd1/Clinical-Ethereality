@@ -3,6 +3,18 @@ import { getBookingSources } from "@/features/consultations/booking/queries";
 import { getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes } from "@/features/consultations/booking/slots";
 
 describe("consultation booking slots", () => {
+  it("expands a 15-minute availability into four consultation slots per hour", () => {
+    const scheduledAt = getScheduledAtForDate(new Date("2026-08-03T00:00:00.000Z"), "09:00");
+    const slots = getScheduledSlotTimes(scheduledAt, "09:00", "10:00", 15);
+
+    expect(slots.map((slot) => slot.toISOString())).toEqual([
+      "2026-08-03T02:00:00.000Z",
+      "2026-08-03T02:15:00.000Z",
+      "2026-08-03T02:30:00.000Z",
+      "2026-08-03T02:45:00.000Z"
+    ]);
+  });
+
   it("expands a schedule range into bookable Bangkok-time slots", () => {
     const scheduledAt = getScheduledAtForDate(new Date("2026-08-03T00:00:00.000Z"), "09:00");
     const slots = getScheduledSlotTimes(scheduledAt, "09:00", "11:00", 60);

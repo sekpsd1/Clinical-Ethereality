@@ -52,7 +52,8 @@ describe("Zoom Server-to-Server meeting integration", () => {
 
     const meeting = await createZoomMeetingIfConfigured({
       consultationId: "consultation-123456",
-      scheduledAt: new Date("2030-01-01T10:00:00.000Z")
+      scheduledAt: new Date("2030-01-01T10:00:00.000Z"),
+      bookedDurationMinutes: 15
     });
 
     expect(meeting).toEqual({
@@ -64,10 +65,25 @@ describe("Zoom Server-to-Server meeting integration", () => {
     expect(mocks.fetch.mock.calls[1]?.[0]).toBe("https://api.zoom.us/v2/users/host%40example.com/meetings");
     expect(JSON.parse(mocks.fetch.mock.calls[1]?.[1].body)).toMatchObject({
       type: 2,
+      duration: 15,
       settings: { join_before_host: false, waiting_room: true, mute_upon_entry: true }
     });
     expect(JSON.parse(mocks.fetch.mock.calls[1]?.[1].body).settings).not.toHaveProperty("auto_recording");
     expect(JSON.stringify(meeting)).not.toContain("transient-access-token");
+  });
+
+  it("keeps the 30-minute Zoom fallback for legacy consultations without a valid snapshot", async () => {
+    mocks.fetch
+      .mockResolvedValueOnce(jsonResponse({ access_token: "transient-access-token" }))
+      .mockResolvedValueOnce(jsonResponse({ id: 12345678901, password: "pass", join_url: "https://zoom.us/j/123" }));
+
+    await createZoomMeetingIfConfigured({
+      consultationId: "legacy-consultation",
+      scheduledAt: null,
+      bookedDurationMinutes: null
+    });
+
+    expect(JSON.parse(mocks.fetch.mock.calls[1]?.[1].body).duration).toBe(30);
   });
 
   it("adds automatic cloud recording intent only when the feature flag is on", async () => {

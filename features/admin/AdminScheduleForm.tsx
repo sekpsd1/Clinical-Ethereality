@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AdminDayMonthYearDateField } from "@/features/admin/AdminAppointmentDateField";
 import { upsertDoctorAvailabilityAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import type { AdminDoctorAvailabilitySlot, AdminDoctorOption } from "@/features/admin/schedules/types";
+import { CONSULTATION_DURATION_OPTIONS, getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 const initialState: AdminScheduleActionState = {
   status: "idle",
@@ -108,12 +109,11 @@ export function AdminScheduleForm({
               name="slotMinutes"
               disabled={isDisabled}
               className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
-              defaultValue={editSlot?.slotMinutes ?? 30}
+              defaultValue={getNewScheduleDurationMinutes(editSlot?.slotMinutes)}
             >
-              <option value="15">15 นาที</option>
-              <option value="30">30 นาที</option>
-              <option value="45">45 นาที</option>
-              <option value="60">60 นาที</option>
+              {CONSULTATION_DURATION_OPTIONS.map((minutes) => (
+                <option key={minutes} value={minutes}>{minutes} นาที</option>
+              ))}
             </select>
           </label>
         </div>

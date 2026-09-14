@@ -1,9 +1,9 @@
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
+
 const STANDARD_CALENDAR_START_MINUTES = 9 * 60;
 const STANDARD_CALENDAR_END_MINUTES = 22 * 60;
 
-// Matches the DoctorAvailability database default and keeps an empty calendar
-// compatible with the existing availability-slot interval.
-export const DEFAULT_ADMIN_CALENDAR_SLOT_MINUTES = 30;
+export const DEFAULT_ADMIN_CALENDAR_SLOT_MINUTES = NEW_CONSULTATION_DURATION_MINUTES;
 
 function formatTimeLabel(totalMinutes: number): string {
   return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;

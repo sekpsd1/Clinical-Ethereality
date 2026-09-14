@@ -56,6 +56,7 @@ function scheduledConsultation(scheduledAt: Date) {
     patientId: "patient-1",
     status: "scheduled",
     scheduledAt,
+    bookedDurationMinutes: 15,
     zoomMeetingId: null,
     doctor: {
       userId: "doctor-user-1"
@@ -117,6 +118,14 @@ describe("transitionDoctorConsultationAction start gate", () => {
       roomHref: "/consult/live?consultation=consultation-1"
     });
     expect(mocks.createZoomMeeting).toHaveBeenCalledTimes(1);
+    expect(mocks.createZoomMeeting).toHaveBeenCalledWith({
+      consultationId: "consultation-1",
+      scheduledAt,
+      bookedDurationMinutes: 15
+    });
+    expect(mocks.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({ bookedDurationMinutes: true })
+    }));
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: "Serializable"

@@ -9,6 +9,7 @@ import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from 
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
 import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
 import { getScheduledAtForCalendarDate } from "@/features/consultations/booking/slots";
+import { LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
@@ -105,7 +106,7 @@ async function hasActiveScheduleConflict(
     })
   ]);
 
-  if (consultations.some((item) => item.scheduledAt && rangesOverlap(item.scheduledAt, new Date(item.scheduledAt.getTime() + (item.bookedDurationMinutes ?? 30) * 60 * 1000), rangeStart, rangeEnd))) {
+  if (consultations.some((item) => item.scheduledAt && rangesOverlap(item.scheduledAt, new Date(item.scheduledAt.getTime() + (item.bookedDurationMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES) * 60 * 1000), rangeStart, rangeEnd))) {
     return true;
   }
 
@@ -114,10 +115,10 @@ async function hasActiveScheduleConflict(
     tx.doctorAvailability.findMany({ where: { id: { in: sourceIds } }, select: { id: true, slotMinutes: true } }),
     tx.doctorAvailabilityDateOverride.findMany({ where: { id: { in: sourceIds } }, select: { id: true, slotMinutes: true } })
   ]);
-  const durationBySource = new Map([...weeklySources, ...dateSources].map((source) => [source.id, source.slotMinutes ?? 30]));
+  const durationBySource = new Map([...weeklySources, ...dateSources].map((source) => [source.id, source.slotMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES]));
 
   return locks.some((lock) => {
-    const minutes = lock.consultation?.bookedDurationMinutes ?? (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null) ?? 30;
+    const minutes = lock.consultation?.bookedDurationMinutes ?? (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null) ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES;
     return rangesOverlap(lock.scheduledAt, new Date(lock.scheduledAt.getTime() + minutes * 60 * 1000), rangeStart, rangeEnd);
   });
 }

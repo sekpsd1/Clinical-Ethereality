@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildAdminCalendarTimeRows } from "@/features/admin/schedules/calendar-grid";
 import { moveCalendarDate } from "@/features/admin/schedules/calendar-navigation";
 import type { AdminAppointmentCalendarData, AdminAppointmentCalendarSlot, AdminDoctorAvailabilityDateOverride, AdminDoctorOption, AdminManualAppointmentPatient } from "@/features/admin/schedules/types";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const statusPresentation = {
   available: { label: "ว่าง", tone: "success", className: "border-success/25 bg-success/10 text-success" },
@@ -42,7 +43,7 @@ function ScheduleGrid({ days, doctor, timeRows, gridTemplateColumns, onSelect }:
 }
 
 function createClosedSlot(dateValue: string, timeLabel: string, doctor: Pick<AdminDoctorOption, "id" | "name">): AdminAppointmentCalendarSlot {
-  return { id: `closed:${doctor.id}:${dateValue}:${timeLabel}`, doctorId: doctor.id, doctorName: doctor.name, availabilityId: "", scheduledAtIso: new Date(`${dateValue}T${timeLabel}:00+07:00`).toISOString(), timeLabel, status: "closed", statusLabel: "-", slotMinutes: 30, lockExpiresAt: null };
+  return { id: `closed:${doctor.id}:${dateValue}:${timeLabel}`, doctorId: doctor.id, doctorName: doctor.name, availabilityId: "", scheduledAtIso: new Date(`${dateValue}T${timeLabel}:00+07:00`).toISOString(), timeLabel, status: "closed", statusLabel: "-", slotMinutes: NEW_CONSULTATION_DURATION_MINUTES, lockExpiresAt: null };
 }
 
 function CalendarCell({ slot, onOpen }: { slot: AdminAppointmentCalendarSlot; onOpen: () => void }) {

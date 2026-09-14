@@ -535,3 +535,11 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Remove other users' notifications whose metadata references records deleted with the target account, preserve unrelated notifications, and show a neutral deleted-or-unavailable state for stale links instead of an application error.
 - [x] Pass 51 focused tests, all 1,155 unit tests with 6 skips, TypeScript typecheck, ESLint, and the 64-page production build.
 - [x] Push commit `5739ea7` to `origin/main` and deploy through Plesk without a migration or environment change: Pull/Deploy, non-migration preflight, clean dependency and Zoom-client install, 64-route host build, one restart, health `status: ok`, and the Production stale-link smoke check all passed. No current user or business data was deleted as part of the release.
+
+## New consultation duration default (code complete, release pending, 2026-09-14)
+
+- [x] Set one shared 15-minute default for new single, bulk, date-specific, and empty-calendar Admin schedule surfaces while preserving explicit 30/45/60 options and stored edit values.
+- [x] Preserve availability-derived booking and rescheduling duration snapshots so a 15-minute hour yields four slots and existing 30-minute bookings remain unchanged.
+- [x] Pass the stored `bookedDurationMinutes` to Zoom meeting creation with an explicit 30-minute legacy fallback for missing or invalid snapshots.
+- [x] Add regression coverage for new defaults, four slots per hour, immutable 15-minute booking snapshots, existing 30-minute preservation, and Zoom 15/legacy-30 payloads.
+- [ ] Review and release the scoped application commit separately. No schema migration, Production data mutation, restart, or deployment is part of the code task.

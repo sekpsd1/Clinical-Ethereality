@@ -46,6 +46,7 @@ export async function transitionDoctorConsultationAction(
         patientId: true,
         status: true,
         scheduledAt: true,
+        bookedDurationMinutes: true,
         zoomMeetingId: true,
         doctor: {
           select: {
@@ -61,7 +62,8 @@ export async function transitionDoctorConsultationAction(
       parsed.data.transition === "start" && !consultation?.zoomMeetingId
         ? await createZoomMeetingIfConfigured({
             consultationId: parsed.data.consultationId,
-            scheduledAt: consultation?.scheduledAt ?? null
+            scheduledAt: consultation?.scheduledAt ?? null,
+            bookedDurationMinutes: consultation?.bookedDurationMinutes ?? null
           })
         : null;
 

@@ -5,6 +5,7 @@ import { CalendarDays, CopyPlus, Plus, Trash2 } from "lucide-react";
 import { createDoctorAvailabilityBatchAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import { AdminDayMonthYearDateField } from "@/features/admin/AdminAppointmentDateField";
 import type { AdminDoctorOption } from "@/features/admin/schedules/types";
+import { CONSULTATION_DURATION_OPTIONS, NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 type DraftBlock = {
   id: number;
@@ -28,8 +29,8 @@ const weekdays = [
   { value: 0, label: "อาทิตย์" }
 ] as const;
 
-const timeOptions = Array.from({ length: 48 }, (_, index) => {
-  const totalMinutes = index * 30;
+const timeOptions = Array.from({ length: 96 }, (_, index) => {
+  const totalMinutes = index * NEW_CONSULTATION_DURATION_MINUTES;
   const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
   const minutes = String(totalMinutes % 60).padStart(2, "0");
   const value = `${hours}:${minutes}`;
@@ -66,7 +67,7 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
       id: 1,
       startTime: "09:00",
       endTime: "11:00",
-      slotMinutes: 60
+      slotMinutes: NEW_CONSULTATION_DURATION_MINUTES
     }
   ]);
   const [copiedToSelection, setCopiedToSelection] = useState(false);
@@ -109,7 +110,7 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
         id: nextBlockId++,
         startTime: "11:00",
         endTime: "11:30",
-        slotMinutes: 30
+        slotMinutes: NEW_CONSULTATION_DURATION_MINUTES
       }
     ]);
   }
@@ -273,10 +274,9 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
                     onChange={(event) => updateBlock(block.id, { slotMinutes: Number(event.target.value) })}
                     className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50"
                   >
-                    <option value={15}>15 นาที</option>
-                    <option value={30}>30 นาที</option>
-                    <option value={45}>45 นาที</option>
-                    <option value={60}>60 นาที</option>
+                    {CONSULTATION_DURATION_OPTIONS.map((minutes) => (
+                      <option key={minutes} value={minutes}>{minutes} นาที</option>
+                    ))}
                   </select>
                 </label>
               </div>
