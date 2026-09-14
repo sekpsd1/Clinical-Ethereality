@@ -12,6 +12,7 @@ const {
   BLOCKED_DOCTOR_DATE_OVERRIDE_MIGRATION_TARGET,
   CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
   PATIENT_NATIONAL_ID_MIGRATION_TARGET,
+  COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -296,6 +297,23 @@ describe("Plesk runtime migration runner", () => {
     const result = runPleskRuntimeMigration({
       rootDir,
       env: { [MIGRATION_APPROVAL_ENV]: PATIENT_NATIONAL_ID_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("allows the reviewed Community pinned-articles migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      PATIENT_NATIONAL_ID_MIGRATION_TARGET,
+      COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET },
       spawnSync
     });
 

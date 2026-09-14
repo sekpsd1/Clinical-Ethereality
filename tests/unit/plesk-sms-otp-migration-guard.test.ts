@@ -5,6 +5,7 @@ const {
   assertPleskSmsOtpMigrationTarget
 } = require("../../scripts/plesk-sms-otp-migration-guard.cjs");
 const {
+  COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
   CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
   MIGRATION_APPROVAL_ENV
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -32,6 +33,16 @@ describe("Plesk SMS OTP migration guard", () => {
 
     expect(assertPleskSmsOtpMigrationTarget({
       env: { [MIGRATION_APPROVAL_ENV]: CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET },
+      error
+    })).toBe(true);
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("allows the reviewed Community pinned-articles target through the startup guard", () => {
+    const error = vi.fn();
+
+    expect(assertPleskSmsOtpMigrationTarget({
+      env: { [MIGRATION_APPROVAL_ENV]: COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET },
       error
     })).toBe(true);
     expect(error).not.toHaveBeenCalled();

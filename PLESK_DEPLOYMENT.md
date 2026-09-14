@@ -241,15 +241,15 @@ only: it does not authorize a retry, fixture creation, or any other mutation.
 ### Guarded Plesk runtime migrations
 
 The root `server.js` permits only reviewed, source-allowlisted migration targets.
-For the approved Consultation manual-review rollout, run the non-migration
-preflight and confirm that exactly one source migration is pending, then set
+For the approved Community pinned-post rollout, run the non-migration preflight
+and confirm that exactly one source migration is pending, then set
 `PLESK_MIGRATION_TARGET` exactly to
-`20260905130000_add_consultation_reschedule_required_status` immediately before
-the migration restart. Empty, arbitrary, or no-longer-current targets fail
-closed and never run Prisma. Remove the key immediately after a successful
-migration, without copying or displaying any environment values, and restart
-normally. Every future migration still requires separate approval plus an
-explicit source allowlist entry.
+`20260914120000_add_community_pinned_articles` immediately before the migration
+restart. Empty, arbitrary, or no-longer-current targets fail closed and never run
+Prisma. Remove the key immediately after a successful migration, without copying
+or displaying any environment values, and restart normally. Every future
+migration still requires separate approval plus an explicit source allowlist
+entry.
 
 Never put `DATABASE_URL` in a command, command history, temporary `.env` file,
 source file, or documentation, and do not use `prisma db push`.
