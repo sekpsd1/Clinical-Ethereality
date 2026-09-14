@@ -18,7 +18,8 @@ const initialState: DoctorConsultationWorkflowActionState = {
 };
 
 export function DoctorConsultationControls({
-  consultation
+  consultation,
+  identityConfirmed = false
 }: {
   consultation: Pick<
     DoctorConsultationItem,
@@ -30,6 +31,7 @@ export function DoctorConsultationControls({
     | "startAvailableAt"
     | "startAvailableInMs"
   >;
+  identityConfirmed?: boolean;
 }) {
   const [state, formAction] = useActionState(transitionDoctorConsultationAction, initialState);
   const [canStartConsultation, setCanStartConsultation] = useState(
@@ -148,6 +150,9 @@ export function DoctorConsultationControls({
     >
       <input type="hidden" name="consultationId" value={consultation.id} />
       {transition ? <input type="hidden" name="transition" value={transition} /> : null}
+      {transition === "start" ? (
+        <input type="hidden" name="identityConfirmed" value={String(identityConfirmed)} />
+      ) : null}
       {isCompleting ? (
         <>
           <div className="rounded-[8px] border border-primary/10 bg-primary/5 p-3">
@@ -207,7 +212,9 @@ export function DoctorConsultationControls({
       ) : (
         <p className="text-xs leading-5 text-muted">
           {canStartConsultation
-            ? "พร้อมเริ่ม consult และสร้างห้อง Zoom สำหรับนัดนี้แล้ว"
+            ? identityConfirmed
+              ? "พร้อมเริ่ม consult และสร้างห้อง Zoom สำหรับนัดนี้แล้ว"
+              : "เปิดข้อมูลและตรวจสอบตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
             : consultation.startAvailableAt
               ? `เปิดห้องได้ก่อนเวลานัด 5 นาที • เปิดได้เวลา ${formatStartTime(consultation.startAvailableAt)}`
               : "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"}
@@ -236,7 +243,10 @@ export function DoctorConsultationControls({
           transition ? (
             <WorkflowSubmitButton
               transition={transition}
-              disabled={transition === "start" && !canStartConsultation}
+              disabled={
+                transition === "start" &&
+                (!canStartConsultation || !identityConfirmed)
+              }
             />
           ) : isCompleting ? (
             <WorkflowSubmitButton

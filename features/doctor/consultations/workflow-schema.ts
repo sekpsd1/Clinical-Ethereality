@@ -4,10 +4,25 @@ export const transitionDoctorConsultationSchema = z
   .object({
     consultationId: z.string().min(1),
     transition: z.enum(["start", "complete", "complete_no_show"]),
+    identityConfirmed: z
+      .preprocess(
+        (value) =>
+          value === "true" ? true : value === "false" ? false : value,
+        z.boolean()
+      )
+      .optional(),
     summary: z.string().trim().max(4000).optional(),
     noShowReason: z.enum(["customer_did_not_join"]).optional()
   })
   .superRefine((value, context) => {
+    if (value.transition === "start" && value.identityConfirmed !== true) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Patient identity confirmation is required before starting.",
+        path: ["identityConfirmed"]
+      });
+    }
+
     if (value.transition === "complete" && (!value.summary || value.summary.length < 5)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

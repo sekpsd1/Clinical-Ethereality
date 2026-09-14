@@ -4,8 +4,13 @@ import type { Role } from "@/lib/permissions/roles";
 import type { CreatedZoomMeeting } from "@/lib/zoom/meetings";
 import { getConsultationAttendanceState } from "@/features/consultations/attendance/state";
 import { getDoctorConsultationStartWindow } from "@/features/doctor/consultations/start-window";
+import {
+  isCompleteVerifiedPatientIdentity,
+  type PatientIdentityRecord
+} from "@/features/doctor/consultations/patient-identity";
 
 export type DoctorConsultationTransition = "start" | "complete" | "complete_no_show";
+export const PATIENT_IDENTITY_REVEAL_TTL_MS = 15 * 60 * 1000;
 
 export type DoctorConsultationWorkflowSnapshot = {
   id: string;
@@ -17,6 +22,22 @@ export type DoctorConsultationWorkflowSnapshot = {
   };
 };
 
+export type DoctorConsultationStartSnapshot = DoctorConsultationWorkflowSnapshot & {
+  patient: PatientIdentityRecord;
+  doctor: DoctorConsultationWorkflowSnapshot["doctor"] & {
+    status: string;
+    user: {
+      status: string;
+    };
+  };
+};
+
+export type DoctorConsultationActorSnapshot = {
+  id: string;
+  role: string;
+  status: string;
+};
+
 export class DoctorConsultationWorkflowError extends Error {
   constructor(
     message: string,
@@ -26,6 +47,9 @@ export class DoctorConsultationWorkflowError extends Error {
       | "invalid_status"
       | "missing_appointment_time"
       | "before_appointment_time"
+      | "identity_confirmation_required"
+      | "patient_identity_incomplete"
+      | "inactive_actor"
       | "attendance_not_verified"
       | "no_show_not_eligible"
       | "no_show_doctor_required"
@@ -33,6 +57,59 @@ export class DoctorConsultationWorkflowError extends Error {
   ) {
     super(message);
     this.name = "DoctorConsultationWorkflowError";
+  }
+}
+
+export function assertDoctorConsultationStartIdentityGate(
+  consultation: DoctorConsultationStartSnapshot,
+  actor: DoctorConsultationActorSnapshot | null,
+  sessionActor: { userId: string; role: Role },
+  identityConfirmed: boolean | undefined,
+  identityRevealAudit: { createdAt: Date } | null,
+  now = new Date()
+): void {
+  if (
+    identityConfirmed !== true ||
+    !identityRevealAudit ||
+    identityRevealAudit.createdAt.getTime() < now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS ||
+    identityRevealAudit.createdAt.getTime() > now.getTime()
+  ) {
+    throw new DoctorConsultationWorkflowError(
+      "Patient identity confirmation is required before starting.",
+      "identity_confirmation_required"
+    );
+  }
+
+  if (
+    !actor ||
+    actor.id !== sessionActor.userId ||
+    actor.role !== sessionActor.role ||
+    actor.status !== "active" ||
+    (actor.role !== "doctor" && actor.role !== "admin")
+  ) {
+    throw new DoctorConsultationWorkflowError(
+      "The consultation actor is no longer active or authorized.",
+      "inactive_actor"
+    );
+  }
+
+  if (
+    sessionActor.role === "doctor" &&
+    (consultation.doctor.userId !== sessionActor.userId ||
+      consultation.doctor.status !== "approved" ||
+      consultation.doctor.user.status !== "active")
+  ) {
+    throw new DoctorConsultationWorkflowError(
+      "Doctor cannot update another doctor's consultation.",
+      "wrong_doctor"
+    );
+  }
+
+  if (!isCompleteVerifiedPatientIdentity(consultation.patient)) {
+    throw new DoctorConsultationWorkflowError(
+      "Patient identity is incomplete.",
+      "patient_identity_incomplete"
+    );
   }
 }
 
@@ -101,6 +178,7 @@ export async function applyDoctorConsultationTransition(
     actorId: string;
     actorRole: Role;
     zoomMeeting?: CreatedZoomMeeting | null;
+    identityConfirmed?: boolean;
     now?: Date;
   }
 ) {
@@ -127,7 +205,21 @@ export async function applyDoctorConsultationTransition(
       },
       doctor: {
         select: {
-          userId: true
+          userId: true,
+          status: true,
+          user: { select: { status: true } }
+        }
+      },
+      patient: {
+        select: {
+          role: true,
+          status: true,
+          fullName: true,
+          nationalId: true,
+          dateOfBirth: true,
+          phone: true,
+          normalizedPhone: true,
+          phoneVerifiedAt: true
         }
       }
     }
@@ -145,6 +237,36 @@ export async function applyDoctorConsultationTransition(
     consultation?.scheduledAt ?? null,
     input.now ?? new Date()
   );
+
+  if (input.transition === "start") {
+    const now = input.now ?? new Date();
+    const [actor, identityRevealAudit] = await Promise.all([
+      tx.user.findUnique({
+        where: { id: input.actorId },
+        select: { id: true, role: true, status: true }
+      }),
+      tx.auditLog.findFirst({
+        where: {
+          actorId: input.actorId,
+          action: "consultation.patient_identity_view",
+          entityType: "consultation",
+          entityId: input.consultationId,
+          createdAt: { gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS) }
+        },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true }
+      })
+    ]);
+
+    assertDoctorConsultationStartIdentityGate(
+      consultation as DoctorConsultationStartSnapshot,
+      actor,
+      { userId: input.actorId, role: input.actorRole },
+      input.identityConfirmed,
+      identityRevealAudit,
+      now
+    );
+  }
 
   if (input.transition === "complete" && !attendance.normalCompletionEligible) {
     throw new DoctorConsultationWorkflowError(
@@ -248,6 +370,8 @@ export async function applyDoctorConsultationTransition(
       previousStatus: consultation!.status,
       nextStatus,
       zoomMeetingCreated: Boolean(input.zoomMeeting),
+      identityConfirmed: input.transition === "start" ? true : null,
+      identityStatus: input.transition === "start" ? "verified" : null,
       completionOutcome:
         input.transition === "start"
           ? null

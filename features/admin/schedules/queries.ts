@@ -236,7 +236,7 @@ export async function getAdminSchedules(input: { date?: string; doctorId?: strin
   try {
     const now = new Date();
     const dateValue = normalizeScheduleDate(input.date, now);
-    const [doctors, slots, dateOverrides, manualAppointmentPatients] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots(), getDateOverrides(), prisma.user.findMany({ where: { role: "customer", status: "active", fullName: { not: null }, dateOfBirth: { not: null }, phone: { not: null }, normalizedPhone: { not: null }, phoneVerifiedAt: { not: null } }, orderBy: { fullName: "asc" }, take: 100, select: { id: true, fullName: true } })]);
+    const [doctors, slots, dateOverrides, manualAppointmentPatients] = await Promise.all([getApprovedDoctors(), getAvailabilitySlots(), getDateOverrides(), prisma.user.findMany({ where: { role: "customer", status: "active", fullName: { not: null }, nationalId: { not: null }, dateOfBirth: { not: null }, phone: { not: null }, normalizedPhone: { not: null }, phoneVerifiedAt: { not: null } }, orderBy: { fullName: "asc" }, take: 100, select: { id: true, fullName: true, nationalId: true } })]);
     const slotItems = slots.map(mapSlot);
     const appointmentCalendar = await getAppointmentCalendar({ doctors, dateValue, doctorId: input.doctorId, view: input.view, now });
 
@@ -245,7 +245,9 @@ export async function getAdminSchedules(input: { date?: string; doctorId?: strin
       slots: slotItems,
       dateOverrides: dateOverrides.map(mapDateOverride),
       appointmentCalendar,
-      manualAppointmentPatients: manualAppointmentPatients.map((patient) => ({ id: patient.id, name: patient.fullName! })),
+      manualAppointmentPatients: manualAppointmentPatients
+        .filter((patient) => /^\d{13}$/.test(patient.nationalId ?? ""))
+        .map((patient) => ({ id: patient.id, name: patient.fullName! })),
       summary: {
         activeDoctors: doctors.length,
         activeSlots: slotItems.filter((slot) => slot.isActive).length,

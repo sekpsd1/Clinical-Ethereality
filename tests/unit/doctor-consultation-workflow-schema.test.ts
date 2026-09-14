@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { transitionDoctorConsultationSchema } from "@/features/doctor/consultations/workflow-schema";
 
 describe("doctor consultation completion schema", () => {
+  it("requires an explicit true identity confirmation only for start", () => {
+    expect(
+      transitionDoctorConsultationSchema.safeParse({
+        consultationId: "consultation-1",
+        transition: "start"
+      }).success
+    ).toBe(false);
+    expect(
+      transitionDoctorConsultationSchema.safeParse({
+        consultationId: "consultation-1",
+        transition: "start",
+        identityConfirmed: "false"
+      }).success
+    ).toBe(false);
+    expect(
+      transitionDoctorConsultationSchema.safeParse({
+        consultationId: "consultation-1",
+        transition: "start",
+        identityConfirmed: "true"
+      }).success
+    ).toBe(true);
+  });
+
   it("requires a clinical summary only for normal completion", () => {
     expect(
       transitionDoctorConsultationSchema.safeParse({

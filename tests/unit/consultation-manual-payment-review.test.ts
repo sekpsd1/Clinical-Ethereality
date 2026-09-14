@@ -38,6 +38,7 @@ function txMock(overrides: {
           role: "customer",
           status: "active",
           fullName: "Verified Patient",
+          nationalId: "1101700203450",
           dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
           phone: "0812345678",
           normalizedPhone: "+66812345678",
@@ -297,6 +298,7 @@ function intakeTxMock() {
         role: "customer",
         status: "active",
         fullName: "Verified Patient",
+        nationalId: "1101700203450",
         dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
         phone: "0812345678",
         normalizedPhone: "+66812345678",
@@ -405,6 +407,39 @@ describe("admin manual appointment payment intake and review", () => {
     expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
       "transactionReference"
     );
+  });
+
+  it("rejects a crafted manual intake when the active customer has no national ID", async () => {
+    const tx = intakeTxMock();
+    tx.user.findUnique.mockResolvedValueOnce({
+      role: "customer",
+      status: "active",
+      fullName: "Verified Patient",
+      nationalId: null,
+      dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
+      phone: "0812345678",
+      normalizedPhone: "+66812345678",
+      phoneVerifiedAt: new Date("2026-09-01T00:00:00.000Z")
+    });
+
+    await expect(
+      createManualAppointmentPaymentIntake(
+        tx as never,
+        {
+          actorId: "admin-1",
+          availabilityId: "availability-1",
+          doctorId: "doctor-1",
+          evidence: preparedEvidence(),
+          patientId: "patient-1",
+          reasonCode: "provider_unavailable",
+          scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+          transferredAt: new Date("2026-09-05T05:30:00.000Z")
+        },
+        now
+      )
+    ).rejects.toMatchObject({ code: "PATIENT_NOT_VERIFIED" });
+    expect(tx.consultation.create).not.toHaveBeenCalled();
+    expect(tx.payment.create).not.toHaveBeenCalled();
   });
 
   it("rejects evidence transferred more than 24 hours before intake", async () => {

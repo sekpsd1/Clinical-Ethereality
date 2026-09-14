@@ -61,7 +61,12 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
     ],
     take: 50,
     include: {
-      patient: true,
+      patient: {
+        select: {
+          displayName: true,
+          lineUserId: true
+        }
+      },
       assessment: true,
       prescriptions: {
         orderBy: {

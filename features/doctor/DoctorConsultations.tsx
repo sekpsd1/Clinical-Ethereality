@@ -5,7 +5,7 @@ import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
 import { DoctorPrescriptionOutcomeForm } from "@/features/doctor/DoctorPrescriptionOutcomeForm";
-import { DoctorConsultationControls } from "@/features/doctor/DoctorConsultationControls";
+import { DoctorPatientIdentityGate } from "@/features/doctor/DoctorPatientIdentityGate";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
@@ -212,7 +212,7 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
                   recordings={consultation.recordings}
                 />
               ) : null}
-              <DoctorConsultationControls consultation={consultation} />
+              <DoctorPatientIdentityGate consultation={consultation} />
 
               {consultation.status === "completed" && consultation.canUpdatePrescriptionOutcome ? (
                 <DoctorPrescriptionOutcomeForm

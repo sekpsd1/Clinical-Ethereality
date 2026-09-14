@@ -108,6 +108,7 @@ describe("admin payment review action", () => {
       role: "customer",
       status: "active",
       fullName: "Verified Patient",
+      nationalId: "1101700203450",
       dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
       phone: "0812345678",
       normalizedPhone: "+66812345678",

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.use({ viewport: { width: 390, height: 844 } });
+
 async function signInAsDoctor(page: Page) {
   const response = await page.request.post("/api/auth/dev-session", {
     data: { role: "doctor" }

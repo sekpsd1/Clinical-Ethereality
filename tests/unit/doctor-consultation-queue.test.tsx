@@ -16,6 +16,26 @@ vi.mock("@/features/doctor/DoctorConsultationControls", () => ({
     ) : null
 }));
 
+vi.mock("@/features/doctor/DoctorPatientIdentityGate", () => ({
+  DoctorPatientIdentityGate: ({ consultation }: { consultation: DoctorConsultationItem }) =>
+    consultation.status === "scheduled" || consultation.status === "live" ? (
+      <>
+        <div data-patient-identity-gate>ยืนยันตัวตนผู้ป่วย</div>
+        <div data-consultation-controls>
+          {consultation.status === "live" ? (
+            <button type="button" disabled>
+              ยืนยันจบการปรึกษา
+            </button>
+          ) : (
+            <button type="button" disabled>
+              เริ่มการปรึกษา
+            </button>
+          )}
+        </div>
+      </>
+    ) : null
+}));
+
 vi.mock("@/features/doctor/DoctorConsultationQueueAutoRefresh", () => ({
   DoctorConsultationQueueAutoRefresh: ({ enabled }: { enabled: boolean }) => (
     <span data-queue-auto-refresh={String(enabled)} />
@@ -86,6 +106,23 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
 }
 
 describe("Doctor consultation queue", () => {
+  it("places the patient identity gate before controls and the prescription form", () => {
+    const data: DoctorConsultationsData = {
+      consultations: [consultation("scheduled", "15 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 1, live: 0, completed: 0 }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const identityIndex = html.indexOf("data-patient-identity-gate");
+    const controlsIndex = html.indexOf("data-consultation-controls");
+    const prescriptionIndex = html.indexOf("data-prescription-section");
+
+    expect(identityIndex).toBeGreaterThan(-1);
+    expect(controlsIndex).toBeGreaterThan(identityIndex);
+    expect(prescriptionIndex).toBeGreaterThan(controlsIndex);
+  });
+
   it("keeps the visible disabled live completion action before the prescription section", () => {
     const data: DoctorConsultationsData = {
       consultations: [consultation("live", "30 นาที")],

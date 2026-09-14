@@ -179,6 +179,32 @@ describe("Doctor consultation controls", () => {
     expect(html).not.toContain(">เริ่มการปรึกษา</button>");
   });
 
+  it("keeps start disabled until the identity gate is confirmed", () => {
+    workflowMocks.useActionState.mockReturnValue([
+      { status: "idle", message: "" },
+      workflowMocks.dispatch,
+      false
+    ]);
+
+    const blocked = renderToStaticMarkup(
+      <DoctorConsultationControls consultation={consultation("scheduled")} />
+    );
+    const ready = renderToStaticMarkup(
+      <DoctorConsultationControls
+        consultation={consultation("scheduled")}
+        identityConfirmed
+      />
+    );
+
+    expect(blocked).toContain('name="identityConfirmed" value="false"');
+    expect(blocked.match(/<button[^>]*type="submit"[^>]*>/)?.[0]).toContain("disabled");
+    expect(blocked).toContain("ตรวจสอบตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา");
+    expect(ready).toContain('name="identityConfirmed" value="true"');
+    expect(ready.match(/<button[^>]*type="submit"[^>]*>/)?.[0]).not.toMatch(
+      /\sdisabled(?:="")?(?=\s|>)/
+    );
+  });
+
   it("disables early start with clear preparation-window copy", () => {
     workflowMocks.useActionState.mockReturnValue([
       { status: "idle", message: "" },

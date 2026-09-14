@@ -8,7 +8,7 @@ Before starting or sending work, every task must:
 
 1. Read `AGENTS.md`, `AI_WORKFLOW.md`, and this file, then check the live Codex task list.
 2. Reuse the matching current task when one exists; do not create a duplicate task.
-3. Match project and feature owner first. For the same numbered title family, select the largest number: `Doctor ระบบ 5` supersedes `Doctor ระบบ 4`; `Admin ระบบ 6` supersedes `Admin ระบบ 5`.
+3. Match project and feature owner first. For the same numbered title family, select the largest number: `Doctor ระบบ 6` supersedes `Doctor ระบบ 5`; `Admin ระบบ 6` supersedes `Admin ระบบ 5`.
 4. Treat a topic suffix as search context, not as a replacement for ownership. For example, `Admin ระบบ 6 — แก้ไขระบบล็อกอิน` is easier to find later, but must still be checked against the feature scope.
 5. Before asking for approval, show: reused/new task, selected model and reason, scope, checks, and whether Production is affected.
 6. If the registry, task list, or handoff conflicts, stop and reconcile it before any edit. A user may explicitly choose an older task; different projects and unrelated title families must not be merged by name alone.
@@ -27,7 +27,7 @@ Before starting or sending work, every task must:
 | Admin owner | `Admin ระบบ 6` | `01a070da-b7b1-7373-80d1-8be0a4f40828` | Admin users, schedules, payments, orders, products, inventory, moderation, audit, and notifications | Terra Medium | Latest Admin owner; reuse before creating another Admin task |
 | Admin manual | `อัปเดตคู่มือ Admin พร้อมภาพ` | `01a09876-30a2-76e1-aaaa-da0cdc3a233b` | Current Admin manual and image work | Luna High | Word document complete and visually verified at 7 pages; not committed, pushed, or deployed |
 | Superseded manual | `คู่มือการใช้งาน Clinical Ethereality` | `01a0655e-fe11-72d3-b0a9-ef2b4f6852ea` | Historical manual work only | Luna High | Superseded/dormant; do not route new writing here or create a concurrent writer |
-| Doctor | `Doctor ระบบ 5` | `01a06c7f-c9b3-7111-9390-292f47230839` | Consultation recording mobile external handoff | Sol High | Production deployed at application commit `d23337e`; Android/iOS Doctor/Admin device UAT pending |
+| Doctor | `Doctor ระบบ 6` | `01a09f7f-4003-7582-9a53-4fe2aad3b754` | Patient identity confirmation before starting an assigned consultation | Sol High | Code complete; awaiting Controller review; no Production, schema, migration, push, or deploy authority |
 | Zoom integration | `แก้ไข Zoom นอก LINE Mini App` | `01a079aa-206c-7042-981b-63052916c6af` | Doctor Zoom room preparation window | Sol Medium | Production deployed successfully; mobile role-based UAT pending |
 | Telemedicine consent and recording | `Telemedicine Consent และ Recording 1` | Not present in the current 50-task live view | Per-booking consent, recording metadata, access control, and provider-ready integration | Sol High | Implementation complete at `faee419`; controller review and 29 targeted tests passed; merge, push, migration, Zoom enablement, and Production deploy are not authorized |
 
@@ -51,7 +51,7 @@ Use a stable role family, its number, and an optional focused topic:
 
 ```text
 Admin ระบบ 6 — แก้ไขระบบล็อกอิน
-Doctor ระบบ 5 — ผลการสั่งยา
+Doctor ระบบ 6 — ยืนยันตัวตนผู้ป่วยก่อนเริ่มปรึกษา
 สรุปสถานะโปรเจกต์ 14 — Project Controller
 ```
 

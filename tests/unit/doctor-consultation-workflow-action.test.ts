@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   applyTransition: vi.fn(),
+  auditFindFirst: vi.fn(),
   createZoomMeeting: vi.fn(),
   findUnique: vi.fn(),
   revalidatePath: vi.fn(),
   requireDoctorSession: vi.fn(),
-  transaction: vi.fn()
+  transaction: vi.fn(),
+  userFindUnique: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({
@@ -21,6 +23,12 @@ vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     consultation: {
       findUnique: mocks.findUnique
+    },
+    user: {
+      findUnique: mocks.userFindUnique
+    },
+    auditLog: {
+      findFirst: mocks.auditFindFirst
     },
     $transaction: mocks.transaction
   }
@@ -43,10 +51,13 @@ vi.mock("@/features/doctor/consultations/workflow-service", async (importOrigina
 
 import { transitionDoctorConsultationAction } from "@/features/doctor/consultations/workflow-actions";
 
-function startFormData() {
+function startFormData(identityConfirmed: "true" | "false" | null = "true") {
   const formData = new FormData();
   formData.set("consultationId", "consultation-1");
   formData.set("transition", "start");
+  if (identityConfirmed !== null) {
+    formData.set("identityConfirmed", identityConfirmed);
+  }
   return formData;
 }
 
@@ -59,7 +70,19 @@ function scheduledConsultation(scheduledAt: Date) {
     bookedDurationMinutes: 15,
     zoomMeetingId: null,
     doctor: {
-      userId: "doctor-user-1"
+      userId: "doctor-user-1",
+      status: "approved",
+      user: { status: "active" }
+    },
+    patient: {
+      role: "customer",
+      status: "active",
+      fullName: "Patient Example",
+      nationalId: "1101700203450",
+      dateOfBirth: new Date("1990-01-02T00:00:00.000Z"),
+      phone: "0812345678",
+      normalizedPhone: "+66812345678",
+      phoneVerifiedAt: new Date("2029-01-01T00:00:00.000Z")
     }
   };
 }
@@ -73,6 +96,12 @@ describe("transitionDoctorConsultationAction start gate", () => {
       userId: "doctor-user-1"
     });
     mocks.createZoomMeeting.mockResolvedValue(null);
+    mocks.auditFindFirst.mockImplementation(async () => ({ createdAt: new Date() }));
+    mocks.userFindUnique.mockResolvedValue({
+      id: "doctor-user-1",
+      role: "doctor",
+      status: "active"
+    });
     mocks.transaction.mockImplementation(async (operation: (tx: object) => Promise<unknown>) =>
       operation({})
     );
@@ -131,6 +160,71 @@ describe("transitionDoctorConsultationAction start gate", () => {
       isolationLevel: "Serializable"
     });
     expect(mocks.applyTransition).toHaveBeenCalledTimes(1);
+    expect(mocks.applyTransition).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ identityConfirmed: true })
+    );
+  });
+
+  it.each([
+    ["missing", null],
+    ["false", "false" as const]
+  ])("rejects %s identity confirmation before any read or Zoom creation", async (_label, value) => {
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData(value)
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
+    });
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("blocks incomplete patient identity before Zoom creation", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      patient: {
+        ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")).patient,
+        phoneVerifiedAt: null
+      }
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "ข้อมูลยืนยันตัวตนยังไม่ครบ กรุณาให้ลูกค้ายืนยันตัวตนก่อน"
+    });
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("blocks a crafted true flag when this actor did not reveal identity recently", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue(
+      scheduledConsultation(new Date("2030-01-01T10:00:00.000Z"))
+    );
+    mocks.auditFindFirst.mockResolvedValue(null);
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData("true")
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
+    });
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it("does not create another Zoom meeting when the consultation already has one", async () => {
@@ -196,7 +290,11 @@ describe("transitionDoctorConsultationAction start gate", () => {
     vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
     mocks.findUnique.mockResolvedValue({
       ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
-      doctor: { userId: "doctor-user-2" }
+      doctor: {
+        userId: "doctor-user-2",
+        status: "approved",
+        user: { status: "active" }
+      }
     });
 
     const result = await transitionDoctorConsultationAction(
@@ -214,6 +312,24 @@ describe("transitionDoctorConsultationAction start gate", () => {
     mocks.findUnique.mockResolvedValue({
       ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
       status: "completed"
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result.status).toBe("error");
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a repeated start after the consultation is already live without creating Zoom", async () => {
+    vi.setSystemTime(new Date("2030-01-01T10:01:00.000Z"));
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      status: "live",
+      zoomMeetingId: "existing-meeting"
     });
 
     const result = await transitionDoctorConsultationAction(

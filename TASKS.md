@@ -543,3 +543,11 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Pass the stored `bookedDurationMinutes` to Zoom meeting creation with an explicit 30-minute legacy fallback for missing or invalid snapshots.
 - [x] Add regression coverage for new defaults, four slots per hour, immutable 15-minute booking snapshots, existing 30-minute preservation, and Zoom 15/legacy-30 payloads.
 - [x] Push application commit `f1d37ef` to `origin/main` and deploy through Plesk: Pull/Deploy, non-migration preflight, dependency and Zoom-client installs, 65-route host build, one restart, health HTTP 200/`status: ok`, and bounded anonymous route smoke passed. No schema, migration, environment, provider, or Production data mutation occurred; existing 30-minute rows were not converted.
+
+## Doctor patient identity confirmation before start (code only, 2026-09-14)
+
+- [x] Add a same-origin, private/no-store Doctor identity endpoint that returns only full name, 13-digit national ID, and date of birth to the active assigned Doctor or active Admin support actor for scheduled/live Consultations, with minimized no-PII audit logging.
+- [x] Add reveal, hide, loading, error, Buddhist-era date display, and explicit patient-confirmation controls before the Doctor workflow and prescription areas without putting identity fields in the initial queue payload.
+- [x] Require `identityConfirmed=true` and recent actor-scoped reveal evidence, then recheck actor/Doctor ownership and the complete active-Customer identity set both before Zoom creation and inside the Serializable start transaction.
+- [x] Require national ID in Admin manual appointment candidates and Server Action/transaction validation so crafted intake requests cannot create a Consultation that is immediately blocked by the start gate.
+- [x] Add focused route, UI, query-privacy, workflow, Admin intake, and consultation lifecycle regression coverage. Production push/deploy remains separately gated.

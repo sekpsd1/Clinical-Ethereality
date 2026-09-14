@@ -117,6 +117,7 @@ export async function createManualAppointmentPaymentIntakeAction(
         role: true,
         status: true,
         fullName: true,
+        nationalId: true,
         dateOfBirth: true,
         phone: true,
         normalizedPhone: true,
@@ -129,6 +130,8 @@ export async function createManualAppointmentPaymentIntakeAction(
     patient.role !== "customer" ||
     patient.status !== "active" ||
     !patient.fullName ||
+    !patient.nationalId ||
+    !/^\d{13}$/.test(patient.nationalId) ||
     !patient.dateOfBirth ||
     !patient.phone ||
     !patient.normalizedPhone ||

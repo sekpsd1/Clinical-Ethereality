@@ -8,8 +8,11 @@ import { createZoomMeetingIfConfigured } from "@/lib/zoom/meetings";
 import { transitionDoctorConsultationSchema } from "@/features/doctor/consultations/workflow-schema";
 import {
   applyDoctorConsultationTransition,
+  assertDoctorConsultationStartIdentityGate,
   DoctorConsultationWorkflowError,
-  getDoctorConsultationNextStatus
+  getDoctorConsultationNextStatus,
+  PATIENT_IDENTITY_REVEAL_TTL_MS,
+  type DoctorConsultationStartSnapshot
 } from "@/features/doctor/consultations/workflow-service";
 
 export type DoctorConsultationWorkflowActionState = {
@@ -32,31 +35,83 @@ export async function transitionDoctorConsultationAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "กรุณาตรวจข้อมูลและเขียนสรุปอย่างน้อย 5 ตัวอักษรก่อนจบการปรึกษา"
+      message:
+        formData.get("transition") === "start"
+          ? "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
+          : "กรุณาตรวจข้อมูลและเขียนสรุปอย่างน้อย 5 ตัวอักษรก่อนจบการปรึกษา"
     };
   }
 
   try {
-    const consultation = await prisma.consultation.findUnique({
-      where: {
-        id: parsed.data.consultationId
-      },
-      select: {
-        id: true,
-        patientId: true,
-        status: true,
-        scheduledAt: true,
-        bookedDurationMinutes: true,
-        zoomMeetingId: true,
-        doctor: {
-          select: {
-            userId: true
+    const now = new Date();
+    const [consultation, actor, identityRevealAudit] = await Promise.all([
+      prisma.consultation.findUnique({
+        where: {
+          id: parsed.data.consultationId
+        },
+        select: {
+          id: true,
+          patientId: true,
+          status: true,
+          scheduledAt: true,
+          bookedDurationMinutes: true,
+          zoomMeetingId: true,
+          doctor: {
+            select: {
+              userId: true,
+              status: true,
+              user: { select: { status: true } }
+            }
+          },
+          patient: {
+            select: {
+              role: true,
+              status: true,
+              fullName: true,
+              nationalId: true,
+              dateOfBirth: true,
+              phone: true,
+              normalizedPhone: true,
+              phoneVerifiedAt: true
+            }
           }
         }
-      }
-    });
+      }),
+      parsed.data.transition === "start"
+        ? prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { id: true, role: true, status: true }
+          })
+        : Promise.resolve(null),
+      parsed.data.transition === "start"
+        ? prisma.auditLog.findFirst({
+            where: {
+              actorId: session.userId,
+              action: "consultation.patient_identity_view",
+              entityType: "consultation",
+              entityId: parsed.data.consultationId,
+              createdAt: {
+                gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS)
+              }
+            },
+            orderBy: { createdAt: "desc" },
+            select: { createdAt: true }
+          })
+        : Promise.resolve(null)
+    ]);
 
-    getDoctorConsultationNextStatus(consultation, session, parsed.data.transition);
+    getDoctorConsultationNextStatus(consultation, session, parsed.data.transition, now);
+
+    if (parsed.data.transition === "start") {
+      assertDoctorConsultationStartIdentityGate(
+        consultation as DoctorConsultationStartSnapshot,
+        actor,
+        session,
+        parsed.data.identityConfirmed,
+        identityRevealAudit,
+        now
+      );
+    }
 
     const zoomMeeting =
       parsed.data.transition === "start" && !consultation?.zoomMeetingId
@@ -75,7 +130,8 @@ export async function transitionDoctorConsultationAction(
         noShowReason: parsed.data.noShowReason,
         actorId: session.userId,
         actorRole: session.role,
-        zoomMeeting
+        zoomMeeting,
+        identityConfirmed: parsed.data.identityConfirmed
       });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
@@ -114,6 +170,19 @@ export async function transitionDoctorConsultationAction(
     }
 
     if (error instanceof DoctorConsultationWorkflowError) {
+      if (
+        error.code === "identity_confirmation_required" ||
+        error.code === "patient_identity_incomplete"
+      ) {
+        return {
+          status: "error",
+          message:
+            error.code === "identity_confirmation_required"
+              ? "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
+              : "ข้อมูลยืนยันตัวตนยังไม่ครบ กรุณาให้ลูกค้ายืนยันตัวตนก่อน"
+        };
+      }
+
       if (error.code === "attendance_not_verified") {
         return {
           status: "error",

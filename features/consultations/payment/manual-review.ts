@@ -235,6 +235,7 @@ function isVerifiedActivePatient(patient: {
   role: string;
   status: string;
   fullName: string | null;
+  nationalId: string | null;
   dateOfBirth: Date | null;
   phone: string | null;
   normalizedPhone: string | null;
@@ -244,6 +245,8 @@ function isVerifiedActivePatient(patient: {
     patient?.role === "customer" &&
       patient.status === "active" &&
       patient.fullName &&
+      patient.nationalId &&
+      /^\d{13}$/.test(patient.nationalId) &&
       patient.dateOfBirth &&
       patient.phone &&
       patient.normalizedPhone &&
@@ -286,6 +289,7 @@ export async function createManualAppointmentPaymentIntake(
       role: true,
       status: true,
       fullName: true,
+      nationalId: true,
       dateOfBirth: true,
       phone: true,
       normalizedPhone: true,
@@ -666,6 +670,7 @@ async function applyConsultationPaymentReviewDecision(
           role: true,
           status: true,
           fullName: true,
+          nationalId: true,
           dateOfBirth: true,
           phone: true,
           normalizedPhone: true,
