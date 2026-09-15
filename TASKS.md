@@ -1,5 +1,13 @@
 # Tasks
 
+## Reading Guide
+
+This file retains historical phases and active work. Planning checklists below do not mean the app is still unimplemented.
+
+- Search the relevant feature and verify its current owner in `TASK_CONTROL.md`.
+- A checked implementation item does not prove deployment or UAT; use the latest Standard Handoff's separate status fields.
+- Preserve pending work. Archive only verified superseded sections with dated references rather than deleting unresolved items to shorten the file.
+
 ## Phase 0: Planning
 
 - [x] Define project purpose

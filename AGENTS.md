@@ -1,14 +1,14 @@
 # Agent Instructions
 
-This repository is in the planning phase for Clinical Ethereality, a secure web app for clinical aesthetics commerce, consultation, pharmacy fulfillment, and community workflows.
+Clinical Ethereality (Clinical lab service) is an implemented application with customer, doctor, pharmacist and admin workflows operating on Plesk Node.js. Preserve the existing system; this is not a blank scaffold.
 
 ## Current Priority
 
-Do not generate the full app yet. The current task is to preserve planning, architecture, user roles, and product direction until the user explicitly asks to start implementation.
+Maintain the existing application within the requested scope. Distinguish local implementation, Production release and UAT; historical planning notes do not authorize rebuilding the app.
 
 ## AI Workflow Governance
 
-- Before starting work or sending a handoff, every task must read `AI_WORKFLOW.md` and `TASK_CONTROL.md`, inspect the live Codex task list, and reuse the matching current task when one exists instead of creating a duplicate.
+- For implementation or routing, use `AI_WORKFLOW.md` and `TASK_CONTROL.md` and verify the current owner. Read-only questions need only relevant evidence unless ownership/status matters. Reuse unchanged instructions already read in the current context.
 - The Project Controller is limited to planning, routing, and review. It must not edit product code, commit, push, or deploy.
 - Keep one active writer per feature or file area, preserve the approval boundaries in `TASK_CONTROL.md`, and never place secrets, credentials, patient data, or raw provider payloads in prompts or committed files.
 - Every worker must finish with the Standard Handoff defined in `AI_WORKFLOW.md`.
@@ -45,7 +45,7 @@ Default to:
 - Cloudinary or S3-compatible object storage
 - Zoom SDK for video consultations
 - Thai QR plus Slip Verification API for payments
-- Vercel deployment
+- Plesk Node.js Production hosting; follow `PLESK_DEPLOYMENT.md`. Vercel is a historical alternative, not the current target.
 
 Ask before making architecture changes. If an architecture change is approved, document the reason in `PROJECT_STATE.md`.
 
@@ -182,7 +182,7 @@ When coding starts:
 - Prefer established project patterns over new abstractions
 - Update `PROJECT_STATE.md` after major tasks
 - Explain modified files in the final response
-- Run build and lint before completion when scripts are available
+- For product-code changes, run build/lint when available and risk-appropriate tests. Documentation-only changes require diff/link/consistency checks, not an app build. Reuse passing results only for the same unchanged revision/environment; rerun affected checks after changes.
 - If build or lint cannot be run, explain why in the final response
 
 ## Agent Coordination
@@ -190,7 +190,7 @@ When coding starts:
 - For work that can be split into independent tasks and completed in parallel, use sub-agents proactively.
 - The main agent must coordinate task boundaries, prevent overlapping edits, and remain responsible for integrating all results.
 - The main agent must review and verify sub-agent work before considering the task complete.
-- The main agent alone is responsible for the final pre-deployment checks and deployment unless the user explicitly assigns deployment differently.
+- A named release worker owns approved pre-deployment checks and deployment. The Controller reviews evidence and acceptance; it does not commit, push or deploy.
 - Keep small, tightly coupled, sequential, or single-surface browser tasks with the main agent when delegation would add coordination overhead or risk conflicting changes.
 
-Do not introduce full application scaffolding until the user asks for implementation.
+Do not replace the existing application with new scaffolding or change architecture without explicit approval.

@@ -1,5 +1,16 @@
 # Project State
 
+## Reading Guide And Governance Update (2026-09-15)
+
+The application is implemented and operates on Plesk Node.js. Below is retained decision/release history, not a live deployment monitor.
+
+- Search relevant feature headings; do not load all history by default.
+- Use `TASK_CONTROL.md` for ownership and exact revision/latest handoff evidence for implementation, release and UAT status.
+- Owner-approved governance maintenance adds contextual reading, on-demand templates, separate implementation/release/UAT fields, named release ownership and scope-aware approvals/recovery. Safety boundaries remain unchanged.
+- This update changes documentation only, not code, model settings, database or Production.
+- Follow-up owner approval retains the Luna/Terra/Sol routing tiers, chooses by risk rather than task label, keeps small questions local, and requires announced/verified model selection for assigned work. Ultra remains separately opt-in. A docs-only integration worker may commit the reviewed changes on a dedicated branch; push and Production actions are not included.
+- Preserve unresolved decisions. Archive only verified superseded sections in a scoped follow-up, leaving dated links; no historical entries were removed in this update.
+
 ## Project
 
 Clinical lab service

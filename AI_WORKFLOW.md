@@ -28,27 +28,45 @@ The **Customer Flow** chat is a QA/integration owner by default because customer
 
 ## Core Rules
 
-1. Before starting work or sending a handoff, every task must read `AGENTS.md`, this file, and `TASK_CONTROL.md`, then inspect the live Codex task list and reuse the matching current task when one exists.
+1. Follow the contextual reading rules below. Reuse unchanged instructions already read; recheck ownership when routing or evidence changes, not on every reply.
 2. One active writer per feature or file area. Never let two chats or Antigravity edit the same area at the same time.
 3. Every implementation task has one bounded outcome, acceptance criteria, and a named owner.
 4. Use a dedicated branch for a task. Do not commit directly to `main`.
 5. Before a task edits code, inspect only the relevant files plus the applicable parts of `PROJECT_STATE.md` and `TASKS.md`.
-6. On completion, run relevant checks, commit the scoped change, and return the handoff format below.
+6. On completion, run relevant checks and return the handoff below. Implementation workers commit scoped changes when authorized; Controller document maintenance stays uncommitted for integration by the designated worker.
 7. The Project Controller performs planning, routing, and review only. It must not edit product code, commit, push, or deploy, and it reviews changes that affect more than one feature, permissions, payments, health data, schema, authentication, deployment, or Git integration.
 8. Do not share API keys, passwords, tokens, production database credentials, patient data, or raw provider payloads in any chat prompt or committed file.
 
+## Contextual Reading And Completion
+
+| Work | Read / verify |
+| --- | --- |
+| Read-only question | Relevant evidence; registry only for ownership/status questions |
+| Documentation edit | Governing rules, affected documents and references; diff/link/consistency checks |
+| Product code | Current owner, relevant source/tests and state/backlog sections |
+| Permissions, health data, payments, schema | Applicable domain/security rules and regression checks in addition to code context |
+| Production release | Approved exact target, named worker, Plesk runbook, backup/rollback where applicable, health and UAT |
+
+Search relevant sections of `PROJECT_STATE.md` and `TASKS.md`; do not load entire histories or templates by default. Current revision evidence supersedes historical status prose; reconcile conflicts before the affected mutation.
+
+The Controller may maintain planning/governance documents when requested, but may not edit product code, commit, push or deploy. A named release worker executes approved releases.
+
+Use proportionate checks. Reuse results for unchanged revision/environment; rerun affected checks after edits. Documentation-only work does not require an application build.
+
 ## Current Task Selection
 
-`TASK_CONTROL.md` is the required live registry before any task starts work or the Project Controller routes work. This file deliberately does **not** hard-code a task number as the current owner.
+`TASK_CONTROL.md` is the routing registry for implementation, reassignment and release; it is a snapshot, not proof of the deployed revision. This file deliberately does **not** hard-code a task number as the current owner.
 
 1. Match the project and feature owner first.
 2. For tasks in the same numbered title family, use the one with the greatest number. For example, `Doctor ระบบ 5` supersedes `Doctor ระบบ 4`.
 3. A topic suffix such as `— แก้ไขระบบล็อกอิน` makes task retrieval easier but does not override feature ownership.
 4. A user may explicitly select an older task. Tasks in different projects, or titles outside the same numbered family, are not interchangeable.
 5. Before starting work, tell the owner which existing task will be reused (or why a new one is needed), the selected model, the scope, the checks, and the production boundary.
-6. If the registry, task list, and handoff disagree, stop and resolve the routing; never guess from an outdated handoff.
+6. Resolve ownership conflicts before the affected edit/dispatch; safe read-only investigation may continue. A task absent from a limited list may still exist: inspect its known ID before creating a duplicate.
 
 ## Task Routing: Codex Or Antigravity
+
+Small explanations, bounded read-only questions and routine summaries can be completed in the current task when the needed evidence is available. Do not create extra handoffs solely to follow a role label or save a speculative amount of credits. Feature changes still go to the responsible owner; the Controller's product-code and release restrictions remain in force.
 
 The Project Controller chooses the worker before writing a task brief. Use Antigravity only when **all four** conditions are true:
 
@@ -76,93 +94,7 @@ If any Antigravity condition is uncertain, default to the relevant Codex owner c
 
 ## Start Prompts
 
-Paste the applicable prompt at the beginning of a new Codex chat. Replace the text in brackets before sending.
-
-### Project Controller (Plan mode)
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You are the project controller in Plan mode. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and the relevant latest sections of PROJECT_STATE.md and TASKS.md. Do not edit code, commit, push, deploy, or run migrations.
-
-Your job: maintain the current project picture, decide task order, identify cross-feature risks, and write a precise task brief for the named worker chat or Antigravity.
-
-Current request: [describe the goal]
-
-Return: recommendation, scope boundaries, acceptance criteria, risks, test expectations, and a copy-ready worker prompt.
-```
-
-### Store owner task
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You own the Store feature. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the Store/order/payment/inventory sections relevant to this task in PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
-
-Task: [paste the approved task brief]
-
-Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not change Admin, Doctor, Community, architecture, migrations, production settings, or deployment unless the brief explicitly says so. Run relevant checks, commit the scoped change, then return the standard handoff.
-```
-
-### Admin owner task
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You own Admin operations. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Admin/permissions/fulfillment sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
-
-Task: [paste the approved task brief]
-
-Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not alter customer Store screens, Doctor screens, Community screens, architecture, migrations, production settings, or deployment unless explicitly assigned. Run relevant checks, commit the scoped change, then return the standard handoff.
-```
-
-### Doctor owner task
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You own Doctor workflows. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Doctor/consultation/prescription/privacy sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
-
-Task: [paste the approved task brief]
-
-Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not alter Admin fulfillment, customer checkout, Community, architecture, migrations, production settings, or deployment unless explicitly assigned. Protect patient data and enforce permissions server-side. Run relevant checks, commit the scoped change, then return the standard handoff.
-```
-
-### Community owner task
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You own Community workflows. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and only the relevant Community/profile/notification/moderation sections of PROJECT_STATE.md and TASKS.md. Preserve existing user changes and finalized Stitch UI.
-
-Task: [paste the approved task brief]
-
-Before editing, state the files and boundaries you will touch. Work on a dedicated branch. Do not alter Store, Doctor, Admin operations, architecture, migrations, production settings, or deployment unless explicitly assigned. Run relevant checks, commit the scoped change, then return the standard handoff.
-```
-
-### Customer Flow
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-You are the customer-flow QA and integration chat. Read AGENTS.md, AI_WORKFLOW.md, TASK_CONTROL.md, and the relevant customer-flow sections of PROJECT_STATE.md and TASKS.md. Preserve finalized Stitch UI and do not make broad cross-feature edits.
-
-Task: [paste the approved task brief]
-
-First reproduce or inspect the flow and report: expected behavior, actual behavior, affected route/files, risk level, and acceptance checks. Do not edit code unless the task explicitly assigns one isolated fix on a dedicated branch. For a cross-feature issue, return a copy-ready handoff to the correct feature owner instead.
-```
-
-### Antigravity
-
-```txt
-Project: C:\Projects\clinical-ethereality
-
-Read AGENTS.md, AI_WORKFLOW.md, and TASK_CONTROL.md first. Read only the relevant sections of PROJECT_STATE.md and TASKS.md. Work on a dedicated branch and do not touch files outside the task scope.
-
-Task: [paste the precise task brief from the Project Controller]
-
-Do not redesign finalized Stitch screens, change architecture, run migrations, deploy, push to main, or handle secrets. Preserve existing user changes. Run the specified checks. Commit only the scoped change and return the standard handoff.
-```
+Load [Task Start Templates](docs/workflow/TASK_START_TEMPLATES.md) only for an approved new/replacement task. Existing tasks use a short scoped brief.
 
 ## Standard Handoff
 
@@ -171,19 +103,27 @@ Every worker must end with this exact structure so it can be pasted into the **a
 ```txt
 TASK: [name]
 STATUS: complete | blocked | needs-review
+IMPLEMENTATION: not-started | in-progress | verified | not-applicable
+RELEASE: not-requested | awaiting-approval | deployed | blocked | not-applicable
+UAT: not-run | partial | passed | blocked | not-applicable
 BRANCH: [branch name]
 COMMIT: [hash, or none]
 CHANGED: [files and behavior changed]
-CHECKS: [commands run and result]
+CHECKS: [commands/results, revision/environment, skipped checks and reasons]
+APPROVAL SCOPE: [authorized actions and target, or none]
+RESIDUAL STATE: [remaining fixtures/configuration/rollback or none]
+NEXT ACTION / OWNER: [specific next action and responsible task, or none]
 RISKS / FOLLOW-UP: [none, or concise list]
 NEEDS PLAN REVIEW: yes | no
 ```
+
+`complete` means the requested scope is fulfilled, not that unrun UAT passed. Distinguish local verification from Production evidence. Report actual migration/restart counts, partial acceptance checks and residual state for releases.
 
 ## When A Chat Is Full Or A New Chat Is Needed
 
 Yes, a new chat can continue the same work, but it does **not** automatically inherit the full reasoning or memory of the prior chat. Start the replacement chat with:
 
-1. Its role-specific Start Prompt above.
+1. Its role-specific prompt from `docs/workflow/TASK_START_TEMPLATES.md`.
 2. The final Standard Handoff from the old chat.
 3. The current task brief from the **active Project Controller**.
 4. Any uncommitted-change warning, branch name, and the exact next action.

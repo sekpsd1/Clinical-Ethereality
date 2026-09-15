@@ -2,7 +2,7 @@
 
 Clinical lab service is a web application for clinical aesthetics commerce, consultation, and care coordination. The product should help customers browse products, consult doctors, receive prescriptions, track orders, and participate in a moderated community while giving doctors, pharmacists, and admins the operational tools they need.
 
-This repository is currently in the planning and architecture phase. Do not generate the full app until the project direction, stack, data model, and initial workflows are confirmed.
+The application is implemented and operates on Plesk Node.js. Maintain existing behavior within the approved scope. Read `PROJECT_STATE.md` for decision history and verify the latest task/release evidence before making operational claims.
 
 ## Project Purpose
 
@@ -86,7 +86,7 @@ Current planning references:
 - `PHARMACY_SOP_DRAFT.md` drafts the clinic-as-pharmacy prescription verification, medicine preparation, packing, shipment, exception, and audit flow for client review.
 - `CLIENT_SOP_REVIEW_MESSAGE.md` provides owner-facing LINE/email copy for requesting client review of the pharmacy SOP and remaining fulfillment decisions.
 - `DOCTOR_INTAKE_TEMPLATE.md`, `CONSULT_ASSESSMENT_INTAKE_TEMPLATE.md`, `PRODUCT_CATALOG_TEMPLATE.csv`, and `PHARMACIST_INTAKE_TEMPLATE.md` provide owner-sendable templates for collecting the remaining MVP data from the client.
-- `PLESK_MIGRATION_HANDOFF.md` records the current cPanel proof-of-run result and the checklist for moving the next hosted deployment to Plesk.
+- `PLESK_MIGRATION_HANDOFF.md` is historical cPanel-to-Plesk transition evidence. Use `PLESK_DEPLOYMENT.md` for current release work.
 
 Future scope:
 
@@ -118,7 +118,7 @@ Selected stack:
 - Validation: Zod
 - Forms: React Hook Form
 - Testing: Vitest for unit tests, Playwright for end-to-end tests
-- Hosting: Vercel preferred; Plesk Node.js hosting is supported when the plan can run a persistent Node.js app
+- Hosting: Plesk Node.js is current Production. Vercel is a historical alternative requiring a separate hosting decision.
 
 Preferred first implementation path:
 
@@ -128,7 +128,7 @@ Preferred first implementation path:
 4. Implement LINE LIFF login and JWT session handling
 5. Add Zoom SDK integration boundaries for consultations
 6. Add Thai QR payment records and Slip Verification API review flow
-7. Deploy on Vercel with managed MySQL and object storage, or deploy the standalone Node.js build on an approved Plesk Node.js plan
+7. Follow `PLESK_DEPLOYMENT.md` for approved releases to the current Plesk Node.js standalone environment.
 
 ## System Architecture
 
@@ -837,7 +837,7 @@ Recommended environments:
 
 Recommended hosting:
 
-- App: Vercel preferred; Plesk Node.js hosting is acceptable when Node.js 20.x LTS and persistent startup files are supported
+- App: Plesk Node.js is current Production; verify its configured runtime and current release procedure before deployment.
 - Database: managed MySQL provider compatible with Prisma and the selected deployment target
 - File storage: Cloudinary or S3-compatible provider
 - Monitoring: Sentry
@@ -863,14 +863,16 @@ Deployment runbook:
 - See `BACKUPS.md` for database and object-storage backup and restore procedures.
 - Hosted preview deployments must keep `ENABLE_DEV_AUTH_BYPASS=false` and use non-production LINE, database, payment, storage, and video credentials.
 
-## Non-Goals For Now
+## Current Non-Goals
 
-- Do not generate the full app yet
-- Do not fully automate payments until the order and payment review workflow is defined
+- Do not rebuild the existing application from scratch
+- Do not change payment automation or review rules without an explicit scoped decision
 - Do not add AI features until the data model and access controls are stable
 - Do not treat compliance as a final polish task
 
-## Current Status
+## Historical Frontend Milestone (Not Current Status)
+
+The following snapshot records the initial frontend milestone. Its mocked flows and missing-backend statements are historical, not the current application state. Use `PROJECT_STATE.md` and exact revision evidence for current implementation and release status.
 
 Planning and architecture documents have been created, and frontend implementation has started. The repo now has a Next.js 15, React 19, TypeScript, and Tailwind CSS foundation with shared customer footer navigation for `Consult | Store | Community | Profile`.
 
