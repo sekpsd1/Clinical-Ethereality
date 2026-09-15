@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForCalendarDate, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 import { isSlotBlockedByDateOverride } from "@/features/consultations/booking/blocked-overrides";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
@@ -87,7 +88,7 @@ function mapSlot(slot: BookingSource, lockedSlotTimes: Set<number>): BookingSlot
     weekdayLabel: slot.weekdayLabel,
     dateLabel: formatDate(slot.scheduledAt),
     timeLabel: `${slot.startTime}-${slot.endTime}`,
-    slotMinutes: slot.slotMinutes,
+    slotMinutes: getNewScheduleDurationMinutes(slot.slotMinutes),
     scheduledAt: slot.scheduledAt.toISOString(),
     status: isBooked ? "booked" : "available",
     statusLabel: isBooked ? "จองแล้ว" : "ว่าง",
@@ -107,7 +108,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
       scheduledAt: getUpcomingDateForWeekday(slot.weekday, slot.endTime, now),
       startTime: slot.startTime,
       endTime: slot.endTime,
-      slotMinutes: slot.slotMinutes,
+      slotMinutes: getNewScheduleDurationMinutes(slot.slotMinutes),
       notes: slot.notes,
       effectiveFrom: slot.effectiveFrom,
       effectiveTo: slot.effectiveTo,
@@ -123,7 +124,7 @@ export function getBookingSources(availability: AvailabilityRecord[], dateOverri
       scheduledAt: getScheduledAtForDate(override.scheduleDate, override.startTime!),
       startTime: override.startTime!,
       endTime: override.endTime!,
-      slotMinutes: override.slotMinutes!,
+      slotMinutes: getNewScheduleDurationMinutes(override.slotMinutes),
       notes: override.notes,
       weekdayLabel: weekdayLabels[override.scheduleDate.getUTCDay()] ?? "วันที่เลือก"
     }))

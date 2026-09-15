@@ -7,8 +7,8 @@ function batchInput() {
     doctorId: "doctor-1",
     weekdays: [1, 3],
     blocks: [
-      { startTime: "09:00", endTime: "11:00", slotMinutes: 60 },
-      { startTime: "11:00", endTime: "11:30", slotMinutes: 30 }
+      { startTime: "09:00", endTime: "11:00", slotMinutes: 15 },
+      { startTime: "11:00", endTime: "11:30", slotMinutes: 15 }
     ],
     isActive: "true",
     notes: "ติดตามอาการ"
@@ -16,12 +16,12 @@ function batchInput() {
 }
 
 describe("admin bulk schedule helpers", () => {
-  it("expands multiple days and mixed duration blocks into one availability record per day/block", () => {
+  it("expands multiple days into fixed-duration availability records", () => {
     expect(buildBatchAvailabilityRecords(batchInput())).toEqual([
-      expect.objectContaining({ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 60 }),
-      expect.objectContaining({ weekday: 1, startTime: "11:00", endTime: "11:30", slotMinutes: 30 }),
-      expect.objectContaining({ weekday: 3, startTime: "09:00", endTime: "11:00", slotMinutes: 60 }),
-      expect.objectContaining({ weekday: 3, startTime: "11:00", endTime: "11:30", slotMinutes: 30 })
+      expect.objectContaining({ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 1, startTime: "11:00", endTime: "11:30", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 3, startTime: "09:00", endTime: "11:00", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 3, startTime: "11:00", endTime: "11:30", slotMinutes: 15 })
     ]);
   });
 
@@ -30,7 +30,7 @@ describe("admin bulk schedule helpers", () => {
 
     expect(
       findExistingAvailabilityConflict(
-        [{ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 60 }],
+        [{ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 15 }],
         requested
       )
     ).toBe("duplicate");

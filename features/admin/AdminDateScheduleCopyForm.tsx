@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { copyDoctorAvailabilityDateOverridesAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import type { AdminDoctorAvailabilityDateOverride } from "@/features/admin/schedules/types";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const initialState: AdminScheduleActionState = { status: "idle", message: "" };
 
@@ -11,7 +12,7 @@ export function AdminDateScheduleCopyForm({ doctorId, sourceDate, sourceOverride
   const [state, action, isPending] = useActionState(copyDoctorAvailabilityDateOverridesAction, initialState);
   const [targetDates, setTargetDates] = useState([""]);
   const [confirmed, setConfirmed] = useState(false);
-  const sourceSummary = useMemo(() => sourceOverrides.map((item) => item.type === "closed" ? "วันหยุด (ปิดทั้งวัน)" : `${item.type === "blocked" ? "ไม่ว่าง" : "เวลาว่าง"} ${item.timeRange} • รอบละ ${item.slotMinutes} นาที`), [sourceOverrides]);
+  const sourceSummary = useMemo(() => sourceOverrides.map((item) => item.type === "closed" ? "วันหยุด (ปิดทั้งวัน)" : `${item.type === "blocked" ? "ไม่ว่าง" : "เวลาว่าง"} ${item.timeRange} • รอบละ ${NEW_CONSULTATION_DURATION_MINUTES} นาที`), [sourceOverrides]);
   const filledTargets = targetDates.filter(Boolean);
 
   if (sourceOverrides.length === 0) {

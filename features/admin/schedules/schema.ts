@@ -1,7 +1,14 @@
 import { z } from "zod";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 const calendarDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const consultationSlotMinutesSchema = z.coerce
+  .number()
+  .int()
+  .refine((value) => value === NEW_CONSULTATION_DURATION_MINUTES, {
+    message: `ระยะเวลาต่อรอบต้องเป็น ${NEW_CONSULTATION_DURATION_MINUTES} นาที`
+  });
 
 function timeToMinutes(value: string): number {
   const [hours, minutes] = value.split(":").map(Number);
@@ -11,7 +18,7 @@ function timeToMinutes(value: string): number {
 const availabilityBlockSchema = z.object({
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern),
-  slotMinutes: z.coerce.number().int().min(10).max(240)
+  slotMinutes: consultationSlotMinutesSchema
 });
 
 export const createDoctorAvailabilityDateOverrideSchema = z
@@ -21,7 +28,7 @@ export const createDoctorAvailabilityDateOverrideSchema = z
     type: z.enum(["available", "blocked", "closed"]),
     startTime: z.string().regex(timePattern).optional(),
     endTime: z.string().regex(timePattern).optional(),
-    slotMinutes: z.coerce.number().int().min(10).max(240).optional(),
+    slotMinutes: consultationSlotMinutesSchema.optional(),
     notes: z.string().max(500).optional()
   })
   .superRefine((value, context) => {
@@ -55,7 +62,7 @@ export const setDoctorCalendarSlotStatusSchema = z
     scheduleDate: z.string().regex(calendarDatePattern),
     startTime: z.string().regex(timePattern),
     endTime: z.string().regex(timePattern),
-    slotMinutes: z.coerce.number().int().min(10).max(240),
+    slotMinutes: consultationSlotMinutesSchema,
     targetStatus: z.enum(["available", "blocked", "closed"])
   })
   .superRefine((value, context) => {
@@ -99,7 +106,7 @@ export const upsertDoctorAvailabilitySchema = z
     weekday: z.coerce.number().int().min(0).max(6),
     startTime: z.string().regex(timePattern),
     endTime: z.string().regex(timePattern),
-    slotMinutes: z.coerce.number().int().min(10).max(240),
+    slotMinutes: consultationSlotMinutesSchema,
     effectiveFrom: z.string().regex(calendarDatePattern).optional().or(z.literal("")),
     effectiveTo: z.string().regex(calendarDatePattern).optional().or(z.literal("")),
     isActive: z

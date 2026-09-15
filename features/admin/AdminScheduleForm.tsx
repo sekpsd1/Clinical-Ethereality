@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AdminDayMonthYearDateField } from "@/features/admin/AdminAppointmentDateField";
 import { upsertDoctorAvailabilityAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import type { AdminDoctorAvailabilitySlot, AdminDoctorOption } from "@/features/admin/schedules/types";
-import { CONSULTATION_DURATION_OPTIONS, getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const initialState: AdminScheduleActionState = {
   status: "idle",
@@ -105,16 +105,10 @@ export function AdminScheduleForm({
 
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">ระยะเวลาต่อรอบ</span>
-            <select
-              name="slotMinutes"
-              disabled={isDisabled}
-              className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary"
-              defaultValue={getNewScheduleDurationMinutes(editSlot?.slotMinutes)}
-            >
-              {CONSULTATION_DURATION_OPTIONS.map((minutes) => (
-                <option key={minutes} value={minutes}>{minutes} นาที</option>
-              ))}
-            </select>
+            <input type="hidden" name="slotMinutes" value={NEW_CONSULTATION_DURATION_MINUTES} />
+            <span className="mt-1 flex h-11 w-full items-center rounded-[8px] border border-border bg-surface px-3 text-sm font-semibold text-text">
+              {NEW_CONSULTATION_DURATION_MINUTES} นาที (กำหนดตายตัว)
+            </span>
           </label>
         </div>
 

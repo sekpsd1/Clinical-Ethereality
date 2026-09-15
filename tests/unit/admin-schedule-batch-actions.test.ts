@@ -39,8 +39,8 @@ function batchFormData() {
   formData.set(
     "blocksJson",
     JSON.stringify([
-      { startTime: "09:00", endTime: "11:00", slotMinutes: 60 },
-      { startTime: "11:00", endTime: "11:30", slotMinutes: 30 }
+      { startTime: "09:00", endTime: "11:00", slotMinutes: 15 },
+      { startTime: "11:00", endTime: "11:30", slotMinutes: 15 }
     ])
   );
   formData.set("isActive", "on");
@@ -78,10 +78,10 @@ describe("admin bulk schedule action", () => {
     });
     expect(mocks.availabilityCreate).toHaveBeenCalledTimes(4);
     expect(mocks.availabilityCreate.mock.calls.map((call) => call[0].data)).toEqual([
-      expect.objectContaining({ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 60 }),
-      expect.objectContaining({ weekday: 1, startTime: "11:00", endTime: "11:30", slotMinutes: 30 }),
-      expect.objectContaining({ weekday: 3, startTime: "09:00", endTime: "11:00", slotMinutes: 60 }),
-      expect.objectContaining({ weekday: 3, startTime: "11:00", endTime: "11:30", slotMinutes: 30 })
+      expect.objectContaining({ weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 1, startTime: "11:00", endTime: "11:30", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 3, startTime: "09:00", endTime: "11:00", slotMinutes: 15 }),
+      expect.objectContaining({ weekday: 3, startTime: "11:00", endTime: "11:30", slotMinutes: 15 })
     ]);
     expect(mocks.writeAuditLog).toHaveBeenCalledTimes(4);
   });
@@ -100,7 +100,7 @@ describe("admin bulk schedule action", () => {
 
   it("keeps the all-or-nothing transaction error path when one insert fails", async () => {
     mocks.availabilityCreate
-      .mockResolvedValueOnce({ id: "availability-1", doctorId: "doctor-1", weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 60, isActive: true })
+      .mockResolvedValueOnce({ id: "availability-1", doctorId: "doctor-1", weekday: 1, startTime: "09:00", endTime: "11:00", slotMinutes: 15, isActive: true })
       .mockRejectedValueOnce(new Error("database write failed"));
 
     const result = await createDoctorAvailabilityBatchAction({ status: "idle", message: "" }, batchFormData());

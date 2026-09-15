@@ -14,7 +14,7 @@ import {
   getSlotLockExpiresAt
 } from "@/features/consultations/booking/slots";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
-import { LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
+import { getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -358,7 +358,7 @@ export async function createManualAppointmentPaymentIntake(
     }
     startTime = dateOverride.startTime;
     endTime = dateOverride.endTime;
-    slotMinutes = dateOverride.slotMinutes;
+    slotMinutes = getNewScheduleDurationMinutes(dateOverride.slotMinutes);
     scheduleSource = "date_override";
   } else {
     const calendarDate = new Date(`${dateValue}T12:00:00+07:00`);
@@ -387,7 +387,7 @@ export async function createManualAppointmentPaymentIntake(
     }
     startTime = weeklyAvailability!.startTime;
     endTime = weeklyAvailability!.endTime;
-    slotMinutes = weeklyAvailability!.slotMinutes;
+    slotMinutes = getNewScheduleDurationMinutes(weeklyAvailability!.slotMinutes);
     scheduleSource = "weekly";
   }
 

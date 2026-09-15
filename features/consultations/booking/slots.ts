@@ -1,4 +1,5 @@
 import type { ConsultationStatus, Prisma } from "@prisma/client";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 export const LOCKING_CONSULTATION_STATUSES: ConsultationStatus[] = ["pending_payment", "scheduled", "live"];
 export const CONSULTATION_SLOT_LOCK_TTL_MINUTES = 15;
@@ -51,14 +52,15 @@ export function getScheduledAtForCalendarDate(scheduleDate: string, startTime: s
   return new Date(`${scheduleDate}T${String(hour ?? 9).padStart(2, "0")}:${String(minute ?? 0).padStart(2, "0")}:00+07:00`);
 }
 
-export function getScheduledSlotTimes(scheduledAt: Date, startTime: string, endTime: string, slotMinutes: number): Date[] {
+export function getScheduledSlotTimes(scheduledAt: Date, startTime: string, endTime: string, configuredSlotMinutes: number): Date[] {
   const [startHour, startMinute] = startTime.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
   const start = (startHour ?? 0) * 60 + (startMinute ?? 0);
   const end = (endHour ?? 0) * 60 + (endMinute ?? 0);
   const scheduleDate = getBangkokCalendarDateKey(scheduledAt);
+  const slotMinutes = getNewScheduleDurationMinutes(configuredSlotMinutes);
 
-  return Array.from({ length: Math.max(0, (end - start) / slotMinutes) }, (_, index) => {
+  return Array.from({ length: Math.max(0, Math.floor((end - start) / slotMinutes)) }, (_, index) => {
     const minuteOfDay = start + index * slotMinutes;
     return getScheduledAtForCalendarDate(
       scheduleDate,

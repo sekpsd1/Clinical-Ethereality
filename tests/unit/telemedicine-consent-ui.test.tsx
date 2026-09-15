@@ -29,6 +29,16 @@ const verification = {
 };
 
 describe("telemedicine consent booking UI", () => {
+  it("shows the fixed 15-minute label in the existing mobile slot layout", () => {
+    const html = renderToStaticMarkup(
+      <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} />
+    );
+
+    expect(html).toContain("grid grid-cols-2 gap-3");
+    expect(html).toContain("15 นาที");
+    expect(html).not.toContain("30 นาที");
+  });
+
   it("shows the automatic audio/video/chat recording disclosure to an adult", () => {
     const html = renderToStaticMarkup(
       <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} />

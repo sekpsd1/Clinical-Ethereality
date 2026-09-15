@@ -39,6 +39,10 @@ function getThrownFailure(callback: () => unknown) {
 }
 
 describe("Zoom UAT fixture runner", () => {
+  it("uses the same fixed duration as every other newly authored consultation", () => {
+    expect(FIXTURE_DURATION_MINUTES).toBe(15);
+  });
+
   it("maps argument, confirmation, environment, and slot guards to allowlisted codes", () => {
     expect(getThrownFailure(() => parseRunnerOptions(productionArgs(), { NODE_ENV: "test" }))).toEqual({
       code: RUNNER_FAILURE_CODES.ENVIRONMENT_NOT_PRODUCTION,
@@ -114,7 +118,7 @@ describe("Zoom UAT fixture runner", () => {
         [
           {
             bookedDurationMinutes: FIXTURE_DURATION_MINUTES,
-            scheduledAt: new Date(scheduledAt.getTime() - 15 * 60_000)
+            scheduledAt: new Date(scheduledAt.getTime() - (FIXTURE_DURATION_MINUTES - 1) * 60_000)
           }
         ],
         scheduledAt

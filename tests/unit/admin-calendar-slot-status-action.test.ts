@@ -34,8 +34,8 @@ function statusForm(targetStatus: "available" | "blocked" | "closed") {
   form.set("doctorId", "doctor-1");
   form.set("scheduleDate", "2099-09-07");
   form.set("startTime", "09:00");
-  form.set("endTime", "09:30");
-  form.set("slotMinutes", "30");
+  form.set("endTime", "09:15");
+  form.set("slotMinutes", "15");
   form.set("targetStatus", targetStatus);
   return form;
 }
@@ -52,7 +52,7 @@ describe("admin calendar slot status action", () => {
 
     await expect(setDoctorCalendarSlotStatusAction({ status: "idle", message: "" }, statusForm("blocked"))).resolves.toMatchObject({ status: "success" });
 
-    expect(tx.doctorAvailabilityDateOverride.create).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "blocked", startTime: "09:00", endTime: "09:30" }) });
+    expect(tx.doctorAvailabilityDateOverride.create).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "blocked", startTime: "09:00", endTime: "09:15", slotMinutes: 15 }) });
     expect(mocks.writeAuditLog).toHaveBeenCalledWith(tx, expect.objectContaining({ action: "doctor_availability_date_override.calendar_status", metadata: expect.objectContaining({ targetStatus: "blocked" }) }));
   });
 
@@ -76,7 +76,7 @@ describe("admin calendar slot status action", () => {
   });
 
   it("returns a blocked cell to available by disabling the block and reusing weekly availability", async () => {
-    const tx = transactionClient([{ id: "blocked-1", type: "blocked", startTime: "09:00", endTime: "09:30", slotMinutes: 30 }]);
+    const tx = transactionClient([{ id: "blocked-1", type: "blocked", startTime: "09:00", endTime: "09:15", slotMinutes: 15 }]);
     mocks.prisma.$transaction.mockImplementationOnce(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
 
     await expect(setDoctorCalendarSlotStatusAction({ status: "idle", message: "" }, statusForm("available"))).resolves.toMatchObject({ status: "success" });
@@ -93,7 +93,7 @@ describe("admin calendar slot status action", () => {
     await expect(setDoctorCalendarSlotStatusAction({ status: "idle", message: "" }, statusForm("available"))).resolves.toMatchObject({ status: "success" });
 
     expect(tx.doctorAvailabilityDateOverride.updateMany).toHaveBeenCalledWith({ where: { id: { in: ["closed-1"] } }, data: { isActive: false } });
-    expect(tx.doctorAvailabilityDateOverride.create).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "available", startTime: "09:00", endTime: "09:30" }) });
+    expect(tx.doctorAvailabilityDateOverride.create).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "available", startTime: "09:00", endTime: "09:15", slotMinutes: 15 }) });
   });
 
   it("labels the dash choice as a full-date closure and refuses it while a slot lock exists", async () => {

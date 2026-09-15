@@ -356,7 +356,7 @@ function preparedEvidence() {
 }
 
 describe("admin manual appointment payment intake and review", () => {
-  it("creates only pending records with private evidence and a bounded slot lock", async () => {
+  it("creates only pending records with a 15-minute snapshot from legacy availability", async () => {
     const tx = intakeTxMock();
 
     const result = await createManualAppointmentPaymentIntake(
@@ -368,7 +368,7 @@ describe("admin manual appointment payment intake and review", () => {
         evidence: preparedEvidence(),
         patientId: "patient-1",
         reasonCode: "provider_unavailable",
-        scheduledAt: new Date("2026-09-07T02:00:00.000Z"),
+        scheduledAt: new Date("2026-09-07T02:15:00.000Z"),
         transferredAt: new Date("2026-09-05T05:30:00.000Z")
       },
       now
@@ -381,7 +381,7 @@ describe("admin manual appointment payment intake and review", () => {
     });
     expect(tx.consultation.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "pending_payment" })
+        data: expect.objectContaining({ bookedDurationMinutes: 15, status: "pending_payment" })
       })
     );
     expect(tx.payment.create).toHaveBeenCalledWith(

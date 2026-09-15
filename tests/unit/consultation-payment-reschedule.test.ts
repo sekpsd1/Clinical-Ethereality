@@ -37,7 +37,7 @@ function txMock() {
         type: "available",
         startTime: "09:00",
         endTime: "10:00",
-        slotMinutes: 15,
+        slotMinutes: 60,
         isActive: true,
         doctor: {
           id: "doctor-1",
@@ -51,7 +51,7 @@ function txMock() {
 }
 
 describe("verified consultation rescheduling", () => {
-  it("reuses the same doctor and verified payment while creating a permanent slot lock", async () => {
+  it("reuses the same doctor and verified payment while canonicalizing an old schedule to 15 minutes", async () => {
     const tx = txMock();
 
     await rescheduleVerifiedConsultation(

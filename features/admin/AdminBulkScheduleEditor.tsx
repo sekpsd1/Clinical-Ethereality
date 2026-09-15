@@ -5,7 +5,7 @@ import { CalendarDays, CopyPlus, Plus, Trash2 } from "lucide-react";
 import { createDoctorAvailabilityBatchAction, type AdminScheduleActionState } from "@/features/admin/schedules/actions";
 import { AdminDayMonthYearDateField } from "@/features/admin/AdminAppointmentDateField";
 import type { AdminDoctorOption } from "@/features/admin/schedules/types";
-import { CONSULTATION_DURATION_OPTIONS, NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
+import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 type DraftBlock = {
   id: number;
@@ -268,16 +268,9 @@ export function AdminBulkScheduleEditor({ doctors }: { doctors: AdminDoctorOptio
                 </label>
                 <label className="block">
                   <span className="text-[11px] font-bold text-muted">ระยะเวลาต่อรอบ</span>
-                  <select
-                    value={block.slotMinutes}
-                    disabled={isDisabled}
-                    onChange={(event) => updateBlock(block.id, { slotMinutes: Number(event.target.value) })}
-                    className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm font-semibold text-text outline-none focus:border-primary disabled:opacity-50"
-                  >
-                    {CONSULTATION_DURATION_OPTIONS.map((minutes) => (
-                      <option key={minutes} value={minutes}>{minutes} นาที</option>
-                    ))}
-                  </select>
+                  <span className="mt-1 flex h-11 w-full items-center rounded-[8px] border border-border bg-surface px-3 text-sm font-semibold text-text">
+                    {NEW_CONSULTATION_DURATION_MINUTES} นาที (กำหนดตายตัว)
+                  </span>
                 </label>
               </div>
             </div>

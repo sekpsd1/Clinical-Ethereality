@@ -29,6 +29,7 @@ import {
 } from "@/features/consultations/consent/service";
 import { getAssessmentConsentPath } from "@/features/consultations/assessment/routes";
 import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 class ConsultAssessmentRequiredError extends Error {
   constructor(readonly doctorId: string) {
@@ -192,12 +193,12 @@ export async function createConsultationBookingAction(formData: FormData): Promi
         }
 
         sourceScheduledAt = getScheduledAtForDate(dateOverride.scheduleDate, dateOverride.startTime);
-        slotMinutes = dateOverride.slotMinutes;
+        slotMinutes = getNewScheduleDurationMinutes(dateOverride.slotMinutes);
         startTime = dateOverride.startTime;
         endTime = dateOverride.endTime;
       } else {
         sourceScheduledAt = getUpcomingDateForWeekday(availability!.weekday, availability!.endTime);
-        slotMinutes = availability!.slotMinutes;
+        slotMinutes = getNewScheduleDurationMinutes(availability!.slotMinutes);
         startTime = availability!.startTime;
         endTime = availability!.endTime;
       }

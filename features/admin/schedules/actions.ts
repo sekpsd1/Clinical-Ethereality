@@ -9,7 +9,7 @@ import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from 
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
 import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
 import { getScheduledAtForCalendarDate } from "@/features/consultations/booking/slots";
-import { LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
+import { getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
@@ -910,15 +910,16 @@ export async function copyDoctorAvailabilityDateOverridesAction(
           if (existing.length > 0) throw new DateOverrideConflictError(`คัดลอกไม่ได้ เพราะ ${targetDateValue} มีตารางพิเศษอยู่แล้ว`);
 
           for (const source of sourceOverrides) {
+            const copiedSlotMinutes = source.type === "closed" ? null : getNewScheduleDurationMinutes(source.slotMinutes);
             if (source.type === "available" && source.startTime && source.endTime && source.slotMinutes) {
               const recurring = await tx.doctorAvailability.findMany({ where: { doctorId: doctor.id, weekday: targetDate.getUTCDay(), isActive: true }, select: { startTime: true, endTime: true, slotMinutes: true } });
-              if (hasOverlappingTimeBlock(recurring, { startTime: source.startTime, endTime: source.endTime, slotMinutes: source.slotMinutes })) {
+              if (hasOverlappingTimeBlock(recurring, { startTime: source.startTime, endTime: source.endTime, slotMinutes: copiedSlotMinutes! })) {
                 throw new DateOverrideConflictError(`คัดลอกไม่ได้ เพราะ ${targetDateValue} มีเวลาประจำซ้อนกับช่วงที่จะคัดลอก`);
               }
             }
 
             const override = await tx.doctorAvailabilityDateOverride.create({
-              data: { doctorId: doctor.id, scheduleDate: targetDate, type: source.type, startTime: source.startTime, endTime: source.endTime, slotMinutes: source.slotMinutes, notes: source.notes }
+              data: { doctorId: doctor.id, scheduleDate: targetDate, type: source.type, startTime: source.startTime, endTime: source.endTime, slotMinutes: copiedSlotMinutes, notes: source.notes }
             });
             await writeAuditLog(tx, {
               actorId: session.userId,

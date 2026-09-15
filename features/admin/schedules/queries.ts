@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { CLINIC_TIME_ZONE, getBangkokCalendarDateKey, getScheduledAtForCalendarDate } from "@/features/consultations/booking/slots";
 import { buildAdminAppointmentCalendarSlots } from "@/features/admin/schedules/appointment-calendar";
 import type { AdminAppointmentCalendarData, AdminDoctorAvailabilityDateOverride, AdminDoctorAvailabilitySlot, AdminDoctorOption, AdminSchedulesData } from "@/features/admin/schedules/types";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 type DoctorRecord = Awaited<ReturnType<typeof getApprovedDoctors>>[number];
 type AvailabilityRecord = Awaited<ReturnType<typeof getAvailabilitySlots>>[number];
@@ -147,7 +148,7 @@ function mapSlot(slot: AvailabilityRecord): AdminDoctorAvailabilitySlot {
     startTime: slot.startTime,
     endTime: slot.endTime,
     timeRange: `${slot.startTime}-${slot.endTime}`,
-    slotMinutes: slot.slotMinutes,
+    slotMinutes: getNewScheduleDurationMinutes(slot.slotMinutes),
     effectiveFromValue: slot.effectiveFrom?.toISOString().slice(0, 10) ?? null,
     effectiveToValue: slot.effectiveTo?.toISOString().slice(0, 10) ?? null,
     effectiveRangeLabel: slot.effectiveFrom || slot.effectiveTo
@@ -170,7 +171,7 @@ function mapDateOverride(override: DateOverrideRecord): AdminDoctorAvailabilityD
     scheduleDateValue,
     type: override.type,
     timeRange: override.type === "closed" ? "ปิดทั้งวัน" : `${override.startTime}-${override.endTime}`,
-    slotMinutes: override.slotMinutes,
+    slotMinutes: override.slotMinutes === null ? null : getNewScheduleDurationMinutes(override.slotMinutes),
     isActive: override.isActive,
     notes: override.notes ?? "-",
     updatedAt: formatDate(override.updatedAt)

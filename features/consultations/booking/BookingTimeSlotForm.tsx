@@ -154,7 +154,7 @@ export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookin
                 </span>
                 <span className="mt-1 text-sm font-extrabold">{slot.timeLabel}</span>
                 {isBooked ? <span className="mt-1 text-[10px] font-semibold opacity-80">{slot.statusLabel}</span> : null}
-                <span className="mt-1 text-[10px] font-semibold opacity-80">{slot.slotMinutes} นาที</span>
+                <span className="mt-1 text-[10px] font-semibold opacity-80">{NEW_CONSULTATION_DURATION_MINUTES} นาที</span>
               </button>
             );
           })}

@@ -1,4 +1,5 @@
 import { formatBangkokTime, getScheduledAtForCalendarDate, getScheduledSlotTimes } from "@/features/consultations/booking/slots";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 export type AppointmentCalendarAvailability = {
   id: string;
@@ -85,7 +86,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
         doctorId: availability.doctorId,
         startTime: availability.startTime,
         endTime: availability.endTime,
-        slotMinutes: availability.slotMinutes,
+        slotMinutes: getNewScheduleDurationMinutes(availability.slotMinutes),
         notes: availability.notes
       })),
     ...input.overrides
@@ -98,7 +99,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
         doctorId: override.doctorId,
         startTime: override.startTime,
         endTime: override.endTime,
-        slotMinutes: override.slotMinutes,
+        slotMinutes: getNewScheduleDurationMinutes(override.slotMinutes),
         notes: override.notes
       }))
   ];
@@ -112,7 +113,7 @@ export function buildAdminAppointmentCalendarSlots(input: {
       doctorId: override.doctorId,
       startTime: override.startTime,
       endTime: override.endTime,
-      slotMinutes: override.slotMinutes,
+      slotMinutes: getNewScheduleDurationMinutes(override.slotMinutes),
       notes: override.notes
     }));
   const consultationsBySlot = new Map(

@@ -7,7 +7,7 @@ const validSchedule = {
   weekday: "1",
   startTime: "09:00",
   endTime: "12:00",
-  slotMinutes: "30",
+  slotMinutes: "15",
   isActive: "true",
   notes: "ติดตามอาการ"
 };
@@ -20,7 +20,7 @@ describe("admin schedule schema", () => {
     expect(result.data).toMatchObject({
       availabilityId: "availability-1",
       weekday: 1,
-      slotMinutes: 30,
+      slotMinutes: 15,
       isActive: true
     });
   });
@@ -45,13 +45,13 @@ describe("admin schedule schema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts multiple days with mixed slot durations when every block divides exactly", () => {
+  it("accepts multiple days only when every block uses the fixed duration", () => {
     const result = createDoctorAvailabilityBatchSchema.safeParse({
       doctorId: "doctor-1",
       weekdays: ["1", "3"],
       blocks: [
-        { startTime: "09:00", endTime: "11:00", slotMinutes: "60" },
-        { startTime: "11:00", endTime: "11:30", slotMinutes: "30" }
+        { startTime: "09:00", endTime: "11:00", slotMinutes: "15" },
+        { startTime: "11:00", endTime: "11:30", slotMinutes: "15" }
       ],
       isActive: "on"
     });
@@ -60,8 +60,8 @@ describe("admin schedule schema", () => {
     expect(result.data).toMatchObject({
       weekdays: [1, 3],
       blocks: [
-        { startTime: "09:00", endTime: "11:00", slotMinutes: 60 },
-        { startTime: "11:00", endTime: "11:30", slotMinutes: 30 }
+        { startTime: "09:00", endTime: "11:00", slotMinutes: 15 },
+        { startTime: "11:00", endTime: "11:30", slotMinutes: 15 }
       ],
       isActive: true
     });
@@ -72,13 +72,26 @@ describe("admin schedule schema", () => {
       doctorId: "doctor-1",
       weekdays: ["1", "1"],
       blocks: [
-        { startTime: "09:00", endTime: "10:45", slotMinutes: "60" },
-        { startTime: "10:00", endTime: "11:00", slotMinutes: "30" },
-        { startTime: "10:00", endTime: "11:00", slotMinutes: "30" }
+        { startTime: "09:00", endTime: "10:50", slotMinutes: "15" },
+        { startTime: "10:00", endTime: "11:00", slotMinutes: "15" },
+        { startTime: "10:00", endTime: "11:00", slotMinutes: "15" }
       ],
       isActive: "true"
     });
 
     expect(result.success).toBe(false);
   });
+
+  it.each(["30", "45", "60", "20", "16", "10", "240", "other"])(
+    "rejects a direct recurring or bulk duration payload of %s minutes",
+    (slotMinutes) => {
+      expect(upsertDoctorAvailabilitySchema.safeParse({ ...validSchedule, slotMinutes }).success).toBe(false);
+      expect(createDoctorAvailabilityBatchSchema.safeParse({
+        doctorId: "doctor-1",
+        weekdays: ["1"],
+        blocks: [{ startTime: "09:00", endTime: "12:00", slotMinutes }],
+        isActive: "on"
+      }).success).toBe(false);
+    }
+  );
 });

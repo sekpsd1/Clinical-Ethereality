@@ -8,6 +8,7 @@ import {
   getUpcomingDateForWeekday
 } from "@/features/consultations/booking/slots";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
+import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 
 export class ConsultationRescheduleError extends Error {
   constructor(readonly code: "NOT_ELIGIBLE" | "SLOT_UNAVAILABLE" | "CONFLICT") {
@@ -101,7 +102,7 @@ export async function rescheduleVerifiedConsultation(
     );
     startTime = dateOverride.startTime;
     endTime = dateOverride.endTime;
-    slotMinutes = dateOverride.slotMinutes;
+    slotMinutes = getNewScheduleDurationMinutes(dateOverride.slotMinutes);
   } else {
     sourceScheduledAt = getUpcomingDateForWeekday(
       availability!.weekday,
@@ -110,7 +111,7 @@ export async function rescheduleVerifiedConsultation(
     );
     startTime = availability!.startTime;
     endTime = availability!.endTime;
-    slotMinutes = availability!.slotMinutes;
+    slotMinutes = getNewScheduleDurationMinutes(availability!.slotMinutes);
     const scheduledDate = getBangkokCalendarDateKey(input.scheduledAt);
     const effectiveFrom = availability!.effectiveFrom?.toISOString().slice(0, 10);
     const effectiveTo = availability!.effectiveTo?.toISOString().slice(0, 10);

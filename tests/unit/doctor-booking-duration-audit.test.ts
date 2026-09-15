@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe("createConsultationBookingAction booked-duration audit", () => {
-  it("persists a 15-minute DoctorAvailability in the immutable booking duration snapshot", async () => {
+  it("persists 15 minutes even when the selected availability still stores a legacy duration", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-01-06T00:00:00.000Z"));
     const tx = {
@@ -75,7 +75,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
           endTime: "10:00",
           id: "availability-1",
           isActive: true,
-          slotMinutes: 15,
+          slotMinutes: 60,
           startTime: "09:00",
           weekday: 1,
         }),

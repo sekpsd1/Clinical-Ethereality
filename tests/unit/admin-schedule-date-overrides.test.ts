@@ -4,13 +4,13 @@ import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBloc
 
 describe("admin date schedule overrides", () => {
   it("accepts a complete special opening and a full-day closure", () => {
-    expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "available", startTime: "09:00", endTime: "11:00", slotMinutes: "60" }).success).toBe(true);
+    expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "available", startTime: "09:00", endTime: "11:00", slotMinutes: "15" }).success).toBe(true);
     expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "closed" }).success).toBe(true);
-    expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "blocked", startTime: "09:00", endTime: "10:00", slotMinutes: "30" }).success).toBe(true);
+    expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "blocked", startTime: "09:00", endTime: "10:00", slotMinutes: "15" }).success).toBe(true);
   });
 
   it("validates all three calendar-cell status choices and keeps full-day closure explicit", () => {
-    const base = { doctorId: "doctor-1", scheduleDate: "2026-08-10", startTime: "09:00", endTime: "09:30", slotMinutes: "30" };
+    const base = { doctorId: "doctor-1", scheduleDate: "2026-08-10", startTime: "09:00", endTime: "09:15", slotMinutes: "15" };
     expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "available" }).success).toBe(true);
     expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "blocked" }).success).toBe(true);
     expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "closed" }).success).toBe(true);
@@ -39,6 +39,16 @@ describe("admin date schedule overrides", () => {
   it("requires a distinct confirmed target list when copying a daily schedule", () => {
     expect(copyDoctorAvailabilityDateOverridesSchema.safeParse({ doctorId: "doctor-1", sourceDate: "2026-08-10", targetDates: ["2026-08-11", "2026-08-12"], confirm: "copy" }).success).toBe(true);
     expect(copyDoctorAvailabilityDateOverridesSchema.safeParse({ doctorId: "doctor-1", sourceDate: "2026-08-10", targetDates: ["2026-08-10"], confirm: "copy" }).success).toBe(false);
-    expect(updateDoctorAvailabilityDateOverrideSchema.safeParse({ overrideId: "override-1", doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "available", startTime: "09:00", endTime: "10:00", slotMinutes: 30 }).success).toBe(true);
+    expect(updateDoctorAvailabilityDateOverrideSchema.safeParse({ overrideId: "override-1", doctorId: "doctor-1", scheduleDate: "2026-08-10", type: "available", startTime: "09:00", endTime: "10:00", slotMinutes: 15 }).success).toBe(true);
   });
+
+  it.each([30, 45, 60, 20, 16, 10, 240, "other"])(
+    "rejects a direct daily, calendar, or update duration payload of %s minutes",
+    (slotMinutes) => {
+      const base = { doctorId: "doctor-1", scheduleDate: "2026-08-10", startTime: "09:00", endTime: "12:00", slotMinutes };
+      expect(createDoctorAvailabilityDateOverrideSchema.safeParse({ ...base, type: "available" }).success).toBe(false);
+      expect(setDoctorCalendarSlotStatusSchema.safeParse({ ...base, targetStatus: "available" }).success).toBe(false);
+      expect(updateDoctorAvailabilityDateOverrideSchema.safeParse({ ...base, overrideId: "override-1", type: "available" }).success).toBe(false);
+    }
+  );
 });

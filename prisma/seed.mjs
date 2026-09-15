@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+const NEW_CONSULTATION_DURATION_MINUTES = 15;
 
 const seedUsers = [
   {
@@ -369,6 +370,7 @@ async function upsertConsultation({ customerId, doctorId }) {
     data: {
       patientId: customerId,
       doctorId,
+      bookedDurationMinutes: NEW_CONSULTATION_DURATION_MINUTES,
       status: "scheduled",
       scheduledAt: new Date("2026-05-20T03:30:00.000Z"),
       zoomMeetingId: "seed-zoom-1001",
@@ -431,7 +433,7 @@ async function upsertDoctorAvailability(doctorId) {
     weekday,
     startTime: "17:00",
     endTime: "21:00",
-    slotMinutes: 15,
+    slotMinutes: NEW_CONSULTATION_DURATION_MINUTES,
     isActive: true,
     notes: "รับปรึกษาออนไลน์ได้ทั้งวิดีโอและแชท"
   }));
