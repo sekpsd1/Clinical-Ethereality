@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, ChevronRight, MapPin, Pencil, X } from "lucide-react";
 import {
   updateProfileContactAction,
   type UpdateProfileContactActionState
@@ -21,7 +23,8 @@ export function AccountContactEditor({
   dateOfBirth,
   email,
   phone,
-  phoneVerified
+  phoneVerified,
+  shippingAddressHref
 }: {
   rows: Array<{ label: string; value: string }>;
   fullName: string | null;
@@ -29,6 +32,7 @@ export function AccountContactEditor({
   email: string | null;
   phone: string | null;
   phoneVerified: boolean;
+  shippingAddressHref?: Route;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, action] = useActionState(updateProfileContactAction, initialState);
@@ -112,6 +116,11 @@ export function AccountContactEditor({
             </button>
             <SaveContactButton />
           </div>
+          {shippingAddressHref ? (
+            <p className="text-xs leading-5 text-[#6e797a]">
+              บันทึกหรือยกเลิกการแก้ไขข้อมูลบัญชีก่อน เพื่อไปจัดการที่อยู่จัดส่ง
+            </p>
+          ) : null}
         </form>
       ) : (
         <>
@@ -128,6 +137,21 @@ export function AccountContactEditor({
             <Pencil aria-hidden="true" className="size-4" />
             แก้ไขข้อมูลบัญชี
           </button>
+          {shippingAddressHref ? (
+            <Link
+              href={shippingAddressHref}
+              className="flex min-h-[64px] w-full items-center gap-3 rounded-[18px] border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10 active:scale-[0.99]"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+                <MapPin aria-hidden="true" className="size-5" strokeWidth={2.25} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold text-primary">จัดการที่อยู่</span>
+                <span className="mt-1 block text-xs leading-5 text-[#3e494a]">ที่อยู่สำหรับการจัดส่งคำสั่งซื้อและร้านยา</span>
+              </span>
+              <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-primary" />
+            </Link>
+          ) : null}
         </>
       )}
 

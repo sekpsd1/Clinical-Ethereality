@@ -198,6 +198,7 @@ export function ProfileSettings({
             email={profileData.email}
             phone={profileData.phone}
             phoneVerified={Boolean(profileData.phoneVerifiedAt)}
+            shippingAddressHref="/profile/shipping-addresses?returnTo=%2Fprofile%2Fsettings%3Fsection%3Daccount"
           />
         ) : activeDetail ? (
           <SettingDetailRows rows={activeDetail.rows} />
