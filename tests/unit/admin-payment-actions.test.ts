@@ -353,6 +353,72 @@ describe("admin payment review action", () => {
     expect(mocks.preparedCleanup).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps committed Admin evidence when cache revalidation throws", async () => {
+    mocks.applyManualConsultationPaymentReview.mockResolvedValueOnce("scheduled");
+    mocks.revalidatePath.mockImplementationOnce(() => {
+      throw new Error("cache unavailable");
+    });
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({
+      status: "success",
+      message: "ยืนยันการชำระเงินและนัดหมายแล้ว"
+    });
+    expect(mocks.preparedCleanup).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledTimes(5);
+  });
+
+  it("cleans up prepared Admin evidence when the review transaction fails", async () => {
+    mocks.transaction.mockRejectedValueOnce(
+      new ConsultationManualReviewError("CONFLICT")
+    );
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({ status: "error" });
+    expect(mocks.preparedCleanup).toHaveBeenCalledTimes(1);
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("creates a manual appointment intake only through its dedicated permission and serializable service", async () => {
     mocks.createManualAppointmentPaymentIntake.mockResolvedValueOnce({
       consultationId: "consultation-1",
@@ -458,6 +524,65 @@ describe("admin payment review action", () => {
         transactionReference: "BANKREFERENCE1"
       }
     );
+  });
+
+  it("cleans up replay evidence for an already processed manual appointment", async () => {
+    mocks.applyManualAppointmentPaymentDecision.mockResolvedValueOnce(
+      "already_processed"
+    );
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("decision", "verified");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewManualAppointmentPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toEqual({
+      status: "success",
+      message: "รายการนี้ได้รับการตรวจแล้ว"
+    });
+    expect(mocks.preparedCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not delete committed appointment evidence when revalidation fails", async () => {
+    mocks.applyManualAppointmentPaymentDecision.mockResolvedValueOnce("scheduled");
+    mocks.revalidatePath.mockImplementationOnce(() => {
+      throw new Error("cache unavailable");
+    });
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("decision", "verified");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewManualAppointmentPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({ status: "success" });
+    expect(mocks.preparedCleanup).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledTimes(6);
   });
 
   it("requires the existing admin guard and serializable transaction for a manual Store refund", async () => {

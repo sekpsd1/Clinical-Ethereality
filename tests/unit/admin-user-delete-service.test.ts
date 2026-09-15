@@ -110,6 +110,54 @@ describe("Admin permanent user deletion service", () => {
     expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: "user-1" } });
   });
 
+  it("includes Admin-owned review evidence when deleting the customer's linked payment", async () => {
+    const tx = createTransaction();
+    tx.consultation.findMany.mockResolvedValueOnce([
+      { id: "consultation-1", slotLockId: null }
+    ]);
+    tx.payment.findMany.mockResolvedValueOnce([{ id: "payment-1" }]);
+    tx.fileAttachment.findMany.mockResolvedValueOnce([
+      {
+        id: "admin-evidence-1",
+        entityType: "consultation_manual_review_evidence",
+        ownerId: "admin-reviewer-2",
+        storageKey: "payments/private/admin-evidence-1.png"
+      }
+    ]);
+
+    const result = await deleteUserPermanently(
+      tx as unknown as Prisma.TransactionClient,
+      {
+        actorId: "admin-1",
+        userId: "user-1"
+      }
+    );
+
+    expect(tx.fileAttachment.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { ownerId: "user-1" },
+          {
+            entityType: {
+              in: ["payment_slip", "consultation_manual_review_evidence"]
+            },
+            entityId: { in: ["payment-1"] }
+          }
+        ]
+      },
+      select: { id: true, entityType: true, storageKey: true }
+    });
+    expect(tx.fileAttachment.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["admin-evidence-1"] } }
+    });
+    expect(result.files).toEqual([
+      {
+        entityType: "consultation_manual_review_evidence",
+        storageKey: "payments/private/admin-evidence-1.png"
+      }
+    ]);
+  });
+
   it("includes a doctor's consultations, prescriptions, schedules, and slot locks", async () => {
     const tx = createTransaction();
     tx.user.findUnique.mockResolvedValueOnce({

@@ -44,6 +44,17 @@ function isPaymentEvidenceFile(value: FormDataEntryValue | null): value is File 
   return typeof File !== "undefined" && value instanceof File;
 }
 
+function revalidatePaymentViews(paths: readonly string[]): void {
+  for (const path of paths) {
+    try {
+      revalidatePath(path);
+    } catch {
+      // The mutation has already committed. A cache failure must not trigger
+      // cleanup of evidence that the committed database row now references.
+    }
+  }
+}
+
 async function findMatchingManualAppointmentIntake(input: {
   doctorId: string;
   patientId: string;
@@ -154,8 +165,9 @@ export async function createManualAppointmentPaymentIntakeAction(
     return { status: "error", message: getPaymentSlipErrorMessage(error) };
   }
 
+  let outcome: Awaited<ReturnType<typeof createManualAppointmentPaymentIntake>>;
   try {
-    const outcome = await prisma.$transaction(
+    outcome = await prisma.$transaction(
       (tx) =>
         createManualAppointmentPaymentIntake(tx, {
           actorId: session.userId,
@@ -169,22 +181,6 @@ export async function createManualAppointmentPaymentIntakeAction(
         }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
-    if (outcome.status !== "created") await prepared.cleanup();
-
-    revalidatePath("/admin");
-    revalidatePath("/admin/payments");
-    revalidatePath("/admin/schedules");
-    revalidatePath("/notifications");
-
-    return {
-      status: "success",
-      message:
-        outcome.status === "created"
-          ? "รับหลักฐานแล้ว รายการยังรอตรวจและยังไม่ยืนยันนัดหมาย"
-          : "รายการนี้ถูกส่งเข้าคิวตรวจแล้ว",
-      consultationId: outcome.consultationId,
-      paymentId: outcome.paymentId
-    };
   } catch (error) {
     await prepared.cleanup();
     if (
@@ -222,6 +218,25 @@ export async function createManualAppointmentPaymentIntakeAction(
           : "ไม่สามารถสร้างรายการรอตรวจได้"
     };
   }
+
+  if (outcome.status !== "created") await prepared.cleanup();
+
+  revalidatePaymentViews([
+    "/admin",
+    "/admin/payments",
+    "/admin/schedules",
+    "/notifications"
+  ]);
+
+  return {
+    status: "success",
+    message:
+      outcome.status === "created"
+        ? "รับหลักฐานแล้ว รายการยังรอตรวจและยังไม่ยืนยันนัดหมาย"
+        : "รายการนี้ถูกส่งเข้าคิวตรวจแล้ว",
+    consultationId: outcome.consultationId,
+    paymentId: outcome.paymentId
+  };
 }
 
 export async function reviewPaymentAction(
@@ -353,8 +368,9 @@ export async function reviewConsultationPaymentAction(
     return { status: "error", message: getPaymentSlipErrorMessage(error) };
   }
 
+  let outcome: Awaited<ReturnType<typeof applyManualConsultationPaymentReview>>;
   try {
-    const outcome = await prisma.$transaction(
+    outcome = await prisma.$transaction(
       (tx) =>
         applyManualConsultationPaymentReview(tx, {
           actorId: session.userId,
@@ -370,23 +386,6 @@ export async function reviewConsultationPaymentAction(
         }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
-    if (outcome === "already_processed") await prepared.cleanup();
-
-    revalidatePath("/admin");
-    revalidatePath("/admin/payments");
-    revalidatePath("/doctor/consultations");
-    revalidatePath("/doctor/notifications");
-    revalidatePath("/notifications");
-
-    return {
-      status: "success",
-      message:
-        outcome === "already_processed"
-          ? "รายการนี้ยืนยันไว้แล้ว"
-          : outcome === "scheduled"
-            ? "ยืนยันการชำระเงินและนัดหมายแล้ว"
-            : "ยืนยันการชำระเงินแล้ว ลูกค้าต้องเลือกเวลาใหม่"
-    };
   } catch (error) {
     await prepared.cleanup();
     const messages: Partial<
@@ -409,6 +408,26 @@ export async function reviewConsultationPaymentAction(
           : "ไม่สามารถยืนยันรายการนี้ได้ กรุณาตรวจสถานะแล้วลองใหม่"
     };
   }
+
+  if (outcome === "already_processed") await prepared.cleanup();
+
+  revalidatePaymentViews([
+    "/admin",
+    "/admin/payments",
+    "/doctor/consultations",
+    "/doctor/notifications",
+    "/notifications"
+  ]);
+
+  return {
+    status: "success",
+    message:
+      outcome === "already_processed"
+        ? "รายการนี้ยืนยันไว้แล้ว"
+        : outcome === "scheduled"
+          ? "ยืนยันการชำระเงินและนัดหมายแล้ว"
+          : "ยืนยันการชำระเงินแล้ว ลูกค้าต้องเลือกเวลาใหม่"
+  };
 }
 
 export async function reviewManualAppointmentPaymentAction(
@@ -456,8 +475,9 @@ export async function reviewManualAppointmentPaymentAction(
     }
   }
 
+  let outcome: Awaited<ReturnType<typeof applyManualAppointmentPaymentDecision>>;
   try {
-    const outcome = await prisma.$transaction(
+    outcome = await prisma.$transaction(
       (tx) =>
         applyManualAppointmentPaymentDecision(
           tx,
@@ -480,25 +500,6 @@ export async function reviewManualAppointmentPaymentAction(
         ),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
-    if (outcome === "already_processed" && prepared) {
-      await prepared.cleanup();
-    }
-
-    revalidatePath("/admin");
-    revalidatePath("/admin/payments");
-    revalidatePath("/admin/schedules");
-    revalidatePath("/doctor/consultations");
-    revalidatePath("/doctor/notifications");
-    revalidatePath("/notifications");
-
-    const messages: Record<typeof outcome, string> = {
-      scheduled: "ยืนยันรายการโอนและนัดหมายแล้ว",
-      reschedule_required:
-        "ยืนยันรายการโอนแล้ว แต่ช่วงเวลาเดิมหมดอายุ ผู้ป่วยต้องเลือกเวลาใหม่",
-      rejected: "ปฏิเสธรายการโอนและยกเลิกคำขอนัดหมายแล้ว",
-      already_processed: "รายการนี้ได้รับการตรวจแล้ว"
-    };
-    return { status: "success", message: messages[outcome] };
   } catch (error) {
     if (prepared) await prepared.cleanup();
     const messages: Partial<Record<ConsultationManualReviewError["code"], string>> = {
@@ -516,4 +517,26 @@ export async function reviewManualAppointmentPaymentAction(
           : "ไม่สามารถบันทึกผลตรวจรายการโอนได้"
     };
   }
+
+  if (outcome === "already_processed" && prepared) {
+    await prepared.cleanup();
+  }
+
+  revalidatePaymentViews([
+    "/admin",
+    "/admin/payments",
+    "/admin/schedules",
+    "/doctor/consultations",
+    "/doctor/notifications",
+    "/notifications"
+  ]);
+
+  const messages: Record<typeof outcome, string> = {
+    scheduled: "ยืนยันรายการโอนและนัดหมายแล้ว",
+    reschedule_required:
+      "ยืนยันรายการโอนแล้ว แต่ช่วงเวลาเดิมหมดอายุ ผู้ป่วยต้องเลือกเวลาใหม่",
+    rejected: "ปฏิเสธรายการโอนและยกเลิกคำขอนัดหมายแล้ว",
+    already_processed: "รายการนี้ได้รับการตรวจแล้ว"
+  };
+  return { status: "success", message: messages[outcome] };
 }
