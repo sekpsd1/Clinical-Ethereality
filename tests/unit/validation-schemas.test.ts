@@ -117,11 +117,13 @@ describe("feature validation schemas", () => {
         fullName: " ผู้ป่วย ทดสอบ ",
         dateOfBirth: "1990-01-02",
         email: " customer@example.com ",
+        phone: " 0812345678 ",
       })
     ).toEqual({
       fullName: "ผู้ป่วย ทดสอบ",
       dateOfBirth: "1990-01-02",
-      email: "customer@example.com"
+      email: "customer@example.com",
+      phone: "0812345678"
     });
 
     expect(
@@ -129,10 +131,13 @@ describe("feature validation schemas", () => {
         fullName: "ผู้ป่วย ทดสอบ",
         dateOfBirth: "1990-02-30",
         email: "invalid-email",
+        phone: "0812345678",
       }).success
     ).toBe(false);
     expect(updateProfileContactSchema.safeParse({ fullName: "ผู้ป่วย ทดสอบ", dateOfBirth: "2999-01-01", email: "" }).success).toBe(false);
-    expect(updateProfileContactSchema.safeParse({ fullName: "ผู้ป่วย ทดสอบ", dateOfBirth: "1990-01-02", email: "", phone: "0812345678" }).success).toBe(false);
+    expect(updateProfileContactSchema.safeParse({ email: "legacy@example.com", phone: "0899999999" }).success).toBe(true);
+    expect(updateProfileContactSchema.safeParse({ email: "", phone: "1234" }).success).toBe(false);
+    expect(updateProfileContactSchema.safeParse({ fullName: "ผู้ป่วย ทดสอบ", dateOfBirth: "1990-01-02", email: "", phone: "0812345678", nationalId: "9999999999999" }).success).toBe(false);
   });
 
   it("validates cart mutations with bounded integer quantities", () => {

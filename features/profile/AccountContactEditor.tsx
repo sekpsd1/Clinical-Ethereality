@@ -87,17 +87,19 @@ export function AccountContactEditor({
             />
           </label>
 
-          <div className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">
+          <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">
             เบอร์โทรศัพท์
             <input
               type="tel"
-              value={phone ?? "ยังไม่ได้ระบุ"}
-              disabled
-              aria-label="เบอร์โทรศัพท์ (อ่านอย่างเดียว)"
-              className="mt-2 h-11 w-full rounded-[8px] border border-[#bdc9ca]/40 bg-[#f7f9fb] px-3 text-sm font-medium normal-case tracking-normal text-[#6e797a]"
+              name="phone"
+              defaultValue={phone ?? ""}
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="0812345678"
+              className="mt-2 h-11 w-full rounded-[8px] border border-[#bdc9ca]/60 bg-white px-3 text-sm font-medium normal-case tracking-normal text-[#191c1e] outline-none focus:border-primary"
             />
-            <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-[#6e797a]">เบอร์ที่ยืนยันแล้วไม่สามารถแก้ไขจากหน้านี้ได้</span>
-          </div>
+            <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-[#6e797a]">หากเปลี่ยนเบอร์ ระบบจะให้ยืนยัน OTP ใหม่ผ่านขั้นตอนยืนยันตัวตนเดิม</span>
+          </label>
 
           <div className="flex gap-2 pt-1">
             <button

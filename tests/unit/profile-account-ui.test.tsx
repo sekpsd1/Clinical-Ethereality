@@ -32,7 +32,7 @@ describe("customer profile account UI", () => {
     mocks.useActionState.mockReturnValue([{ status: "idle", message: "" }, mocks.action]);
   });
 
-  it("renders editable canonical identity and email while keeping phone read-only", () => {
+  it("renders editable canonical identity, email, and the established phone correction field", () => {
     const html = renderToStaticMarkup(
       <AccountContactEditor
         rows={[]}
@@ -48,9 +48,10 @@ describe("customer profile account UI", () => {
     expect(html).toContain('name="dateOfBirth"');
     expect(html).toContain('type="date"');
     expect(html).toContain('name="email"');
+    expect(html).toContain('name="phone"');
+    expect(html).toContain('autoComplete="tel"');
+    expect(html).toContain('inputMode="tel"');
     expect(html).toContain("0812345678");
-    expect(html).toContain("disabled");
-    expect(html).not.toContain('name="phone"');
     expect(html).not.toContain('name="nationalId"');
   });
 

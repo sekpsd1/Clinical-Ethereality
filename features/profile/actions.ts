@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateProfileContactSchema } from "@/features/profile/schema";
+import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 
 export type UpdateProfileContactActionState = {
   status: "idle" | "success" | "error";
@@ -14,9 +15,10 @@ export type UpdateProfileContactActionState = {
 
 function getProfileFormData(formData: FormData) {
   return {
-    fullName: formData.get("fullName"),
-    dateOfBirth: formData.get("dateOfBirth"),
-    email: formData.get("email")
+    fullName: formData.get("fullName") ?? undefined,
+    dateOfBirth: formData.get("dateOfBirth") ?? undefined,
+    email: formData.get("email"),
+    phone: formData.get("phone") ?? undefined
   };
 }
 
@@ -28,6 +30,7 @@ export async function updateProfileContactAction(
   assertPermission(session, "profile:update:self");
 
   const parsed = updateProfileContactSchema.safeParse(getProfileFormData(formData));
+  const phoneProvided = formData.has("phone");
 
   if (!parsed.success) {
     return {
@@ -47,7 +50,9 @@ export async function updateProfileContactAction(
           status: true,
           fullName: true,
           dateOfBirth: true,
-          email: true
+          email: true,
+          phone: true,
+          normalizedPhone: true
         }
       });
 
@@ -55,22 +60,46 @@ export async function updateProfileContactAction(
         throw new Error("ACTIVE_CUSTOMER_REQUIRED");
       }
 
-      const fullName = parsed.data.fullName;
-      const dateOfBirth = new Date(`${parsed.data.dateOfBirth}T00:00:00.000Z`);
+      const fullName = parsed.data.fullName ?? currentUser.fullName;
+      const dateOfBirth = parsed.data.dateOfBirth
+        ? new Date(`${parsed.data.dateOfBirth}T00:00:00.000Z`)
+        : currentUser.dateOfBirth;
       const email = parsed.data.email ?? null;
+      const phone = phoneProvided ? parsed.data.phone ?? null : currentUser.phone;
+      const normalizedPhone = phoneProvided
+        ? phone
+          ? normalizeThaiMobileNumber(phone).e164
+          : null
+        : currentUser.normalizedPhone;
       const currentDateOfBirth = currentUser.dateOfBirth?.toISOString().slice(0, 10) ?? null;
-      const identityChanged = currentUser.fullName !== fullName || currentDateOfBirth !== parsed.data.dateOfBirth;
+      const fullNameChanged = parsed.data.fullName !== undefined && currentUser.fullName !== fullName;
+      const dateOfBirthChanged = parsed.data.dateOfBirth !== undefined && currentDateOfBirth !== parsed.data.dateOfBirth;
+      const phoneChanged = phoneProvided && currentUser.normalizedPhone !== normalizedPhone;
+      const identityChanged = fullNameChanged || dateOfBirthChanged;
       const changedFields = [
-        ...(currentUser.fullName !== fullName ? ["fullName"] : []),
-        ...(currentDateOfBirth !== parsed.data.dateOfBirth ? ["dateOfBirth"] : []),
+        ...(fullNameChanged ? ["fullName"] : []),
+        ...(dateOfBirthChanged ? ["dateOfBirth"] : []),
         ...(currentUser.email !== email ? ["email"] : []),
+        ...(phoneProvided && currentUser.phone !== phone ? ["phone"] : []),
+        ...(phoneChanged ? ["phoneVerificationInvalidated"] : [])
       ];
 
       if (changedFields.length === 0) return;
 
       const updated = await tx.user.updateMany({
         where: { id: session.userId, role: "customer", status: "active" },
-        data: { fullName, dateOfBirth, email }
+        data: {
+          ...(parsed.data.fullName !== undefined ? { fullName } : {}),
+          ...(parsed.data.dateOfBirth !== undefined ? { dateOfBirth } : {}),
+          email,
+          ...(phoneProvided
+            ? {
+                phone,
+                normalizedPhone,
+                ...(phoneChanged ? { phoneVerifiedAt: null } : {})
+              }
+            : {})
+        }
       });
       if (updated.count !== 1) throw new Error("ACTIVE_CUSTOMER_REQUIRED");
 

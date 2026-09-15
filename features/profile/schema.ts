@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+const thaiPhonePattern = /^(?:\+66|0)[689]\d{8}$/;
 
 function isRealIsoDate(value: string): boolean {
   const match = isoDatePattern.exec(value);
@@ -19,18 +20,26 @@ function getBangkokDateKey(now = new Date()): string {
 }
 
 export const updateProfileContactSchema = z.object({
-  fullName: z.string().trim().min(2, "กรุณาระบุชื่อ-นามสกุล").max(191, "ชื่อยาวเกินไป"),
+  fullName: z.string().trim().min(2, "กรุณาระบุชื่อ-นามสกุล").max(191, "ชื่อยาวเกินไป").optional(),
   dateOfBirth: z
     .string()
     .trim()
     .refine(isRealIsoDate, "กรุณาระบุวันเดือนปีเกิดให้ถูกต้อง")
-    .refine((value) => value <= getBangkokDateKey(), "วันเกิดต้องไม่เป็นวันในอนาคต"),
+    .refine((value) => value <= getBangkokDateKey(), "วันเกิดต้องไม่เป็นวันในอนาคต")
+    .optional(),
   email: z
     .string()
     .trim()
     .max(191, "อีเมลยาวเกินไป")
     .refine((value) => value === "" || z.string().email().safeParse(value).success, "รูปแบบอีเมลไม่ถูกต้อง")
+    .transform((value) => value || undefined),
+  phone: z
+    .string()
+    .trim()
+    .max(30, "เบอร์โทรศัพท์ยาวเกินไป")
+    .refine((value) => value === "" || thaiPhonePattern.test(value), "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง")
     .transform((value) => value || undefined)
+    .optional()
 }).strict();
 
 export type UpdateProfileContactInput = z.infer<typeof updateProfileContactSchema>;
