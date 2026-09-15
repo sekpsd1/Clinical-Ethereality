@@ -46,7 +46,9 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-01-06T00:00:00.000Z"));
     const tx = {
-      $queryRaw: vi.fn().mockResolvedValue([{ id: "doctor-1" }]),
+      $queryRaw: vi.fn()
+        .mockResolvedValue([])
+        .mockResolvedValueOnce([{ id: "doctor-1" }]),
       auditLog: { create: vi.fn().mockResolvedValue({}) },
       consultAssessment: {
         findFirst: vi.fn().mockResolvedValue({

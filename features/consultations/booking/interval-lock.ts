@@ -1,10 +1,6 @@
 import { Prisma } from "@prisma/client";
 import {
-  getActiveConsultationSlotWhere
-} from "@/features/consultations/booking/slots";
-import {
-  getBookedConsultationDurationMinutes,
-  LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES
+  getBookedConsultationDurationMinutes
 } from "@/features/consultations/duration-policy";
 
 const MAX_SUPPORTED_CONSULTATION_DURATION_MINUTES = 60;
@@ -83,17 +79,36 @@ export async function findActiveConsultationIntervalConflict(
       MAX_SUPPORTED_CONSULTATION_DURATION_MINUTES * 60 * 1000
   );
 
-  const consultations = await tx.consultation.findMany({
-    where: {
-      ...(input.excludeConsultationId
-        ? { id: { not: input.excludeConsultationId } }
-        : {}),
-      doctorId: input.doctorId,
-      scheduledAt: { gte: lookupStart, lt: candidate.end },
-      ...getActiveConsultationSlotWhere(now)
-    },
-    select: { id: true, scheduledAt: true, bookedDurationMinutes: true }
-  });
+  const consultations = await tx.$queryRaw<Array<{
+    id: string;
+    scheduledAt: Date;
+    durationMinutes: number | null;
+  }>>(Prisma.sql`
+    SELECT
+      c.\`id\`,
+      c.\`scheduledAt\`,
+      c.\`bookedDurationMinutes\` AS \`durationMinutes\`
+    FROM \`Consultation\` c
+    LEFT JOIN \`ConsultationSlotLock\` l ON l.\`id\` = c.\`slotLockId\`
+    WHERE c.\`doctorId\` = ${input.doctorId}
+      AND c.\`scheduledAt\` >= ${lookupStart}
+      AND c.\`scheduledAt\` < ${candidate.end}
+      ${input.excludeConsultationId
+        ? Prisma.sql`AND c.\`id\` <> ${input.excludeConsultationId}`
+        : Prisma.empty}
+      AND (
+        c.\`status\` IN ('scheduled', 'live')
+        OR (
+          c.\`status\` = 'pending_payment'
+          AND (
+            c.\`slotLockId\` IS NULL
+            OR l.\`expiresAt\` IS NULL
+            OR l.\`expiresAt\` > ${now}
+          )
+        )
+      )
+    FOR UPDATE
+  `);
 
   const consultationConflict = consultations.find(
     (consultation) =>
@@ -102,7 +117,7 @@ export async function findActiveConsultationIntervalConflict(
         candidate,
         getConsultationInterval(
           consultation.scheduledAt,
-          consultation.bookedDurationMinutes
+          consultation.durationMinutes
         )
       )
   );
@@ -110,52 +125,38 @@ export async function findActiveConsultationIntervalConflict(
     return { kind: "consultation", id: consultationConflict.id };
   }
 
-  const locks = await tx.consultationSlotLock.findMany({
-    where: {
-      ...(input.excludeSlotLockId ? { id: { not: input.excludeSlotLockId } } : {}),
-      doctorId: input.doctorId,
-      scheduledAt: { gte: lookupStart, lt: candidate.end },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
-    },
-    select: {
-      id: true,
-      scheduledAt: true,
-      availabilityId: true,
-      consultation: { select: { bookedDurationMinutes: true } }
-    }
-  });
+  const locks = await tx.$queryRaw<Array<{
+    id: string;
+    scheduledAt: Date;
+    durationMinutes: number | null;
+  }>>(Prisma.sql`
+    SELECT
+      l.\`id\`,
+      l.\`scheduledAt\`,
+      COALESCE(
+        c.\`bookedDurationMinutes\`,
+        a.\`slotMinutes\`,
+        o.\`slotMinutes\`,
+        30
+      ) AS \`durationMinutes\`
+    FROM \`ConsultationSlotLock\` l
+    LEFT JOIN \`Consultation\` c ON c.\`slotLockId\` = l.\`id\`
+    LEFT JOIN \`DoctorAvailability\` a ON a.\`id\` = l.\`availabilityId\`
+    LEFT JOIN \`DoctorAvailabilityDateOverride\` o ON o.\`id\` = l.\`availabilityId\`
+    WHERE l.\`doctorId\` = ${input.doctorId}
+      AND l.\`scheduledAt\` >= ${lookupStart}
+      AND l.\`scheduledAt\` < ${candidate.end}
+      ${input.excludeSlotLockId
+        ? Prisma.sql`AND l.\`id\` <> ${input.excludeSlotLockId}`
+        : Prisma.empty}
+      AND (l.\`expiresAt\` IS NULL OR l.\`expiresAt\` > ${now})
+    FOR UPDATE
+  `);
   if (locks.length === 0) return null;
-
-  const sourceIds = locks.flatMap((lock) =>
-    lock.availabilityId ? [lock.availabilityId] : []
-  );
-  const [weeklySources, dateSources] =
-    sourceIds.length === 0
-      ? [[], []]
-      : await Promise.all([
-          tx.doctorAvailability.findMany({
-            where: { id: { in: sourceIds } },
-            select: { id: true, slotMinutes: true }
-          }),
-          tx.doctorAvailabilityDateOverride.findMany({
-            where: { id: { in: sourceIds } },
-            select: { id: true, slotMinutes: true }
-          })
-        ]);
-  const durationBySource = new Map(
-    [...weeklySources, ...dateSources].map((source) => [
-      source.id,
-      source.slotMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES
-    ])
-  );
   const lockConflict = locks.find((lock) => {
-    const durationMinutes =
-      lock.consultation?.bookedDurationMinutes ??
-      (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null) ??
-      LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES;
     return consultationIntervalsOverlap(
       candidate,
-      getConsultationInterval(lock.scheduledAt, durationMinutes)
+      getConsultationInterval(lock.scheduledAt, lock.durationMinutes)
     );
   });
 

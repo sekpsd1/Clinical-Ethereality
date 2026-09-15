@@ -41,7 +41,10 @@ function result(overrides: Partial<SlipVerificationResult> = {}): SlipVerificati
 
 function txMock() {
   return {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: "consultation-1" }]),
+    $queryRaw: vi.fn()
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([{ id: "doctor-1" }])
+      .mockResolvedValueOnce([{ id: "consultation-1" }]),
     auditLog: {
       create: vi.fn()
     },
@@ -229,7 +232,7 @@ describe("consultation payment verification service", () => {
       result: result()
     });
 
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(4);
     expect(tx.consultation.updateMany).toHaveBeenCalledWith({
       where: {
         id: "consultation-1",

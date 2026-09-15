@@ -50,6 +50,7 @@ const retryAfterSeconds = z.number().int().positive().max(86_400).nullable();
 
 const webhookEventBase = {
   eventId: webhookIdentifier,
+  attemptId: webhookIdentifier.optional(),
   paymentId: z.string().trim().min(1).max(191),
   provider: z.enum(["slipok", "easyslip"])
 } as const;

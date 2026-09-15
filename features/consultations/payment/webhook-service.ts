@@ -16,6 +16,7 @@ import { lockDoctorConsultationSchedule } from "@/features/consultations/booking
 type WebhookOutcome = "verified" | "rejected" | "provider_error";
 
 type StoredWebhookEvent = {
+  attemptId: string | null;
   eventId: string;
   outcome: WebhookOutcome;
   provider: "slipok" | "easyslip";
@@ -60,6 +61,7 @@ function getStoredWebhookEvent(verificationPayload: Prisma.JsonValue | null): St
   }
 
   const {
+    attemptId,
     eventId,
     outcome,
     provider,
@@ -79,6 +81,7 @@ function getStoredWebhookEvent(verificationPayload: Prisma.JsonValue | null): St
   }
 
   return {
+    attemptId: typeof attemptId === "string" ? attemptId : null,
     eventId,
     outcome,
     provider,
@@ -142,6 +145,7 @@ function isExactReplay(
     amountMatches &&
     transactionReferenceMatches &&
     storedEvent.eventId === event.eventId &&
+    storedEvent.attemptId === (event.attemptId ?? null) &&
     storedEvent.outcome === outcome &&
     storedEvent.provider === event.provider &&
     storedEvent.classification ===
@@ -262,6 +266,26 @@ export async function persistConsultationPaymentWebhookEvent(
     throw new PaymentVerificationConflictError();
   }
 
+  const payload =
+    payment.verificationPayload &&
+    typeof payment.verificationPayload === "object" &&
+    !Array.isArray(payment.verificationPayload)
+      ? (payment.verificationPayload as Prisma.JsonObject)
+      : null;
+  const providerAttempt =
+    payload?.providerAttempt &&
+    typeof payload.providerAttempt === "object" &&
+    !Array.isArray(payload.providerAttempt)
+      ? (payload.providerAttempt as Prisma.JsonObject)
+      : null;
+  const currentAttemptId =
+    typeof providerAttempt?.attemptId === "string"
+      ? providerAttempt.attemptId
+      : null;
+  if (currentAttemptId && event.attemptId !== currentAttemptId) {
+    throw new PaymentVerificationConflictError();
+  }
+
   if (!Number.isFinite(serverAmount) || toSatang(serverAmount) !== toSatang(event.amount)) {
     throw new ConsultationPaymentWebhookValidationError();
   }
@@ -295,6 +319,7 @@ export async function persistConsultationPaymentWebhookEvent(
     data: {
       verificationPayload: mergePaymentVerificationPayload(payment.verificationPayload, {
         providerWebhook: {
+          attemptId: event.attemptId ?? null,
           eventId: event.eventId,
           outcome,
           provider: event.provider,

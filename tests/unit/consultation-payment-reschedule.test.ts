@@ -8,7 +8,10 @@ const scheduledAt = new Date("2026-09-10T02:15:00.000Z");
 
 function txMock() {
   return {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: "consultation-1" }]),
+    $queryRaw: vi.fn()
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([{ id: "doctor-1" }])
+      .mockResolvedValueOnce([{ id: "consultation-1" }]),
     auditLog: { create: vi.fn() },
     consultation: {
       findUnique: vi.fn().mockResolvedValue({
@@ -126,10 +129,10 @@ describe("verified consultation rescheduling", () => {
 
   it("fails closed when another consultation already occupies the slot", async () => {
     const tx = txMock();
-    tx.consultation.findMany.mockResolvedValueOnce([{
+    tx.$queryRaw.mockResolvedValueOnce([{
       id: "consultation-2",
       scheduledAt,
-      bookedDurationMinutes: 30
+      durationMinutes: 30
     }]);
 
     await expect(

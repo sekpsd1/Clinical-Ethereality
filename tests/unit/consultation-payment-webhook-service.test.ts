@@ -94,6 +94,7 @@ describe("consultation payment webhook persistence service", () => {
         verificationPayload: {
           source: "consultation_private_slip",
           providerWebhook: {
+            attemptId: null,
             eventId: "evt-verified-1",
             outcome: "verified",
             provider: "slipok",
@@ -164,6 +165,7 @@ describe("consultation payment webhook persistence service", () => {
         data: {
           verificationPayload: expect.objectContaining({
             providerWebhook: {
+              attemptId: null,
               eventId: "evt-rejected-1",
               outcome: "rejected",
               provider: "slipok",
@@ -200,6 +202,7 @@ describe("consultation payment webhook persistence service", () => {
         data: {
           verificationPayload: expect.objectContaining({
             providerWebhook: {
+              attemptId: null,
               eventId: "evt-provider-error-1",
               outcome: "provider_error",
               provider: "slipok",
@@ -265,6 +268,26 @@ describe("consultation payment webhook persistence service", () => {
     ).resolves.toBe("replayed");
     expect(tx.payment.updateMany).not.toHaveBeenCalled();
     expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale webhook from an older provider attempt", async () => {
+    const tx = txMock(
+      payment({
+        verificationPayload: {
+          providerAttempt: { attemptId: "attempt-new" }
+        }
+      })
+    );
+
+    await expect(
+      persistConsultationPaymentWebhookEvent(tx as never, {
+        ...verifiedEvent,
+        attemptId: "attempt-old"
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(mocks.applyConsultationPaymentVerification).not.toHaveBeenCalled();
   });
 
   it.each([

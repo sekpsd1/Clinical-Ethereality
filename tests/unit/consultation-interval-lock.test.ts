@@ -59,19 +59,15 @@ describe("consultation interval locking", () => {
 
   it("fails closed for an active orphan lock using the legacy duration fallback", async () => {
     const tx = {
-      consultation: { findMany: vi.fn().mockResolvedValue([]) },
-      consultationSlotLock: {
-        findMany: vi.fn().mockResolvedValue([
+      $queryRaw: vi.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
           {
             id: "lock-1",
             scheduledAt: new Date("2026-09-15T10:00:00.000Z"),
-            availabilityId: null,
-            consultation: null
+            durationMinutes: 30
           }
         ])
-      },
-      doctorAvailability: { findMany: vi.fn() },
-      doctorAvailabilityDateOverride: { findMany: vi.fn() }
     };
 
     await expect(

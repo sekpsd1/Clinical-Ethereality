@@ -28,7 +28,11 @@ function txMock(overrides: {
   const consultationStatus = overrides.consultationStatus ?? "pending_payment";
   const paymentStatus = overrides.paymentStatus ?? "pending_review";
   return {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: "locked" }]),
+    $queryRaw: vi.fn()
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([{ id: "doctor-1" }])
+      .mockResolvedValueOnce([{ id: "consultation-1" }])
+      .mockResolvedValueOnce([{ id: "payment-1" }]),
     auditLog: { create: vi.fn() },
     consultation: {
       findUnique: vi.fn().mockResolvedValue({
@@ -229,7 +233,7 @@ describe("manual consultation payment review", () => {
     );
 
     expect(outcome).toBe("scheduled");
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(3);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(5);
     expect(tx.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -357,10 +361,10 @@ describe("manual consultation payment review", () => {
 
   it("keeps verified funds but refuses to schedule a slot occupied before review", async () => {
     const tx = txMock();
-    tx.consultation.findMany.mockResolvedValueOnce([{
+    tx.$queryRaw.mockResolvedValueOnce([{
       id: "consultation-other",
       scheduledAt,
-      bookedDurationMinutes: 30
+      durationMinutes: 30
     }]);
 
     const outcome = await applyManualConsultationPaymentReview(
@@ -503,7 +507,10 @@ function manualAppointmentPayload() {
 
 function intakeTxMock() {
   return {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: "patient-1" }]),
+    $queryRaw: vi.fn()
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([{ id: "patient-1" }])
+      .mockResolvedValueOnce([{ id: "doctor-1" }]),
     auditLog: { create: vi.fn() },
     user: {
       findUnique: vi.fn().mockResolvedValue({
