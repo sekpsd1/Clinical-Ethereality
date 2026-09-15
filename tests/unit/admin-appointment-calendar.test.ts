@@ -16,8 +16,8 @@ describe("admin appointment calendar", () => {
     });
 
     expect(slots.map((slot) => [slot.timeLabel, slot.consultation?.status ?? null])).toEqual([
-      ["09:00", null], ["09:15", null], ["09:30", "scheduled"], ["09:45", null],
-      ["10:00", "pending_payment"], ["10:15", null], ["10:30", null], ["10:45", null]
+      ["09:00", null], ["09:15", null], ["09:30", "scheduled"], ["09:45", "scheduled"],
+      ["10:00", "pending_payment"], ["10:15", "pending_payment"], ["10:30", null], ["10:45", null]
     ]);
     expect(slots.every((slot) => slot.slotMinutes === 15)).toBe(true);
     expect(slots.every((slot) => slot.availabilityId === "availability-1")).toBe(true);
@@ -49,7 +49,7 @@ describe("admin appointment calendar", () => {
       ["09:00", "blocked", null],
       ["09:15", "blocked", null],
       ["09:30", "blocked", "scheduled"],
-      ["09:45", "blocked", null]
+      ["09:45", "blocked", "scheduled"]
     ]);
   });
 });

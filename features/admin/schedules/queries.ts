@@ -201,17 +201,18 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
             select: { id: true, doctorId: true, scheduleDate: true, type: true, startTime: true, endTime: true, slotMinutes: true, notes: true }
           }),
           prisma.consultation.findMany({
-            where: { doctorId: selectedDoctorId, scheduledAt: { gte: dayStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
+            where: { doctorId: selectedDoctorId, scheduledAt: { gte: new Date(dayStart.getTime() - 60 * 60 * 1000), lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
             select: {
               doctorId: true,
               scheduledAt: true,
+              bookedDurationMinutes: true,
               status: true,
               slotLock: { select: { expiresAt: true } }
             }
           })
         ]);
   const doctorName = selectedDoctorId ? getDoctorName(eligibleDoctors.find((doctor) => doctor.id === selectedDoctorId)!) : "แพทย์ผู้ให้คำปรึกษา";
-  const calendarConsultations = consultations.flatMap((consultation) => consultation.status === "pending_payment" || consultation.status === "scheduled" || consultation.status === "live" ? [{ doctorId: consultation.doctorId, scheduledAt: consultation.scheduledAt, status: consultation.status, slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null }] : []);
+  const calendarConsultations = consultations.flatMap((consultation) => consultation.status === "pending_payment" || consultation.status === "scheduled" || consultation.status === "live" ? [{ doctorId: consultation.doctorId, scheduledAt: consultation.scheduledAt, bookedDurationMinutes: consultation.bookedDurationMinutes, status: consultation.status, slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null }] : []);
 
   return {
     dateValue: input.dateValue,
@@ -222,7 +223,7 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
     days: dateValues.map((dateValue) => ({
       dateValue,
       dateLabel: new Intl.DateTimeFormat("th-TH", { timeZone: CLINIC_TIME_ZONE, dateStyle: "medium" }).format(getScheduledAtForCalendarDate(dateValue, "00:00")),
-      slots: buildAdminAppointmentCalendarSlots({ availabilities, overrides: overrides.filter((override) => override.scheduleDate.toISOString().slice(0, 10) === dateValue), consultations: calendarConsultations.filter((consultation) => consultation.scheduledAt && getBangkokCalendarDateKey(consultation.scheduledAt) === dateValue), dateValue, now: input.now }).map((slot) => {
+      slots: buildAdminAppointmentCalendarSlots({ availabilities, overrides: overrides.filter((override) => override.scheduleDate.toISOString().slice(0, 10) === dateValue), consultations: calendarConsultations, dateValue, now: input.now }).map((slot) => {
         const consultation = slot.consultation;
         const status = consultation?.status ?? slot.status;
         return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : status === "blocked" ? "ไม่ว่าง (แอดมินกำหนด)" : "ว่าง", slotMinutes: slot.slotMinutes, lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };

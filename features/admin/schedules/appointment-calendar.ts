@@ -1,5 +1,6 @@
 import { formatBangkokTime, getScheduledAtForCalendarDate, getScheduledSlotTimes } from "@/features/consultations/booking/slots";
 import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import { doesConsultationTimeOverlap } from "@/features/consultations/booking/interval-lock";
 
 export type AppointmentCalendarAvailability = {
   id: string;
@@ -25,6 +26,7 @@ export type AppointmentCalendarOverride = {
 
 export type AppointmentCalendarConsultation = {
   doctorId: string;
+  bookedDurationMinutes?: number | null;
   scheduledAt: Date | null;
   status: "pending_payment" | "scheduled" | "live";
   slotLockExpiresAt: Date | null;
@@ -116,12 +118,13 @@ export function buildAdminAppointmentCalendarSlots(input: {
       slotMinutes: getNewScheduleDurationMinutes(override.slotMinutes),
       notes: override.notes
     }));
-  const consultationsBySlot = new Map(
-    input.consultations
-      .filter((consultation) => consultation.scheduledAt)
-      .filter((consultation) => consultation.status !== "pending_payment" || isPendingPaymentLocked(consultation, input.now))
-      .map((consultation) => [`${consultation.doctorId}:${consultation.scheduledAt!.getTime()}`, consultation])
-  );
+  const activeConsultations = input.consultations
+    .filter((consultation) => consultation.scheduledAt)
+    .filter(
+      (consultation) =>
+        consultation.status !== "pending_payment" ||
+        isPendingPaymentLocked(consultation, input.now)
+    );
   const seen = new Set<string>();
 
   return [...availableBlocks, ...blockedBlocks]
@@ -142,7 +145,18 @@ export function buildAdminAppointmentCalendarSlots(input: {
           slotMinutes: block.slotMinutes,
           notes: blocked?.notes ?? block.notes,
           status: blocked ? "blocked" as const : "available" as const,
-          consultation: consultationsBySlot.get(`${block.doctorId}:${scheduledAt.getTime()}`) ?? null
+          consultation:
+            activeConsultations.find(
+              (consultation) =>
+                consultation.doctorId === block.doctorId &&
+                consultation.scheduledAt &&
+                doesConsultationTimeOverlap({
+                  candidateScheduledAt: scheduledAt,
+                  candidateDurationMinutes: block.slotMinutes,
+                  existingScheduledAt: consultation.scheduledAt,
+                  existingDurationMinutes: consultation.bookedDurationMinutes
+                })
+            ) ?? null
         };
       })
     )

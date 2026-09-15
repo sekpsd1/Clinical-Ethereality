@@ -60,7 +60,10 @@ function txMock(currentPayment = payment()) {
     payment: {
       findUnique: vi
         .fn()
-        .mockResolvedValueOnce({ consultationId: "consultation-1" })
+        .mockResolvedValueOnce({
+          consultationId: "consultation-1",
+          consultation: { doctorId: "doctor-1" }
+        })
         .mockResolvedValueOnce(currentPayment),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     }
@@ -80,7 +83,7 @@ describe("consultation payment webhook persistence service", () => {
       persistConsultationPaymentWebhookEvent(tx as never, verifiedEvent)
     ).resolves.toBe("processed");
 
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(3);
     expect(tx.payment.updateMany).toHaveBeenCalledWith({
       where: {
         id: "payment-1",
@@ -508,7 +511,10 @@ describe("consultation payment webhook persistence service", () => {
 
   it("does not reveal or mutate a payment that is not linked to a consultation", async () => {
     const tx = txMock();
-    tx.payment.findUnique = vi.fn().mockResolvedValueOnce({ consultationId: null });
+    tx.payment.findUnique = vi.fn().mockResolvedValueOnce({
+      consultationId: null,
+      consultation: null
+    });
 
     await expect(
       persistConsultationPaymentWebhookEvent(tx as never, verifiedEvent)

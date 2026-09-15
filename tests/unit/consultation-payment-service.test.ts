@@ -46,6 +46,7 @@ function txMock() {
       create: vi.fn()
     },
     consultation: {
+      findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn().mockResolvedValue({
         patientId: "patient-1",
         doctorId: "doctor-1",
@@ -64,8 +65,11 @@ function txMock() {
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
     consultationSlotLock: {
-      deleteMany: vi.fn()
+      deleteMany: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([])
     },
+    doctorAvailability: { findMany: vi.fn().mockResolvedValue([]) },
+    doctorAvailabilityDateOverride: { findMany: vi.fn().mockResolvedValue([]) },
     notification: {
       create: vi.fn()
     },
@@ -225,7 +229,7 @@ describe("consultation payment verification service", () => {
       result: result()
     });
 
-    expect(tx.$queryRaw).toHaveBeenCalledOnce();
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
     expect(tx.consultation.updateMany).toHaveBeenCalledWith({
       where: {
         id: "consultation-1",
@@ -332,10 +336,11 @@ describe("consultation payment verification service", () => {
 
   it("verifies funds but requires rescheduling when the provider responds after the slot expires", async () => {
     const tx = txMock();
-    tx.consultation.findUnique.mockResolvedValueOnce({
+    const expiredConsultation = {
       patientId: "patient-1",
       doctorId: "doctor-1",
       scheduledAt: new Date("2026-09-06T02:00:00.000Z"),
+      bookedDurationMinutes: 15,
       slotLockId: "lock-1",
       status: "pending_payment",
       doctor: { userId: "doctor-user-1" },
@@ -346,7 +351,10 @@ describe("consultation payment verification service", () => {
         scheduledAt: new Date("2026-09-06T02:00:00.000Z"),
         expiresAt: new Date("2020-01-01T00:00:00.000Z")
       }
-    });
+    };
+    tx.consultation.findUnique
+      .mockResolvedValueOnce({ doctorId: "doctor-1" })
+      .mockResolvedValueOnce(expiredConsultation);
 
     await applyConsultationPaymentVerification(tx as never, {
       actorId: "patient-1",

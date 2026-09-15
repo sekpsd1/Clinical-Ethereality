@@ -94,9 +94,14 @@ function txMock(overrides: {
         }
       }),
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
-    consultationSlotLock: { deleteMany: vi.fn() },
+    consultationSlotLock: {
+      deleteMany: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([])
+    },
+    doctorAvailability: { findMany: vi.fn().mockResolvedValue([]) },
     doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
     fileAttachment: {
       create: vi.fn(),
@@ -104,7 +109,10 @@ function txMock(overrides: {
     },
     notification: { create: vi.fn() },
     payment: {
-      findUnique: vi.fn().mockResolvedValue({ consultationId: "consultation-1" }),
+      findUnique: vi.fn().mockResolvedValue({
+        consultationId: "consultation-1",
+        consultation: { doctorId: "doctor-1" }
+      }),
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
@@ -221,7 +229,7 @@ describe("manual consultation payment review", () => {
     );
 
     expect(outcome).toBe("scheduled");
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(3);
     expect(tx.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -349,9 +357,11 @@ describe("manual consultation payment review", () => {
 
   it("keeps verified funds but refuses to schedule a slot occupied before review", async () => {
     const tx = txMock();
-    tx.consultation.findFirst.mockResolvedValueOnce({
-      id: "consultation-other"
-    });
+    tx.consultation.findMany.mockResolvedValueOnce([{
+      id: "consultation-other",
+      scheduledAt,
+      bookedDurationMinutes: 30
+    }]);
 
     const outcome = await applyManualConsultationPaymentReview(
       tx as never,
@@ -532,9 +542,11 @@ function intakeTxMock() {
     },
     consultation: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "consultation-1" })
     },
     consultationSlotLock: {
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "lock-1" })
     },
     payment: {

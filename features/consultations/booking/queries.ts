@@ -1,10 +1,11 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForCalendarDate, getScheduledAtForDate, getScheduledSlotTimes, getSlotTimestamp, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { CLINIC_TIME_ZONE, formatBangkokTime, getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForCalendarDate, getScheduledAtForDate, getScheduledSlotTimes, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import type { BookingSlot, DoctorBookingData } from "@/features/consultations/booking/types";
 import { isSlotBlockedByDateOverride } from "@/features/consultations/booking/blocked-overrides";
-import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import { getBookedConsultationDurationMinutes, getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import { doesConsultationTimeOverlap } from "@/features/consultations/booking/interval-lock";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
@@ -79,8 +80,18 @@ function isAvailabilityEffectiveOn(slot: Pick<BookingSource, "effectiveFrom" | "
   return (!effectiveFrom || calendarDate >= effectiveFrom) && (!effectiveTo || calendarDate <= effectiveTo);
 }
 
-function mapSlot(slot: BookingSource, lockedSlotTimes: Set<number>): BookingSlot {
-  const isBooked = lockedSlotTimes.has(getSlotTimestamp(slot.scheduledAt));
+function mapSlot(
+  slot: BookingSource,
+  occupiedIntervals: Array<{ scheduledAt: Date; durationMinutes: number }>
+): BookingSlot {
+  const isBooked = occupiedIntervals.some((occupied) =>
+    doesConsultationTimeOverlap({
+      candidateScheduledAt: slot.scheduledAt,
+      candidateDurationMinutes: slot.slotMinutes,
+      existingScheduledAt: occupied.scheduledAt,
+      existingDurationMinutes: occupied.durationMinutes
+    })
+  );
 
   return {
     id: slot.id,
@@ -184,7 +195,8 @@ export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBoo
               where: {
                 doctorId: doctor.id,
                 scheduledAt: {
-                  in: candidateDates
+                  gte: new Date(Math.min(...candidateDates.map((date) => date.getTime())) - 60 * 60 * 1000),
+                  lt: new Date(Math.max(...candidateDates.map((date) => date.getTime())) + 60 * 60 * 1000)
                 },
                 OR: [
                   {
@@ -198,29 +210,54 @@ export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBoo
                 ]
               },
               select: {
-                scheduledAt: true
+                scheduledAt: true,
+                availabilityId: true,
+                consultation: { select: { bookedDurationMinutes: true } }
               }
             }),
             prisma.consultation.findMany({
               where: {
                 doctorId: doctor.id,
                 scheduledAt: {
-                  in: candidateDates
+                  gte: new Date(Math.min(...candidateDates.map((date) => date.getTime())) - 60 * 60 * 1000),
+                  lt: new Date(Math.max(...candidateDates.map((date) => date.getTime())) + 60 * 60 * 1000)
                 },
                 ...getActiveConsultationSlotWhere(now)
               },
               select: {
-                scheduledAt: true
+                scheduledAt: true,
+                bookedDurationMinutes: true
               }
             })
           ])
         : [[], []];
-    const lockedSlotTimes = new Set(
-      [...slotLocks, ...activeConsultations]
-        .map((slot) => slot.scheduledAt)
-        .filter((scheduledAt): scheduledAt is Date => Boolean(scheduledAt))
-        .map(getSlotTimestamp)
+    const durationBySource = new Map(
+      [...doctor.availability, ...doctor.dateOverrides].map((source) => [
+        source.id,
+        getBookedConsultationDurationMinutes(source.slotMinutes)
+      ])
     );
+    const occupiedIntervals = [
+      ...activeConsultations.flatMap((consultation) =>
+        consultation.scheduledAt
+          ? [{
+              scheduledAt: consultation.scheduledAt,
+              durationMinutes: getBookedConsultationDurationMinutes(
+                consultation.bookedDurationMinutes
+              )
+            }]
+          : []
+      ),
+      ...slotLocks.map((lock) => ({
+        scheduledAt: lock.scheduledAt,
+        durationMinutes: getBookedConsultationDurationMinutes(
+          lock.consultation?.bookedDurationMinutes ??
+            (lock.availabilityId
+              ? durationBySource.get(lock.availabilityId)
+              : null)
+        )
+      }))
+    ];
 
     return {
       doctor: {
@@ -230,7 +267,7 @@ export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBoo
         fee: formatMoney(doctor.consultationFee),
         avatarUrl: doctor.user.avatarUrl ?? "/images/doctors/kamonpat.jpg"
       },
-      slots: bookingSources.map((slot) => mapSlot(slot, lockedSlotTimes))
+      slots: bookingSources.map((slot) => mapSlot(slot, occupiedIntervals))
     };
   } catch {
     return {

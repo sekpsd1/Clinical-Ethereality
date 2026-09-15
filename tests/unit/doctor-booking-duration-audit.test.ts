@@ -46,6 +46,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-01-06T00:00:00.000Z"));
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "doctor-1" }]),
       auditLog: { create: vi.fn().mockResolvedValue({}) },
       consultAssessment: {
         findFirst: vi.fn().mockResolvedValue({
@@ -58,12 +59,15 @@ describe("createConsultationBookingAction booked-duration audit", () => {
       },
       consultation: {
         create: vi.fn().mockResolvedValue({ id: "consultation-1" }),
+        findMany: vi.fn().mockResolvedValue([]),
         findFirst: vi.fn().mockResolvedValue(null),
       },
       consultationSlotLock: {
         create: vi.fn().mockResolvedValue({ id: "slot-lock-1" }),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       doctorAvailability: {
+        findMany: vi.fn().mockResolvedValue([]),
         findUnique: vi.fn().mockResolvedValue({
           doctor: {
             consultationFee: 800,
@@ -80,7 +84,10 @@ describe("createConsultationBookingAction booked-duration audit", () => {
           weekday: 1,
         }),
       },
-      doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
+      doctorAvailabilityDateOverride: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([])
+      },
       notification: { create: vi.fn().mockResolvedValue({}) },
       telemedicineConsent: { create: vi.fn().mockResolvedValue({ id: "consent-1" }) },
       user: {
@@ -141,6 +148,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
   it("rejects a normal booking when a date-specific admin block overlaps the submitted slot", async () => {
     const slotLockCreate = vi.fn();
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "doctor-1" }]),
       user: { findUnique: vi.fn().mockResolvedValue({ fullName: "Patient Example", dateOfBirth: new Date("1990-01-30T00:00:00.000Z"), phone: "0812345678", normalizedPhone: "+66812345678", phoneVerifiedAt: new Date("2026-08-13T16:00:00.000Z") }) },
       doctorAvailability: { findUnique: vi.fn().mockResolvedValue({ doctor: { consultationFee: 800, id: "doctor-1", status: "approved", user: { status: "active" } }, doctorId: "doctor-1", endTime: "10:00", id: "availability-1", isActive: true, slotMinutes: 30, startTime: "09:00", weekday: 1 }) },
       doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue({ id: "blocked-1" }) },

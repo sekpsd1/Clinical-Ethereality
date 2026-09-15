@@ -21,14 +21,20 @@ function txMock() {
         payment: { status: "verified" },
         doctor: { userId: "doctor-user-1" }
       }),
+      findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
     },
     consultationSlotLock: {
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "new-lock-1" })
     },
-    doctorAvailability: { findUnique: vi.fn().mockResolvedValue(null) },
+    doctorAvailability: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null)
+    },
     doctorAvailabilityDateOverride: {
+      findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
       findUnique: vi.fn().mockResolvedValue({
         id: "override-1",
@@ -120,7 +126,11 @@ describe("verified consultation rescheduling", () => {
 
   it("fails closed when another consultation already occupies the slot", async () => {
     const tx = txMock();
-    tx.consultation.findFirst.mockResolvedValueOnce({ id: "consultation-2" });
+    tx.consultation.findMany.mockResolvedValueOnce([{
+      id: "consultation-2",
+      scheduledAt,
+      bookedDurationMinutes: 30
+    }]);
 
     await expect(
       rescheduleVerifiedConsultation(

@@ -11,6 +11,7 @@ import {
   PaymentVerificationConflictError
 } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
+import { lockDoctorConsultationSchedule } from "@/features/consultations/booking/interval-lock";
 
 type WebhookOutcome = "verified" | "rejected" | "provider_error";
 
@@ -193,15 +194,20 @@ export async function persistConsultationPaymentWebhookEvent(
 ): Promise<ConsultationPaymentWebhookPersistenceResult> {
   const paymentReference = await tx.payment.findUnique({
     where: { id: event.paymentId },
-    select: { consultationId: true }
+    select: {
+      consultationId: true,
+      consultation: { select: { doctorId: true } }
+    }
   });
 
-  if (!paymentReference?.consultationId) {
+  if (!paymentReference?.consultationId || !paymentReference.consultation) {
     throw new ConsultationPaymentWebhookNotActionableError();
   }
 
-  // Follow the same lock ordering as the existing consultation verification
-  // service: consultation first, then its one-to-one payment.
+  await lockDoctorConsultationSchedule(
+    tx,
+    paymentReference.consultation.doctorId
+  );
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${paymentReference.consultationId} FOR UPDATE`
   );

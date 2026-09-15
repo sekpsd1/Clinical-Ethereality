@@ -9,7 +9,7 @@ import { buildBatchAvailabilityRecords, findExistingAvailabilityConflict } from 
 import { getBangkokDayRange, getBangkokScheduleDateValue, hasOverlappingTimeBlock, isPastScheduleDate, parseScheduleDate } from "@/features/admin/schedules/date-overrides";
 import { getDoctorScheduleDeactivateConflict } from "@/features/admin/schedules/bulk-deactivate";
 import { getScheduledAtForCalendarDate } from "@/features/consultations/booking/slots";
-import { getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
+import { getBookedConsultationDurationMinutes, getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
 import {
   copyDoctorAvailabilityDateOverridesSchema,
   createDoctorAvailabilityDateOverrideSchema,
@@ -91,22 +91,23 @@ async function hasActiveScheduleConflict(
   const { start: dayStart, end: dayEnd } = getBangkokDayRange(input.scheduleDate);
   const rangeStart = input.startTime ? getScheduledAtForCalendarDate(input.scheduleDate.toISOString().slice(0, 10), input.startTime) : dayStart;
   const rangeEnd = input.endTime ? getScheduledAtForCalendarDate(input.scheduleDate.toISOString().slice(0, 10), input.endTime) : dayEnd;
+  const lookupStart = new Date(dayStart.getTime() - 60 * 60 * 1000);
   const [consultations, locks] = await Promise.all([
     tx.consultation.findMany({
-      where: { doctorId: input.doctorId, scheduledAt: { gte: dayStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
+      where: { doctorId: input.doctorId, scheduledAt: { gte: lookupStart, lt: dayEnd }, status: { in: ["pending_payment", "scheduled", "live"] } },
       select: { scheduledAt: true, bookedDurationMinutes: true }
     }),
     tx.consultationSlotLock.findMany({
       where: {
         doctorId: input.doctorId,
-        scheduledAt: { gte: dayStart, lt: dayEnd },
+        scheduledAt: { gte: lookupStart, lt: dayEnd },
         OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }]
       },
       select: { scheduledAt: true, availabilityId: true, consultation: { select: { bookedDurationMinutes: true } } }
     })
   ]);
 
-  if (consultations.some((item) => item.scheduledAt && rangesOverlap(item.scheduledAt, new Date(item.scheduledAt.getTime() + (item.bookedDurationMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES) * 60 * 1000), rangeStart, rangeEnd))) {
+  if (consultations.some((item) => item.scheduledAt && rangesOverlap(item.scheduledAt, new Date(item.scheduledAt.getTime() + getBookedConsultationDurationMinutes(item.bookedDurationMinutes) * 60 * 1000), rangeStart, rangeEnd))) {
     return true;
   }
 
@@ -118,7 +119,7 @@ async function hasActiveScheduleConflict(
   const durationBySource = new Map([...weeklySources, ...dateSources].map((source) => [source.id, source.slotMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES]));
 
   return locks.some((lock) => {
-    const minutes = lock.consultation?.bookedDurationMinutes ?? (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null) ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES;
+    const minutes = getBookedConsultationDurationMinutes(lock.consultation?.bookedDurationMinutes ?? (lock.availabilityId ? durationBySource.get(lock.availabilityId) : null));
     return rangesOverlap(lock.scheduledAt, new Date(lock.scheduledAt.getTime() + minutes * 60 * 1000), rangeStart, rangeEnd);
   });
 }

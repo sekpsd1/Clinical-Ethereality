@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import {
-  getActiveConsultationSlotWhere,
   getBangkokCalendarDateKey,
   getScheduledAtForDate,
   getScheduledSlotTimes,
@@ -9,6 +8,10 @@ import {
 } from "@/features/consultations/booking/slots";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
 import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import {
+  findActiveConsultationIntervalConflict,
+  lockDoctorConsultationSchedule
+} from "@/features/consultations/booking/interval-lock";
 
 export class ConsultationRescheduleError extends Error {
   constructor(readonly code: "NOT_ELIGIBLE" | "SLOT_UNAVAILABLE" | "CONFLICT") {
@@ -28,6 +31,7 @@ export async function rescheduleVerifiedConsultation(
   },
   now = new Date()
 ): Promise<void> {
+  await lockDoctorConsultationSchedule(tx, input.doctorId);
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${input.consultationId} FOR UPDATE`
   );
@@ -139,14 +143,12 @@ export async function rescheduleVerifiedConsultation(
     throw new ConsultationRescheduleError("SLOT_UNAVAILABLE");
   }
 
-  const existing = await tx.consultation.findFirst({
-    where: {
-      id: { not: consultation.id },
-      doctorId: consultation.doctorId,
-      scheduledAt: input.scheduledAt,
-      ...getActiveConsultationSlotWhere(now)
-    },
-    select: { id: true }
+  const existing = await findActiveConsultationIntervalConflict(tx, {
+    doctorId: consultation.doctorId,
+    scheduledAt: input.scheduledAt,
+    durationMinutes: slotMinutes,
+    excludeConsultationId: consultation.id,
+    now
   });
   if (existing) throw new ConsultationRescheduleError("SLOT_UNAVAILABLE");
 

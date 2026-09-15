@@ -11,6 +11,10 @@ import {
   ProviderVerificationUnavailableError
 } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
+import {
+  findActiveConsultationIntervalConflict,
+  lockDoctorConsultationSchedule
+} from "@/features/consultations/booking/interval-lock";
 
 export type ConsultationPaymentVerificationTransition = {
   auditAction: "consultation.payment_verified" | "consultation.payment_rejected";
@@ -214,6 +218,15 @@ export async function applyConsultationPaymentVerification(
     ? normalizePaymentTransactionReference(input.result.transRef ?? "")
     : null;
 
+  const scheduleReference = await tx.consultation.findUnique({
+    where: { id: input.consultation.id },
+    select: { doctorId: true }
+  });
+  if (!scheduleReference) {
+    throw new PaymentVerificationConflictError();
+  }
+  await lockDoctorConsultationSchedule(tx, scheduleReference.doctorId);
+
   // Serialize by consultation so concurrent evidence submissions cannot create
   // two completed payments or schedule the same consultation twice.
   await tx.$queryRaw<Array<{ id: string }>>(
@@ -228,6 +241,7 @@ export async function applyConsultationPaymentVerification(
       patientId: true,
       doctorId: true,
       scheduledAt: true,
+      bookedDurationMinutes: true,
       slotLockId: true,
       status: true,
       doctor: { select: { userId: true } },
@@ -325,6 +339,16 @@ export async function applyConsultationPaymentVerification(
             ? { type: "qr_payload" }
             : { type: "image_url" }
   });
+  const occupiedSlot = currentConsultation.scheduledAt
+    ? await findActiveConsultationIntervalConflict(tx, {
+        doctorId: currentConsultation.doctorId,
+        scheduledAt: currentConsultation.scheduledAt,
+        durationMinutes: currentConsultation.bookedDurationMinutes,
+        excludeConsultationId: input.consultation.id,
+        excludeSlotLockId: currentConsultation.slotLockId ?? undefined,
+        now: reviewedAt
+      })
+    : null;
   const slotIsActive = Boolean(
     currentConsultation.slotLock &&
       currentConsultation.slotLock.id === currentConsultation.slotLockId &&
@@ -334,7 +358,8 @@ export async function applyConsultationPaymentVerification(
       currentConsultation.slotLock.scheduledAt.getTime() ===
         currentConsultation.scheduledAt.getTime() &&
       (!currentConsultation.slotLock.expiresAt ||
-        currentConsultation.slotLock.expiresAt > reviewedAt)
+        currentConsultation.slotLock.expiresAt > reviewedAt) &&
+      !occupiedSlot
   );
   const nextConsultationStatus = input.result.ok
     ? slotIsActive

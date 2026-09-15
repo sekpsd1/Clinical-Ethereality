@@ -15,7 +15,7 @@ import {
   reschedulePaidConsultationSchema
 } from "@/features/consultations/booking/schema";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
-import { getActiveConsultationSlotWhere, getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
+import { getBangkokCalendarDateKey, getScheduledAtForDate, getScheduledSlotTimes, getSlotLockExpiresAt, getUpcomingDateForWeekday } from "@/features/consultations/booking/slots";
 import { PatientVerificationError, requireVerifiedPatientProfile } from "@/features/identity-verification/service";
 import {
   ConsultationRescheduleError,
@@ -30,6 +30,10 @@ import {
 import { getAssessmentConsentPath } from "@/features/consultations/assessment/routes";
 import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
 import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import {
+  findActiveConsultationIntervalConflict,
+  lockDoctorConsultationSchedule
+} from "@/features/consultations/booking/interval-lock";
 
 class ConsultAssessmentRequiredError extends Error {
   constructor(readonly doctorId: string) {
@@ -223,18 +227,15 @@ export async function createConsultationBookingAction(formData: FormData): Promi
       }
 
       const doctorId = scheduleSource.doctorId;
+      await lockDoctorConsultationSchedule(tx, doctorId);
       if (await findActiveBlockingOverrideForSlot(tx, { doctorId, scheduledAt, slotMinutes })) {
         throw new Error("Availability is blocked for booking.");
       }
-      const existing = await tx.consultation.findFirst({
-        where: {
-          doctorId,
-          scheduledAt,
-          ...getActiveConsultationSlotWhere(now)
-        },
-        select: {
-          id: true
-        }
+      const existing = await findActiveConsultationIntervalConflict(tx, {
+        doctorId,
+        scheduledAt,
+        durationMinutes: slotMinutes,
+        now
       });
 
       if (existing) {

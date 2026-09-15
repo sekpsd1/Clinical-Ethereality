@@ -20,6 +20,10 @@ import {
   isManualConsultationReviewEligibleFailure,
   type SlipVerificationFailure
 } from "@/lib/payments/slip-verification";
+import {
+  findActiveConsultationIntervalConflict,
+  lockDoctorConsultationSchedule
+} from "@/features/consultations/booking/interval-lock";
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -454,6 +458,7 @@ export async function createManualAppointmentPaymentIntake(
   ) {
     throw new ManualAppointmentIntakeError("DOCTOR_NOT_ELIGIBLE");
   }
+  await lockDoctorConsultationSchedule(tx, input.doctorId);
 
   const dateValue = getBangkokCalendarDateKey(input.scheduledAt);
   let startTime: string;
@@ -557,6 +562,15 @@ export async function createManualAppointmentPaymentIntake(
     };
   }
   if (existing) {
+    throw new ManualAppointmentIntakeError("SLOT_UNAVAILABLE");
+  }
+  const intervalConflict = await findActiveConsultationIntervalConflict(tx, {
+    doctorId: input.doctorId,
+    scheduledAt: input.scheduledAt,
+    durationMinutes: slotMinutes,
+    now
+  });
+  if (intervalConflict) {
     throw new ManualAppointmentIntakeError("SLOT_UNAVAILABLE");
   }
 
@@ -772,12 +786,19 @@ async function applyConsultationPaymentReviewDecision(
 
   const paymentLookup = await tx.payment.findUnique({
     where: { id: input.paymentId },
-    select: { consultationId: true }
+    select: {
+      consultationId: true,
+      consultation: { select: { doctorId: true } }
+    }
   });
-  if (!paymentLookup?.consultationId) {
+  if (!paymentLookup?.consultationId || !paymentLookup.consultation) {
     throw new ConsultationManualReviewError("NOT_ELIGIBLE");
   }
 
+  await lockDoctorConsultationSchedule(
+    tx,
+    paymentLookup.consultation.doctorId
+  );
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${paymentLookup.consultationId} FOR UPDATE`
   );
@@ -988,14 +1009,13 @@ async function applyConsultationPaymentReviewDecision(
     : null;
   const occupiedSlot =
     consultation.scheduledAt && decision === "verified"
-      ? await tx.consultation.findFirst({
-          where: {
-            id: { not: consultation.id },
-            doctorId: consultation.doctorId,
-            scheduledAt: consultation.scheduledAt,
-            ...getActiveConsultationSlotWhere(now)
-          },
-          select: { id: true }
+      ? await findActiveConsultationIntervalConflict(tx, {
+          doctorId: consultation.doctorId,
+          scheduledAt: consultation.scheduledAt,
+          durationMinutes: consultation.bookedDurationMinutes,
+          excludeConsultationId: consultation.id,
+          excludeSlotLockId: consultation.slotLockId ?? undefined,
+          now
         })
       : null;
   const hasActiveSlot = Boolean(
