@@ -3,6 +3,7 @@ import { writeAuditLog } from "@/lib/audit/audit-log";
 import { mergePaymentVerificationPayload } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 import {
+  consultationManualReviewEvidenceEntityType,
   paymentSlipEntityType,
   type PreparedPrivatePaymentSlip
 } from "@/features/payments/private-slips";
@@ -18,7 +19,6 @@ import { getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MI
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
-
 export const consultationManualReviewReasonCodes = [
   "provider_unavailable",
   "provider_timeout",
@@ -27,6 +27,15 @@ export const consultationManualReviewReasonCodes = [
 
 export type ConsultationManualReviewReasonCode =
   (typeof consultationManualReviewReasonCodes)[number];
+
+export const consultationManualReviewEvidenceSourceCodes = [
+  "bank_statement",
+  "bank_email",
+  "other_private_image"
+] as const;
+
+export type ConsultationManualReviewEvidenceSourceCode =
+  (typeof consultationManualReviewEvidenceSourceCodes)[number];
 
 export const manualAppointmentRejectionReasonCodes = [
   "bank_transfer_not_found",
@@ -53,6 +62,7 @@ export class ConsultationManualReviewError extends Error {
       | "INVALID_TRANSFER_TIME"
       | "INVALID_CONTACT_WINDOW"
       | "MISSING_EVIDENCE"
+      | "ADMIN_NOT_ACTIVE"
       | "DUPLICATE_REFERENCE"
       | "CONFLICT"
   ) {
@@ -113,6 +123,24 @@ export function getConsultationProviderFailureAt(
   const object = attempt as Prisma.JsonObject;
   if (object.outcome !== "provider_error") return null;
   return parseDate(object.failedAt);
+}
+
+export function getConsultationManualReviewEvidenceAttachmentId(
+  payload: Prisma.JsonValue | null
+): string | null {
+  const manualReview = asJsonObject(payload).manualReview;
+  if (
+    !manualReview ||
+    typeof manualReview !== "object" ||
+    Array.isArray(manualReview)
+  ) {
+    return null;
+  }
+  const attachmentId = (manualReview as Prisma.JsonObject)
+    .supportingEvidenceAttachmentId;
+  return typeof attachmentId === "string" && attachmentId
+    ? attachmentId
+    : null;
 }
 
 export function isConsultationManualReviewContactEligible(input: {
@@ -571,8 +599,11 @@ export async function applyManualConsultationPaymentReview(
     actorId: string;
     amount: string;
     customerReportedAt: Date;
+    confirmationNote: string;
+    evidenceSource: ConsultationManualReviewEvidenceSourceCode;
     paymentId: string;
     reasonCode: ConsultationManualReviewReasonCode;
+    supportingEvidence: PreparedPrivatePaymentSlip;
     transactionReference: string;
     transferredAt: Date;
   },
@@ -590,15 +621,21 @@ export async function applyManualAppointmentPaymentDecision(
   input:
     | {
         actorId: string;
+        confirmationNote: string;
         decision: "verified";
+        evidenceSource: ConsultationManualReviewEvidenceSourceCode;
         paymentId: string;
+        supportingEvidence: PreparedPrivatePaymentSlip;
         transactionReference: string;
       }
     | {
         actorId: string;
+        confirmationNote?: never;
         decision: "rejected";
+        evidenceSource?: never;
         paymentId: string;
         rejectionReasonCode: ManualAppointmentRejectionReasonCode;
+        supportingEvidence?: never;
       },
   now = new Date()
 ): Promise<ManualConsultationReviewOutcome> {
@@ -616,15 +653,21 @@ type ConsultationPaymentReviewDecisionInput =
   | ({ kind: "manual_appointment" } & (
       | {
           actorId: string;
+          confirmationNote: string;
           decision: "verified";
+          evidenceSource: ConsultationManualReviewEvidenceSourceCode;
           paymentId: string;
+          supportingEvidence: PreparedPrivatePaymentSlip;
           transactionReference: string;
         }
       | {
           actorId: string;
+          confirmationNote?: never;
           decision: "rejected";
+          evidenceSource?: never;
           paymentId: string;
           rejectionReasonCode: ManualAppointmentRejectionReasonCode;
+          supportingEvidence?: never;
         }
     ));
 
@@ -711,6 +754,14 @@ async function applyConsultationPaymentReviewDecision(
     throw new ConsultationManualReviewError("NOT_ELIGIBLE");
   }
 
+  const actor = await tx.user.findUnique({
+    where: { id: input.actorId },
+    select: { role: true, status: true }
+  });
+  if (!actor || actor.role !== "admin" || actor.status !== "active") {
+    throw new ConsultationManualReviewError("ADMIN_NOT_ACTIVE");
+  }
+
   const payment = consultation.payment;
   const priorManualReview = asJsonObject(payment.verificationPayload).manualReview;
   const priorManualReviewObject =
@@ -748,6 +799,10 @@ async function applyConsultationPaymentReviewDecision(
       consultation.status !== "reschedule_required")
   ) {
     throw new ConsultationManualReviewError("NOT_ELIGIBLE");
+  }
+
+  if (decision === "verified" && !input.supportingEvidence) {
+    throw new ConsultationManualReviewError("MISSING_EVIDENCE");
   }
 
   const providerFailureAt =
@@ -838,6 +893,18 @@ async function applyConsultationPaymentReviewDecision(
         slotMinutes: consultation.bookedDurationMinutes ?? LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES
       })
     : null;
+  const occupiedSlot =
+    consultation.scheduledAt && decision === "verified"
+      ? await tx.consultation.findFirst({
+          where: {
+            id: { not: consultation.id },
+            doctorId: consultation.doctorId,
+            scheduledAt: consultation.scheduledAt,
+            ...getActiveConsultationSlotWhere(now)
+          },
+          select: { id: true }
+        })
+      : null;
   const hasActiveSlot = Boolean(
     consultation.status === "pending_payment" &&
       consultation.scheduledAt &&
@@ -848,7 +915,8 @@ async function applyConsultationPaymentReviewDecision(
       consultation.slotLock.scheduledAt.getTime() ===
         consultation.scheduledAt.getTime() &&
       (!consultation.slotLock.expiresAt || consultation.slotLock.expiresAt > now) &&
-      !blockedOverride
+      !blockedOverride &&
+      !occupiedSlot
   );
   const nextConsultationStatus: ConsultationStatus =
     decision === "rejected"
@@ -865,8 +933,12 @@ async function applyConsultationPaymentReviewDecision(
           providerFailureAt: providerFailureAt!.toISOString(),
           reasonCode,
           reviewedAt: now.toISOString(),
+          confirmationNote: input.confirmationNote!,
           transferredAt: transferredAt.toISOString(),
           verificationSource: expectedVerificationSource,
+          supportingEvidenceAttachmentId:
+            input.supportingEvidence!.attachmentId,
+          supportingEvidenceSource: input.evidenceSource!,
           decision: "verified"
         }
       : {
@@ -877,10 +949,43 @@ async function applyConsultationPaymentReviewDecision(
           transferredAt: transferredAt.toISOString(),
           verificationSource: expectedVerificationSource,
           decision,
+          ...(input.decision === "verified"
+            ? {
+                confirmationNote: input.confirmationNote!,
+                supportingEvidenceAttachmentId:
+                  input.supportingEvidence!.attachmentId,
+                supportingEvidenceSource: input.evidenceSource!
+              }
+            : {}),
           ...(input.decision === "rejected"
             ? { rejectionReasonCode: input.rejectionReasonCode }
             : {})
         };
+
+  if (decision === "verified") {
+    await tx.fileAttachment.create({
+      data: {
+        id: input.supportingEvidence!.attachmentId,
+        ownerId: input.actorId,
+        purpose: "other",
+        status: "attached",
+        entityType: consultationManualReviewEvidenceEntityType,
+        entityId: payment.id,
+        storageUrl: `/api/admin/payments/evidence/${input.supportingEvidence!.attachmentId}`,
+        storageKey: input.supportingEvidence!.storageKey,
+        fileName: input.supportingEvidence!.fileName,
+        mimeType: input.supportingEvidence!.mimeType,
+        byteSize: input.supportingEvidence!.byteSize,
+        metadataJson: {
+          storageProvider: "plesk_private_local",
+          visibility: "admin_only",
+          paymentKind: "consultation",
+          submissionSource: "admin_external_bank_confirmation",
+          evidenceSource: input.evidenceSource!
+        }
+      }
+    });
+  }
 
   try {
     const updatedPayment = await tx.payment.updateMany({
@@ -999,7 +1104,16 @@ async function applyConsultationPaymentReviewDecision(
       reasonCode,
       verificationSource: expectedVerificationSource,
       transactionReferenceRecorded: Boolean(normalizedReference),
+      ...(decision === "verified"
+        ? {
+            supportingEvidenceAttachmentId:
+              input.supportingEvidence!.attachmentId,
+            supportingEvidenceSource: input.evidenceSource!,
+            confirmationNoteRecorded: true
+          }
+        : {}),
       blockedByScheduleOverride: Boolean(blockedOverride),
+      blockedByOccupiedSlot: Boolean(occupiedSlot),
       slotOutcome:
         nextConsultationStatus === "scheduled" ? "retained" : "released",
       ...(input.kind === "manual_appointment" && input.decision === "rejected"

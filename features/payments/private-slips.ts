@@ -15,6 +15,8 @@ const extensionByMimeType: Record<PaymentSlipMimeType, string> = {
 };
 
 export const paymentSlipEntityType = "payment_slip";
+export const consultationManualReviewEvidenceEntityType =
+  "consultation_manual_review_evidence";
 
 export class PaymentSlipError extends Error {
   constructor(

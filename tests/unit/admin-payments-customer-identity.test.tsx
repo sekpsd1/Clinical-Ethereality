@@ -2,6 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  fileAttachment: {
+    findMany: vi.fn()
+  },
   payment: {
     findMany: vi.fn()
   }
@@ -58,6 +61,7 @@ function createPayment(
 describe("Admin Payments customer identity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.fileAttachment.findMany.mockResolvedValue([]);
   });
 
   it("renders the stored profile display name and phone with a redacted operational payment summary", async () => {
@@ -107,5 +111,58 @@ describe("Admin Payments customer identity", () => {
 
     const html = renderToStaticMarkup(<AdminPayments data={data} />);
     expect(html).toContain("เบอร์โปรไฟล์: ไม่ได้ระบุ");
+  });
+
+  it("shows only the Admin evidence attachment bound by the completed review", async () => {
+    prismaMock.payment.findMany.mockResolvedValue([
+      {
+        id: "payment-consultation-1",
+        orderId: null,
+        consultationId: "consultation-1",
+        order: null,
+        consultation: {
+          status: "scheduled",
+          scheduledAt: new Date("2026-09-20T02:00:00.000Z"),
+          slotLock: null,
+          patient: {
+            displayName: "Customer",
+            phone: "0800000000",
+            phoneVerifiedAt: new Date("2026-09-01T00:00:00.000Z")
+          },
+          doctor: {
+            user: { displayName: "Doctor" }
+          }
+        },
+        amount: 900,
+        method: "promptpay",
+        status: "verified",
+        verificationPayload: {
+          manualReview: {
+            supportingEvidenceAttachmentId: "evidence-1",
+            verificationSource: "line_oa_external_bank"
+          }
+        },
+        createdAt: new Date("2026-09-15T00:00:00.000Z"),
+        reviewedAt: new Date("2026-09-15T00:05:00.000Z")
+      }
+    ]);
+    prismaMock.fileAttachment.findMany.mockResolvedValue([
+      {
+        id: "evidence-1",
+        entityId: "payment-consultation-1",
+        entityType: "consultation_manual_review_evidence"
+      }
+    ]);
+
+    const data = await getAdminPayments();
+
+    expect(data.payments[0].adminEvidenceHref).toBe(
+      "/api/admin/payments/evidence/evidence-1"
+    );
+    const html = renderToStaticMarkup(<AdminPayments data={data} />);
+    expect(html).toContain("ดูหลักฐานยืนยันของ Admin");
+    expect(html).toContain(
+      "/api/admin/payments/evidence/evidence-1"
+    );
   });
 });

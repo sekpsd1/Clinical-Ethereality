@@ -332,12 +332,25 @@ export async function reviewConsultationPaymentAction(
   const parsed = manualConsultationPaymentReviewSchema.safeParse(
     formDataToObject(formData)
   );
+  const supportingEvidence = formData.get("supportingEvidence");
 
-  if (!parsed.success) {
+  if (!parsed.success || !isPaymentEvidenceFile(supportingEvidence)) {
     return {
       status: "error",
-      message: "กรอกข้อมูลตรวจรายการโอนให้ครบและใช้วันที่เวลาประเทศไทย"
+      message:
+        "กรอกข้อมูลตรวจรายการโอนให้ครบ ใช้วันที่เวลาประเทศไทย และแนบหลักฐานรูปภาพของ Admin"
     };
+  }
+
+  let prepared: Awaited<ReturnType<typeof preparePrivatePaymentSlip>>;
+  try {
+    prepared = await preparePrivatePaymentSlip({
+      file: supportingEvidence,
+      ownerId: session.userId,
+      paymentId: `admin-confirmation:${parsed.data.paymentId}`
+    });
+  } catch (error) {
+    return { status: "error", message: getPaymentSlipErrorMessage(error) };
   }
 
   try {
@@ -346,14 +359,18 @@ export async function reviewConsultationPaymentAction(
         applyManualConsultationPaymentReview(tx, {
           actorId: session.userId,
           amount: parsed.data.amount,
+          confirmationNote: parsed.data.confirmationNote,
           customerReportedAt: parsed.data.customerReportedAt,
+          evidenceSource: parsed.data.evidenceSource,
           paymentId: parsed.data.paymentId,
           reasonCode: parsed.data.reasonCode,
+          supportingEvidence: prepared,
           transactionReference: parsed.data.transactionReference,
           transferredAt: parsed.data.transferredAt
         }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+    if (outcome === "already_processed") await prepared.cleanup();
 
     revalidatePath("/admin");
     revalidatePath("/admin/payments");
@@ -371,10 +388,12 @@ export async function reviewConsultationPaymentAction(
             : "ยืนยันการชำระเงินแล้ว ลูกค้าต้องเลือกเวลาใหม่"
     };
   } catch (error) {
+    await prepared.cleanup();
     const messages: Partial<
       Record<ConsultationManualReviewError["code"], string>
     > = {
       DUPLICATE_REFERENCE: "เลขอ้างอิงนี้ถูกใช้กับรายการที่ยืนยันแล้ว",
+      ADMIN_NOT_ACTIVE: "บัญชี Admin นี้ไม่อยู่ในสถานะใช้งาน",
       INVALID_AMOUNT: "ยอดที่กรอกไม่ตรงกับยอดค่าปรึกษา",
       INVALID_CONTACT_WINDOW: "ลูกค้าต้องติดต่อ LINE OA ภายใน 24 ชั่วโมงหลังระบบตรวจสลิปล้มเหลว",
       INVALID_TRANSFER_TIME: "วันเวลาโอนไม่อยู่ในช่วงที่อนุญาต",
@@ -408,6 +427,35 @@ export async function reviewManualAppointmentPaymentAction(
     };
   }
 
+  const supportingEvidence = formData.get("supportingEvidence");
+  if (
+    parsed.data.decision === "verified" &&
+    !isPaymentEvidenceFile(supportingEvidence)
+  ) {
+    return {
+      status: "error",
+      message: "กรุณาแนบหลักฐานรูปภาพที่ Admin ใช้ยืนยันรายการเงินจริง"
+    };
+  }
+
+  let prepared:
+    | Awaited<ReturnType<typeof preparePrivatePaymentSlip>>
+    | null = null;
+  if (
+    parsed.data.decision === "verified" &&
+    isPaymentEvidenceFile(supportingEvidence)
+  ) {
+    try {
+      prepared = await preparePrivatePaymentSlip({
+        file: supportingEvidence,
+        ownerId: session.userId,
+        paymentId: `admin-confirmation:${parsed.data.paymentId}`
+      });
+    } catch (error) {
+      return { status: "error", message: getPaymentSlipErrorMessage(error) };
+    }
+  }
+
   try {
     const outcome = await prisma.$transaction(
       (tx) =>
@@ -416,8 +464,11 @@ export async function reviewManualAppointmentPaymentAction(
           parsed.data.decision === "verified"
             ? {
                 actorId: session.userId,
+                confirmationNote: parsed.data.confirmationNote,
                 decision: "verified",
+                evidenceSource: parsed.data.evidenceSource,
                 paymentId: parsed.data.paymentId,
+                supportingEvidence: prepared!,
                 transactionReference: parsed.data.transactionReference
               }
             : {
@@ -429,6 +480,9 @@ export async function reviewManualAppointmentPaymentAction(
         ),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+    if (outcome === "already_processed" && prepared) {
+      await prepared.cleanup();
+    }
 
     revalidatePath("/admin");
     revalidatePath("/admin/payments");
@@ -446,7 +500,9 @@ export async function reviewManualAppointmentPaymentAction(
     };
     return { status: "success", message: messages[outcome] };
   } catch (error) {
+    if (prepared) await prepared.cleanup();
     const messages: Partial<Record<ConsultationManualReviewError["code"], string>> = {
+      ADMIN_NOT_ACTIVE: "บัญชี Admin นี้ไม่อยู่ในสถานะใช้งาน",
       NOT_ELIGIBLE: "รายการนี้ไม่เข้าเงื่อนไข Manual Appointment Review",
       MISSING_EVIDENCE: "ไม่พบสลิปส่วนตัวที่เชื่อมกับรายการนี้",
       DUPLICATE_REFERENCE: "เลขอ้างอิงนี้ถูกใช้กับรายการที่ยืนยันแล้ว",

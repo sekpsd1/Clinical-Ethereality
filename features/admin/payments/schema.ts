@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 import {
+  consultationManualReviewEvidenceSourceCodes,
   consultationManualReviewReasonCodes,
   manualAppointmentRejectionReasonCodes
 } from "@/features/consultations/payment/manual-review";
@@ -73,6 +74,8 @@ export const manualConsultationPaymentReviewSchema = z
     transactionReference: z.string().trim().min(1).max(255),
     transferredAt: bangkokLocalDateTimeSchema,
     customerReportedAt: bangkokLocalDateTimeSchema,
+    confirmationNote: z.string().trim().min(3).max(500),
+    evidenceSource: z.enum(consultationManualReviewEvidenceSourceCodes),
     reasonCode: z.enum(consultationManualReviewReasonCodes),
     confirmedExternalBankCheck: z.literal("true")
   })
@@ -109,6 +112,8 @@ export const manualAppointmentPaymentDecisionSchema = z.union([
     .object({
       paymentId: z.string().min(1),
       decision: z.literal("verified"),
+      confirmationNote: z.string().trim().min(3).max(500),
+      evidenceSource: z.enum(consultationManualReviewEvidenceSourceCodes),
       transactionReference: z.string().trim().min(1).max(255),
       confirmedExternalBankCheck: z.literal("true")
     })

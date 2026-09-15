@@ -13,6 +13,7 @@ export type AdminPaymentQueueItem = {
   customerPhoneVerificationStatus: "verified" | "pending" | "not_provided";
   amount: string;
   amountInput: string;
+  adminEvidenceHref: string | null;
   refundAmountInput: string;
   status: PaymentStatus;
   methodLabel: string;

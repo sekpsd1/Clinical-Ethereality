@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   consultationFindFirst: vi.fn(),
   createManualAppointmentPaymentIntake: vi.fn(),
   getManualStoreRefundReadiness: vi.fn(),
+  preparedCleanup: vi.fn(),
   preparePrivatePaymentSlip: vi.fn(),
   releaseExpiredConsultationSlotLocks: vi.fn(),
   requireAdminSession: vi.fn(),
@@ -60,6 +61,11 @@ vi.mock("@/features/consultations/payment/manual-review", () => ({
     "provider_timeout",
     "provider_result_ambiguous"
   ],
+  consultationManualReviewEvidenceSourceCodes: [
+    "bank_statement",
+    "bank_email",
+    "other_private_image"
+  ],
   ConsultationManualReviewError: class ConsultationManualReviewError extends Error {
     constructor(readonly code: string) {
       super(code);
@@ -94,6 +100,7 @@ import {
   reviewConsultationPaymentAction,
   reviewPaymentAction
 } from "@/features/admin/payments/actions";
+import { ConsultationManualReviewError } from "@/features/consultations/payment/manual-review";
 
 describe("admin payment review action", () => {
   beforeEach(() => {
@@ -117,7 +124,7 @@ describe("admin payment review action", () => {
     mocks.preparePrivatePaymentSlip.mockResolvedValue({
       attachmentId: "attachment-1",
       byteSize: 128,
-      cleanup: vi.fn(),
+      cleanup: mocks.preparedCleanup,
       fileName: "slip.png",
       mimeType: "image/png",
       storageKey: "payments/private/slip.png",
@@ -187,8 +194,16 @@ describe("admin payment review action", () => {
     formData.set("transactionReference", "bank-reference-1");
     formData.set("transferredAt", "2026-09-05T10:30");
     formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
     formData.set("reasonCode", "provider_unavailable");
     formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
 
     const result = await reviewConsultationPaymentAction(
       { status: "idle", message: "" },
@@ -208,10 +223,134 @@ describe("admin payment review action", () => {
       expect.objectContaining({
         actorId: "admin-1",
         amount: "900.00",
+        confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
+        evidenceSource: "bank_statement",
         paymentId: "payment-1",
+        supportingEvidence: expect.objectContaining({
+          attachmentId: "attachment-1"
+        }),
         transactionReference: "BANKREFERENCE1"
       })
     );
+  });
+
+  it("requires Admin supporting evidence before consultation confirmation", async () => {
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result.status).toBe("error");
+    expect(result.message).toContain("แนบหลักฐาน");
+    expect(mocks.preparePrivatePaymentSlip).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid Admin evidence before opening the review transaction", async () => {
+    mocks.preparePrivatePaymentSlip.mockRejectedValueOnce(
+      new Error("invalid image")
+    );
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([1, 2, 3])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toEqual({ status: "error", message: "invalid slip" });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("cleans up prepared Admin evidence when review conflicts", async () => {
+    mocks.applyManualConsultationPaymentReview.mockRejectedValueOnce(
+      new ConsultationManualReviewError("CONFLICT")
+    );
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({
+      status: "error",
+      message: "สถานะรายการเปลี่ยนแล้ว กรุณารีเฟรชก่อนตรวจใหม่"
+    });
+    expect(mocks.preparedCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it("cleans up a replay upload instead of leaving an orphan file", async () => {
+    mocks.applyManualConsultationPaymentReview.mockResolvedValueOnce(
+      "already_processed"
+    );
+    const formData = new FormData();
+    formData.set("paymentId", "payment-1");
+    formData.set("amount", "900.00");
+    formData.set("transactionReference", "bank-reference-1");
+    formData.set("transferredAt", "2026-09-05T10:30");
+    formData.set("customerReportedAt", "2026-09-05T11:30");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
+    formData.set("reasonCode", "provider_unavailable");
+    formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
+
+    const result = await reviewConsultationPaymentAction(
+      { status: "idle", message: "" },
+      formData
+    );
+
+    expect(result).toMatchObject({
+      status: "success",
+      message: "รายการนี้ยืนยันไว้แล้ว"
+    });
+    expect(mocks.preparedCleanup).toHaveBeenCalledTimes(1);
   });
 
   it("creates a manual appointment intake only through its dedicated permission and serializable service", async () => {
@@ -284,8 +423,16 @@ describe("admin payment review action", () => {
     const formData = new FormData();
     formData.set("paymentId", "payment-1");
     formData.set("decision", "verified");
+    formData.set("confirmationNote", "ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    formData.set("evidenceSource", "bank_statement");
     formData.set("transactionReference", "bank-reference-1");
     formData.set("confirmedExternalBankCheck", "true");
+    formData.set(
+      "supportingEvidence",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "statement.png", {
+        type: "image/png"
+      })
+    );
 
     const result = await reviewManualAppointmentPaymentAction(
       { status: "idle", message: "" },
@@ -301,8 +448,13 @@ describe("admin payment review action", () => {
       expect.anything(),
       {
         actorId: "admin-1",
+        confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
         decision: "verified",
+        evidenceSource: "bank_statement",
         paymentId: "payment-1",
+        supportingEvidence: expect.objectContaining({
+          attachmentId: "attachment-1"
+        }),
         transactionReference: "BANKREFERENCE1"
       }
     );

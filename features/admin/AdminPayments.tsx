@@ -1,4 +1,4 @@
-import { CreditCard, Phone, ShieldCheck } from "lucide-react";
+import { CreditCard, ExternalLink, Phone, ShieldCheck } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
@@ -154,6 +154,17 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                       <span className="text-muted">{payment.providerLabel}</span>
                     </div>
                     <p className="mt-2 leading-5 text-[#3e494a]">{payment.receiverLabel}</p>
+                    {payment.adminEvidenceHref ? (
+                      <a
+                        href={payment.adminEvidenceHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-full bg-primary/10 px-3 py-2 text-xs font-bold text-primary"
+                      >
+                        ดูหลักฐานยืนยันของ Admin
+                        <ExternalLink aria-hidden="true" className="size-3.5" />
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               </div>

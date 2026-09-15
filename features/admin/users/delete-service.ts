@@ -4,6 +4,7 @@ import {
   deleteCommunityImage
 } from "@/features/community/images/service";
 import {
+  consultationManualReviewEvidenceEntityType,
   deletePrivatePaymentSlip,
   paymentSlipEntityType
 } from "@/features/payments/private-slips";
@@ -30,7 +31,10 @@ export class UserDeletionError extends Error {
 export async function cleanupDeletedUserFiles(files: UserDeletionFile[]): Promise<void> {
   await Promise.all(
     files.map(async (file) => {
-      if (file.entityType === paymentSlipEntityType) {
+      if (
+        file.entityType === paymentSlipEntityType ||
+        file.entityType === consultationManualReviewEvidenceEntityType
+      ) {
         await deletePrivatePaymentSlip(file.storageKey).catch(() => undefined);
       } else if (file.entityType === communityImageEntityType) {
         await deleteCommunityImage(file.storageKey).catch(() => undefined);
@@ -332,7 +336,17 @@ export async function deleteUserPermanently(
         OR: [
           { ownerId: target.id },
           ...(paymentIds.length > 0
-            ? [{ entityType: paymentSlipEntityType, entityId: { in: paymentIds } }]
+            ? [
+                {
+                  entityType: {
+                    in: [
+                      paymentSlipEntityType,
+                      consultationManualReviewEvidenceEntityType
+                    ]
+                  },
+                  entityId: { in: paymentIds }
+                }
+              ]
             : []),
           ...(articleIds.length > 0
             ? [{ entityType: communityImageEntityType, entityId: { in: articleIds } }]

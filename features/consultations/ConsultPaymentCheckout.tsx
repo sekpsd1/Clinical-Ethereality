@@ -152,7 +152,7 @@ function PaymentStatusNotice({ data }: { data: ConsultationPaymentData }) {
     },
     provider_error: {
       title: "ระบบตรวจสอบสลิปไม่พร้อมใช้งาน",
-      body: "SlipOK ยังตรวจสอบไม่ได้ในขณะนี้ ระบบยังไม่ยืนยันการชำระเงิน กรุณารอแล้วลองใหม่",
+      body: "ระบบเก็บสลิปส่วนตัวของคุณไว้แล้ว หากโอนเงินจริงให้แจ้ง Admin ทาง LINE OA ภายใน 24 ชั่วโมง Admin สามารถตรวจหลักฐานธนาคารและยืนยันได้ทันทีเมื่อเวลาเดิมยังว่าง",
       tone: "warning" as const
     },
     cooldown: {

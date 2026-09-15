@@ -112,6 +112,8 @@ export function AdminConsultationPaymentReviewForm({
         </select>
       </label>
 
+      <AdminSupportingEvidenceFields />
+
       <label className="flex items-start gap-2 rounded-[8px] bg-primary/5 p-3 text-xs font-semibold leading-5 text-muted">
         <input
           required
@@ -120,8 +122,8 @@ export function AdminConsultationPaymentReviewForm({
           value="true"
           className="mt-1 size-4 accent-primary"
         />
-        ตรวจรายการเงินจริงจากธนาคารภายนอกแล้ว ยอดตรงกับ {payment.amount}
-        และลูกค้าติดต่อ LINE OA ภายใน 24 ชั่วโมง
+          ตรวจรายการเงินจริงจากธนาคารภายนอกแล้ว ยอดตรงกับ {payment.amount}
+        ลูกค้าติดต่อ LINE OA ภายใน 24 ชั่วโมง และยืนยันรายการนี้ทันทีโดยไม่ต้องรอครบ 24 ชั่วโมง
       </label>
 
       <SubmitButton />
@@ -190,6 +192,7 @@ function ManualAppointmentDecisionForm({
             className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
           />
         </label>
+        <AdminSupportingEvidenceFields />
         <label className="flex items-start gap-2 rounded-[8px] bg-primary/5 p-3 text-xs font-semibold leading-5 text-muted">
           <input
             required
@@ -238,6 +241,56 @@ function ManualAppointmentDecisionForm({
         <DecisionSubmitButton label="ปฏิเสธรายการ" danger />
         <ActionMessage state={rejectState} />
       </form>
+    </div>
+  );
+}
+
+function AdminSupportingEvidenceFields() {
+  return (
+    <div className="space-y-3 rounded-[8px] border border-border bg-white/70 p-3">
+      <label className="block text-xs font-bold text-muted">
+        ประเภทหลักฐานที่ Admin ตรวจสอบ
+        <select
+          required
+          name="evidenceSource"
+          defaultValue="bank_statement"
+          className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
+        >
+          <option value="bank_statement">ภาพรายการเดินบัญชีธนาคาร</option>
+          <option value="bank_email">ภาพอีเมลยืนยันจากธนาคาร</option>
+          <option value="other_private_image">ภาพหลักฐานส่วนตัวอื่น</option>
+        </select>
+      </label>
+
+      <label className="block text-xs font-bold text-muted">
+        หลักฐานประกอบของ Admin
+        <input
+          required
+          type="file"
+          name="supportingEvidence"
+          accept="image/jpeg,image/png,image/webp"
+          className="mt-1 block min-h-11 w-full rounded-[8px] border border-border bg-white px-3 py-2 text-xs text-text file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-bold file:text-primary"
+        />
+        <span className="mt-1 block font-medium leading-5">
+          รองรับ JPG, PNG หรือ WebP ไม่เกิน 5 MB และเปิดดูได้เฉพาะ Admin
+        </span>
+      </label>
+
+      <label className="block text-xs font-bold text-muted">
+        บันทึกเหตุผลยืนยัน
+        <textarea
+          required
+          name="confirmationNote"
+          minLength={3}
+          maxLength={500}
+          rows={3}
+          placeholder="เช่น ตรวจพบยอดเข้าบัญชีตรงกับเวลาและยอดที่ลูกค้าแจ้ง"
+          className="mt-1 w-full rounded-[8px] border border-border bg-white px-3 py-2 text-sm text-text outline-none focus:border-primary"
+        />
+        <span className="mt-1 block font-medium leading-5">
+          ไม่กรอกเลขบัญชีเต็มหรือข้อมูลผู้ป่วยที่ไม่จำเป็น
+        </span>
+      </label>
     </div>
   );
 }

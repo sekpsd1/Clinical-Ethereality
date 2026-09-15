@@ -4,10 +4,14 @@ import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
 import {
+  getConsultationManualReviewEvidenceAttachmentId,
   getConsultationProviderFailureAt,
   getManualAppointmentIntake
 } from "@/features/consultations/payment/manual-review";
-import { paymentSlipEntityType } from "@/features/payments/private-slips";
+import {
+  consultationManualReviewEvidenceEntityType,
+  paymentSlipEntityType
+} from "@/features/payments/private-slips";
 
 type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
 
@@ -277,7 +281,8 @@ function getConsultationManualReview(
 
 function mapPayment(
   payment: PaymentWithContext,
-  attachmentId: string | null,
+  customerSlipAttachmentId: string | null,
+  adminEvidenceAttachmentId: string | null,
   now: Date
 ): AdminPaymentQueueItem {
   const summary = getPaymentOperationalSummary(payment);
@@ -299,6 +304,13 @@ function mapPayment(
       : "not_provided",
     amount: formatMoney(payment.amount),
     amountInput: payment.amount.toString(),
+    adminEvidenceHref:
+      adminEvidenceAttachmentId &&
+      getConsultationManualReviewEvidenceAttachmentId(
+        payment.verificationPayload
+      ) === adminEvidenceAttachmentId
+        ? `/api/admin/payments/evidence/${adminEvidenceAttachmentId}`
+        : null,
     refundAmountInput: payment.amount.toString(),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,
@@ -311,7 +323,7 @@ function mapPayment(
     reviewedAt: formatDate(payment.reviewedAt),
     consultationManualReview: getConsultationManualReview(
       payment,
-      attachmentId,
+      customerSlipAttachmentId,
       now
     )
   };
@@ -323,30 +335,44 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
   try {
     const [payments, refundReadiness] = await Promise.all([getPaymentsForAdmin(), getManualStoreRefundReadiness()]);
     const consultationPaymentIds = payments
-      .filter(
-        (payment) =>
-          payment.consultationId && payment.status === "pending_review"
-      )
+      .filter((payment) => payment.consultationId)
       .map((payment) => payment.id);
     const attachments = consultationPaymentIds.length
       ? await prisma.fileAttachment.findMany({
           where: {
             entityId: { in: consultationPaymentIds },
-            entityType: paymentSlipEntityType,
-            purpose: "payment_slip",
+            entityType: {
+              in: [
+                paymentSlipEntityType,
+                consultationManualReviewEvidenceEntityType
+              ]
+            },
             status: "attached",
             storageKey: { not: null }
           },
           orderBy: { createdAt: "desc" },
-          select: { id: true, entityId: true }
+          select: { id: true, entityId: true, entityType: true }
         })
       : [];
-    const attachmentByPaymentId = new Map(
-      attachments.map((attachment) => [attachment.entityId, attachment.id])
-    );
+    const customerSlipByPaymentId = new Map<string, string>();
+    const adminEvidenceByPaymentId = new Map<string, string>();
+    for (const attachment of attachments) {
+      const target =
+        attachment.entityType === paymentSlipEntityType
+          ? customerSlipByPaymentId
+          : adminEvidenceByPaymentId;
+      if (!target.has(attachment.entityId)) {
+        target.set(attachment.entityId, attachment.id);
+      }
+    }
     const now = new Date();
     const paymentItems = payments.map((payment) =>
-      mapPayment(payment, attachmentByPaymentId.get(payment.id) ?? null, now)
+      mapPayment(
+        payment,
+        customerSlipByPaymentId.get(payment.id) ?? null,
+        adminEvidenceByPaymentId.get(payment.id) ?? null,
+        now
+      )
     );
 
     return {

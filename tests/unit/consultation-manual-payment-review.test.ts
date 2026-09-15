@@ -4,6 +4,7 @@ import {
   applyManualAppointmentPaymentDecision,
   applyManualConsultationPaymentReview,
   createManualAppointmentPaymentIntake,
+  getConsultationProviderFailureAt,
   ManualAppointmentIntakeError,
   recordConsultationProviderFailure
 } from "@/features/consultations/payment/manual-review";
@@ -13,9 +14,14 @@ const now = new Date("2026-09-05T06:00:00.000Z");
 const scheduledAt = new Date("2026-09-06T02:00:00.000Z");
 
 function txMock(overrides: {
-  consultationStatus?: "pending_payment" | "scheduled" | "reschedule_required";
+  consultationStatus?:
+    | "pending_payment"
+    | "scheduled"
+    | "reschedule_required"
+    | "cancelled"
+    | "completed";
   expiresAt?: Date | null;
-  paymentStatus?: "pending_review" | "verified";
+  paymentStatus?: "pending_review" | "verified" | "refunded";
   normalizedReference?: string | null;
   verificationPayload?: Prisma.JsonValue;
 } = {}) {
@@ -85,6 +91,7 @@ function txMock(overrides: {
     consultationSlotLock: { deleteMany: vi.fn() },
     doctorAvailabilityDateOverride: { findFirst: vi.fn().mockResolvedValue(null) },
     fileAttachment: {
+      create: vi.fn(),
       findFirst: vi.fn().mockResolvedValue({ id: "attachment-1" })
     },
     notification: { create: vi.fn() },
@@ -92,17 +99,38 @@ function txMock(overrides: {
       findUnique: vi.fn().mockResolvedValue({ consultationId: "consultation-1" }),
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 })
+    },
+    user: {
+      findUnique: vi.fn().mockResolvedValue({
+        role: "admin",
+        status: "active"
+      })
     }
   };
 }
 
-function input(overrides: Partial<Parameters<typeof applyManualConsultationPaymentReview>[1]> = {}) {
+function input(
+  overrides: Partial<
+    Parameters<typeof applyManualConsultationPaymentReview>[1]
+  > = {}
+): Parameters<typeof applyManualConsultationPaymentReview>[1] {
   return {
     actorId: "admin-1",
     amount: "900.00",
+    confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
     customerReportedAt: new Date("2026-09-05T04:30:00.000Z"),
+    evidenceSource: "bank_statement",
     paymentId: "payment-1",
     reasonCode: "provider_unavailable" as const,
+    supportingEvidence: {
+      attachmentId: "admin-evidence-1",
+      byteSize: 128,
+      cleanup: vi.fn(),
+      fileName: "statement.png",
+      mimeType: "image/png",
+      storageKey: "payments/admin/statement.png",
+      storageUrl: "/api/payments/slips/admin-evidence-1"
+    },
     transactionReference: " bank-reference-1 ",
     transferredAt: new Date("2026-09-05T03:30:00.000Z"),
     ...overrides
@@ -143,6 +171,8 @@ describe("manual consultation payment review", () => {
       transactionReference: " bank-reference-1 ",
       transferredAt: "2026-09-05T10:30",
       customerReportedAt: "2026-09-05T11:30",
+      confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
+      evidenceSource: "bank_statement",
       reasonCode: "provider_unavailable",
       confirmedExternalBankCheck: "true"
     });
@@ -197,6 +227,57 @@ describe("manual consultation payment review", () => {
         })
       })
     );
+    expect(tx.fileAttachment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          id: "admin-evidence-1",
+          ownerId: "admin-1",
+          purpose: "other",
+          entityType: "consultation_manual_review_evidence",
+          entityId: "payment-1",
+          storageUrl:
+            "/api/admin/payments/evidence/admin-evidence-1",
+          metadataJson: expect.objectContaining({
+            visibility: "admin_only",
+            evidenceSource: "bank_statement"
+          })
+        })
+      })
+    );
+    const auditJson = JSON.stringify(tx.auditLog.create.mock.calls);
+    expect(auditJson).toContain("admin-evidence-1");
+    expect(auditJson).not.toContain("ตรวจพบยอดเข้าบัญชีตรงกับรายการ");
+    expect(auditJson).not.toContain(
+      "/api/admin/payments/evidence/admin-evidence-1"
+    );
+  });
+
+  it("rejects an inactive or stale Admin session inside the transaction", async () => {
+    const tx = txMock();
+    tx.user.findUnique.mockResolvedValueOnce({
+      role: "admin",
+      status: "suspended"
+    });
+
+    await expect(
+      applyManualConsultationPaymentReview(tx as never, input(), now)
+    ).rejects.toMatchObject({ code: "ADMIN_NOT_ACTIVE" });
+    expect(tx.fileAttachment.create).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("allows immediate review without waiting after the provider failure", async () => {
+    const tx = txMock();
+
+    const outcome = await applyManualConsultationPaymentReview(
+      tx as never,
+      input({
+        customerReportedAt: new Date("2026-09-05T04:00:00.000Z")
+      }),
+      now
+    );
+
+    expect(outcome).toBe("scheduled");
   });
 
   it("keeps verified funds but releases an expired slot for customer rescheduling", async () => {
@@ -231,6 +312,35 @@ describe("manual consultation payment review", () => {
     expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadataJson: expect.objectContaining({ blockedByScheduleOverride: true }) }) }));
   });
 
+  it("keeps verified funds but refuses to schedule a slot occupied before review", async () => {
+    const tx = txMock();
+    tx.consultation.findFirst.mockResolvedValueOnce({
+      id: "consultation-other"
+    });
+
+    const outcome = await applyManualConsultationPaymentReview(
+      tx as never,
+      input(),
+      now
+    );
+
+    expect(outcome).toBe("reschedule_required");
+    expect(tx.consultation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "reschedule_required", slotLockId: null }
+      })
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            blockedByOccupiedSlot: true
+          })
+        })
+      })
+    );
+  });
+
   it("rejects customer contact outside the 24-hour provider-failure window", async () => {
     const tx = txMock();
 
@@ -255,6 +365,63 @@ describe("manual consultation payment review", () => {
     ).rejects.toMatchObject({
       code: "DUPLICATE_REFERENCE"
     });
+    expect(tx.fileAttachment.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on a concurrent payment update", async () => {
+    const tx = txMock();
+    tx.payment.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      applyManualConsultationPaymentReview(tx as never, input(), now)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+  });
+
+  it("does not override a provider result that won the race", async () => {
+    const tx = txMock({
+      consultationStatus: "scheduled",
+      paymentStatus: "verified",
+      normalizedReference: "PROVIDERREFERENCE",
+      verificationPayload: {
+        source: "slipok",
+        result: { status: "verified" }
+      }
+    });
+
+    await expect(
+      applyManualConsultationPaymentReview(tx as never, input(), now)
+    ).rejects.toMatchObject({ code: "NOT_ELIGIBLE" });
+    expect(tx.fileAttachment.create).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["cancelled", "pending_review"],
+    ["completed", "verified"],
+    ["scheduled", "refunded"]
+  ] as const)(
+    "does not override terminal consultation/payment state %s/%s",
+    async (consultationStatus, paymentStatus) => {
+      const tx = txMock({ consultationStatus, paymentStatus });
+
+      await expect(
+        applyManualConsultationPaymentReview(tx as never, input(), now)
+      ).rejects.toMatchObject({ code: "NOT_ELIGIBLE" });
+      expect(tx.fileAttachment.create).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not make explicit provider rejection eligible for Admin override", () => {
+    expect(
+      getConsultationProviderFailureAt({
+        providerAttempt: {
+          outcome: "rejected",
+          failedAt: "2026-09-05T04:00:00.000Z"
+        }
+      })
+    ).toBeNull();
   });
 
   it("returns an idempotent outcome for the same completed manual review", async () => {
@@ -528,8 +695,11 @@ describe("admin manual appointment payment intake and review", () => {
       tx as never,
       {
         actorId: "admin-1",
+        confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
         decision: "verified",
+        evidenceSource: "bank_statement",
         paymentId: "payment-1",
+        supportingEvidence: preparedEvidence(),
         transactionReference: "bank-reference-1"
       },
       now
@@ -570,8 +740,11 @@ describe("admin manual appointment payment intake and review", () => {
       tx as never,
       {
         actorId: "admin-1",
+        confirmationNote: "ตรวจพบยอดเข้าบัญชีตรงกับรายการ",
         decision: "verified",
+        evidenceSource: "bank_statement",
         paymentId: "payment-1",
+        supportingEvidence: preparedEvidence(),
         transactionReference: "bank-reference-1"
       },
       now
