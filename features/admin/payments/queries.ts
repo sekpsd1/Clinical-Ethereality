@@ -5,7 +5,7 @@ import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
 import {
   getConsultationManualReviewEvidenceAttachmentId,
-  getConsultationProviderFailureAt,
+  getConsultationProviderFailure,
   getManualAppointmentIntake
 } from "@/features/consultations/payment/manual-review";
 import {
@@ -235,7 +235,10 @@ function getConsultationManualReview(
   now: Date
 ): AdminPaymentQueueItem["consultationManualReview"] {
   if (!payment.consultation) return null;
-  const failureAt = getConsultationProviderFailureAt(payment.verificationPayload);
+  const providerFailure = getConsultationProviderFailure(
+    payment.verificationPayload
+  );
+  const failureAt = providerFailure?.failedAt ?? null;
   const manualAppointmentIntake = getManualAppointmentIntake(
     payment.verificationPayload
   );
@@ -265,14 +268,22 @@ function getConsultationManualReview(
           : activeSlot
             ? manualAppointmentIntake
               ? "คำขอนัดโดย Admin ยังรอตรวจรายการโอน หากยืนยันจึงจะนัดหมาย"
-              : "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที"
-            : "slot เดิมถูกปล่อยแล้ว หลังยืนยันลูกค้าต้องเลือกเวลาใหม่";
+              : providerFailure?.reasonCode === "provider_delay"
+                ? "ธนาคารแจ้งให้รอตรวจซ้ำตามเวลาที่กำหนด หรือ Admin ยืนยันจากหลักฐานธนาคารอิสระได้ หากยืนยันจะนัดหมายทันที"
+                : "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที"
+            : providerFailure?.reasonCode === "provider_delay"
+              ? "ธนาคารแจ้งให้รอตรวจซ้ำตามเวลาที่กำหนด หรือ Admin ยืนยันจากหลักฐานธนาคารอิสระได้ หลังยืนยันลูกค้าต้องเลือกเวลาใหม่"
+              : "slot เดิมถูกปล่อยแล้ว หลังยืนยันลูกค้าต้องเลือกเวลาใหม่";
 
   return {
     kind: manualAppointmentIntake
       ? "manual_appointment"
       : "provider_fallback",
     eligible,
+    reasonCode:
+      providerFailure?.reasonCode ??
+      manualAppointmentIntake?.reasonCode ??
+      "provider_result_ambiguous",
     reason,
     slipHref: attachmentId ? `/api/payments/slips/${attachmentId}` : null,
     slotState: activeSlot ? "active" : "released"

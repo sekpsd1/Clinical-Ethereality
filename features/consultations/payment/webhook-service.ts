@@ -1,4 +1,5 @@
 import { Prisma, type ConsultationStatus, type PaymentStatus } from "@prisma/client";
+import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
 import {
   applyConsultationPaymentVerification,
@@ -11,12 +12,15 @@ import {
 } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
 
-type WebhookOutcome = "verified" | "rejected";
+type WebhookOutcome = "verified" | "rejected" | "provider_error";
 
 type StoredWebhookEvent = {
   eventId: string;
   outcome: WebhookOutcome;
   provider: "slipok" | "easyslip";
+  classification: string | null;
+  failureCode: string | null;
+  retryAfterSeconds: number | null;
 };
 
 export type ConsultationPaymentWebhookPersistenceResult = "processed" | "replayed";
@@ -54,21 +58,46 @@ function getStoredWebhookEvent(verificationPayload: Prisma.JsonValue | null): St
     throw new PaymentVerificationConflictError();
   }
 
-  const { eventId, outcome, provider } = storedEvent;
+  const {
+    eventId,
+    outcome,
+    provider,
+    classification,
+    failureCode,
+    retryAfterSeconds
+  } = storedEvent;
 
   if (
     typeof eventId !== "string" ||
-    (outcome !== "verified" && outcome !== "rejected") ||
+    (outcome !== "verified" &&
+      outcome !== "rejected" &&
+      outcome !== "provider_error") ||
     (provider !== "slipok" && provider !== "easyslip")
   ) {
     throw new PaymentVerificationConflictError();
   }
 
-  return { eventId, outcome, provider };
+  return {
+    eventId,
+    outcome,
+    provider,
+    classification: typeof classification === "string" ? classification : null,
+    failureCode: typeof failureCode === "string" ? failureCode : null,
+    retryAfterSeconds:
+      typeof retryAfterSeconds === "number" &&
+      Number.isInteger(retryAfterSeconds) &&
+      retryAfterSeconds > 0
+        ? retryAfterSeconds
+        : null
+  };
 }
 
 function getWebhookOutcome(event: ActionableConsultationPaymentWebhookEvent): WebhookOutcome {
-  return event.eventType === "consultation.payment.verified" ? "verified" : "rejected";
+  return event.eventType === "consultation.payment.verified"
+    ? "verified"
+    : event.eventType === "consultation.payment.rejected"
+      ? "rejected"
+      : "provider_error";
 }
 
 function isExactReplay(
@@ -83,14 +112,18 @@ function isExactReplay(
   const paymentMatchesOutcome =
     outcome === "verified"
       ? paymentStatus === "verified" || paymentStatus === "refunded"
-      : paymentStatus === "rejected";
+      : outcome === "rejected"
+        ? paymentStatus === "rejected"
+        : paymentStatus === "pending_review";
   const consultationMatchesOutcome =
     outcome === "verified"
       ? ["scheduled", "live", "completed", "cancelled"].includes(consultationStatus)
-      : consultationStatus === "pending_payment" || consultationStatus === "cancelled";
+      : outcome === "rejected"
+        ? consultationStatus === "pending_payment" || consultationStatus === "cancelled"
+        : consultationStatus === "pending_payment";
   const amountMatches =
     Number.isFinite(serverAmount) && toSatang(serverAmount) === toSatang(event.amount);
-  let transactionReferenceMatches = outcome === "rejected";
+  let transactionReferenceMatches = outcome !== "verified";
 
   if (outcome === "verified" && event.eventType === "consultation.payment.verified") {
     try {
@@ -109,7 +142,15 @@ function isExactReplay(
     transactionReferenceMatches &&
     storedEvent.eventId === event.eventId &&
     storedEvent.outcome === outcome &&
-    storedEvent.provider === event.provider
+    storedEvent.provider === event.provider &&
+    storedEvent.classification ===
+      (event.eventType === "consultation.payment.verified" ? null : event.classification) &&
+    storedEvent.failureCode ===
+      (event.eventType === "consultation.payment.verified" ? null : event.failureCode) &&
+    storedEvent.retryAfterSeconds ===
+      (event.eventType === "consultation.payment.provider_error"
+        ? event.retryAfterSeconds
+        : null)
   );
 }
 
@@ -121,6 +162,9 @@ function getVerificationResult(
   event: ActionableConsultationPaymentWebhookEvent,
   serverAmount: number
 ): SlipVerificationResult {
+  if (event.eventType === "consultation.payment.provider_error") {
+    throw new PaymentVerificationConflictError();
+  }
   const verified = event.eventType === "consultation.payment.verified";
 
   return {
@@ -131,6 +175,14 @@ function getVerificationResult(
     amount: verified ? serverAmount : null,
     receiverName: null,
     transactionTimestamp: null,
+    failure: verified
+      ? null
+      : {
+          classification: event.classification,
+          code: event.failureCode,
+          retryAfterSeconds: null,
+          retryGuidance: "correct_evidence"
+        },
     raw: null
   };
 }
@@ -209,6 +261,25 @@ export async function persistConsultationPaymentWebhookEvent(
   }
 
   const outcome = getWebhookOutcome(event);
+  const failure =
+    event.eventType === "consultation.payment.verified"
+      ? null
+      : {
+          classification: event.classification,
+          code: event.failureCode,
+          retryAfterSeconds:
+            event.eventType === "consultation.payment.provider_error"
+              ? event.retryAfterSeconds
+              : null,
+          retryGuidance:
+            event.eventType === "consultation.payment.provider_error" &&
+            event.classification === "provider_delay"
+              ? "retry_after_provider_delay"
+              : event.eventType === "consultation.payment.provider_error"
+                ? "independent_bank_confirmation"
+                : "correct_evidence"
+        } as const;
+  const failedAt = new Date();
   const eventClaim = await tx.payment.updateMany({
     where: {
       id: payment.id,
@@ -220,14 +291,49 @@ export async function persistConsultationPaymentWebhookEvent(
         providerWebhook: {
           eventId: event.eventId,
           outcome,
-          provider: event.provider
-        }
+          provider: event.provider,
+          classification: failure?.classification ?? null,
+          failureCode: failure?.code ?? null,
+          retryAfterSeconds: failure?.retryAfterSeconds ?? null
+        },
+        ...(event.eventType === "consultation.payment.provider_error"
+          ? {
+              providerAttempt: {
+                failedAt: failedAt.toISOString(),
+                failure,
+                outcome: "provider_error",
+                provider: event.provider,
+                source: "provider_webhook",
+                eventId: event.eventId
+              }
+            }
+          : {})
       })
     }
   });
 
   if (eventClaim.count !== 1) {
     throw new PaymentVerificationConflictError();
+  }
+
+  if (event.eventType === "consultation.payment.provider_error") {
+    await writeAuditLog(tx, {
+      actorId: null,
+      action: "consultation.payment_provider_unavailable",
+      entityType: "consultation",
+      entityId: payment.consultation.id,
+      metadata: {
+        paymentId: payment.id,
+        provider: event.provider,
+        failureClassification: event.classification,
+        failureCode: event.failureCode,
+        retryAfterSeconds: event.retryAfterSeconds,
+        source: "provider_webhook",
+        paymentStatus: "pending_review",
+        consultationStatus: "pending_payment"
+      }
+    });
+    return "processed";
   }
 
   const consultation: ConsultationPaymentSnapshot = {

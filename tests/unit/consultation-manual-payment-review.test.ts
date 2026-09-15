@@ -79,8 +79,16 @@ function txMock(overrides: {
           verificationPayload:
             overrides.verificationPayload ?? {
               providerAttempt: {
+                attemptId: "attempt-1",
                 outcome: "provider_error",
-                failedAt: "2026-09-05T04:00:00.000Z"
+                failedAt: "2026-09-05T04:00:00.000Z",
+                provider: "slipok",
+                failure: {
+                  classification: "provider_unavailable",
+                  code: "slipok_1009",
+                  retryAfterSeconds: 900,
+                  retryGuidance: "independent_bank_confirmation"
+                }
               }
             }
         }
@@ -143,7 +151,14 @@ describe("manual consultation payment review", () => {
 
     await recordConsultationProviderFailure(tx as never, {
       actorId: "patient-1",
+      attemptId: "attempt-1",
       consultationId: "consultation-1",
+      failure: {
+        classification: "provider_unavailable",
+        code: "slipok_1009",
+        retryAfterSeconds: 900,
+        retryGuidance: "independent_bank_confirmation"
+      },
       provider: "slipok"
     });
 
@@ -250,6 +265,26 @@ describe("manual consultation payment review", () => {
     expect(auditJson).not.toContain(
       "/api/admin/payments/evidence/admin-evidence-1"
     );
+  });
+
+  it("ignores a late failure from an older provider attempt", async () => {
+    const tx = txMock();
+
+    await recordConsultationProviderFailure(tx as never, {
+      actorId: "patient-1",
+      attemptId: "attempt-old",
+      consultationId: "consultation-1",
+      failure: {
+        classification: "provider_timeout",
+        code: "request_timeout",
+        retryAfterSeconds: null,
+        retryGuidance: "independent_bank_confirmation"
+      },
+      provider: "slipok"
+    });
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejects an inactive or stale Admin session inside the transaction", async () => {

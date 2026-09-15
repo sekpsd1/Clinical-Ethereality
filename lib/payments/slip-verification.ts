@@ -2,6 +2,37 @@ import { getAppEnv } from "@/lib/env/schema";
 
 export type SlipVerificationProvider = "slipok" | "easyslip";
 
+export const slipVerificationFailureClassifications = [
+  "provider_unavailable",
+  "provider_timeout",
+  "provider_delay",
+  "provider_result_ambiguous",
+  "invalid_evidence",
+  "duplicate_transaction",
+  "amount_mismatch",
+  "receiver_mismatch"
+] as const;
+
+export type SlipVerificationFailureClassification =
+  (typeof slipVerificationFailureClassifications)[number];
+
+export const manualConsultationReviewEligibleFailureClassifications = [
+  "provider_unavailable",
+  "provider_timeout",
+  "provider_delay",
+  "provider_result_ambiguous"
+] as const satisfies readonly SlipVerificationFailureClassification[];
+
+export type SlipVerificationFailure = {
+  classification: SlipVerificationFailureClassification;
+  code: string;
+  retryAfterSeconds: number | null;
+  retryGuidance:
+    | "independent_bank_confirmation"
+    | "retry_after_provider_delay"
+    | "correct_evidence";
+};
+
 export type SlipVerificationInput = {
   qrPayload?: string;
   imageUrl?: string;
@@ -21,8 +52,20 @@ export type SlipVerificationResult = {
   amount: number | null;
   receiverName: string | null;
   transactionTimestamp?: string | null;
+  failure?: SlipVerificationFailure | null;
   raw: unknown;
 };
+
+export function isManualConsultationReviewEligibleFailure(
+  failure: SlipVerificationFailure | null | undefined
+): boolean {
+  return Boolean(
+    failure &&
+      manualConsultationReviewEligibleFailureClassifications.some(
+        (classification) => classification === failure.classification
+      )
+  );
+}
 
 function assertConfigured(value: string | undefined, name: string): string {
   const normalizedValue = value?.trim();
@@ -240,8 +283,18 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
       signal: controller.signal
     });
     raw = (await response.json().catch(() => null)) as SlipOkResponse | null;
-  } catch {
-    return getProviderErrorResult("slipok");
+  } catch (error) {
+    return getProviderErrorResult(
+      "slipok",
+      buildSlipVerificationFailure(
+        error instanceof Error && error.name === "AbortError"
+          ? "provider_timeout"
+          : "provider_unavailable",
+        error instanceof Error && error.name === "AbortError"
+          ? "request_timeout"
+          : "network_error"
+      )
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -252,39 +305,50 @@ async function verifyWithSlipOk(input: SlipVerificationInput): Promise<SlipVerif
   const providerAccepted = Boolean(response.ok && raw?.success && data?.success);
   const hasRequiredVerificationData = Boolean(data?.transRef && amount !== null && receiverName?.trim());
   const errorCode = toFiniteNumber(raw?.code);
-  const isProviderUnavailable =
-    response.status === 401 ||
-    response.status === 403 ||
-    response.status === 429 ||
-    response.status >= 500 ||
-    errorCode === 1009 ||
-    errorCode === 1010;
   const verified = Boolean(
     providerAccepted &&
       hasRequiredVerificationData &&
       isAmountMatch(amount, input.amount)
   );
+  const failure = verified
+    ? null
+    : getSlipOkFailure({
+        errorCode,
+        hasRaw: Boolean(raw),
+        hasRequiredVerificationData,
+        providerAccepted,
+        providerDelayMinutes: toFiniteNumber(data?.delay),
+        responseStatus: response.status,
+        returnedAmount: amount,
+        expectedAmount: input.amount
+      });
 
   return {
     ok: verified,
     provider: "slipok",
-    status:
-      verified
-        ? "verified"
-        : isProviderUnavailable || (providerAccepted && !hasRequiredVerificationData) || (!raw && response.ok)
-          ? "provider_error"
-          : "rejected",
+    status: verified
+      ? "verified"
+      : isManualConsultationReviewEligibleFailure(failure)
+        ? "provider_error"
+        : "rejected",
     transRef: data?.transRef ?? null,
     amount,
     receiverName,
     transactionTimestamp: getSlipOkTransactionTimestamp(data),
+    failure,
     // Do not retain provider raw response data: it can contain full banking and
     // QR details. The payment services persist only the normalized fields.
     raw: null
   };
 }
 
-function getProviderErrorResult(provider: SlipVerificationProvider): SlipVerificationResult {
+function getProviderErrorResult(
+  provider: SlipVerificationProvider,
+  failure: SlipVerificationFailure = buildSlipVerificationFailure(
+    "provider_unavailable",
+    "provider_unavailable"
+  )
+): SlipVerificationResult {
   return {
     ok: false,
     provider,
@@ -293,8 +357,108 @@ function getProviderErrorResult(provider: SlipVerificationProvider): SlipVerific
     amount: null,
     receiverName: null,
     transactionTimestamp: null,
+    failure,
     raw: null
   };
+}
+
+function buildSlipVerificationFailure(
+  classification: SlipVerificationFailureClassification,
+  code: string,
+  retryAfterSeconds: number | null = null
+): SlipVerificationFailure {
+  return {
+    classification,
+    code,
+    retryAfterSeconds,
+    retryGuidance:
+      classification === "provider_delay"
+        ? "retry_after_provider_delay"
+        : isManualConsultationReviewEligibleFailure({
+              classification,
+              code,
+              retryAfterSeconds,
+              retryGuidance: "independent_bank_confirmation"
+            })
+          ? "independent_bank_confirmation"
+          : "correct_evidence"
+  };
+}
+
+function getSlipOkFailure(input: {
+  errorCode: number | null;
+  expectedAmount: number | undefined;
+  hasRaw: boolean;
+  hasRequiredVerificationData: boolean;
+  providerAccepted: boolean;
+  providerDelayMinutes: number | null;
+  responseStatus: number;
+  returnedAmount: number | null;
+}): SlipVerificationFailure {
+  const normalizedCode = input.errorCode
+    ? `slipok_${input.errorCode}`
+    : `http_${input.responseStatus}`;
+
+  if ([1001, 1002, 1003, 1004, 1009].includes(input.errorCode ?? -1)) {
+    return buildSlipVerificationFailure(
+      "provider_unavailable",
+      normalizedCode,
+      input.errorCode === 1009 ? 15 * 60 : null
+    );
+  }
+
+  if (input.errorCode === 1010) {
+    const retryAfterSeconds =
+      input.providerDelayMinutes !== null &&
+      Number.isInteger(input.providerDelayMinutes) &&
+      input.providerDelayMinutes > 0 &&
+      input.providerDelayMinutes <= 24 * 60
+        ? input.providerDelayMinutes * 60
+        : null;
+    return buildSlipVerificationFailure(
+      "provider_delay",
+      normalizedCode,
+      retryAfterSeconds
+    );
+  }
+
+  if (input.errorCode === 1012) {
+    return buildSlipVerificationFailure("duplicate_transaction", normalizedCode);
+  }
+
+  if (input.errorCode === 1013) {
+    return buildSlipVerificationFailure("amount_mismatch", normalizedCode);
+  }
+
+  if (input.errorCode === 1014) {
+    return buildSlipVerificationFailure("receiver_mismatch", normalizedCode);
+  }
+
+  if ([1000, 1005, 1006, 1007, 1008, 1011].includes(input.errorCode ?? -1)) {
+    return buildSlipVerificationFailure("invalid_evidence", normalizedCode);
+  }
+
+  if (
+    input.responseStatus === 401 ||
+    input.responseStatus === 403 ||
+    input.responseStatus === 429 ||
+    input.responseStatus >= 500
+  ) {
+    return buildSlipVerificationFailure("provider_unavailable", normalizedCode);
+  }
+
+  if (
+    input.providerAccepted &&
+    input.hasRequiredVerificationData &&
+    !isAmountMatch(input.returnedAmount, input.expectedAmount)
+  ) {
+    return buildSlipVerificationFailure("amount_mismatch", "amount_mismatch");
+  }
+
+  return buildSlipVerificationFailure(
+    "provider_result_ambiguous",
+    input.hasRaw ? "unexpected_provider_response" : "empty_provider_response"
+  );
 }
 
 function safeFileName(fileName: string): string {
@@ -380,5 +544,6 @@ type SlipOkResponse = {
       displayName?: string;
       name?: string;
     };
+    delay?: number | string;
   };
 };

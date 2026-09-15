@@ -127,7 +127,11 @@ describe("consultation payment verification service", () => {
         where: expect.objectContaining({ id: "payment-1", status: "pending_review" }),
         data: expect.objectContaining({
           verificationPayload: expect.objectContaining({
-            providerAttempt: expect.objectContaining({ claimedBy: "patient-1", status: "pending_review" })
+            providerAttempt: expect.objectContaining({
+              attemptId: expect.any(String),
+              claimedBy: "patient-1",
+              status: "pending_review"
+            })
           })
         })
       })
@@ -298,6 +302,32 @@ describe("consultation payment verification service", () => {
     expect(tx.consultation.updateMany).not.toHaveBeenCalled();
     expect(tx.notification.create).not.toHaveBeenCalled();
     expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a late result from an older provider attempt", async () => {
+    const tx = txMock();
+    tx.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "pending_review",
+      updatedAt: new Date("2026-08-09T08:00:00.000Z"),
+      verificationPayload: {
+        providerAttempt: { attemptId: "attempt-new" }
+      }
+    });
+
+    await expect(
+      applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1",
+        attemptId: "attempt-old",
+        consultation: consultation(),
+        evidence: { amount: 900, qrPayload: "qr-payload" },
+        result: result()
+      })
+    ).rejects.toBeInstanceOf(PaymentVerificationConflictError);
+
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(tx.consultation.updateMany).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
   });
 
   it("verifies funds but requires rescheduling when the provider responds after the slot expires", async () => {

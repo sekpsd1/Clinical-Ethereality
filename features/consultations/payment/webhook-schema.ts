@@ -31,6 +31,23 @@ const webhookTransactionReference = z
     }
   }, "Payment webhook transaction reference is invalid.");
 
+const manualEligibleFailureClassification = z.enum([
+  "provider_unavailable",
+  "provider_timeout",
+  "provider_delay",
+  "provider_result_ambiguous"
+]);
+
+const hardRejectionClassification = z.enum([
+  "invalid_evidence",
+  "duplicate_transaction",
+  "amount_mismatch",
+  "receiver_mismatch"
+]);
+
+const normalizedFailureCode = webhookIdentifier.max(80);
+const retryAfterSeconds = z.number().int().positive().max(86_400).nullable();
+
 const webhookEventBase = {
   eventId: webhookIdentifier,
   paymentId: z.string().trim().min(1).max(191),
@@ -51,14 +68,20 @@ const rejectedEventSchema = z
   .object({
     ...webhookEventBase,
     eventType: z.literal("consultation.payment.rejected"),
-    amount: webhookAmount
+    amount: webhookAmount,
+    classification: hardRejectionClassification,
+    failureCode: normalizedFailureCode
   })
   .strict();
 
 const providerErrorEventSchema = z
   .object({
     ...webhookEventBase,
-    eventType: z.literal("consultation.payment.provider_error")
+    eventType: z.literal("consultation.payment.provider_error"),
+    amount: webhookAmount,
+    classification: manualEligibleFailureClassification,
+    failureCode: normalizedFailureCode,
+    retryAfterSeconds
   })
   .strict();
 
@@ -69,7 +92,5 @@ export const consultationPaymentWebhookEventSchema = z.discriminatedUnion("event
 ]);
 
 export type ConsultationPaymentWebhookEvent = z.infer<typeof consultationPaymentWebhookEventSchema>;
-export type ActionableConsultationPaymentWebhookEvent = Exclude<
-  ConsultationPaymentWebhookEvent,
-  { eventType: "consultation.payment.provider_error" }
->;
+export type ActionableConsultationPaymentWebhookEvent =
+  ConsultationPaymentWebhookEvent;

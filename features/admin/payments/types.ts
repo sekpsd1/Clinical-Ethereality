@@ -1,5 +1,6 @@
 import type { PaymentStatus } from "@prisma/client";
 import type { ManualRefundReadiness } from "@/features/payments/refund-readiness";
+import type { ConsultationManualReviewReasonCode } from "@/features/consultations/payment/manual-review";
 
 export type AdminPaymentQueueItem = {
   id: string;
@@ -27,6 +28,7 @@ export type AdminPaymentQueueItem = {
   consultationManualReview: {
     kind: "provider_fallback" | "manual_appointment";
     eligible: boolean;
+    reasonCode: ConsultationManualReviewReasonCode;
     reason: string;
     slipHref: string | null;
     slotState: "active" | "released" | "not_applicable";

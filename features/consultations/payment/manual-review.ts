@@ -16,12 +16,17 @@ import {
 } from "@/features/consultations/booking/slots";
 import { findActiveBlockingOverrideForSlot } from "@/features/consultations/booking/blocked-overrides";
 import { getNewScheduleDurationMinutes, LEGACY_CONSULTATION_DURATION_FALLBACK_MINUTES } from "@/features/consultations/duration-policy";
+import {
+  isManualConsultationReviewEligibleFailure,
+  type SlipVerificationFailure
+} from "@/lib/payments/slip-verification";
 
 export const CONSULTATION_MANUAL_REVIEW_CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_APPOINTMENT_TRANSFER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 export const consultationManualReviewReasonCodes = [
   "provider_unavailable",
   "provider_timeout",
+  "provider_delay",
   "provider_result_ambiguous"
 ] as const;
 
@@ -115,14 +120,86 @@ export function getManualAppointmentIntake(
   return { attachmentId, createdAt, reasonCode, transferredAt };
 }
 
-export function getConsultationProviderFailureAt(
+export type ConsultationProviderFailure = {
+  failedAt: Date;
+  failure: SlipVerificationFailure;
+  provider: "slipok" | "easyslip" | "unknown";
+  reasonCode: ConsultationManualReviewReasonCode;
+};
+
+function getManualReviewReasonCode(
+  failure: SlipVerificationFailure
+): ConsultationManualReviewReasonCode | null {
+  switch (failure.classification) {
+    case "provider_unavailable":
+    case "provider_timeout":
+    case "provider_delay":
+    case "provider_result_ambiguous":
+      return failure.classification;
+    default:
+      return null;
+  }
+}
+
+export function getConsultationProviderFailure(
   payload: Prisma.JsonValue | null
-): Date | null {
+): ConsultationProviderFailure | null {
   const attempt = asJsonObject(payload).providerAttempt;
   if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) return null;
   const object = attempt as Prisma.JsonObject;
   if (object.outcome !== "provider_error") return null;
-  return parseDate(object.failedAt);
+  const failedAt = parseDate(object.failedAt);
+  const provider =
+    object.provider === "slipok" || object.provider === "easyslip"
+      ? object.provider
+      : "unknown";
+  const storedFailure = asJsonObject(
+    object.failure as Prisma.JsonValue | null
+  );
+  const classification = storedFailure.classification;
+  const code = storedFailure.code;
+  const retryGuidance = storedFailure.retryGuidance;
+  const failure: SlipVerificationFailure =
+    typeof classification === "string" &&
+    typeof code === "string" &&
+    (retryGuidance === "independent_bank_confirmation" ||
+      retryGuidance === "retry_after_provider_delay" ||
+      retryGuidance === "correct_evidence")
+      ? {
+          classification:
+            classification as SlipVerificationFailure["classification"],
+          code,
+          retryAfterSeconds:
+            typeof storedFailure.retryAfterSeconds === "number" &&
+            Number.isInteger(storedFailure.retryAfterSeconds) &&
+            storedFailure.retryAfterSeconds > 0
+              ? storedFailure.retryAfterSeconds
+              : null,
+          retryGuidance
+        }
+      : {
+          classification: "provider_result_ambiguous",
+          code: "legacy_provider_error",
+          retryAfterSeconds: null,
+          retryGuidance: "independent_bank_confirmation"
+        };
+
+  const reasonCode = getManualReviewReasonCode(failure);
+  if (
+    !failedAt ||
+    !reasonCode ||
+    !isManualConsultationReviewEligibleFailure(failure)
+  ) {
+    return null;
+  }
+
+  return { failedAt, failure, provider, reasonCode };
+}
+
+export function getConsultationProviderFailureAt(
+  payload: Prisma.JsonValue | null
+): Date | null {
+  return getConsultationProviderFailure(payload)?.failedAt ?? null;
 }
 
 export function getConsultationManualReviewEvidenceAttachmentId(
@@ -155,10 +232,15 @@ export async function recordConsultationProviderFailure(
   tx: Prisma.TransactionClient,
   input: {
     actorId: string;
+    attemptId: string;
     consultationId: string;
+    failure: SlipVerificationFailure;
     provider: "slipok" | "easyslip" | "unknown";
   }
 ): Promise<void> {
+  if (!isManualConsultationReviewEligibleFailure(input.failure)) {
+    return;
+  }
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${input.consultationId} FOR UPDATE`
   );
@@ -193,6 +275,7 @@ export async function recordConsultationProviderFailure(
   const existingAttempt = asJsonObject(
     payload.providerAttempt as Prisma.JsonValue | null
   );
+  if (existingAttempt.attemptId !== input.attemptId) return;
   const updated = await tx.payment.updateMany({
     where: {
       id: consultation.payment.id,
@@ -206,6 +289,7 @@ export async function recordConsultationProviderFailure(
           providerAttempt: {
             ...existingAttempt,
             failedAt: failedAt.toISOString(),
+            failure: input.failure,
             outcome: "provider_error",
             provider: input.provider
           }
@@ -223,6 +307,9 @@ export async function recordConsultationProviderFailure(
     entityId: consultation.id,
     metadata: {
       paymentId: consultation.payment.id,
+      failureClassification: input.failure.classification,
+      failureCode: input.failure.code,
+      retryGuidance: input.failure.retryGuidance,
       provider: input.provider,
       paymentStatus: "pending_review",
       consultationStatus: "pending_payment"
@@ -805,10 +892,11 @@ async function applyConsultationPaymentReviewDecision(
     throw new ConsultationManualReviewError("MISSING_EVIDENCE");
   }
 
-  const providerFailureAt =
+  const providerFailure =
     input.kind === "provider_fallback"
-      ? getConsultationProviderFailureAt(payment.verificationPayload)
+      ? getConsultationProviderFailure(payment.verificationPayload)
       : null;
+  const providerFailureAt = providerFailure?.failedAt ?? null;
   const manualAppointmentIntake = getManualAppointmentIntake(
     payment.verificationPayload
   );
@@ -817,7 +905,12 @@ async function applyConsultationPaymentReviewDecision(
   let customerReportedAt: Date | null = null;
 
   if (input.kind === "provider_fallback") {
-    if (!providerFailureAt || manualAppointmentIntake) {
+    if (
+      !providerFailureAt ||
+      !providerFailure ||
+      manualAppointmentIntake ||
+      input.reasonCode !== providerFailure.reasonCode
+    ) {
       throw new ConsultationManualReviewError("NOT_ELIGIBLE");
     }
     if (
@@ -839,7 +932,7 @@ async function applyConsultationPaymentReviewDecision(
       throw new ConsultationManualReviewError("INVALID_AMOUNT");
     }
     transferredAt = input.transferredAt;
-    reasonCode = input.reasonCode;
+    reasonCode = providerFailure.reasonCode;
     customerReportedAt = input.customerReportedAt;
   } else {
     if (

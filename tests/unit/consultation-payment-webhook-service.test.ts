@@ -56,6 +56,7 @@ function payment(overrides: Record<string, unknown> = {}) {
 function txMock(currentPayment = payment()) {
   return {
     $queryRaw: vi.fn().mockResolvedValue([{ id: "locked" }]),
+    auditLog: { create: vi.fn() },
     payment: {
       findUnique: vi
         .fn()
@@ -92,7 +93,10 @@ describe("consultation payment webhook persistence service", () => {
           providerWebhook: {
             eventId: "evt-verified-1",
             outcome: "verified",
-            provider: "slipok"
+            provider: "slipok",
+            classification: null,
+            failureCode: null,
+            retryAfterSeconds: null
           }
         }
       }
@@ -115,6 +119,7 @@ describe("consultation payment webhook persistence service", () => {
         status: "verified",
         transRef: "transfer-1",
         amount: 900,
+        failure: null,
         receiverName: null,
         transactionTimestamp: null,
         raw: null
@@ -132,7 +137,9 @@ describe("consultation payment webhook persistence service", () => {
       eventType: "consultation.payment.rejected",
       provider: "slipok",
       paymentId: "payment-1",
-      amount: 900
+      amount: 900,
+      classification: "invalid_evidence",
+      failureCode: "slipok_1006"
     };
 
     await persistConsultationPaymentWebhookEvent(tx as never, rejectedEvent);
@@ -156,12 +163,105 @@ describe("consultation payment webhook persistence service", () => {
             providerWebhook: {
               eventId: "evt-rejected-1",
               outcome: "rejected",
-              provider: "slipok"
+              provider: "slipok",
+              classification: "invalid_evidence",
+              failureCode: "slipok_1006",
+              retryAfterSeconds: null
             }
           })
         }
       })
     );
+  });
+
+  it("records a sanitized provider delay without rejecting or scheduling the payment", async () => {
+    const tx = txMock();
+    const providerErrorEvent: ActionableConsultationPaymentWebhookEvent = {
+      eventId: "evt-provider-error-1",
+      eventType: "consultation.payment.provider_error",
+      provider: "slipok",
+      paymentId: "payment-1",
+      amount: 900,
+      classification: "provider_delay",
+      failureCode: "slipok_1010",
+      retryAfterSeconds: 600
+    };
+
+    await expect(
+      persistConsultationPaymentWebhookEvent(tx as never, providerErrorEvent)
+    ).resolves.toBe("processed");
+
+    expect(mocks.applyConsultationPaymentVerification).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          verificationPayload: expect.objectContaining({
+            providerWebhook: {
+              eventId: "evt-provider-error-1",
+              outcome: "provider_error",
+              provider: "slipok",
+              classification: "provider_delay",
+              failureCode: "slipok_1010",
+              retryAfterSeconds: 600
+            },
+            providerAttempt: expect.objectContaining({
+              outcome: "provider_error",
+              provider: "slipok",
+              source: "provider_webhook",
+              failure: {
+                classification: "provider_delay",
+                code: "slipok_1010",
+                retryAfterSeconds: 600,
+                retryGuidance: "retry_after_provider_delay"
+              }
+            })
+          })
+        }
+      })
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "consultation.payment_provider_unavailable"
+        })
+      })
+    );
+    expect(JSON.stringify(tx.payment.updateMany.mock.calls)).not.toContain(
+      "transactionReference"
+    );
+  });
+
+  it("treats an exact provider-error replay as idempotent without refreshing the failure time", async () => {
+    const event: ActionableConsultationPaymentWebhookEvent = {
+      eventId: "evt-provider-error-1",
+      eventType: "consultation.payment.provider_error",
+      provider: "slipok",
+      paymentId: "payment-1",
+      amount: 900,
+      classification: "provider_delay",
+      failureCode: "slipok_1010",
+      retryAfterSeconds: 600
+    };
+    const tx = txMock(
+      payment({
+        verificationPayload: {
+          providerWebhook: {
+            eventId: event.eventId,
+            outcome: "provider_error",
+            provider: "slipok",
+            classification: "provider_delay",
+            failureCode: "slipok_1010",
+            retryAfterSeconds: 600
+          }
+        }
+      })
+    );
+
+    await expect(
+      persistConsultationPaymentWebhookEvent(tx as never, event)
+    ).resolves.toBe("replayed");
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -201,7 +301,9 @@ describe("consultation payment webhook persistence service", () => {
       eventType: "consultation.payment.rejected",
       provider: "slipok",
       paymentId: "payment-1",
-      amount: 900
+      amount: 900,
+      classification: "invalid_evidence",
+      failureCode: "slipok_1006"
     };
     const tx = txMock(
       payment({
@@ -210,7 +312,10 @@ describe("consultation payment webhook persistence service", () => {
           providerWebhook: {
             eventId: "evt-rejected-1",
             outcome: "rejected",
-            provider: "slipok"
+            provider: "slipok",
+            classification: "invalid_evidence",
+            failureCode: "slipok_1006",
+            retryAfterSeconds: null
           }
         }
       })
@@ -258,7 +363,9 @@ describe("consultation payment webhook persistence service", () => {
       eventType: "consultation.payment.rejected",
       provider: "slipok",
       paymentId: "payment-1",
-      amount: 900.01
+      amount: 900.01,
+      classification: "invalid_evidence",
+      failureCode: "slipok_1006"
     };
     const tx = txMock(
       payment({

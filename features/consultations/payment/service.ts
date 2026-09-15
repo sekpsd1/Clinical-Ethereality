@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma, type ConsultationStatus } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
@@ -122,7 +123,7 @@ export function getConsultationPaymentVerificationRetryAfterSeconds(
 export async function claimConsultationProviderVerification(
   tx: Prisma.TransactionClient,
   input: { actorId: string; consultation: ConsultationPaymentSnapshot }
-): Promise<void> {
+): Promise<string> {
   await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${input.consultation.id} FOR UPDATE`
   );
@@ -160,11 +161,13 @@ export async function claimConsultationProviderVerification(
   }
 
   const claimedAt = new Date();
+  const attemptId = randomUUID();
   const paymentUpdate = await tx.payment.updateMany({
     where: { id: payment.id, status: "pending_review", updatedAt: payment.updatedAt },
     data: {
       verificationPayload: mergePaymentVerificationPayload(payment.verificationPayload, {
         providerAttempt: {
+          attemptId,
           claimedAt: claimedAt.toISOString(),
           claimedBy: input.actorId,
           status: "pending_review"
@@ -177,6 +180,8 @@ export async function claimConsultationProviderVerification(
   if (paymentUpdate.count !== 1) {
     throw new PaymentVerificationConflictError();
   }
+
+  return attemptId;
 }
 
 export async function applyConsultationPaymentVerification(
@@ -185,6 +190,7 @@ export async function applyConsultationPaymentVerification(
     actorId: string | null;
     consultation: ConsultationPaymentSnapshot;
     evidence: ConsultationPaymentEvidence;
+    attemptId?: string;
     result: SlipVerificationResult;
   }
 ) {
@@ -259,6 +265,26 @@ export async function applyConsultationPaymentVerification(
 
   if (hasAdminManualAppointmentIntake(existingPayment?.verificationPayload ?? null)) {
     throw new PaymentVerificationConflictError();
+  }
+
+  if (input.evidence.source !== "provider_webhook") {
+    const providerAttempt =
+      existingPayment?.verificationPayload &&
+      typeof existingPayment.verificationPayload === "object" &&
+      !Array.isArray(existingPayment.verificationPayload)
+        ? (existingPayment.verificationPayload as Prisma.JsonObject).providerAttempt
+        : null;
+    const currentAttemptId =
+      providerAttempt && typeof providerAttempt === "object" && !Array.isArray(providerAttempt)
+        ? (providerAttempt as Prisma.JsonObject).attemptId
+        : null;
+
+    if (
+      typeof currentAttemptId === "string" &&
+      (!input.attemptId || input.attemptId !== currentAttemptId)
+    ) {
+      throw new PaymentVerificationConflictError();
+    }
   }
 
   if (existingPayment?.status === "verified" || existingPayment?.status === "refunded") {

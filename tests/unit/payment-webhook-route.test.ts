@@ -165,7 +165,9 @@ describe("consultation payment webhook route", () => {
       eventType: "consultation.payment.rejected",
       provider: "slipok",
       paymentId: "payment-1",
-      amount: 900
+      amount: 900,
+      classification: "invalid_evidence",
+      failureCode: "slipok_1006"
     } as const;
 
     const response = await POST(request(rejectedEvent));
@@ -183,19 +185,27 @@ describe("consultation payment webhook route", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
-  it("ignores provider-error events without opening a database transaction", async () => {
+  it("persists a normalized provider-error event through the same transaction boundary", async () => {
+    const providerErrorEvent = {
+      eventId: "evt-provider-error-1",
+      eventType: "consultation.payment.provider_error",
+      provider: "slipok",
+      paymentId: "payment-1",
+      amount: 900,
+      classification: "provider_delay",
+      failureCode: "slipok_1010",
+      retryAfterSeconds: 600
+    } as const;
     const response = await POST(
-      request({
-        eventId: "evt-provider-error-1",
-        eventType: "consultation.payment.provider_error",
-        provider: "slipok",
-        paymentId: "payment-1"
-      })
+      request(providerErrorEvent)
     );
 
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.persistWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      providerErrorEvent
+    );
   });
 
   it("does not reveal whether a valid event mapped to a consultation payment", async () => {

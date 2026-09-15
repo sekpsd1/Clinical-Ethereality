@@ -98,19 +98,7 @@ export function AdminConsultationPaymentReviewForm({
         </label>
       </div>
 
-      <label className="block text-xs font-bold text-muted">
-        เหตุผลที่ใช้ Manual Review
-        <select
-          required
-          name="reasonCode"
-          defaultValue="provider_unavailable"
-          className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
-        >
-          <option value="provider_unavailable">ผู้ให้บริการไม่พร้อมใช้งาน</option>
-          <option value="provider_timeout">ผู้ให้บริการหมดเวลา</option>
-          <option value="provider_result_ambiguous">ผลจากผู้ให้บริการไม่ชัดเจน</option>
-        </select>
-      </label>
+      <input type="hidden" name="reasonCode" value={review.reasonCode} />
 
       <AdminSupportingEvidenceFields />
 

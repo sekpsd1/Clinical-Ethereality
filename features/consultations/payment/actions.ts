@@ -6,7 +6,10 @@ import { Prisma } from "@prisma/client";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
-import { verifyPaymentSlip } from "@/lib/payments/slip-verification";
+import {
+  verifyPaymentSlip,
+  type SlipVerificationFailure
+} from "@/lib/payments/slip-verification";
 import { releaseExpiredConsultationSlotLocks } from "@/features/consultations/booking/lock-release";
 import { verifyConsultationSlipSchema } from "@/features/consultations/payment/schema";
 import {
@@ -33,6 +36,8 @@ function redirectToPayment(consultationId: string, status: string): never {
 async function recordProviderFailure(
   consultationId: string,
   actorId: string,
+  attemptId: string,
+  failure: SlipVerificationFailure,
   provider: "slipok" | "easyslip" | "unknown"
 ): Promise<void> {
   await prisma
@@ -40,7 +45,9 @@ async function recordProviderFailure(
       (tx) =>
         recordConsultationProviderFailure(tx, {
           actorId,
+          attemptId,
           consultationId,
+          failure,
           provider
         }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
@@ -137,8 +144,9 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
     redirectToPayment(consultation.id, "invalid");
   }
 
+  let attemptId: string;
   try {
-    await prisma.$transaction(
+    attemptId = await prisma.$transaction(
       (tx) => claimConsultationProviderVerification(tx, { actorId: session.userId, consultation }),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
@@ -156,12 +164,34 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
   }).catch(() => null);
 
   if (!result) {
-    await recordProviderFailure(consultationId, session.userId, "unknown");
+    await recordProviderFailure(
+      consultationId,
+      session.userId,
+      attemptId,
+      {
+        classification: "provider_result_ambiguous",
+        code: "verification_result_unavailable",
+        retryAfterSeconds: null,
+        retryGuidance: "independent_bank_confirmation"
+      },
+      "unknown"
+    );
     redirectToPayment(consultationId, "provider_error");
   }
 
   if (result.status === "provider_error") {
-    await recordProviderFailure(consultationId, session.userId, result.provider);
+    await recordProviderFailure(
+      consultationId,
+      session.userId,
+      attemptId,
+      result.failure ?? {
+        classification: "provider_result_ambiguous",
+        code: "unclassified_provider_error",
+        retryAfterSeconds: null,
+        retryGuidance: "independent_bank_confirmation"
+      },
+      result.provider
+    );
     redirectToPayment(consultationId, "provider_error");
   }
 
@@ -170,6 +200,7 @@ export async function verifyConsultationSlipAction(formData: FormData): Promise<
       async (tx) => {
         await applyConsultationPaymentVerification(tx, {
           actorId: session.userId,
+          attemptId,
           consultation,
           evidence: {
             amount: consultation.doctor.consultationFee ?? 1000,

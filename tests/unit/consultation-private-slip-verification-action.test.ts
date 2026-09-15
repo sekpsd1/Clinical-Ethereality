@@ -91,6 +91,7 @@ describe("consultation private-slip verification action", () => {
     mocks.findConsultation.mockResolvedValue(consultation);
     mocks.findPayment.mockResolvedValue({ id: "payment-1" });
     mocks.findAttachment.mockResolvedValue(attachment);
+    mocks.claimConsultationProviderVerification.mockResolvedValue("attempt-1");
     mocks.readPrivatePaymentSlip.mockResolvedValue(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
     mocks.verifyPaymentSlip.mockResolvedValue({
       ok: true,
@@ -120,7 +121,10 @@ describe("consultation private-slip verification action", () => {
     });
     expect(mocks.applyConsultationPaymentVerification).toHaveBeenCalledWith(
       {},
-      expect.objectContaining({ evidence: { amount: 1, attachmentId: "attachment-1" } })
+      expect.objectContaining({
+        attemptId: "attempt-1",
+        evidence: { amount: 1, attachmentId: "attachment-1" }
+      })
     );
   });
 

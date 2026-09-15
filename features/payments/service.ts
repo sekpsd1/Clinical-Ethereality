@@ -197,7 +197,17 @@ export function getPersistableProviderResult(result: SlipVerificationResult) {
     transRef: result.ok ? result.transRef : null,
     amount: result.ok ? result.amount : null,
     receiverName: result.ok ? result.receiverName : null,
-    transactionTimestamp: result.ok ? result.transactionTimestamp ?? null : null
+    transactionTimestamp: result.ok ? result.transactionTimestamp ?? null : null,
+    ...(result.failure
+      ? {
+          failure: {
+            classification: result.failure.classification,
+            code: result.failure.code,
+            retryAfterSeconds: result.failure.retryAfterSeconds,
+            retryGuidance: result.failure.retryGuidance
+          }
+        }
+      : {})
   };
 }
 

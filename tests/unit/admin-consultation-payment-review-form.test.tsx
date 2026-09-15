@@ -35,6 +35,7 @@ const payment: AdminPaymentQueueItem = {
   consultationManualReview: {
     kind: "provider_fallback",
     eligible: true,
+    reasonCode: "provider_unavailable",
     reason: "slot ยังถูกสำรอง หากยืนยันจะนัดหมายทันที",
     slipHref: "/api/payments/slips/slip-1",
     slotState: "active"

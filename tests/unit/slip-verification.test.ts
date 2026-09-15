@@ -279,12 +279,29 @@ describe("slip verification fail-closed checks", () => {
   });
 
   it.each([
-    ["duplicate", 1012, "rejected"],
-    ["amount mismatch", 1013, "rejected"],
-    ["receiver mismatch", 1014, "rejected"],
-    ["delayed transaction", 1009, "provider_error"],
-    ["provider outage", 1010, "provider_error"]
-  ] as const)("fails closed for SlipOK %s response", async (_label, code, expectedStatus) => {
+    ["missing evidence", 1000, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["missing branch", 1001, "provider_error", "provider_unavailable", "independent_bank_confirmation", null],
+    ["invalid authorization", 1002, "provider_error", "provider_unavailable", "independent_bank_confirmation", null],
+    ["expired package", 1003, "provider_error", "provider_unavailable", "independent_bank_confirmation", null],
+    ["quota exceeded", 1004, "provider_error", "provider_unavailable", "independent_bank_confirmation", null],
+    ["invalid file type", 1005, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["invalid image", 1006, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["missing QR", 1007, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["non-payment QR", 1008, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["temporary bank outage", 1009, "provider_error", "provider_unavailable", "independent_bank_confirmation", 900],
+    ["bank delay", 1010, "provider_error", "provider_delay", "retry_after_provider_delay", null],
+    ["expired or nonexistent QR", 1011, "rejected", "invalid_evidence", "correct_evidence", null],
+    ["duplicate", 1012, "rejected", "duplicate_transaction", "correct_evidence", null],
+    ["amount mismatch", 1013, "rejected", "amount_mismatch", "correct_evidence", null],
+    ["receiver mismatch", 1014, "rejected", "receiver_mismatch", "correct_evidence", null]
+  ] as const)("fails closed for SlipOK %s response", async (
+    _label,
+    code,
+    expectedStatus,
+    classification,
+    retryGuidance,
+    retryAfterSeconds
+  ) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(buildSlipOkResponse({ status: 400, success: false, code })));
 
     await expect(
@@ -296,7 +313,94 @@ describe("slip verification fail-closed checks", () => {
         },
         amount: 1200
       })
-    ).resolves.toMatchObject({ ok: false, status: expectedStatus, raw: null });
+    ).resolves.toMatchObject({
+      ok: false,
+      status: expectedStatus,
+      failure: {
+        classification,
+        code: `slipok_${code}`,
+        retryAfterSeconds,
+        retryGuidance
+      },
+      raw: null
+    });
+  });
+
+  it("keeps only SlipOK's bounded numeric bank-delay guidance", async () => {
+    const response = buildSlipOkResponse({ status: 400, success: false, code: 1010 });
+    (response.json as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      success: false,
+      code: 1010,
+      message: "private provider message",
+      data: {
+        delay: 8,
+        qrcodeData: "sensitive-qr-payload",
+        bankName: "sensitive-bank-name"
+      }
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    const result = await verifyPaymentSlip({
+      qrPayload: "simulated-payload",
+      amount: 1200
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "provider_error",
+      failure: {
+        classification: "provider_delay",
+        code: "slipok_1010",
+        retryAfterSeconds: 480,
+        retryGuidance: "retry_after_provider_delay"
+      },
+      raw: null
+    });
+    expect(JSON.stringify(result)).not.toContain("private provider message");
+    expect(JSON.stringify(result)).not.toContain("sensitive-qr-payload");
+    expect(JSON.stringify(result)).not.toContain("sensitive-bank-name");
+  });
+
+  it("treats an unknown non-success SlipOK response as ambiguous instead of rejected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        buildSlipOkResponse({ status: 400, success: false, code: 1999 })
+      )
+    );
+
+    await expect(
+      verifyPaymentSlip({ qrPayload: "simulated-payload", amount: 1200 })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "provider_error",
+      failure: {
+        classification: "provider_result_ambiguous",
+        code: "unexpected_provider_response",
+        retryGuidance: "independent_bank_confirmation"
+      }
+    });
+  });
+
+  it("distinguishes a provider timeout from other availability failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(
+        Object.assign(new Error("request aborted"), { name: "AbortError" })
+      )
+    );
+
+    await expect(
+      verifyPaymentSlip({ qrPayload: "simulated-payload", amount: 1200 })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "provider_error",
+      failure: {
+        classification: "provider_timeout",
+        code: "request_timeout",
+        retryGuidance: "independent_bank_confirmation"
+      }
+    });
   });
 
   it.each([
@@ -458,6 +562,12 @@ describe("slip verification fail-closed checks", () => {
       amount: null,
       receiverName: null,
       transactionTimestamp: null,
+      failure: {
+        classification: "provider_unavailable",
+        code: "provider_unavailable",
+        retryAfterSeconds: null,
+        retryGuidance: "independent_bank_confirmation"
+      },
       raw: null
     });
     expect(consoleSpy).not.toHaveBeenCalled();

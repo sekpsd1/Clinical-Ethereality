@@ -122,10 +122,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (parsed.data.eventType === "consultation.payment.provider_error") {
-    return jsonResponse({ ok: true }, 202);
-  }
-
   const actionableEvent = parsed.data;
 
   try {
