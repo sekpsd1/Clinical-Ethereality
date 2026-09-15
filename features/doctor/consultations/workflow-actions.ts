@@ -200,7 +200,7 @@ export async function transitionDoctorConsultationAction(
       if (error.code === "attendance_not_verified") {
         return {
           status: "error",
-          message: "ยังจบการปรึกษาไม่ได้ ต้องมีหลักฐานว่าแพทย์และผู้ป่วยอยู่ในห้อง Zoom เดียวกัน และแพทย์อยู่ต่อเนื่องครบเวลานัด"
+          message: "ยังจบการปรึกษาไม่ได้ ต้องมีหลักฐานว่าแพทย์และผู้ป่วยเคยอยู่พร้อมกันในห้อง Zoom เดียวกัน และออกจากห้องครบทั้งสองฝ่าย"
         };
       }
 

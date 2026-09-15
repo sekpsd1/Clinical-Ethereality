@@ -44,7 +44,7 @@ function consultation(
   attendance: Partial<Pick<DoctorConsultationItem, "attendance">["attendance"]> = {}
 ) {
   const resolvedAttendance: Pick<DoctorConsultationItem, "attendance">["attendance"] = {
-    label: "Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว",
+    label: "Zoom ยืนยันว่าทั้งสองฝ่ายออกจากห้องแล้ว",
     description: "พร้อมจบการปรึกษา",
     tone: "success",
     normalCompletionEligible: true,
@@ -379,7 +379,7 @@ describe("Doctor consultation controls", () => {
     expect(waitingHtml).toContain("ยืนยันจบการปรึกษา");
     expect(waitingHtml).toContain('type="button"');
     expect(waitingHtml).toContain("disabled");
-    expect(eligibleHtml).toContain("Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว");
+    expect(eligibleHtml).toContain("Zoom ยืนยันว่าทั้งสองฝ่ายออกจากห้องแล้ว");
     expect(eligibleHtml).toContain("ยืนยันจบการปรึกษา");
     expect(eligibleHtml).toContain('type="submit"');
     expect(eligibleHtml).toContain('name="summary"');

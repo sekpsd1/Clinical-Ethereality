@@ -74,7 +74,7 @@ describe("consultation Zoom attendance state", () => {
     expect(state.noShowCompletionEligible).toBe(false);
   });
 
-  it("does not allow normal completion from overlap alone", () => {
+  it("does not allow normal completion while both participants are still in the room", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
@@ -83,21 +83,64 @@ describe("consultation Zoom attendance state", () => {
     );
 
     expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.doctorCurrentlyPresent).toBe(true);
+    expect(state.customerCurrentlyPresent).toBe(true);
+    expect(state.allParticipantsHaveLeft).toBe(false);
     expect(state.normalCompletionEligible).toBe(false);
   });
 
-  it("allows normal completion after same-meeting overlap and full doctor duration", () => {
+  it("allows normal completion after same-meeting overlap and both leave before 15 minutes", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
         event("customer", "joined", "2030-01-01T10:01:00.000Z"),
-        event("customer", "left", "2030-01-01T10:03:00.000Z")
-      ], scheduledAt, 15, new Date("2030-01-01T10:15:00.000Z")
+        event("customer", "left", "2030-01-01T10:03:00.000Z"),
+        event("doctor", "left", "2030-01-01T10:04:00.000Z")
+      ], scheduledAt, 15, new Date("2030-01-01T10:05:00.000Z")
     );
 
     expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.allParticipantsHaveLeft).toBe(true);
+    expect(state.verifiedDoctorPresenceSeconds).toBe(240);
     expect(state.normalCompletionEligible).toBe(true);
     expect(state.noShowCompletionEligible).toBe(false);
+  });
+
+  it.each([
+    ["doctor", [
+      event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+      event("customer", "joined", "2030-01-01T10:01:00.000Z"),
+      event("customer", "left", "2030-01-01T10:03:00.000Z")
+    ]],
+    ["customer", [
+      event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
+      event("customer", "joined", "2030-01-01T10:01:00.000Z"),
+      event("doctor", "left", "2030-01-01T10:03:00.000Z")
+    ]]
+  ] as const)("keeps normal completion blocked while the %s remains in the room", (_role, events) => {
+    const state = getConsultationAttendanceState(
+      [...events], scheduledAt, 15, new Date("2030-01-01T10:04:00.000Z")
+    );
+
+    expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.allParticipantsHaveLeft).toBe(false);
+    expect(state.normalCompletionEligible).toBe(false);
+  });
+
+  it("fails closed when a leave event does not match the active participant session", () => {
+    const state = getConsultationAttendanceState(
+      [
+        event("doctor", "joined", "2030-01-01T10:00:00.000Z", "doctor-session"),
+        event("customer", "joined", "2030-01-01T10:01:00.000Z", "customer-session"),
+        event("customer", "left", "2030-01-01T10:02:00.000Z", "customer-session"),
+        event("doctor", "left", "2030-01-01T10:03:00.000Z", "different-doctor-session")
+      ], scheduledAt, 15, new Date("2030-01-01T10:04:00.000Z")
+    );
+
+    expect(state.bothJoinedSameMeeting).toBe(true);
+    expect(state.doctorCurrentlyPresent).toBe(true);
+    expect(state.allParticipantsHaveLeft).toBe(false);
+    expect(state.normalCompletionEligible).toBe(false);
   });
 
   it("allows no-show after the full booked duration when the customer never joined", () => {
@@ -167,7 +210,7 @@ describe("consultation Zoom attendance state", () => {
     expect(state.noShowCompletionEligible).toBe(false);
   });
 
-  it("provides a dynamic normal-completion countdown after participant overlap", () => {
+  it("asks both participants to leave after verified overlap instead of restarting a timer", () => {
     const state = getConsultationAttendanceState(
       [
         event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
@@ -176,9 +219,10 @@ describe("consultation Zoom attendance state", () => {
     );
 
     expect(getAttendanceStatusCopy(state, "doctor")).toMatchObject({
-      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอเวลาแพทย์",
-      description: expect.stringContaining("1 วินาที")
+      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอออกจากห้อง",
+      description: expect.stringContaining("ออกจากห้อง Zoom ให้ครบ")
     });
+    expect(getAttendanceStatusCopy(state, "doctor").description).not.toContain("15 นาที");
   });
 
   it("provides the booked-duration no-show countdown and eligible copy", () => {

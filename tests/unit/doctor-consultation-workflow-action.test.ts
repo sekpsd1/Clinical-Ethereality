@@ -50,6 +50,7 @@ vi.mock("@/features/doctor/consultations/workflow-service", async (importOrigina
 });
 
 import { transitionDoctorConsultationAction } from "@/features/doctor/consultations/workflow-actions";
+import { DoctorConsultationWorkflowError } from "@/features/doctor/consultations/workflow-service";
 
 function startFormData(identityConfirmed: "true" | "false" | null = "true") {
   const formData = new FormData();
@@ -58,6 +59,14 @@ function startFormData(identityConfirmed: "true" | "false" | null = "true") {
   if (identityConfirmed !== null) {
     formData.set("identityConfirmed", identityConfirmed);
   }
+  return formData;
+}
+
+function completeFormData() {
+  const formData = new FormData();
+  formData.set("consultationId", "consultation-1");
+  formData.set("transition", "complete");
+  formData.set("summary", "สรุปคำแนะนำครบถ้วน");
   return formData;
 }
 
@@ -364,5 +373,31 @@ describe("transitionDoctorConsultationAction start gate", () => {
     expect(result.status).toBe("error");
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns the both-left attendance reason when a crafted completion request fails server verification", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
+      status: "live",
+      zoomMeetingId: "existing-meeting"
+    });
+    mocks.applyTransition.mockRejectedValue(
+      new DoctorConsultationWorkflowError(
+        "Doctor and customer Zoom attendance is not verified as overlapping and fully exited.",
+        "attendance_not_verified"
+      )
+    );
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      completeFormData()
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "ยังจบการปรึกษาไม่ได้ ต้องมีหลักฐานว่าแพทย์และผู้ป่วยเคยอยู่พร้อมกันในห้อง Zoom เดียวกัน และออกจากห้องครบทั้งสองฝ่าย"
+    });
+    expect(mocks.transaction).toHaveBeenCalledOnce();
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
   });
 });

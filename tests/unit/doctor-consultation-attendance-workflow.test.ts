@@ -80,12 +80,12 @@ describe("doctor consultation attendance completion transaction", () => {
     expect(tx.notification.create).not.toHaveBeenCalled();
   });
 
-  it("allows normal completion only after overlap and the full booked duration", async () => {
+  it("allows normal completion after overlap and both leave before 15 minutes", async () => {
     const tx = transaction([
       event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
       event("customer", "joined", "2030-01-01T10:01:00.000Z"),
       event("customer", "left", "2030-01-01T10:03:00.000Z"),
-      event("doctor", "left", "2030-01-01T10:15:00.000Z")
+      event("doctor", "left", "2030-01-01T10:04:00.000Z")
     ]);
 
     await applyDoctorConsultationTransition(tx as never, {
@@ -206,7 +206,7 @@ describe("doctor consultation attendance completion transaction", () => {
     ).rejects.toMatchObject({ code: "no_show_doctor_required" });
   });
 
-  it("rejects a crafted normal completion when overlap exists but duration is short", async () => {
+  it("rejects a crafted normal completion while participants remain in the room", async () => {
     const tx = transaction([
       event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
       event("customer", "joined", "2030-01-01T10:01:00.000Z")
@@ -216,8 +216,8 @@ describe("doctor consultation attendance completion transaction", () => {
       applyDoctorConsultationTransition(tx as never, {
         consultationId: "consultation-1",
         transition: "complete",
-        summary: "พยายามข้ามเงื่อนไขเวลา",
-        now: new Date("2030-01-01T10:14:59.000Z"),
+        summary: "พยายามข้ามเงื่อนไขการออกจากห้อง",
+        now: new Date("2030-01-01T10:20:00.000Z"),
         ...doctorActor
       })
     ).rejects.toMatchObject({ code: "attendance_not_verified" });
@@ -251,7 +251,9 @@ describe("doctor consultation attendance completion transaction", () => {
   it("rejects wrong-doctor and customer actors before any write", async () => {
     const events = [
       event("doctor", "joined", "2030-01-01T10:00:00.000Z"),
-      event("doctor", "left", "2030-01-01T10:15:00.000Z")
+      event("customer", "joined", "2030-01-01T10:01:00.000Z"),
+      event("customer", "left", "2030-01-01T10:02:00.000Z"),
+      event("doctor", "left", "2030-01-01T10:03:00.000Z")
     ];
     const wrongDoctorTx = transaction(events);
     const customerTx = transaction(events);
@@ -259,8 +261,8 @@ describe("doctor consultation attendance completion transaction", () => {
     await expect(
       applyDoctorConsultationTransition(wrongDoctorTx as never, {
         consultationId: "consultation-1",
-        transition: "complete_no_show",
-        noShowReason: "customer_did_not_join",
+        transition: "complete",
+        summary: "แพทย์อื่นพยายามจบเคส",
         actorId: "doctor-2",
         actorRole: "doctor"
       })
@@ -319,7 +321,7 @@ describe("doctor consultation attendance completion transaction", () => {
       event("doctor", "joined", "2030-01-01T10:00:00.000Z", "secret-doctor-session", "secret-meeting"),
       event("customer", "joined", "2030-01-01T10:01:00.000Z", "secret-customer-session", "secret-meeting"),
       event("customer", "left", "2030-01-01T10:03:00.000Z", "secret-customer-session", "secret-meeting"),
-      event("doctor", "left", "2030-01-01T10:15:00.000Z", "secret-doctor-session", "secret-meeting")
+      event("doctor", "left", "2030-01-01T10:04:00.000Z", "secret-doctor-session", "secret-meeting")
     ]);
 
     await applyDoctorConsultationTransition(tx as never, {
@@ -333,7 +335,7 @@ describe("doctor consultation attendance completion transaction", () => {
     expect(metadata).toMatchObject({
       completionOutcome: "normal",
       requiredDurationMinutes: 15,
-      verifiedDoctorPresenceSeconds: 900
+      verifiedDoctorPresenceSeconds: 240
     });
     expect(JSON.stringify(metadata)).not.toMatch(/secret-|meetingUuid|participantSession|patientId/i);
   });

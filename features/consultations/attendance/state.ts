@@ -20,6 +20,8 @@ export type ConsultationAttendanceState = {
   longestVerifiedDoctorPresenceSeconds: number;
   activeDoctorPresenceSeconds: number;
   doctorCurrentlyPresent: boolean;
+  customerCurrentlyPresent: boolean;
+  allParticipantsHaveLeft: boolean;
   noShowRemainingSeconds: number | null;
 };
 
@@ -147,6 +149,10 @@ export function getConsultationAttendanceState(
   const doctorCurrentlyPresent = [...activeSessions.values()].some(
     (session) => session.role === "doctor"
   );
+  const customerCurrentlyPresent = [...activeSessions.values()].some(
+    (session) => session.role === "customer"
+  );
+  const allParticipantsHaveLeft = activeSessions.size === 0;
   const verifiedDoctorPresenceSeconds = Math.max(
     longestVerifiedDoctorPresenceSeconds,
     activeDoctorPresenceSeconds
@@ -164,7 +170,7 @@ export function getConsultationAttendanceState(
     doctorEverJoined,
     customerEverJoined,
     bothJoinedSameMeeting,
-    normalCompletionEligible: bothJoinedSameMeeting && doctorPresenceRequirementMet,
+    normalCompletionEligible: bothJoinedSameMeeting && allParticipantsHaveLeft,
     noShowCompletionEligible,
     requiredDurationMinutes,
     requiredDoctorPresenceSeconds,
@@ -172,6 +178,8 @@ export function getConsultationAttendanceState(
     longestVerifiedDoctorPresenceSeconds,
     activeDoctorPresenceSeconds,
     doctorCurrentlyPresent,
+    customerCurrentlyPresent,
+    allParticipantsHaveLeft,
     noShowRemainingSeconds: customerEverJoined
       ? null
       : doctorPresenceRequirementMet
@@ -196,22 +204,16 @@ export function getAttendanceStatusCopy(
 ) {
   if (state.normalCompletionEligible) {
     return {
-      label: "Zoom ยืนยันผู้เข้าร่วมและเวลาครบแล้ว",
-      description: `แพทย์อยู่ใน Zoom ต่อเนื่องครบ ${state.requiredDurationMinutes} นาที และเคยอยู่พร้อมผู้ป่วยในห้องนัดหมายเดียวกันแล้ว`,
+      label: "Zoom ยืนยันว่าทั้งสองฝ่ายออกจากห้องแล้ว",
+      description: "แพทย์และผู้ป่วยเคยอยู่พร้อมกันในห้องนัดหมายเดียวกัน และขณะนี้ออกจากห้อง Zoom ครบทั้งสองฝ่ายแล้ว",
       tone: "success" as const
     };
   }
 
   if (state.bothJoinedSameMeeting) {
-    const remainingSeconds = state.doctorCurrentlyPresent
-      ? Math.max(0, state.requiredDoctorPresenceSeconds - state.activeDoctorPresenceSeconds)
-      : state.requiredDoctorPresenceSeconds;
-
     return {
-      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอเวลาแพทย์",
-      description: state.doctorCurrentlyPresent
-        ? `แพทย์ต้องอยู่ใน Zoom ต่อเนื่องอีก ${formatRemainingDuration(remainingSeconds)} ให้ครบ ${state.requiredDurationMinutes} นาที`
-        : `แพทย์ออกจาก Zoom ก่อนครบเวลา ต้องเข้าห้องและอยู่ต่อเนื่องใหม่ให้ครบ ${state.requiredDurationMinutes} นาที`,
+      label: "Zoom ยืนยันผู้เข้าร่วมครบแล้ว • รอออกจากห้อง",
+      description: "กรุณาให้แพทย์และผู้ป่วยออกจากห้อง Zoom ให้ครบก่อนยืนยันจบการปรึกษา",
       tone: "warning" as const
     };
   }
@@ -220,7 +222,7 @@ export function getAttendanceStatusCopy(
     if (state.doctorEverJoined) {
       return {
         label: "ยังไม่ยืนยันว่าอยู่ใน Zoom พร้อมกัน",
-        description: `ต้องมีช่วงที่แพทย์และผู้ป่วยอยู่ในห้องเดียวกันพร้อมกัน และแพทย์อยู่ต่อเนื่องครบ ${state.requiredDurationMinutes} นาที`,
+        description: "ต้องมีช่วงที่แพทย์และผู้ป่วยอยู่ในห้องเดียวกันพร้อมกัน และออกจากห้องครบทั้งสองฝ่าย",
         tone: "warning" as const
       };
     }

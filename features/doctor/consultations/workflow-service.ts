@@ -323,7 +323,7 @@ export async function applyDoctorConsultationTransition(
 
   if (input.transition === "complete" && !attendance.normalCompletionEligible) {
     throw new DoctorConsultationWorkflowError(
-      "Doctor and customer Zoom attendance is not verified in the same meeting.",
+      "Doctor and customer Zoom attendance is not verified as overlapping and fully exited.",
       "attendance_not_verified"
     );
   }
