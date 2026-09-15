@@ -21,6 +21,8 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
         },
         select: {
           displayName: true,
+          fullName: true,
+          dateOfBirth: true,
           avatarUrl: true,
           email: true,
           phone: true,
@@ -44,6 +46,8 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
 
     return {
       displayName: user?.displayName ?? session.displayName ?? "ผู้ใช้ LINE",
+      fullName: user?.fullName ?? null,
+      dateOfBirth: user?.dateOfBirth?.toISOString().slice(0, 10) ?? null,
       avatarUrl: user?.avatarUrl ?? session.pictureUrl ?? null,
       email: user?.email ?? null,
       phone: user?.phone ?? null,
@@ -55,6 +59,8 @@ export async function getCustomerProfileData(session: PublicSession): Promise<Cu
   } catch {
     return {
       displayName: session.displayName ?? "ผู้ใช้ LINE",
+      fullName: null,
+      dateOfBirth: null,
       avatarUrl: session.pictureUrl ?? null,
       email: null,
       phone: null,

@@ -114,20 +114,25 @@ describe("feature validation schemas", () => {
   it("validates and normalizes customer contact details", () => {
     expect(
       updateProfileContactSchema.parse({
+        fullName: " ผู้ป่วย ทดสอบ ",
+        dateOfBirth: "1990-01-02",
         email: " customer@example.com ",
-        phone: "081-234-5678"
       })
     ).toEqual({
-      email: "customer@example.com",
-      phone: "0812345678"
+      fullName: "ผู้ป่วย ทดสอบ",
+      dateOfBirth: "1990-01-02",
+      email: "customer@example.com"
     });
 
     expect(
       updateProfileContactSchema.safeParse({
+        fullName: "ผู้ป่วย ทดสอบ",
+        dateOfBirth: "1990-02-30",
         email: "invalid-email",
-        phone: "123"
       }).success
     ).toBe(false);
+    expect(updateProfileContactSchema.safeParse({ fullName: "ผู้ป่วย ทดสอบ", dateOfBirth: "2999-01-01", email: "" }).success).toBe(false);
+    expect(updateProfileContactSchema.safeParse({ fullName: "ผู้ป่วย ทดสอบ", dateOfBirth: "1990-01-02", email: "", phone: "0812345678" }).success).toBe(false);
   });
 
   it("validates cart mutations with bounded integer quantities", () => {

@@ -3,20 +3,23 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
+import { ThaiAddressFields } from "@/components/address/ThaiAddressFields";
 import { initialFormActionState } from "@/lib/actions/server-actions";
 import { saveShippingAddressAction } from "@/features/profile/shipping-addresses/actions";
 import type { ShippingAddressView } from "@/features/profile/shipping-addresses/types";
 
-const fields: Array<{ name: keyof ShippingAddressView; label: string; placeholder: string; type?: string }> = [
+const fields: Array<{
+  name: keyof ShippingAddressView;
+  label: string;
+  placeholder: string;
+  type?: string;
+  autoComplete?: string;
+}> = [
   { name: "label", label: "ชื่อที่อยู่", placeholder: "เช่น บ้าน หรือ ที่ทำงาน" },
-  { name: "recipientName", label: "ชื่อผู้รับ", placeholder: "ชื่อ-นามสกุล" },
-  { name: "phone", label: "เบอร์โทรศัพท์", placeholder: "0812345678", type: "tel" },
-  { name: "addressLine1", label: "บ้านเลขที่ ถนน ซอย", placeholder: "บ้านเลขที่ อาคาร ถนน ซอย" },
-  { name: "addressLine2", label: "รายละเอียดเพิ่มเติม (ถ้ามี)", placeholder: "ชั้น ห้อง หรือจุดสังเกต" },
-  { name: "subdistrict", label: "แขวง / ตำบล", placeholder: "แขวงหรือตำบล" },
-  { name: "district", label: "เขต / อำเภอ", placeholder: "เขตหรืออำเภอ" },
-  { name: "province", label: "จังหวัด", placeholder: "จังหวัด" },
-  { name: "postalCode", label: "รหัสไปรษณีย์", placeholder: "10110" }
+  { name: "recipientName", label: "ชื่อผู้รับ", placeholder: "ชื่อ-นามสกุล", autoComplete: "name" },
+  { name: "phone", label: "เบอร์โทรศัพท์", placeholder: "0812345678", type: "tel", autoComplete: "tel" },
+  { name: "addressLine1", label: "บ้านเลขที่ ถนน ซอย", placeholder: "บ้านเลขที่ อาคาร ถนน ซอย", autoComplete: "address-line1" },
+  { name: "addressLine2", label: "รายละเอียดเพิ่มเติม (ถ้ามี)", placeholder: "ชั้น ห้อง หรือจุดสังเกต", autoComplete: "address-line2" }
 ];
 
 export function ShippingAddressForm({ address }: { address?: ShippingAddressView }) {
@@ -33,12 +36,25 @@ export function ShippingAddressForm({ address }: { address?: ShippingAddressView
             name={field.name}
             type={field.type ?? "text"}
             defaultValue={String(address?.[field.name] ?? "")}
-            inputMode={field.name === "phone" || field.name === "postalCode" ? "numeric" : undefined}
+            inputMode={field.name === "phone" ? "numeric" : undefined}
+            autoComplete={field.autoComplete}
             className="mt-2 h-11 w-full rounded-[12px] border border-[#bdc9ca]/60 bg-white px-3 text-sm font-medium normal-case tracking-normal text-[#191c1e] outline-none focus:border-primary"
             placeholder={field.placeholder}
           />
         </label>
       ))}
+      <ThaiAddressFields
+        value={
+          address
+            ? {
+                province: address.province,
+                district: address.district,
+                subdistrict: address.subdistrict,
+                postalCode: address.postalCode
+              }
+            : undefined
+        }
+      />
       <label className="flex items-center gap-3 rounded-[14px] bg-primary/5 px-4 py-3 text-sm font-bold text-primary">
         <input type="checkbox" name="isDefault" defaultChecked={address?.isDefault ?? false} className="size-4 accent-primary" />
         ใช้เป็นที่อยู่เริ่มต้น

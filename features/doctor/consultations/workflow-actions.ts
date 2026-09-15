@@ -103,13 +103,27 @@ export async function transitionDoctorConsultationAction(
     getDoctorConsultationNextStatus(consultation, session, parsed.data.transition, now);
 
     if (parsed.data.transition === "start") {
+      const identityUpdateAfterRevealAudit =
+        consultation && identityRevealAudit
+          ? await prisma.auditLog.findFirst({
+              where: {
+                action: "profile.identity.update",
+                entityType: "user",
+                entityId: consultation.patientId,
+                createdAt: { gte: identityRevealAudit.createdAt }
+              },
+              orderBy: { createdAt: "desc" },
+              select: { createdAt: true }
+            })
+          : null;
       assertDoctorConsultationStartIdentityGate(
         consultation as DoctorConsultationStartSnapshot,
         actor,
         session,
         parsed.data.identityConfirmed,
         identityRevealAudit,
-        now
+        now,
+        identityUpdateAfterRevealAudit
       );
     }
 

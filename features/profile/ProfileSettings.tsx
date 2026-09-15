@@ -15,7 +15,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { AccountContactEditor } from "@/features/profile/AccountContactEditor";
 import { acceptCustomerConsentAction } from "@/features/legal/actions";
 import type { CustomerConsentData } from "@/features/legal/types";
-import type { CustomerProfileData } from "@/features/profile/types";
+import { formatCustomerDateOfBirth, type CustomerProfileData } from "@/features/profile/types";
 
 type SettingSectionKey = "account" | "privacy" | "notifications" | "security" | "language";
 
@@ -117,9 +117,11 @@ export function ProfileSettings({
           ...sectionDetails.account,
           body: "ข้อมูลบัญชีนี้เชื่อมกับบัญชี LINE และข้อมูลติดต่อที่บันทึกไว้ในระบบ",
           rows: [
-            { label: "ชื่อที่แสดง", value: profileData.displayName },
+            { label: "ชื่อบัญชี LINE", value: profileData.displayName },
             { label: "สถานะสมาชิก", value: profileData.memberStatus },
             { label: "บัญชี LINE", value: "เชื่อมต่อแล้ว" },
+            { label: "ชื่อ-นามสกุล", value: profileData.fullName ?? "ยังไม่ได้ระบุ" },
+            { label: "วันเดือนปีเกิด", value: formatCustomerDateOfBirth(profileData.dateOfBirth) },
             { label: "อีเมล", value: profileData.email ?? "ยังไม่ได้ระบุ" },
             { label: "เบอร์โทรศัพท์", value: profileData.phone ?? "ยังไม่ได้ระบุ" },
             { label: "สถานะยืนยันเบอร์", value: profileData.phoneVerifiedAt ? "ยืนยันแล้ว" : "รอยืนยัน" }
@@ -157,7 +159,7 @@ export function ProfileSettings({
             </span>
             <div>
               <h1 className="text-[24px] font-extrabold leading-7 text-[#191c1e]">
-                {profileData.displayName}
+                {profileData.fullName?.trim() || profileData.displayName}
               </h1>
               <p className="mt-1 text-sm font-medium text-[#3e494a]">
                 การตั้งค่า · {profileData.memberStatus}
@@ -189,7 +191,14 @@ export function ProfileSettings({
         {activeSection === "privacy" ? (
           <PrivacyConsentPanel data={consentData} />
         ) : activeSection === "account" && activeDetail ? (
-          <AccountContactEditor rows={activeDetail.rows} email={profileData.email} phone={profileData.phone} phoneVerified={Boolean(profileData.phoneVerifiedAt)} />
+          <AccountContactEditor
+            rows={activeDetail.rows}
+            fullName={profileData.fullName}
+            dateOfBirth={profileData.dateOfBirth}
+            email={profileData.email}
+            phone={profileData.phone}
+            phoneVerified={Boolean(profileData.phoneVerifiedAt)}
+          />
         ) : activeDetail ? (
           <SettingDetailRows rows={activeDetail.rows} />
         ) : (

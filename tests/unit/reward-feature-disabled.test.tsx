@@ -123,6 +123,8 @@ describe("disabled reward feature", () => {
         consentData: { items: [], acceptedCount: 0, requiredCount: 0 },
         profileData: {
           displayName: "Customer",
+          fullName: null,
+          dateOfBirth: null,
           avatarUrl: null,
           email: null,
           phone: null,

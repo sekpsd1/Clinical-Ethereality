@@ -28,6 +28,8 @@ const profileMenuItems: ProfileMenuItem[] = [
 ];
 
 export function UserProfile({ data }: { data: CustomerProfileData }) {
+  const profileName = data.fullName?.trim() || data.displayName;
+
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <ProfileHeader />
@@ -49,7 +51,8 @@ export function UserProfile({ data }: { data: CustomerProfileData }) {
               </div>
             </div>
 
-            <h1 className="max-w-[20rem] truncate text-[26px] font-extrabold tracking-tight text-white">{data.displayName}</h1>
+            <h1 className="max-w-[20rem] truncate text-[26px] font-extrabold tracking-tight text-white">{profileName}</h1>
+            {profileName !== data.displayName ? <p className="mt-1 max-w-[20rem] truncate text-xs font-medium text-white/75">LINE · {data.displayName}</p> : null}
             <div className="mt-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5 backdrop-blur-md">
               <span className="text-xs font-bold uppercase tracking-[0.16em] text-white">{data.memberStatus}</span>
             </div>

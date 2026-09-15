@@ -40,6 +40,8 @@ describe("customer profile query", () => {
   it("returns account details and real activity counts from the database", async () => {
     prismaMock.user.findUnique.mockResolvedValue({
       displayName: "Ananya Test",
+      fullName: "อนัญญา ทดสอบ",
+      dateOfBirth: new Date("1990-01-02T00:00:00.000Z"),
       avatarUrl: "https://example.com/profile.jpg",
       email: "ananya@example.com",
       phone: "0800000000",
@@ -51,6 +53,8 @@ describe("customer profile query", () => {
 
     await expect(getCustomerProfileData(session)).resolves.toEqual({
       displayName: "Ananya Test",
+      fullName: "อนัญญา ทดสอบ",
+      dateOfBirth: "1990-01-02",
       avatarUrl: "https://example.com/profile.jpg",
       email: "ananya@example.com",
       phone: "0800000000",
@@ -80,6 +84,8 @@ describe("customer profile query", () => {
 
     await expect(getCustomerProfileData(session)).resolves.toEqual({
       displayName: "LINE fallback",
+      fullName: null,
+      dateOfBirth: null,
       avatarUrl: "https://example.com/fallback.jpg",
       email: null,
       phone: null,

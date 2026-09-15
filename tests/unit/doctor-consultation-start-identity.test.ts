@@ -36,6 +36,7 @@ function transaction(
     actor?: { id: string; role: string; status: string } | null;
   } = {}
 ) {
+  const revealCreatedAt = new Date(Date.now() - 1_000);
   return {
     $queryRaw: vi.fn().mockResolvedValue([]),
     consultation: {
@@ -51,7 +52,9 @@ function transaction(
     },
     notification: { create: vi.fn().mockResolvedValue({ id: "notification-1" }) },
     auditLog: {
-      findFirst: vi.fn().mockResolvedValue({ createdAt: new Date() }),
+      findFirst: vi.fn().mockImplementation(({ where }) =>
+        where.action === "profile.identity.update" ? null : { createdAt: revealCreatedAt }
+      ),
       create: vi.fn().mockResolvedValue({ id: "audit-1" })
     }
   };
@@ -136,6 +139,33 @@ describe("doctor start identity transaction gate", () => {
       applyDoctorConsultationTransition(tx as never, startInput)
     ).rejects.toMatchObject({ code: "identity_confirmation_required" });
     expect(tx.consultation.update).not.toHaveBeenCalled();
+  });
+
+  it("requires a fresh reveal when the patient updates legal identity after the reveal", async () => {
+    const tx = transaction();
+    tx.auditLog.findFirst
+      .mockResolvedValueOnce({ createdAt: new Date("2030-01-01T00:00:00.000Z") })
+      .mockResolvedValueOnce({ createdAt: new Date("2030-01-01T00:01:00.000Z") });
+
+    await expect(
+      applyDoctorConsultationTransition(tx as never, {
+        ...startInput,
+        now: new Date("2030-01-01T00:02:00.000Z")
+      })
+    ).rejects.toMatchObject({ code: "identity_confirmation_required" });
+    expect(tx.auditLog.findFirst).toHaveBeenNthCalledWith(2, {
+      where: {
+        action: "profile.identity.update",
+        entityType: "user",
+        entityId: "patient-1",
+        createdAt: { gte: new Date("2030-01-01T00:00:00.000Z") }
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true }
+    });
+    expect(tx.consultation.update).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejects an actor whose account became inactive before commit", async () => {

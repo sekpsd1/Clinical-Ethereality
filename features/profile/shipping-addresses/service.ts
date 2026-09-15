@@ -8,7 +8,11 @@ export async function getOrderShippingAddressSnapshot(
   addressId: string
 ) {
   const address = await tx.shippingAddress.findFirst({
-    where: { id: addressId, userId },
+    where: {
+      id: addressId,
+      userId,
+      user: { role: "customer", status: "active" }
+    },
     select: {
       id: true,
       label: true,

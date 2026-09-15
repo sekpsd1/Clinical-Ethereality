@@ -67,11 +67,13 @@ export function assertDoctorConsultationStartIdentityGate(
   sessionActor: { userId: string; role: Role },
   identityConfirmed: boolean | undefined,
   identityRevealAudit: { createdAt: Date } | null,
-  now = new Date()
+  now = new Date(),
+  identityUpdateAfterRevealAudit: { createdAt: Date } | null = null
 ): void {
   if (
     identityConfirmed !== true ||
     !identityRevealAudit ||
+    identityUpdateAfterRevealAudit !== null ||
     identityRevealAudit.createdAt.getTime() < now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS ||
     identityRevealAudit.createdAt.getTime() > now.getTime()
   ) {
@@ -295,6 +297,18 @@ export async function applyDoctorConsultationTransition(
       orderBy: { createdAt: "desc" },
       select: { createdAt: true }
     });
+    const identityUpdateAfterRevealAudit = identityRevealAudit
+      ? await tx.auditLog.findFirst({
+          where: {
+            action: "profile.identity.update",
+            entityType: "user",
+            entityId: consultation!.patientId,
+            createdAt: { gte: identityRevealAudit.createdAt }
+          },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true }
+        })
+      : null;
 
     assertDoctorConsultationStartIdentityGate(
       consultation as DoctorConsultationStartSnapshot,
@@ -302,7 +316,8 @@ export async function applyDoctorConsultationTransition(
       { userId: input.actorId, role: input.actorRole },
       input.identityConfirmed,
       identityRevealAudit,
-      now
+      now,
+      identityUpdateAfterRevealAudit
     );
   }
 

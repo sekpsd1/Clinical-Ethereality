@@ -15,11 +15,12 @@ export type ShippingAddressView = {
 export type OrderShippingAddressView = Omit<ShippingAddressView, "id" | "isDefault">;
 
 export function formatShippingAddress(address: OrderShippingAddressView): string {
+  const isBangkok = address.province.trim() === "กรุงเทพมหานคร";
   return [
     address.addressLine1,
     address.addressLine2,
-    `แขวง/ตำบล ${address.subdistrict}`,
-    `เขต/อำเภอ ${address.district}`,
+    `${isBangkok ? "แขวง" : "ตำบล"} ${address.subdistrict}`,
+    `${isBangkok ? "เขต" : "อำเภอ"} ${address.district}`,
     address.province,
     address.postalCode
   ].filter(Boolean).join(" ");

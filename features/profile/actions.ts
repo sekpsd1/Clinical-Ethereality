@@ -6,15 +6,18 @@ import { prisma } from "@/lib/db/prisma";
 import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { updateProfileContactSchema } from "@/features/profile/schema";
-import { normalizeThaiMobileNumber } from "@/lib/identity/thai-phone";
 
 export type UpdateProfileContactActionState = {
   status: "idle" | "success" | "error";
   message: string;
 };
 
-function formDataToObject(formData: FormData) {
-  return Object.fromEntries(formData.entries());
+function getProfileFormData(formData: FormData) {
+  return {
+    fullName: formData.get("fullName"),
+    dateOfBirth: formData.get("dateOfBirth"),
+    email: formData.get("email")
+  };
 }
 
 export async function updateProfileContactAction(
@@ -24,7 +27,7 @@ export async function updateProfileContactAction(
   const session = await requireCurrentSession();
   assertPermission(session, "profile:update:self");
 
-  const parsed = updateProfileContactSchema.safeParse(formDataToObject(formData));
+  const parsed = updateProfileContactSchema.safeParse(getProfileFormData(formData));
 
   if (!parsed.success) {
     return {
@@ -40,49 +43,44 @@ export async function updateProfileContactAction(
           id: session.userId
         },
         select: {
-          email: true,
-          phone: true,
-          normalizedPhone: true
+          role: true,
+          status: true,
+          fullName: true,
+          dateOfBirth: true,
+          email: true
         }
       });
 
-      if (!currentUser) {
-        throw new Error("USER_NOT_FOUND");
+      if (!currentUser || currentUser.role !== "customer" || currentUser.status !== "active") {
+        throw new Error("ACTIVE_CUSTOMER_REQUIRED");
       }
 
+      const fullName = parsed.data.fullName;
+      const dateOfBirth = new Date(`${parsed.data.dateOfBirth}T00:00:00.000Z`);
       const email = parsed.data.email ?? null;
-      const phone = parsed.data.phone ?? null;
-      const normalizedPhone = phone ? normalizeThaiMobileNumber(phone).e164 : null;
-      const phoneChanged = currentUser.normalizedPhone !== normalizedPhone;
+      const currentDateOfBirth = currentUser.dateOfBirth?.toISOString().slice(0, 10) ?? null;
+      const identityChanged = currentUser.fullName !== fullName || currentDateOfBirth !== parsed.data.dateOfBirth;
       const changedFields = [
+        ...(currentUser.fullName !== fullName ? ["fullName"] : []),
+        ...(currentDateOfBirth !== parsed.data.dateOfBirth ? ["dateOfBirth"] : []),
         ...(currentUser.email !== email ? ["email"] : []),
-        ...(currentUser.phone !== phone ? ["phone"] : []),
-        ...(phoneChanged ? ["phoneVerificationInvalidated"] : [])
       ];
 
-      await tx.user.update({
-        where: {
-          id: session.userId
-        },
-        data: {
-          email,
-          phone,
-          normalizedPhone,
-          ...(phoneChanged ? { phoneVerifiedAt: null } : {})
-        }
-      });
+      if (changedFields.length === 0) return;
 
-      if (changedFields.length > 0) {
-        await writeAuditLog(tx, {
-          actorId: session.userId,
-          action: "profile.contact.update",
-          entityType: "user",
-          entityId: session.userId,
-          metadata: {
-            changedFields
-          }
-        });
-      }
+      const updated = await tx.user.updateMany({
+        where: { id: session.userId, role: "customer", status: "active" },
+        data: { fullName, dateOfBirth, email }
+      });
+      if (updated.count !== 1) throw new Error("ACTIVE_CUSTOMER_REQUIRED");
+
+      await writeAuditLog(tx, {
+        actorId: session.userId,
+        action: identityChanged ? "profile.identity.update" : "profile.contact.update",
+        entityType: "user",
+        entityId: session.userId,
+        metadata: { changedFields }
+      });
     });
   } catch {
     return {
@@ -96,6 +94,6 @@ export async function updateProfileContactAction(
 
   return {
     status: "success",
-    message: "บันทึกข้อมูลติดต่อแล้ว"
+    message: "บันทึกข้อมูลบัญชีแล้ว"
   };
 }

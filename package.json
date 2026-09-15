@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "@riz007/thai-address-data": "0.1.4",
     "@sentry/nextjs": "^10.53.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

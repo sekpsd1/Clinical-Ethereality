@@ -29,7 +29,13 @@ describe("shipping address safety", () => {
     const tx = { shippingAddress: { findFirst } } as unknown as Prisma.TransactionClient;
     const snapshot = await getOrderShippingAddressSnapshot(tx, "customer-1", "address-1");
 
-    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "address-1", userId: "customer-1" } }));
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "address-1",
+        userId: "customer-1",
+        user: { role: "customer", status: "active" }
+      }
+    }));
     expect(snapshot).toEqual({ sourceAddressId: "address-1", label: "บ้าน", recipientName: "Customer One", phone: "0812345678", addressLine1: "1 ถนนสุขุมวิท", addressLine2: null, subdistrict: "คลองเตย", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110" });
     expect(snapshot).not.toHaveProperty("id");
   });

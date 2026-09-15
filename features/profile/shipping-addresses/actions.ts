@@ -8,12 +8,28 @@ import { assertPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { actionError, actionSuccess, formDataToObject, type FormActionState } from "@/lib/actions/server-actions";
 import { setDefaultShippingAddressSchema, shippingAddressFormSchema } from "@/features/profile/shipping-addresses/schema";
+import { validateThaiAddressSelection } from "@/lib/thai-addresses/data";
 
 export type ShippingAddressActionState = FormActionState;
 
+class InvalidThaiAddressHierarchyError extends Error {
+  constructor() {
+    super("INVALID_THAI_ADDRESS_HIERARCHY");
+    this.name = "InvalidThaiAddressHierarchyError";
+  }
+}
+
+function assertCustomerSession(role: string): void {
+  if (role !== "customer") {
+    throw new Error("CUSTOMER_REQUIRED");
+  }
+}
+
 async function lockCustomer(tx: Prisma.TransactionClient, userId: string): Promise<void> {
   const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT \`id\` FROM \`User\` WHERE \`id\` = ${userId} FOR UPDATE
+    SELECT \`id\` FROM \`User\`
+    WHERE \`id\` = ${userId} AND \`role\` = 'customer' AND \`status\` = 'active'
+    FOR UPDATE
   `);
   if (rows.length !== 1) throw new Error("USER_NOT_FOUND");
 }
@@ -30,6 +46,7 @@ export async function saveShippingAddressAction(
   formData: FormData
 ): Promise<ShippingAddressActionState> {
   const session = await requireCurrentSession();
+  assertCustomerSession(session.role);
   assertPermission(session, "profile:update:self");
   const parsed = shippingAddressFormSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) return actionError(parsed.error.issues[0]?.message ?? "ข้อมูลที่อยู่ไม่ถูกต้อง", parsed.error);
@@ -41,6 +58,26 @@ export async function saveShippingAddressAction(
         ? await tx.shippingAddress.findFirst({ where: { id: parsed.data.addressId, userId: session.userId } })
         : null;
       if (parsed.data.addressId && !existing) throw new Error("ADDRESS_NOT_FOUND");
+
+      const hierarchyValidation = validateThaiAddressSelection(
+        {
+          province: parsed.data.province,
+          district: parsed.data.district,
+          subdistrict: parsed.data.subdistrict,
+          postalCode: parsed.data.postalCode
+        },
+        existing
+          ? {
+              province: existing.province,
+              district: existing.district,
+              subdistrict: existing.subdistrict,
+              postalCode: existing.postalCode
+            }
+          : null
+      );
+      if (hierarchyValidation.status === "invalid") {
+        throw new InvalidThaiAddressHierarchyError();
+      }
 
       const currentDefault = await tx.shippingAddress.findFirst({ where: { userId: session.userId, isDefault: true }, select: { id: true } });
       const shouldBeDefault = !currentDefault || parsed.data.isDefault || existing?.isDefault === true;
@@ -76,13 +113,17 @@ export async function saveShippingAddressAction(
 
     revalidateShippingPaths();
     return actionSuccess(parsed.data.addressId === addressId ? "แก้ไขที่อยู่แล้ว" : "เพิ่มที่อยู่แล้ว");
-  } catch {
+  } catch (error) {
+    if (error instanceof InvalidThaiAddressHierarchyError) {
+      return actionError("จังหวัด เขต/อำเภอ แขวง/ตำบล และรหัสไปรษณีย์ไม่สัมพันธ์กัน");
+    }
     return actionError("ยังบันทึกที่อยู่ไม่ได้ กรุณาลองใหม่อีกครั้ง");
   }
 }
 
 export async function setDefaultShippingAddressAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
+  assertCustomerSession(session.role);
   assertPermission(session, "profile:update:self");
   const parsed = setDefaultShippingAddressSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) return;

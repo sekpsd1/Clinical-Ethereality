@@ -96,7 +96,9 @@ describe("transitionDoctorConsultationAction start gate", () => {
       userId: "doctor-user-1"
     });
     mocks.createZoomMeeting.mockResolvedValue(null);
-    mocks.auditFindFirst.mockImplementation(async () => ({ createdAt: new Date() }));
+    mocks.auditFindFirst.mockImplementation(async (input: { where?: { action?: string } }) =>
+      input.where?.action === "profile.identity.update" ? null : { createdAt: new Date() }
+    );
     mocks.userFindUnique.mockResolvedValue({
       id: "doctor-user-1",
       role: "doctor",
@@ -213,6 +215,28 @@ describe("transitionDoctorConsultationAction start gate", () => {
       scheduledConsultation(new Date("2030-01-01T10:00:00.000Z"))
     );
     mocks.auditFindFirst.mockResolvedValue(null);
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData("true")
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
+    });
+    expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("requires a fresh reveal when the customer corrected legal identity before Zoom creation", async () => {
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue(
+      scheduledConsultation(new Date("2030-01-01T10:00:00.000Z"))
+    );
+    mocks.auditFindFirst
+      .mockResolvedValueOnce({ createdAt: new Date("2030-01-01T09:54:00.000Z") })
+      .mockResolvedValueOnce({ createdAt: new Date("2030-01-01T09:54:30.000Z") });
 
     const result = await transitionDoctorConsultationAction(
       { status: "idle", message: "" },

@@ -6,7 +6,18 @@ import type { ShippingAddressView } from "@/features/profile/shipping-addresses/
 
 export async function getCustomerShippingAddresses(session: PublicSession): Promise<ShippingAddressView[]> {
   noStore();
+  if (session.role !== "customer") {
+    throw new Error("Customer access is required.");
+  }
   assertPermission(session, "profile:update:self");
+
+  const activeCustomer = await prisma.user.findFirst({
+    where: { id: session.userId, role: "customer", status: "active" },
+    select: { id: true }
+  });
+  if (!activeCustomer) {
+    throw new Error("Active customer access is required.");
+  }
 
   return prisma.shippingAddress.findMany({
     where: { userId: session.userId },
