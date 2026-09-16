@@ -12,6 +12,8 @@ import {
 import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 import { LogoutButton } from "@/features/profile/LogoutButton";
 import { ProfileAvatar } from "@/features/profile/ProfileAvatar";
+import { ProfileNotificationSummary } from "@/features/profile/ProfileNotificationSummary";
+import type { CustomerNotificationsData } from "@/features/notifications/types";
 import type { CustomerProfileData } from "@/features/profile/types";
 
 type ProfileMenuItem = {
@@ -27,7 +29,7 @@ const profileMenuItems: ProfileMenuItem[] = [
   { label: "ที่อยู่จัดส่ง", icon: Truck, href: "/profile/shipping-addresses" }
 ];
 
-export function UserProfile({ data }: { data: CustomerProfileData }) {
+export function UserProfile({ data, notificationData }: { data: CustomerProfileData; notificationData: CustomerNotificationsData }) {
   const profileName = data.fullName?.trim() || data.displayName;
 
   return (
@@ -70,6 +72,8 @@ export function UserProfile({ data }: { data: CustomerProfileData }) {
               <span className="text-2xl font-bold text-primary">{data.postCount}</span>
             </div>
           </section>
+
+          <ProfileNotificationSummary data={notificationData} />
 
           <section className="space-y-3">
             <h2 className="px-2 text-sm font-bold uppercase tracking-[0.16em] text-primary/60">การตั้งค่าทั่วไป</h2>
