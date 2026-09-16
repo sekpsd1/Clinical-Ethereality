@@ -188,7 +188,7 @@ export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookin
 
         <div
           data-testid="booking-submit-bar"
-          className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mt-2 w-full py-2"
+          className="mt-2 w-full py-2"
         >
           <button
             type="submit"

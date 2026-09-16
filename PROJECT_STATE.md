@@ -784,7 +784,7 @@ This section is the current handoff for the next Project Controller and supersed
 
 ## Booking consent mobile CTA overlap fix (code only, 2026-09-17)
 
-- The booking confirmation bar now participates in document flow and becomes sticky only when it reaches its natural position above the shared footer. It no longer appears over the Telemedicine consent scroll region while the customer is reading, and the existing booking/footer safe-area spacing remains unchanged.
+- The booking confirmation bar now participates entirely in normal document flow instead of using fixed or bottom-sticky positioning. It cannot enter the viewport before the customer scrolls to its natural position after the time slots, so it no longer appears over the Telemedicine consent scroll region; the existing page/footer safe-area spacing remains unchanged.
 - Consent content, acceptance requirements, booking validation, time-slot behavior, schema, API, payments, and Production data are unchanged. Production release and authenticated LINE mobile UAT remain separately gated.
 
 ## Admin-managed doctor profiles (code only, 2026-09-16)

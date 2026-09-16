@@ -585,8 +585,8 @@ The entries below are the current production handoff and supersede earlier SMS O
 
 ## Booking consent mobile CTA overlap fix (code only, 2026-09-17)
 
-- [x] Keep the booking confirmation bar out of the Telemedicine consent reading area by changing it from viewport-fixed to in-flow sticky positioning above the shared footer.
-- [x] Add a regression assertion that the booking submit bar is sticky and no longer uses the overlapping fixed positioning. Production release and authenticated LINE mobile UAT remain separately gated.
+- [x] Keep the booking confirmation bar out of the Telemedicine consent reading area by placing it entirely in normal document flow after the time slots, without viewport-fixed or bottom-sticky positioning.
+- [x] Add regression assertions that the booking submit bar is initially outside the mobile viewport and no longer uses either overlapping fixed or bottom-sticky positioning. Production release and authenticated LINE mobile UAT remain separately gated.
 
 ## Admin-managed doctor profiles (code only, 2026-09-16)
 

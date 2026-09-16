@@ -68,8 +68,8 @@ describe("telemedicine consent booking UI", () => {
     expect(html).toContain("required=\"\"");
     expect(html).toMatch(/type="submit" disabled=""/);
     expect(html).toContain('data-testid="booking-submit-bar"');
-    expect(html).toContain("sticky bottom-[calc(5rem+env(safe-area-inset-bottom))]");
     expect(html).not.toContain("fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))]");
+    expect(html).not.toContain("sticky bottom-[calc(5rem+env(safe-area-inset-bottom))]");
   });
 
   it("shows a clear guardian requirement and no self-consent checkbox for a minor", () => {
