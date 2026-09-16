@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn(),
+  requireActiveAdminSession: vi.fn(),
   revalidatePath: vi.fn(),
   transaction: vi.fn(),
+  userFindUnique: vi.fn(),
+  fileFindMany: vi.fn(),
   userUpdate: vi.fn(),
   writeAuditLog: vi.fn()
 }));
@@ -19,7 +22,8 @@ vi.mock("@/lib/db/prisma", () => ({
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireAdminSession: mocks.requireAdminSession
+  requireAdminSession: mocks.requireAdminSession,
+  requireActiveAdminSession: mocks.requireActiveAdminSession
 }));
 
 vi.mock("@/lib/audit/audit-log", () => ({
@@ -32,13 +36,18 @@ describe("admin user status action", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireAdminSession.mockResolvedValue({ userId: "admin-1", role: "admin" });
+    mocks.requireActiveAdminSession.mockResolvedValue({ userId: "admin-1", role: "admin" });
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
       callback({
         user: {
+          findUnique: mocks.userFindUnique,
           update: mocks.userUpdate
-        }
+        },
+        fileAttachment: { findMany: mocks.fileFindMany }
       })
     );
+    mocks.userFindUnique.mockResolvedValue({ role: "customer", fullName: null, doctorProfile: null });
+    mocks.fileFindMany.mockResolvedValue([]);
     mocks.userUpdate.mockResolvedValue({});
   });
 
@@ -77,5 +86,27 @@ describe("admin user status action", () => {
       message: "ผู้ดูแลไม่สามารถระงับหรือเก็บถาวรบัญชีของตนเองจากขั้นตอนนี้ได้"
     });
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not reactivate a doctor whose required professional data or files are incomplete", async () => {
+    mocks.userFindUnique.mockResolvedValueOnce({
+      role: "doctor",
+      fullName: "แพทย์ ทดสอบ",
+      doctorProfile: {
+        specialty: "เวชศาสตร์ครอบครัว",
+        licenseNumber: "MED-1",
+        status: "approved"
+      }
+    });
+    mocks.fileFindMany.mockResolvedValueOnce([{ entityType: "staff_profile_photo" }]);
+    const formData = new FormData();
+    formData.set("userId", "doctor-1");
+    formData.set("status", "active");
+
+    await expect(updateUserStatusAction({ status: "idle", message: "" }, formData)).resolves.toMatchObject({
+      status: "error",
+      message: expect.stringContaining("ข้อมูลแพทย์")
+    });
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
   });
 });

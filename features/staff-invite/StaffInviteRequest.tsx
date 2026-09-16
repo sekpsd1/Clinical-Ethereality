@@ -3,18 +3,17 @@
 import { useState, type FormEvent } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import type { StaffInviteRole } from "@/features/staff-invite/schema";
-import { doctorSpecialtyChoices } from "@/features/staff-invite/doctor-specialties";
 import { cn } from "@/lib/design-system/variants";
 
-const roleLabels: Record<StaffInviteRole, string> = {
+type SelfServiceStaffInviteRole = Exclude<StaffInviteRole, "doctor">;
+
+const roleLabels: Record<SelfServiceStaffInviteRole, string> = {
   admin: "ผู้ดูแลระบบ",
-  doctor: "แพทย์",
   pharmacist: "เภสัชกร"
 };
 
-const roleHelp: Record<StaffInviteRole, string> = {
+const roleHelp: Record<SelfServiceStaffInviteRole, string> = {
   admin: "ใช้สำหรับทีมปฏิบัติการที่ต้องเข้าหน้าแอดมิน หลังส่งคำขอแล้วต้องรอผู้ดูแลระบบเดิมอนุมัติ",
-  doctor: "ใช้สำหรับแพทย์ที่ต้องรับ consultation เขียนคำแนะนำ และออกใบสั่งยา",
   pharmacist: "ใช้สำหรับเภสัชกรที่ต้องตรวจใบสั่งยา เตรียมยา และอัปเดตสถานะจัดส่ง"
 };
 
@@ -34,7 +33,7 @@ export function StaffInviteRequest({
   currentStatus,
   requestStatus
 }: {
-  role: StaffInviteRole;
+  role: SelfServiceStaffInviteRole;
   displayName: string;
   currentStatus: string;
   requestStatus?: string;
@@ -118,7 +117,7 @@ export function StaffInviteRequest({
           <form onSubmit={handleSubmit} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
           <input type="hidden" name="role" value={role} />
           <div className="flex flex-col gap-4">
-            {role !== "admin" ? (
+            {role === "pharmacist" ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="flex flex-col gap-2 text-sm font-bold text-text">
                   ชื่อ
@@ -143,46 +142,15 @@ export function StaffInviteRequest({
               </div>
             ) : null}
 
-            {role !== "admin" ? (
+            {role === "pharmacist" ? (
               <label className="flex flex-col gap-2 text-sm font-bold text-text">
                 เลขใบประกอบวิชาชีพ
                 <input
                   name="licenseNumber"
-                  placeholder={role === "doctor" ? "เช่น ว.12345" : "เช่น ภ.12345"}
+                  placeholder="เช่น ภ.12345"
                   className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
                 />
               </label>
-            ) : null}
-
-            {role === "doctor" ? (
-              <fieldset className="flex flex-col gap-3">
-                <legend className="text-sm font-bold text-text">ความเชี่ยวชาญ</legend>
-                <p className="text-xs leading-5 text-muted">เลือกได้ไม่เกิน 3 รายการ</p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {doctorSpecialtyChoices.map((choice) => (
-                    <label
-                      key={choice.value}
-                      className="flex min-h-11 items-center gap-3 rounded-[8px] border border-border bg-white px-3 py-2 text-sm font-semibold text-text"
-                    >
-                      <input
-                        type="checkbox"
-                        name="specialties"
-                        value={choice.value}
-                        className="size-4 accent-primary"
-                      />
-                      <span>{choice.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <label className="flex flex-col gap-2 text-sm font-bold text-text">
-                  ระบุความเชี่ยวชาญอื่น ๆ
-                  <input
-                    name="otherSpecialty"
-                    placeholder="กรอกเมื่อเลือก อื่น ๆ"
-                    className="min-h-11 rounded-[8px] border border-border bg-white px-3 text-sm font-normal text-text outline-none focus:border-primary"
-                  />
-                </label>
-              </fieldset>
             ) : null}
 
             {role === "pharmacist" ? (
@@ -196,7 +164,7 @@ export function StaffInviteRequest({
               </label>
             ) : null}
 
-            {role !== "admin" ? (
+            {role === "pharmacist" ? (
               <p className="rounded-[8px] bg-primary/5 px-3 py-2 text-xs font-semibold leading-5 text-primary">
                 ผู้ดูแลระบบจะตรวจข้อมูลและเพิ่มรูปโปรไฟล์ทางการกับเอกสารใบอนุญาตในขั้นตอนอนุมัติ
               </p>

@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/auth/guards";
+import { requireActiveAdminSession } from "@/lib/auth/guards";
 import { assertPermission } from "@/lib/permissions";
 import { uploadAdminStaffFile } from "@/features/admin/users/staff-files";
 import {
@@ -11,7 +11,7 @@ import type { StaffFileKind } from "@/features/staff-files/types";
 
 export async function POST(request: Request) {
   try {
-    const session = await requireAdminSession();
+    const session = await requireActiveAdminSession();
     assertPermission(session, "admin:access");
     const formData = await request.formData();
     const userId = formData.get("userId");

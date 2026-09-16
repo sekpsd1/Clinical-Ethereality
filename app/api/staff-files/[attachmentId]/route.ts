@@ -43,6 +43,19 @@ export async function GET(
     if (!session || session.role !== "admin") {
       return NextResponse.json({ error: "Access denied." }, { status: 403 });
     }
+
+    const activeAdmin = await prisma.user.findFirst({
+      where: {
+        id: session.userId,
+        role: "admin",
+        status: "active"
+      },
+      select: { id: true }
+    });
+
+    if (!activeAdmin) {
+      return NextResponse.json({ error: "Access denied." }, { status: 403 });
+    }
   }
 
   try {

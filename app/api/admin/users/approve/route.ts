@@ -22,6 +22,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (parsed.data.role === "doctor") {
+      return NextResponse.json(
+        { message: "ให้กรอกและอนุมัติข้อมูลแพทย์ผ่านฟอร์มข้อมูลแพทย์ของผู้ดูแลระบบ" },
+        { status: 400 }
+      );
+    }
+
     const formData = new FormData();
     formData.set("userId", parsed.data.userId);
     formData.set("role", parsed.data.role);

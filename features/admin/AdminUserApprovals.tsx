@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/design-system/variants";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
+import { AdminDoctorProfileForm } from "@/features/admin/AdminDoctorProfileForm";
 import type {
   AdminStaffTab,
   AdminUserApprovalItem,
@@ -16,7 +17,7 @@ import type {
 
 const auditItems = [
   "การเปลี่ยนสิทธิ์ต้องมีเซสชันผู้ดูแลและบันทึกตรวจสอบ",
-  "การอนุมัติแพทย์และเภสัชกรควรรอข้อมูลใบอนุญาต",
+  "การอนุมัติแพทย์ต้องมีข้อมูลวิชาชีพ รูปทางการ และเอกสารใบอนุญาตครบ",
   "การระงับบัญชีควรไม่ลบข้อมูลและต้องเก็บประวัติไว้"
 ] as const;
 
@@ -35,11 +36,6 @@ const roleLabels: Record<string, string> = {
 };
 
 const inviteLinks = [
-  {
-    label: "เชิญแพทย์",
-    href: "/staff-invite/doctor",
-    detail: "ให้แพทย์เปิดลิงก์นี้ผ่าน LINE แล้วส่งเลขใบประกอบวิชาชีพ"
-  },
   {
     label: "เชิญเภสัชกร",
     href: "/staff-invite/pharmacist",
@@ -153,11 +149,14 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-label font-bold uppercase text-primary">ลิงก์เชิญบุคลากร</p>
-            <h2 className="mt-1 font-headline text-lg font-bold text-text">ส่งให้บุคลากรเพื่อขอสิทธิ์</h2>
+            <p className="text-label font-bold uppercase text-primary">บัญชีบุคลากร</p>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">แพทย์เชื่อม LINE แล้วผู้ดูแลจัดการข้อมูล</h2>
           </div>
           <StatusBadge>LINE</StatusBadge>
         </div>
+        <p className="mt-3 rounded-[8px] bg-primary/5 px-3 py-2 text-xs font-semibold leading-5 text-primary">
+          แพทย์เพียงเข้าสู่ระบบผ่าน LINE อย่างน้อยหนึ่งครั้ง จากนั้นค้นหาบัญชีด้านล่าง ผู้ดูแลระบบเป็นผู้กรอกข้อมูลวิชาชีพและอนุมัติทั้งหมด
+        </p>
         <div className="mt-4 flex flex-col gap-2">
           {inviteLinks.map((item) => (
             <Link
@@ -169,6 +168,66 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               <span className="mt-1 block text-xs font-semibold leading-5 text-muted">{item.detail}</span>
               <span className="mt-2 block truncate text-[11px] font-semibold text-primary/70">{item.href}</span>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
+        <p className="text-label font-bold uppercase text-primary">เพิ่มแพทย์จากบัญชี LINE</p>
+        <h2 className="mt-1 font-headline text-lg font-bold text-text">ค้นหาและเลือกบัญชี</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-muted">
+          ค้นด้วยชื่อจริง ชื่อที่แสดงใน LINE หรือ LINE user ID ระบบจะไม่ให้กรอกหรือสร้าง LINE user ID เอง
+        </p>
+        <form action="/admin/users" method="get" className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input type="hidden" name="status" value={data.filters.status} />
+          {data.filters.query ? <input type="hidden" name="q" value={data.filters.query} /> : null}
+          <div className="min-w-0 flex-1">
+            <SearchField
+              name="doctorQ"
+              label="ค้นหาบัญชี LINE สำหรับแพทย์"
+              placeholder="ชื่อ หรือ LINE user ID"
+              defaultValue={data.filters.doctorQuery}
+            />
+          </div>
+          <Button type="submit" size="md">ค้นหาบัญชี</Button>
+        </form>
+
+        {data.filters.doctorQuery && data.doctorCandidates.length === 0 ? (
+          <p className="mt-3 rounded-[8px] border border-dashed border-border p-4 text-center text-xs font-semibold text-muted">
+            ไม่พบบัญชีลูกค้าหรือแพทย์ที่เปิดใช้งานและตรงกับคำค้น
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex flex-col gap-3">
+          {data.doctorCandidates.map((user) => (
+            <article key={`doctor-candidate-${user.id}`} className="rounded-[8px] border border-border bg-white p-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-text">{user.name}</h3>
+                  <p className="truncate text-[11px] font-semibold text-muted">LINE: {user.displayName ?? "ไม่ระบุชื่อ"} · {user.lineId}</p>
+                </div>
+                <StatusBadge tone={user.currentRole === "doctor" ? "success" : "neutral"}>
+                  {user.currentRole === "doctor" ? "แพทย์ปัจจุบัน" : "บัญชีลูกค้า"}
+                </StatusBadge>
+              </div>
+              <AdminDoctorProfileForm
+                userId={user.id}
+                accountName={user.displayName ?? user.lineId}
+                fullName={user.fullName}
+                specialty={user.doctorSpecialty}
+                licenseNumber={user.doctorLicenseNumber}
+                bio={user.doctorBio}
+                approved={user.currentRole === "doctor" && user.staffStatus === "approved"}
+              />
+              <AdminStaffFileControls
+                userId={user.id}
+                userName={user.name}
+                profilePhotoUrl={user.profilePhotoUrl}
+                profilePhotoName={user.profilePhotoName}
+                licenseProofUrl={user.licenseProofUrl}
+                licenseProofName={user.licenseProofName}
+              />
+            </article>
           ))}
         </div>
       </section>
@@ -187,7 +246,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               return (
                 <Link
                   key={tab.status}
-                  href={getAdminUsersHref(tab.status, 1, data.filters.query)}
+                  href={getAdminUsersHref(tab.status, 1, data.filters.query, data.filters.doctorQuery)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex min-h-10 items-center justify-center rounded-[8px] border px-2 text-center text-[11px] font-bold leading-4 transition",
@@ -204,6 +263,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
 
           <form action="/admin/users" method="get" className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input type="hidden" name="status" value={data.filters.status} />
+            {data.filters.doctorQuery ? <input type="hidden" name="doctorQ" value={data.filters.doctorQuery} /> : null}
             <div className="min-w-0 flex-1">
               <SearchField
                 name="q"
@@ -218,7 +278,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               </Button>
               {data.filters.query ? (
                 <Link
-                  href={getAdminUsersHref(data.filters.status)}
+                  href={getAdminUsersHref(data.filters.status, 1, "", data.filters.doctorQuery)}
                   className="inline-flex min-h-11 flex-1 items-center justify-center rounded-control border border-border bg-white px-4 text-sm font-semibold text-primary sm:flex-none"
                 >
                   ล้าง
@@ -276,14 +336,27 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               </div>
 
               {user.requestedRole !== "customer" || user.currentRole !== "customer" ? (
-                <AdminStaffFileControls
-                  userId={user.id}
-                  userName={user.name}
-                  profilePhotoUrl={user.profilePhotoUrl}
-                  profilePhotoName={user.profilePhotoName}
-                  licenseProofUrl={user.licenseProofUrl}
-                  licenseProofName={user.licenseProofName}
-                />
+                <>
+                  {user.requestedRole === "doctor" || user.currentRole === "doctor" ? (
+                    <AdminDoctorProfileForm
+                      userId={user.id}
+                      accountName={user.displayName ?? user.lineId}
+                      fullName={user.fullName}
+                      specialty={user.doctorSpecialty}
+                      licenseNumber={user.doctorLicenseNumber}
+                      bio={user.doctorBio}
+                      approved={user.currentRole === "doctor" && user.staffStatus === "approved"}
+                    />
+                  ) : null}
+                  <AdminStaffFileControls
+                    userId={user.id}
+                    userName={user.name}
+                    profilePhotoUrl={user.profilePhotoUrl}
+                    profilePhotoName={user.profilePhotoName}
+                    licenseProofUrl={user.licenseProofUrl}
+                    licenseProofName={user.licenseProofName}
+                  />
+                </>
               ) : null}
 
               <div className="mt-4 flex flex-col gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-end sm:justify-between">
@@ -310,7 +383,8 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               href={getAdminUsersHref(
                 data.filters.status,
                 data.pagination.page - 1,
-                data.filters.query
+                data.filters.query,
+                data.filters.doctorQuery
               )}
               disabled={data.pagination.page <= 1}
             >
@@ -323,7 +397,8 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
               href={getAdminUsersHref(
                 data.filters.status,
                 data.pagination.page + 1,
-                data.filters.query
+                data.filters.query,
+                data.filters.doctorQuery
               )}
               disabled={data.pagination.page >= data.pagination.totalPages}
             >
@@ -371,7 +446,7 @@ function StaffPaginationLink({
   );
 }
 
-function getAdminUsersHref(status: AdminStaffTab, page = 1, query = ""): Route {
+function getAdminUsersHref(status: AdminStaffTab, page = 1, query = "", doctorQuery = ""): Route {
   const params = new URLSearchParams({
     status
   });
@@ -382,6 +457,10 @@ function getAdminUsersHref(status: AdminStaffTab, page = 1, query = ""): Route {
 
   if (query) {
     params.set("q", query);
+  }
+
+  if (doctorQuery) {
+    params.set("doctorQ", doctorQuery);
   }
 
   return `/admin/users?${params.toString()}` as Route;

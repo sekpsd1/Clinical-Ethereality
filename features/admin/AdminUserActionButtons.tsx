@@ -35,7 +35,7 @@ export function AdminUserActionButtons({
   redirectOnRoleChange
 }: AdminUserActionButtonsProps) {
   const router = useRouter();
-  const isStaffRoleRequest = user.requestedRole === "doctor" || user.requestedRole === "pharmacist";
+  const isPharmacistRoleRequest = user.requestedRole === "pharmacist";
   const isPendingApproval = user.status === "pending_review" || user.staffStatus === "pending_review";
   const [suspendState, suspendAction] = useActionState(updateUserStatusAction, initialActionState);
   const [approveState, setApproveState] = useState<AdminUserActionState>(initialActionState);
@@ -122,7 +122,9 @@ export function AdminUserActionButtons({
                   aria-label={`เลือกสิทธิ์ของ ${user.name}`}
                 >
                   <option value="customer">ลูกค้า</option>
-                  <option value="doctor">แพทย์</option>
+                  <option value="doctor" disabled={user.currentRole !== "doctor"}>
+                    แพทย์ (ใช้ฟอร์มข้อมูลแพทย์)
+                  </option>
                   <option value="pharmacist">เภสัชกร</option>
                   <option value="admin">ผู้ดูแลระบบ</option>
                 </select>
@@ -144,7 +146,7 @@ export function AdminUserActionButtons({
                     title={isPendingApproval ? "ไม่อนุมัติคำขอสิทธิ์" : "ระงับบัญชี"}
                   />
                 </form>
-                {isPendingApproval && user.requestedRole !== "customer" ? (
+                {isPendingApproval && user.requestedRole !== "customer" && user.requestedRole !== "doctor" ? (
                   <ActionIconButton
                     ariaLabel={`อนุมัติ ${user.name}`}
                     className="bg-primary text-white"
@@ -185,9 +187,9 @@ export function AdminUserActionButtons({
               <DeleteUserButton userName={user.name} />
             </form>
           </div>
-          {isPendingApproval && isStaffRoleRequest ? (
+          {isPendingApproval && isPharmacistRoleRequest ? (
             <p className="max-w-[480px] text-right text-[11px] font-semibold leading-5 text-muted">
-              สำหรับคำขอสิทธิ์แพทย์หรือเภสัชกร: ปุ่มกากบาทสีแดงคือไม่อนุมัติคำขอ และปุ่มเครื่องหมายถูกสีเขียวคืออนุมัติการเปลี่ยนสิทธิ์ตาม “สิทธิ์ที่ขอ”
+              สำหรับคำขอสิทธิ์เภสัชกร: ปุ่มกากบาทสีแดงคือไม่อนุมัติคำขอ และปุ่มเครื่องหมายถูกสีเขียวคืออนุมัติการเปลี่ยนสิทธิ์ตาม “สิทธิ์ที่ขอ”
             </p>
           ) : null}
         </>

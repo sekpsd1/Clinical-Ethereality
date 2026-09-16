@@ -5,7 +5,7 @@ import {
   normalizeAdminStaffTab
 } from "@/features/admin/users/filters";
 import { getAdminUserApprovals } from "@/features/admin/users/queries";
-import { requireAdminSession } from "@/lib/auth/guards";
+import { requireActiveAdminSession } from "@/lib/auth/guards";
 
 export default async function AdminUsersPage({
   searchParams
@@ -13,14 +13,16 @@ export default async function AdminUsersPage({
   searchParams: Promise<{
     page?: string;
     q?: string;
+    doctorQ?: string;
     status?: string;
   }>;
 }) {
-  const session = await requireAdminSession();
+  const session = await requireActiveAdminSession();
   const params = await searchParams;
   const data = await getAdminUserApprovals({
     page: normalizeAdminStaffPage(params.page),
     query: normalizeAdminStaffQuery(params.q),
+    doctorQuery: normalizeAdminStaffQuery(params.doctorQ),
     status: normalizeAdminStaffTab(params.status)
   });
 

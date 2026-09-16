@@ -12,7 +12,7 @@ describe("admin staff approval API", () => {
     vi.mocked(approveStaffRoleAction).mockReset();
   });
 
-  it("forwards a valid approval request to the existing approval workflow", async () => {
+  it("forwards a valid pharmacist approval request to the existing approval workflow", async () => {
     vi.mocked(approveStaffRoleAction).mockResolvedValue({
       status: "success",
       message: "อนุมัติสิทธิ์เรียบร้อยแล้ว"
@@ -26,7 +26,7 @@ describe("admin staff approval API", () => {
         },
         body: JSON.stringify({
           userId: "user-123",
-          role: "doctor"
+          role: "pharmacist"
         })
       })
     );
@@ -39,7 +39,23 @@ describe("admin staff approval API", () => {
 
     const [, formData] = vi.mocked(approveStaffRoleAction).mock.calls[0];
     expect(formData.get("userId")).toBe("user-123");
-    expect(formData.get("role")).toBe("doctor");
+    expect(formData.get("role")).toBe("pharmacist");
+  });
+
+  it("rejects Doctor approval outside the dedicated Admin-managed profile form", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/admin/users/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "user-123", role: "doctor" })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      message: expect.stringContaining("ฟอร์มข้อมูลแพทย์")
+    });
+    expect(approveStaffRoleAction).not.toHaveBeenCalled();
   });
 
   it("rejects invalid approval payloads before running the mutation", async () => {

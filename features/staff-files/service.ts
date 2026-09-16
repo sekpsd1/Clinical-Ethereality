@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getAppEnv } from "@/lib/env/schema";
 import { writeAuditLog } from "@/lib/audit/audit-log";
@@ -25,6 +26,8 @@ export class StaffFileError extends Error {
       | "FILE_CONTENT_INVALID"
       | "FILE_TOO_LARGE"
       | "FILE_TYPE_NOT_ALLOWED"
+      | "ACTOR_NOT_ALLOWED"
+      | "TARGET_NOT_ELIGIBLE"
       | "STORAGE_NOT_CONFIGURED"
       | "STORAGE_WRITE_FAILED"
   ) {
@@ -174,9 +177,48 @@ export async function storeStaffFiles(input: {
       writtenPaths.push(filePath);
     }
 
-    await prisma.$transaction(async (tx) => {
+    const replacedStorageKeys = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT \`id\` FROM \`User\` WHERE \`id\` IN (${input.actorId}, ${input.ownerId}) ORDER BY \`id\` FOR UPDATE`
+      );
+      const [actor, owner] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: input.actorId },
+          select: { role: true, status: true }
+        }),
+        tx.user.findUnique({
+          where: { id: input.ownerId },
+          select: { role: true, status: true }
+        })
+      ]);
+
+      if (!actor || actor.role !== "admin" || actor.status !== "active") {
+        throw new StaffFileError("ACTOR_NOT_ALLOWED");
+      }
+
+      if (!owner || owner.status !== "active" || owner.role === "admin") {
+        throw new StaffFileError("TARGET_NOT_ELIGIBLE");
+      }
+
+      const replaced: string[] = [];
+
       for (const item of prepared) {
         const entityType = staffFileEntityTypes[item.upload.kind];
+
+        const currentFiles = await tx.fileAttachment.findMany({
+          where: {
+            ownerId: input.ownerId,
+            entityType,
+            entityId: input.ownerId,
+            status: "attached"
+          },
+          select: { storageKey: true }
+        });
+        replaced.push(
+          ...currentFiles
+            .map((file) => file.storageKey)
+            .filter((storageKey): storageKey is string => Boolean(storageKey))
+        );
 
         await tx.fileAttachment.updateMany({
           where: {
@@ -235,7 +277,11 @@ export async function storeStaffFiles(input: {
           }
         });
       }
-    });
+
+      return replaced;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    await Promise.all(replacedStorageKeys.map((storageKey) => deleteStaffFile(storageKey)));
   } catch (error) {
     await Promise.all(writtenPaths.map((filePath) => unlink(filePath).catch(() => undefined)));
 
@@ -263,6 +309,8 @@ export function getStaffFileErrorMessage(error: unknown): string {
     FILE_CONTENT_INVALID: "เนื้อหาไฟล์ไม่ตรงกับชนิดไฟล์ กรุณาเลือกไฟล์ JPG, PNG, WEBP หรือ PDF ที่ถูกต้อง",
     FILE_TOO_LARGE: "ไฟล์มีขนาดใหญ่เกินกำหนด รูปไม่เกิน 5 MB และใบอนุญาตไม่เกิน 10 MB",
     FILE_TYPE_NOT_ALLOWED: "รองรับรูป JPG, PNG, WEBP และใบอนุญาตแบบ PDF เท่านั้น",
+    ACTOR_NOT_ALLOWED: "เฉพาะผู้ดูแลระบบที่เปิดใช้งานอยู่เท่านั้นที่อัปโหลดไฟล์บุคลากรได้",
+    TARGET_NOT_ELIGIBLE: "บัญชีบุคลากรที่เลือกต้องเปิดใช้งานอยู่",
     STORAGE_NOT_CONFIGURED: "ยังไม่ได้ตั้งค่า STAFF_UPLOAD_DIR สำหรับพื้นที่เก็บไฟล์บนโฮส",
     STORAGE_WRITE_FAILED: "ไม่สามารถเขียนไฟล์ลงพื้นที่เก็บข้อมูลได้ กรุณาตรวจสิทธิ์โฟลเดอร์แล้วลองใหม่"
   };

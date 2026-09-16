@@ -7,6 +7,8 @@ export type AdminStaffTab = "pending" | "approved" | "inactive";
 export type AdminUserApprovalItem = {
   id: string;
   name: string;
+  fullName: string | null;
+  displayName: string | null;
   lineId: string;
   currentRole: Role;
   requestedRole: Role;
@@ -17,8 +19,13 @@ export type AdminUserApprovalItem = {
   profilePhotoName: string | null;
   licenseProofUrl: string | null;
   licenseProofName: string | null;
+  doctorSpecialty: string | null;
+  doctorLicenseNumber: string | null;
+  doctorBio: string | null;
   submittedAt: string;
 };
+
+export type AdminDoctorAccountCandidate = AdminUserApprovalItem;
 
 export type AdminUserApprovalSummary = {
   pendingReview: number;
@@ -32,7 +39,9 @@ export type AdminUserApprovalsData = {
   filters: {
     status: AdminStaffTab;
     query: string;
+    doctorQuery: string;
   };
+  doctorCandidates: AdminDoctorAccountCandidate[];
   pagination: {
     page: number;
     pageSize: number;

@@ -320,32 +320,32 @@ test.describe("role route smoke", () => {
     await expect(page.locator('nav[aria-label="ผู้ดูแลระบบ"]')).toBeHidden();
   });
 
-  test("admin user page exposes staff invitation links", async ({ page }) => {
+  test("admin user page exposes Admin-managed doctor onboarding and remaining invitation links", async ({ page }) => {
     await signInAs(page, "admin");
     await page.goto("/admin/users");
 
     await expectNoAppError(page);
-    await expect(page.locator('a[href="/staff-invite/doctor"]')).toBeVisible();
+    await expect(page.locator('a[href="/staff-invite/doctor"]')).toHaveCount(0);
     await expect(page.locator('a[href="/staff-invite/pharmacist"]')).toBeVisible();
     await expect(page.locator('a[href="/staff-invite/admin"]')).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "ค้นหาบัญชี LINE สำหรับแพทย์" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ข้อมูลแพทย์ที่ผู้ดูแลระบบยืนยัน" }).first()).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "ชื่อ-นามสกุลจริง" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "บันทึกและอนุมัติแพทย์" }).first()).toBeVisible();
     await expect(page.getByText("เปลี่ยนสิทธิ์").first()).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+      .toBe(true);
   });
 
-  test("staff invite request page is reachable with a customer dev session", async ({ page }) => {
+  test("doctor invite route explains the Admin-managed workflow without a self-service form", async ({ page }) => {
     await signInAs(page, "customer");
     await page.goto("/staff-invite/doctor");
 
     await expectNoAppError(page);
-    await expect(page.getByRole("heading", { name: "ขอสิทธิ์แพทย์" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "ชื่อ", exact: true })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "นามสกุล", exact: true })).toBeVisible();
-    await expect(page.getByRole("group", { name: "ความเชี่ยวชาญ" })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: "ผิวหนังและความงาม" })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: "อื่น ๆ" })).toBeVisible();
-    await expect(page.getByLabel("รูปโปรไฟล์ทางการ")).toBeHidden();
-    await expect(page.getByLabel("เอกสารใบอนุญาต")).toBeHidden();
-    await expect(page.getByText("ผู้ดูแลระบบจะตรวจข้อมูลและเพิ่มรูปโปรไฟล์ทางการกับเอกสารใบอนุญาต")).toBeVisible();
-    await expect(page.getByRole("button", { name: "ส่งคำขอให้แอดมินตรวจ" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ผู้ดูแลระบบเป็นผู้จัดการข้อมูล" })).toBeVisible();
+    await expect(page.getByText("ไม่ต้องกรอกหรือยืนยันข้อมูลวิชาชีพในหน้านี้", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ส่งคำขอให้แอดมินตรวจ" })).toHaveCount(0);
   });
 
   test("pharmacist invite request collects the applicant name", async ({ page }) => {

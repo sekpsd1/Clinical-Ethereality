@@ -35,6 +35,17 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
+
+  if (formData.get("role") === "doctor") {
+    return NextResponse.json(
+      {
+        message:
+          "ข้อมูลวิชาชีพแพทย์จัดการโดยผู้ดูแลระบบ กรุณาเข้าสู่ระบบผ่าน LINE แล้วแจ้งผู้ดูแลให้เลือกบัญชีของคุณ"
+      },
+      { status: 400 }
+    );
+  }
+
   const parsed = staffInviteRequestSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {

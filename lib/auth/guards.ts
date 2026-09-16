@@ -6,6 +6,7 @@ import { authReturnPathHeader } from "@/lib/auth/return-path";
 import { getCurrentSession } from "@/lib/auth/session";
 import { hasRole } from "@/lib/permissions";
 import type { Role } from "@/lib/permissions/roles";
+import { prisma } from "@/lib/db/prisma";
 
 function getLineLoginPath(nextPath: string): string {
   return `/auth/line?next=${encodeURIComponent(normalizeLineAuthNextPath(nextPath))}`;
@@ -34,6 +35,24 @@ export async function requireRoleSession(allowedRoles: readonly Role[], fallback
 
 export async function requireAdminSession() {
   return requireRoleSession(["admin"], "/admin");
+}
+
+export async function requireActiveAdminSession() {
+  const session = await requireAdminSession();
+  const activeAdmin = await prisma.user.findFirst({
+    where: {
+      id: session.userId,
+      role: "admin",
+      status: "active"
+    },
+    select: { id: true }
+  });
+
+  if (!activeAdmin) {
+    redirect("/consult");
+  }
+
+  return session;
 }
 
 export async function requireDoctorSession() {

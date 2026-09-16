@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
-import { formatDoctorSpecialties } from "@/features/staff-invite/doctor-specialties";
 import type { StaffInviteRequestData } from "@/features/staff-invite/schema";
 
 function optionalText(value?: string) {
@@ -11,6 +10,10 @@ export async function submitStaffInviteRequest(input: {
   userId: string;
   data: StaffInviteRequestData;
 }) {
+  if (input.data.role === "doctor") {
+    throw new Error("DOCTOR_ADMIN_MANAGED");
+  }
+
   await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
       where: {
@@ -23,30 +26,6 @@ export async function submitStaffInviteRequest(input: {
 
     if (!user || user.status === "suspended" || user.status === "archived") {
       throw new Error("USER_NOT_ELIGIBLE");
-    }
-
-    if (input.data.role === "doctor") {
-      const specialty = formatDoctorSpecialties(
-        input.data.specialties ?? [],
-        input.data.otherSpecialty
-      );
-
-      await tx.doctor.upsert({
-        where: {
-          userId: input.userId
-        },
-        create: {
-          userId: input.userId,
-          licenseNumber: optionalText(input.data.licenseNumber),
-          specialty,
-          status: "pending_review"
-        },
-        update: {
-          licenseNumber: optionalText(input.data.licenseNumber),
-          specialty,
-          status: "pending_review"
-        }
-      });
     }
 
     if (input.data.role === "pharmacist") {

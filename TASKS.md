@@ -581,3 +581,14 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Replace the compact adult consent card with a bounded, labelled, focusable, keyboard-scrollable region above the existing two-column 15-minute slots and keep one required acceptance checkbox below it.
 - [x] Preserve server-side current-version validation, per-booking evidence, minor guardian blocking, and paid-consultation rescheduling without a new consent.
 - [x] Add focused full-text, accessibility, adult/minor, reschedule, disabled-submit, and slot-layout regression coverage. Production release and authenticated UAT remain separately gated.
+
+## Admin-managed doctor profiles (code only, 2026-09-16)
+
+- [x] Let an active Admin search and select an existing LINE-linked Customer/Doctor account, then manage `User.fullName`, Doctor specialty, unique license number, optional bio, official profile photo, and license proof without accepting a manually entered LINE user ID.
+- [x] Save and approve through one Serializable service boundary that rechecks the active Admin, active eligible target, complete fields, current required files, unique license, and concurrent write/unique conflicts while keeping repeated approval idempotent.
+- [x] Update existing Doctor profiles in place and preserve consultations, prescriptions, schedules, consultation fee, and existing files unless an Admin explicitly replaces a staff file.
+- [x] Remove the Doctor invite link and reject Doctor self-service through the page, Server Action, API, and service while preserving Pharmacist/Admin invite behavior.
+- [x] Restrict Admin staff-file review to an active Admin through a private/no-store route, keep existing customer-facing official Doctor image behavior compatible, and remove replaced private file bytes only after the metadata transaction commits.
+- [x] Record minimized Doctor-profile audit metadata with actor, action, changed field names, and status only; exclude professional names, license numbers, document URLs, and file contents.
+- [x] Pass 38 focused unit tests, the full 1,477-test unit suite with 8 skips, TypeScript typecheck, ESLint, Prisma validation, the 65-route Production build, and two focused Pixel 5 Playwright checks for the mobile Admin form and disabled Doctor self-service route.
+- [ ] Production release and authenticated mobile Admin UAT remain separately gated; this task performs no push, deploy, restart, migration, or Production data/file mutation.

@@ -148,6 +148,11 @@ function getSearchWhere(query: string): Prisma.UserWhereInput {
         }
       },
       {
+        fullName: {
+          contains: query
+        }
+      },
+      {
         lineUserId: {
           contains: query
         }
@@ -184,8 +189,8 @@ async function getUsersWithStaffProfiles(where: Prisma.UserWhereInput, page: num
           createdAt: "desc"
         },
         select: {
+          id: true,
           entityType: true,
-          storageUrl: true,
           fileName: true
         }
       }
@@ -259,7 +264,9 @@ function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
 
   return {
     id: user.id,
-    name: user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    name: user.fullName ?? user.displayName ?? "ผู้ใช้ LINE ยังไม่ระบุชื่อ",
+    fullName: user.fullName,
+    displayName: user.displayName,
     lineId: user.lineUserId,
     currentRole: toRole(user.role),
     requestedRole: getRequestedRole(user),
@@ -271,12 +278,36 @@ function mapUser(user: UserWithStaffProfiles): AdminUserApprovalItem {
           ? user.pharmacistProfile?.status
           : user.doctorProfile?.status ?? user.pharmacistProfile?.status,
     profile: getStaffProfileText(user),
-    profilePhotoUrl: profilePhoto?.storageUrl ?? null,
+    profilePhotoUrl: profilePhoto ? `/api/admin/staff-files/${profilePhoto.id}` : null,
     profilePhotoName: profilePhoto?.fileName ?? null,
-    licenseProofUrl: licenseProof?.storageUrl ?? null,
+    licenseProofUrl: licenseProof ? `/api/admin/staff-files/${licenseProof.id}` : null,
     licenseProofName: licenseProof?.fileName ?? null,
+    doctorSpecialty: user.doctorProfile?.specialty ?? null,
+    doctorLicenseNumber: user.doctorProfile?.licenseNumber ?? null,
+    doctorBio: user.doctorProfile?.bio ?? null,
     submittedAt: formatSubmittedAt(user.createdAt)
   };
+}
+
+async function getDoctorAccountCandidates(query: string): Promise<AdminUserApprovalItem[]> {
+  if (!query) {
+    return [];
+  }
+
+  const users = await getUsersWithStaffProfiles(
+    {
+      AND: [
+        {
+          role: { in: ["customer", "doctor"] },
+          status: "active"
+        },
+        getSearchWhere(query)
+      ]
+    },
+    1
+  );
+
+  return users.slice(0, 10).map(mapUser);
 }
 
 export async function getAdminUserApprovals(
@@ -284,17 +315,19 @@ export async function getAdminUserApprovals(
     page?: number;
     query?: string;
     status?: AdminStaffTab;
+    doctorQuery?: string;
   } = {}
 ): Promise<AdminUserApprovalsData> {
   noStore();
 
   const requestedPage = normalizeAdminStaffPage(String(input.page ?? 1));
   const query = normalizeAdminStaffQuery(input.query);
+  const doctorQuery = normalizeAdminStaffQuery(input.doctorQuery);
   const status = normalizeAdminStaffTab(input.status);
 
   try {
     const selectedWhere = getStaffWhere(status, query);
-    const [total, pendingReview, approvedStaff, suspended] = await Promise.all([
+    const [total, pendingReview, approvedStaff, suspended, doctorCandidates] = await Promise.all([
       prisma.user.count({
         where: selectedWhere
       }),
@@ -306,7 +339,8 @@ export async function getAdminUserApprovals(
       }),
       prisma.user.count({
         where: getStaffWhere("inactive")
-      })
+      }),
+      getDoctorAccountCandidates(doctorQuery)
     ]);
     const totalPages = Math.max(1, Math.ceil(total / ADMIN_STAFF_PAGE_SIZE));
     const page = Math.min(requestedPage, totalPages);
@@ -314,6 +348,7 @@ export async function getAdminUserApprovals(
 
     return {
       users: users.map(mapUser),
+      doctorCandidates,
       summary: {
         pendingReview,
         approvedStaff,
@@ -321,7 +356,8 @@ export async function getAdminUserApprovals(
       },
       filters: {
         status,
-        query
+        query,
+        doctorQuery
       },
       pagination: {
         page,
@@ -333,6 +369,7 @@ export async function getAdminUserApprovals(
   } catch {
     return {
       users: [],
+      doctorCandidates: [],
       summary: {
         pendingReview: 0,
         approvedStaff: 0,
@@ -340,7 +377,8 @@ export async function getAdminUserApprovals(
       },
       filters: {
         status,
-        query
+        query,
+        doctorQuery
       },
       pagination: {
         page: 1,

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { requireAdminSession } from "@/lib/auth/guards";
+import { requireActiveAdminSession, requireAdminSession } from "@/lib/auth/guards";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { assertPermission } from "@/lib/permissions";
 import {
@@ -114,6 +114,13 @@ export async function approveStaffRoleAction(
     return {
       status: "error",
       message: "คำขออนุมัติไม่ถูกต้อง"
+    };
+  }
+
+  if (parsed.data.role === "doctor") {
+    return {
+      status: "error",
+      message: "ให้กรอกและอนุมัติข้อมูลแพทย์ผ่านฟอร์มข้อมูลแพทย์ของผู้ดูแลระบบ"
     };
   }
 
@@ -307,7 +314,7 @@ export async function updateUserStatusAction(
   _previousState: AdminUserActionState,
   formData: FormData
 ): Promise<AdminUserActionState> {
-  const session = await requireAdminSession();
+  const session = await requireActiveAdminSession();
   assertPermission(session, "admin:access");
   const parsed = updateUserStatusSchema.safeParse(formDataToObject(formData));
 
@@ -327,6 +334,49 @@ export async function updateUserStatusAction(
 
   try {
     await prisma.$transaction(async (tx) => {
+      if (parsed.data.status === "active") {
+        const target = await tx.user.findUnique({
+          where: { id: parsed.data.userId },
+          select: {
+            role: true,
+            fullName: true,
+            doctorProfile: {
+              select: {
+                specialty: true,
+                licenseNumber: true,
+                status: true
+              }
+            }
+          }
+        });
+
+        if (target?.role === "doctor") {
+          const requiredFiles = await tx.fileAttachment.findMany({
+            where: {
+              ownerId: parsed.data.userId,
+              entityId: parsed.data.userId,
+              entityType: {
+                in: [staffFileEntityTypes.profilePhoto, staffFileEntityTypes.licenseProof]
+              },
+              status: "attached"
+            },
+            select: { entityType: true }
+          });
+          const kinds = new Set(requiredFiles.map((file) => file.entityType));
+
+          if (
+            !target.fullName ||
+            !target.doctorProfile?.specialty ||
+            !target.doctorProfile.licenseNumber ||
+            target.doctorProfile.status !== "approved" ||
+            !kinds.has(staffFileEntityTypes.profilePhoto) ||
+            !kinds.has(staffFileEntityTypes.licenseProof)
+          ) {
+            throw new Error("DOCTOR_PROFILE_REQUIRED");
+          }
+        }
+      }
+
       await tx.user.update({
         where: {
           id: parsed.data.userId
@@ -346,7 +396,14 @@ export async function updateUserStatusAction(
         }
       });
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "DOCTOR_PROFILE_REQUIRED") {
+      return {
+        status: "error",
+        message: "ต้องกรอกข้อมูลแพทย์และมีไฟล์วิชาชีพครบก่อนเปิดใช้งานบัญชีแพทย์อีกครั้ง"
+      };
+    }
+
     return {
       status: "error",
       message: "ไม่สามารถอัปเดตสถานะได้ กรุณาตรวจสอบฐานข้อมูลแล้วลองใหม่"
@@ -379,6 +436,13 @@ export async function updateUserRoleAction(
     return {
       status: "error",
       message: "คำขอเปลี่ยนสิทธิ์ไม่ถูกต้อง"
+    };
+  }
+
+  if (parsed.data.role === "doctor") {
+    return {
+      status: "error",
+      message: "การกำหนดสิทธิ์แพทย์ต้องใช้ฟอร์มข้อมูลแพทย์และตรวจเอกสารให้ครบก่อน"
     };
   }
 

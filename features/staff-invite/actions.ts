@@ -36,6 +36,13 @@ export async function requestStaffInviteAction(
     };
   }
 
+  if (formData.get("role") === "doctor") {
+    return {
+      status: "error",
+      message: "ข้อมูลวิชาชีพแพทย์จัดการโดยผู้ดูแลระบบ กรุณาเข้าสู่ระบบผ่าน LINE แล้วแจ้งผู้ดูแลให้เลือกบัญชีของคุณ"
+    };
+  }
+
   const parsed = staffInviteRequestSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
