@@ -46,7 +46,7 @@ const recordingRow = {
   provider: "zoom" as const,
   providerRecordingId: "provider-file-1",
   fileType: "mp4",
-  recordingType: "speaker_view",
+  recordingType: "shared_screen_with_speaker_view",
   fileSizeBytes: BigInt(1024),
   consultation: { zoomMeetingId: "12345678901" }
 };
@@ -138,6 +138,41 @@ describe("recording external-browser handoff", () => {
     mocks.tx.user.findFirst.mockResolvedValueOnce(null);
     await expect(
       issueRecordingExternalHandoff("consultation-1", "recording-1", "view", { now })
+    ).rejects.toBeInstanceOf(RecordingExternalHandoffError);
+  });
+
+  it.each([
+    ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+  ])("does not mint a handoff ticket for hidden %s metadata", async (_label, hidden) => {
+    mocks.tx.consultationRecording.findFirst.mockResolvedValueOnce({ ...recordingRow, ...hidden });
+
+    await expect(
+      issueRecordingExternalHandoff("consultation-1", "recording-1", "view", { now })
+    ).rejects.toBeInstanceOf(RecordingExternalHandoffError);
+    expect(mocks.tx.authSession.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+  ])("rejects an existing handoff ticket when the target resolves to hidden %s metadata", async (_label, hidden) => {
+    const handoff = await issueRecordingExternalHandoff(
+      "consultation-1",
+      "recording-1",
+      "view",
+      { now }
+    );
+    mocks.tx.consultationRecording.findFirst.mockResolvedValueOnce({ ...recordingRow, ...hidden });
+
+    await expect(
+      exchangeRecordingExternalHandoff(
+        handoff.ticket,
+        "consultation-1",
+        "recording-1",
+        "view",
+        now
+      )
     ).rejects.toBeInstanceOf(RecordingExternalHandoffError);
   });
 

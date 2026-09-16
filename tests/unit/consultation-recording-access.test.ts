@@ -24,7 +24,7 @@ const recording = {
   provider: "zoom" as const,
   providerRecordingId: "provider-file-1",
   fileType: "mp4",
-  recordingType: "speaker_view",
+  recordingType: "shared_screen_with_speaker_view",
   fileSizeBytes: BigInt(1024),
   consultation: { zoomMeetingId: "12345678901" }
 };
@@ -49,8 +49,23 @@ describe("consultation recording authorization", () => {
     await expect(getAuthorizedRecording(session("doctor", "doctor-1"), "consultation-1", "recording-1"))
       .resolves.toMatchObject({ id: "recording-1" });
     expect(mocks.recordingFindFirst.mock.calls[1][0].where).toMatchObject({
+      provider: "zoom",
+      fileType: "mp4",
+      recordingType: "shared_screen_with_speaker_view",
       consultation: { doctor: { userId: "doctor-1" } }
     });
+  });
+
+  it.each([
+    ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+  ])("denies hidden %s metadata even when a database mock ignores the query filter", async (_label, hidden) => {
+    mocks.recordingFindFirst.mockResolvedValueOnce({ ...recording, ...hidden });
+
+    await expect(
+      getAuthorizedRecording(session("admin", "admin-1"), "consultation-1", "recording-1")
+    ).resolves.toBeNull();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
   });
 
   it("denies unassigned doctors, customers, anonymous users, and inactive accounts", async () => {

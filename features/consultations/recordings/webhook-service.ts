@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { getRecordingRetentionUntil } from "@/features/consultations/consent/policy";
 import type { ZoomRecordingCompletedEvent } from "@/features/consultations/recordings/webhook-schema";
+import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
 
 export class RecordingWebhookError extends Error {
   constructor(public readonly code: "CONSULTATION_NOT_FOUND") {
@@ -37,20 +38,23 @@ export async function applyZoomRecordingCompletedEvent(
     return { consultationId: consultation.id, duplicate: true, recordingCount: 0 };
   }
 
-  const recordings = await tx.consultationRecording.createMany({
-    data: input.files.map((file) => ({
-      consultationId: consultation.id,
-      provider: "zoom" as const,
-      providerRecordingId: file.providerRecordingId,
-      recordingType: file.recordingType,
-      fileType: file.fileType,
-      fileSizeBytes: file.fileSizeBytes,
-      startedAt: file.startedAt,
-      endedAt: file.endedAt,
-      retentionUntil: getRecordingRetentionUntil(file.endedAt ?? input.occurredAt)
-    })),
-    skipDuplicates: true
-  });
+  const eligibleFiles = input.files.filter(isEligibleConsultationRecordingMetadata);
+  const recordingCount = eligibleFiles.length === 0
+    ? 0
+    : (await tx.consultationRecording.createMany({
+        data: eligibleFiles.map((file) => ({
+          consultationId: consultation.id,
+          provider: "zoom" as const,
+          providerRecordingId: file.providerRecordingId,
+          recordingType: file.recordingType,
+          fileType: file.fileType,
+          fileSizeBytes: file.fileSizeBytes,
+          startedAt: file.startedAt,
+          endedAt: file.endedAt,
+          retentionUntil: getRecordingRetentionUntil(file.endedAt ?? input.occurredAt)
+        })),
+        skipDuplicates: true
+      })).count;
 
   await writeAuditLog(tx, {
     action: "consultation_recording.metadata_received",
@@ -59,7 +63,7 @@ export async function applyZoomRecordingCompletedEvent(
     metadata: {
       provider: "zoom",
       providerEventKey: input.eventKey,
-      recordingCount: recordings.count,
+      recordingCount,
       retentionYears: 5
     }
   });
@@ -67,6 +71,6 @@ export async function applyZoomRecordingCompletedEvent(
   return {
     consultationId: consultation.id,
     duplicate: false,
-    recordingCount: recordings.count
+    recordingCount
   };
 }

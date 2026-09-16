@@ -18,7 +18,8 @@ import {
   getAttendanceStatusCopy,
   getConsultationAttendanceState
 } from "@/features/consultations/attendance/state";
-import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
+import { mapEligibleConsultationRecordings } from "@/features/consultations/recordings/presentation";
+import { consultationRecordingEligibilityWhere } from "@/features/consultations/recordings/policy";
 import type {
   DoctorConsultationItem,
   DoctorConsultationsData,
@@ -97,6 +98,7 @@ function getConsultationsForDoctor(doctorId: string | undefined) {
         }
       },
       recordings: {
+        where: consultationRecordingEligibilityWhere,
         orderBy: [
           { startedAt: "asc" as const },
           { createdAt: "asc" as const }
@@ -489,7 +491,7 @@ function mapConsultation(
           expiresAt: formatDate(consultation.assessment.expiresAt) ?? ""
         }
       : null,
-    recordings: consultation.recordings.map(mapConsultationRecording),
+    recordings: mapEligibleConsultationRecordings(consultation.recordings),
     createdAt: formatDate(consultation.createdAt) ?? ""
   };
 }

@@ -35,7 +35,7 @@ const recording = {
   provider: "zoom" as const,
   providerRecordingId: "provider-file-1",
   fileType: "mp4",
-  recordingType: "speaker_view",
+  recordingType: "shared_screen_with_speaker_view",
   zoomMeetingId: "12345678901",
   fileSizeBytes: BigInt(1024)
 };
@@ -159,6 +159,23 @@ describe("private consultation recording route", () => {
     expect(mocks.auditExternal).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+  ])("denies a direct %s request even if an upstream authorization mock returns it", async (_label, hidden) => {
+    mocks.session = { userId: "admin-1", role: "admin" };
+    mocks.authorize.mockResolvedValue({ ...recording, ...hidden });
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1"),
+      { params }
+    );
+
+    expect(response.status).toBe(404);
+    expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("forwards one valid byte range and returns safe 206 headers", async () => {
     mocks.external.mockResolvedValue(externalAccess);
     mocks.open.mockResolvedValue({
@@ -187,6 +204,7 @@ describe("private consultation recording route", () => {
     expect(parseRecordingRangeHeader("bytes=0-4,6-8", "mp4", BigInt(1024))).toEqual({ kind: "invalid" });
     expect(parseRecordingRangeHeader("bytes=9-1", "mp4", BigInt(1024))).toEqual({ kind: "invalid" });
     expect(parseRecordingRangeHeader("bytes=1024-", "mp4", BigInt(1024))).toEqual({ kind: "invalid" });
+    expect(parseRecordingRangeHeader("bytes=0-4", "m4a", BigInt(1024))).toEqual({ kind: "invalid" });
     expect(parseRecordingRangeHeader("bytes=0-4", "txt", BigInt(1024))).toEqual({ kind: "invalid" });
 
     mocks.external.mockResolvedValue(externalAccess);

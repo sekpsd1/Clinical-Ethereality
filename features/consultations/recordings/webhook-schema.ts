@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
 
 const recordingFileSchema = z.object({
   id: z.union([z.string().min(1).max(191), z.number().int().nonnegative()]),
@@ -66,13 +67,15 @@ export function parseZoomRecordingCompletedEvent(value: unknown): ZoomRecordingC
     eventKey,
     meetingId: String(parsed.data.payload.object.id),
     occurredAt,
-    files: parsed.data.payload.object.recording_files.map((file) => ({
-      providerRecordingId: String(file.id),
-      fileType: file.file_type.toLowerCase(),
-      recordingType: file.recording_type,
-      fileSizeBytes: file.file_size === undefined ? null : BigInt(file.file_size),
-      startedAt: toDate(file.recording_start),
-      endedAt: toDate(file.recording_end)
-    }))
+    files: parsed.data.payload.object.recording_files
+      .map((file) => ({
+        providerRecordingId: String(file.id),
+        fileType: file.file_type.toLowerCase(),
+        recordingType: file.recording_type,
+        fileSizeBytes: file.file_size === undefined ? null : BigInt(file.file_size),
+        startedAt: toDate(file.recording_start),
+        endedAt: toDate(file.recording_end)
+      }))
+      .filter(isEligibleConsultationRecordingMetadata)
   };
 }

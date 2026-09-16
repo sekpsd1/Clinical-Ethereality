@@ -1,6 +1,10 @@
 import { getAppEnv } from "@/lib/env/schema";
 import { getZoomServerAccessTokenIfConfigured } from "@/lib/zoom/meetings";
 import type { AuthorizedRecording } from "@/features/consultations/recordings/access";
+import {
+  isEligibleConsultationRecordingMetadata,
+  isEligibleConsultationRecordingMimeType
+} from "@/features/consultations/recordings/policy";
 
 export class RecordingProviderError extends Error {
   constructor(
@@ -29,11 +33,20 @@ export interface RecordingContentProvider {
 }
 
 type ZoomRecordingList = {
-  recording_files?: Array<{ id?: unknown; download_url?: unknown }>;
+  recording_files?: Array<{
+    id?: unknown;
+    download_url?: unknown;
+    file_type?: unknown;
+    recording_type?: unknown;
+  }>;
 };
 
 export const zoomRecordingContentProvider: RecordingContentProvider = {
   async open(recording, options = {}) {
+    if (!isEligibleConsultationRecordingMetadata(recording)) {
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+    }
+
     const env = getAppEnv();
     if (!env.ENABLE_ZOOM_CLOUD_RECORDING) {
       throw new RecordingProviderError("NOT_CONFIGURED");
@@ -53,8 +66,14 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
     if (!metadataResponse.ok) throw new RecordingProviderError("METADATA_UNAVAILABLE");
 
     const metadata = await metadataResponse.json() as ZoomRecordingList;
-    const file = metadata.recording_files?.find(
-      (candidate) => String(candidate.id) === recording.providerRecordingId
+    const file = metadata.recording_files?.find((candidate) =>
+      String(candidate.id) === recording.providerRecordingId &&
+      typeof candidate.file_type === "string" &&
+      typeof candidate.recording_type === "string" &&
+      isEligibleConsultationRecordingMetadata({
+        fileType: candidate.file_type,
+        recordingType: candidate.recording_type
+      })
     );
     if (!file || typeof file.download_url !== "string") {
       throw new RecordingProviderError("METADATA_UNAVAILABLE");
@@ -98,11 +117,17 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       throw new RecordingProviderError("CONTENT_UNAVAILABLE");
     }
 
+    const contentType = contentResponse.headers.get("content-type") ?? "application/octet-stream";
+    if (!isEligibleConsultationRecordingMimeType(contentType)) {
+      await contentResponse.body?.cancel().catch(() => undefined);
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+    }
+
     const contentLength = contentResponse.headers.get("content-length");
 
     return {
       body: contentResponse.body,
-      contentType: contentResponse.headers.get("content-type") ?? "application/octet-stream",
+      contentType,
       contentLength: contentLength && /^\d{1,20}$/.test(contentLength) ? contentLength : null,
       contentRange: safeContentRange,
       acceptRanges: contentResponse.headers.get("accept-ranges")?.toLowerCase() === "bytes" ? "bytes" : null,

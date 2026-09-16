@@ -9,7 +9,7 @@ export function parseRecordingRangeHeader(
   fileSizeBytes: bigint | null
 ): RecordingRangeResult {
   if (!value) return { kind: "none" };
-  if (!/^(mp4|m4a)$/i.test(fileType) || value.length > 128 || value.includes(",")) {
+  if (!/^mp4$/i.test(fileType) || value.length > 128 || value.includes(",")) {
     return { kind: "invalid" };
   }
 
