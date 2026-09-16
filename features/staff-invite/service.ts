@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { StaffInviteRequestData } from "@/features/staff-invite/schema";
+import { hasPendingDoctorInvitation } from "@/features/staff-invite/pending-doctor";
 
 function optionalText(value?: string) {
   return value && value.length > 0 ? value : undefined;
@@ -15,6 +16,10 @@ export async function submitStaffInviteRequest(input: {
   }
 
   await prisma.$transaction(async (tx) => {
+    if (await hasPendingDoctorInvitation(input.userId, tx)) {
+      throw new Error("PENDING_DOCTOR_INVITATION");
+    }
+
     const user = await tx.user.findUnique({
       where: {
         id: input.userId

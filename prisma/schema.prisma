@@ -15,6 +15,10 @@ enum UserRole {
   admin
 }
 
+enum DoctorInvitationRole {
+  doctor
+}
+
 enum AccountStatus {
   active
   pending_review
@@ -251,10 +255,37 @@ model User {
   fileAttachments             FileAttachment[]
   sentConsultMessages         ConsultationMessage[]        @relation("ConsultationMessageSender")
   phoneVerificationChallenges PhoneVerificationChallenge[]
+  createdDoctorInvitations     DoctorInvitation[]            @relation("DoctorInvitationCreator")
+  claimedDoctorInvitations     DoctorInvitation[]            @relation("DoctorInvitationClaimer")
+  revokedDoctorInvitations     DoctorInvitation[]            @relation("DoctorInvitationRevoker")
 
   @@index([role])
   @@index([status])
   @@index([phoneVerifiedAt])
+}
+
+model DoctorInvitation {
+  id              String               @id @default(cuid())
+  role            DoctorInvitationRole @default(doctor)
+  tokenHash       String               @unique @db.VarChar(64)
+  creationKeyHash String               @unique @db.VarChar(64)
+  createdById     String
+  claimedById     String?
+  revokedById     String?
+  expiresAt       DateTime             @db.DateTime(3)
+  claimedAt       DateTime?            @db.DateTime(3)
+  revokedAt       DateTime?            @db.DateTime(3)
+  createdAt       DateTime             @default(now()) @db.DateTime(3)
+  updatedAt       DateTime             @updatedAt @db.DateTime(3)
+
+  createdBy User  @relation("DoctorInvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  claimedBy User? @relation("DoctorInvitationClaimer", fields: [claimedById], references: [id], onDelete: SetNull)
+  revokedBy User? @relation("DoctorInvitationRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([createdById, createdAt])
+  @@index([claimedById, claimedAt])
+  @@index([revokedAt, expiresAt])
+  @@index([role, expiresAt])
 }
 
 model PhoneVerificationChallenge {

@@ -9,6 +9,8 @@ import { cn } from "@/lib/design-system/variants";
 import { AdminUserActionButtons } from "@/features/admin/AdminUserActionButtons";
 import { AdminStaffFileControls } from "@/features/admin/AdminStaffFileControls";
 import { AdminDoctorProfileForm } from "@/features/admin/AdminDoctorProfileForm";
+import { AdminDoctorInviteControls } from "@/features/admin/AdminDoctorInviteControls";
+import type { AdminDoctorInvitationItem } from "@/features/admin/users/doctor-invite-queries";
 import type {
   AdminStaffTab,
   AdminUserApprovalItem,
@@ -105,7 +107,17 @@ function formatStatus(user: AdminUserApprovalItem): string {
   return statusLabels[status] ?? status;
 }
 
-export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApprovalsData; currentUserId: string }) {
+export function AdminUserApprovals({
+  data,
+  currentUserId,
+  doctorInvitations,
+  doctorInviteIdempotencyKey
+}: {
+  data: AdminUserApprovalsData;
+  currentUserId: string;
+  doctorInvitations: AdminDoctorInvitationItem[];
+  doctorInviteIdempotencyKey: string;
+}) {
   const approvalSummary = [
     {
       label: "รอตรวจสอบ",
@@ -146,16 +158,21 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
         ))}
       </section>
 
+      <AdminDoctorInviteControls
+        invitations={doctorInvitations}
+        initialIdempotencyKey={doctorInviteIdempotencyKey}
+      />
+
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-label font-bold uppercase text-primary">บัญชีบุคลากร</p>
-            <h2 className="mt-1 font-headline text-lg font-bold text-text">แพทย์เชื่อม LINE แล้วผู้ดูแลจัดการข้อมูล</h2>
+            <h2 className="mt-1 font-headline text-lg font-bold text-text">ลิงก์สำหรับบุคลากรประเภทอื่น</h2>
           </div>
           <StatusBadge>LINE</StatusBadge>
         </div>
         <p className="mt-3 rounded-[8px] bg-primary/5 px-3 py-2 text-xs font-semibold leading-5 text-primary">
-          แพทย์เพียงเข้าสู่ระบบผ่าน LINE อย่างน้อยหนึ่งครั้ง จากนั้นค้นหาบัญชีด้านล่าง ผู้ดูแลระบบเป็นผู้กรอกข้อมูลวิชาชีพและอนุมัติทั้งหมด
+          เภสัชกรและผู้ดูแลระบบยังใช้ขั้นตอนส่งคำขอเดิม ส่วนแพทย์ต้องเริ่มจากลิงก์เชิญแบบใช้ครั้งเดียวด้านบน
         </p>
         <div className="mt-4 flex flex-col gap-2">
           {inviteLinks.map((item) => (
@@ -173,10 +190,10 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
       </section>
 
       <section className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
-        <p className="text-label font-bold uppercase text-primary">เพิ่มแพทย์จากบัญชี LINE</p>
-        <h2 className="mt-1 font-headline text-lg font-bold text-text">ค้นหาและเลือกบัญชี</h2>
+        <p className="text-label font-bold uppercase text-primary">ข้อมูลและการอนุมัติแพทย์</p>
+        <h2 className="mt-1 font-headline text-lg font-bold text-text">จัดการบัญชีที่รับคำเชิญแล้ว</h2>
         <p className="mt-2 text-xs font-semibold leading-5 text-muted">
-          ค้นด้วยชื่อจริง ชื่อที่แสดงใน LINE หรือ LINE user ID ระบบจะไม่ให้กรอกหรือสร้าง LINE user ID เอง
+          ค้นหาเฉพาะบัญชีที่เชื่อมผ่านลิงก์เชิญหรือเป็นแพทย์อยู่แล้ว จากนั้นกรอกข้อมูลวิชาชีพ อัปโหลดเอกสาร และอนุมัติผ่านฟอร์มเดิม
         </p>
         <form action="/admin/users" method="get" className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input type="hidden" name="status" value={data.filters.status} />
@@ -194,7 +211,7 @@ export function AdminUserApprovals({ data, currentUserId }: { data: AdminUserApp
 
         {data.filters.doctorQuery && data.doctorCandidates.length === 0 ? (
           <p className="mt-3 rounded-[8px] border border-dashed border-border p-4 text-center text-xs font-semibold text-muted">
-            ไม่พบบัญชีลูกค้าหรือแพทย์ที่เปิดใช้งานและตรงกับคำค้น
+            ไม่พบบัญชีที่รับคำเชิญหรือแพทย์ที่เปิดใช้งานและตรงกับคำค้น
           </p>
         ) : null}
 

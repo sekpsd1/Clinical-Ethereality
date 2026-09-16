@@ -101,7 +101,8 @@ export async function manageAdminDoctorProfile(
   if (
     target.status !== "active" ||
     !target.lineUserId ||
-    (target.role !== "customer" && target.role !== "doctor")
+    (target.role !== "customer" && target.role !== "doctor") ||
+    (target.role === "customer" && target.doctorProfile?.status !== "pending_review")
   ) {
     throw new DoctorProfileManagementError("TARGET_NOT_ELIGIBLE");
   }

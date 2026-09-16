@@ -13,6 +13,7 @@ const {
   CONSULTATION_PRESCRIPTION_OUTCOME_MIGRATION_TARGET,
   PATIENT_NATIONAL_ID_MIGRATION_TARGET,
   COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
+  DOCTOR_INVITATIONS_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -319,6 +320,41 @@ describe("Plesk runtime migration runner", () => {
 
     expect(result).toEqual({ shouldStart: true, migrationRun: true });
     expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("allows the reviewed Doctor invitations migration only when it is the latest source migration", () => {
+    const rootDir = createRunnerWorkspace([
+      COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
+      DOCTOR_INVITATIONS_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: DOCTOR_INVITATIONS_MIGRATION_TARGET },
+      spawnSync
+    });
+
+    expect(result).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when the prior migration target is used after Doctor invitations are present", () => {
+    const rootDir = createRunnerWorkspace([
+      COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
+      DOCTOR_INVITATIONS_MIGRATION_TARGET
+    ]);
+    const spawnSync = vi.fn();
+
+    const result = runPleskRuntimeMigration({
+      rootDir,
+      env: { [MIGRATION_APPROVAL_ENV]: COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET },
+      spawnSync,
+      error: vi.fn()
+    });
+
+    expect(result).toEqual({ shouldStart: false, migrationRun: false });
+    expect(spawnSync).not.toHaveBeenCalled();
   });
 
   it("fails closed and never logs secrets when Prisma migration fails", () => {

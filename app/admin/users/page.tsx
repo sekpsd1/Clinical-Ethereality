@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { AdminUserApprovals } from "@/features/admin/AdminUserApprovals";
 import {
   normalizeAdminStaffPage,
@@ -5,6 +6,7 @@ import {
   normalizeAdminStaffTab
 } from "@/features/admin/users/filters";
 import { getAdminUserApprovals } from "@/features/admin/users/queries";
+import { getAdminDoctorInvitations } from "@/features/admin/users/doctor-invite-queries";
 import { requireActiveAdminSession } from "@/lib/auth/guards";
 
 export default async function AdminUsersPage({
@@ -19,12 +21,22 @@ export default async function AdminUsersPage({
 }) {
   const session = await requireActiveAdminSession();
   const params = await searchParams;
-  const data = await getAdminUserApprovals({
-    page: normalizeAdminStaffPage(params.page),
-    query: normalizeAdminStaffQuery(params.q),
-    doctorQuery: normalizeAdminStaffQuery(params.doctorQ),
-    status: normalizeAdminStaffTab(params.status)
-  });
+  const [data, doctorInvitations] = await Promise.all([
+    getAdminUserApprovals({
+      page: normalizeAdminStaffPage(params.page),
+      query: normalizeAdminStaffQuery(params.q),
+      doctorQuery: normalizeAdminStaffQuery(params.doctorQ),
+      status: normalizeAdminStaffTab(params.status)
+    }),
+    getAdminDoctorInvitations(session.userId)
+  ]);
 
-  return <AdminUserApprovals data={data} currentUserId={session.userId} />;
+  return (
+    <AdminUserApprovals
+      data={data}
+      currentUserId={session.userId}
+      doctorInvitations={doctorInvitations}
+      doctorInviteIdempotencyKey={randomUUID()}
+    />
+  );
 }

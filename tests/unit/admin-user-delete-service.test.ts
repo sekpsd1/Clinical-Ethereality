@@ -55,13 +55,15 @@ function createTransaction() {
     orderItem: emptyModel(),
     orderShippingAddress: emptyModel(),
     doctorAvailability: emptyModel(),
-    doctorAvailabilityDateOverride: emptyModel()
+    doctorAvailabilityDateOverride: emptyModel(),
+    doctorInvitation: emptyModel()
   };
 }
 
 describe("Admin permanent user deletion service", () => {
   it("deletes a customer and related records without creating a replacement audit", async () => {
     const tx = createTransaction();
+    tx.doctorInvitation.findMany.mockResolvedValueOnce([{ id: "doctor-invite-1" }]);
     tx.order.findMany.mockResolvedValueOnce([
       {
         id: "order-pending",
@@ -106,6 +108,9 @@ describe("Admin permanent user deletion service", () => {
     expect(tx.authSession.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["session-1"] } } });
     expect(tx.phoneVerificationChallenge.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ["challenge-1"] } }
+    });
+    expect(tx.doctorInvitation.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["doctor-invite-1"] } }
     });
     expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: "user-1" } });
   });

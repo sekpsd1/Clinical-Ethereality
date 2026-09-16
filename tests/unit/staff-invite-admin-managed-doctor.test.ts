@@ -60,4 +60,18 @@ describe("staff invite role boundary", () => {
       expect.objectContaining({ userId: "line-user-1", data: expect.objectContaining({ role: "admin" }) })
     );
   });
+
+  it.each([
+    ["pharmacist", { firstName: "เภสัชกร", lastName: "ทดสอบ" }],
+    ["admin", {}]
+  ] as const)("does not let a pending Doctor submit a %s invite request", async (role, fields) => {
+    mocks.submitStaffInviteRequest.mockRejectedValueOnce(new Error("PENDING_DOCTOR_INVITATION"));
+
+    const response = await POST(request({ role, ...fields }));
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      message: expect.stringContaining("ยังส่งคำขอไม่ได้")
+    });
+  });
 });

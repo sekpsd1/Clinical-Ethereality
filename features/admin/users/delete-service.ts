@@ -183,7 +183,8 @@ export async function deleteUserPermanently(
     doctorOverrides,
     shippingAddresses,
     authSessions,
-    phoneChallenges
+    phoneChallenges,
+    doctorInvitations
   ] = await Promise.all([
       tx.consultAssessment.findMany({ where: { userId: target.id }, select: { id: true } }),
       tx.consultation.findMany({
@@ -214,7 +215,17 @@ export async function deleteUserPermanently(
         : Promise.resolve([]),
       tx.shippingAddress.findMany({ where: { userId: target.id }, select: { id: true } }),
       tx.authSession.findMany({ where: { userId: target.id }, select: { id: true } }),
-      tx.phoneVerificationChallenge.findMany({ where: { userId: target.id }, select: { id: true } })
+      tx.phoneVerificationChallenge.findMany({ where: { userId: target.id }, select: { id: true } }),
+      tx.doctorInvitation.findMany({
+        where: {
+          OR: [
+            { createdById: target.id },
+            { claimedById: target.id },
+            { revokedById: target.id }
+          ]
+        },
+        select: { id: true }
+      })
     ]);
 
   const consultationIds = ids(consultations);
@@ -427,6 +438,7 @@ export async function deleteUserPermanently(
     ...ids(shippingAddresses),
     ...ids(authSessions),
     ...ids(phoneChallenges),
+    ...ids(doctorInvitations),
     ...fileIds,
     ...slotLockIds,
     ...ids(doctorSchedules),
@@ -483,6 +495,7 @@ export async function deleteUserPermanently(
       ]
     }
   });
+  await tx.doctorInvitation.deleteMany({ where: { id: { in: ids(doctorInvitations) } } });
   await tx.fileAttachment.deleteMany({ where: { id: { in: fileIds } } });
   await tx.communityReport.deleteMany({ where: { id: { in: reportIds } } });
   await tx.like.deleteMany({

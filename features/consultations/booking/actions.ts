@@ -34,6 +34,10 @@ import {
   findActiveConsultationIntervalConflict,
   lockDoctorConsultationSchedule
 } from "@/features/consultations/booking/interval-lock";
+import {
+  requiresDoctorInvitationStatus,
+  pendingDoctorStatusPath
+} from "@/features/staff-invite/pending-doctor";
 
 class ConsultAssessmentRequiredError extends Error {
   constructor(readonly doctorId: string) {
@@ -63,6 +67,11 @@ function getBookingPath(doctorId?: string, bookingStatus?: string, reschedule?: 
 
 export async function reschedulePaidConsultationAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
+
+  if (session.role === "customer" && await requiresDoctorInvitationStatus(session.userId)) {
+    redirect(pendingDoctorStatusPath);
+  }
+
   assertPermission(session, "consultation:create:self");
   const parsed = reschedulePaidConsultationSchema.safeParse(formDataToObject(formData));
   const consultationId = String(formData.get("consultationId") ?? "");
@@ -110,6 +119,11 @@ export async function reschedulePaidConsultationAction(formData: FormData): Prom
 
 export async function createConsultationBookingAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
+
+  if (session.role === "customer" && await requiresDoctorInvitationStatus(session.userId)) {
+    redirect(pendingDoctorStatusPath);
+  }
+
   assertPermission(session, "consultation:create:self");
 
   const parsed = createConsultationBookingSchema.safeParse(formDataToObject(formData));

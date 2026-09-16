@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     InvalidAccessTokenError,
     InvalidRefreshSessionError,
     RefreshSessionConflictError,
+    requiresDoctorInvitationStatus: vi.fn(),
     rotateSessionFromToken: vi.fn(),
     setRotatedSessionCookies: vi.fn(),
     verifyAccessTokenAtEdge: vi.fn()
@@ -31,6 +32,11 @@ vi.mock("@/lib/auth/session", () => ({
   RefreshSessionConflictError: mocks.RefreshSessionConflictError,
   rotateSessionFromToken: mocks.rotateSessionFromToken,
   setRotatedSessionCookies: mocks.setRotatedSessionCookies
+}));
+
+vi.mock("@/features/staff-invite/pending-doctor", () => ({
+  requiresDoctorInvitationStatus: mocks.requiresDoctorInvitationStatus,
+  pendingDoctorStatusPath: "/doctor-invite/status"
 }));
 
 import { middleware } from "@/middleware";
@@ -85,6 +91,7 @@ function validAccessClaims(role: Role) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.requiresDoctorInvitationStatus.mockResolvedValue(false);
   mocks.setRotatedSessionCookies.mockImplementation((response: NextResponse, rotation: ReturnType<typeof createRotation>) => {
     response.cookies.set("ce_access_token", rotation.tokens.accessToken, { path: "/" });
     response.cookies.set("ce_refresh_token", rotation.tokens.refreshToken, { path: "/" });
@@ -183,6 +190,53 @@ describe("protected-route transparent session refresh", () => {
       expect(response.headers.get("x-middleware-next")).toBe("1");
     }
   });
+
+  it.each([
+    "/consult",
+    "/store/orders",
+    "/community",
+    "/notifications",
+    "/profile/settings",
+    "/admin/users",
+    "/doctor/consultations",
+    "/pharmacist/prescriptions",
+    "/staff-invite/admin"
+  ])("routes a persisted pending Doctor away from protected boundary %s", async (path) => {
+    mocks.verifyAccessTokenAtEdge.mockResolvedValueOnce(validAccessClaims("customer"));
+    mocks.requiresDoctorInvitationStatus.mockResolvedValueOnce(true);
+
+    const response = await middleware(createRequest(path, { access: "valid-access" }));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://app.example/doctor-invite/status");
+    expect(mocks.requiresDoctorInvitationStatus).toHaveBeenCalledWith("customer-user");
+  });
+
+  it("routes a pending Doctor after refresh without changing the customer session role", async () => {
+    mocks.rotateSessionFromToken.mockResolvedValueOnce(createRotation("customer"));
+    mocks.requiresDoctorInvitationStatus.mockResolvedValueOnce(true);
+
+    const response = await middleware(createRequest("/consult/assessment", { refresh: "valid-refresh" }));
+
+    expect(response.headers.get("location")).toBe("https://app.example/doctor-invite/status");
+    expect(response.cookies.get("ce_access_token")?.value).toBe("customer-new-access");
+    expect(mocks.requiresDoctorInvitationStatus).toHaveBeenCalledWith("customer-user");
+  });
+
+  it.each(["/doctor-invite", "/doctor-invite/status"])(
+    "keeps %s public with private no-store and no-referrer headers",
+    async (path) => {
+      const response = await middleware(createRequest(path));
+
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
+      expect(mocks.verifyAccessTokenAtEdge).not.toHaveBeenCalled();
+      expect(mocks.rotateSessionFromToken).not.toHaveBeenCalled();
+      expect(mocks.requiresDoctorInvitationStatus).not.toHaveBeenCalled();
+    }
+  );
 
   it("forwards the exact protected URL to server-side role guards", async () => {
     const path = "/admin/payments?status=pending&reviewer=me";

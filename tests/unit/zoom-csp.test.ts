@@ -6,8 +6,7 @@ describe("Zoom SDK CSP", () => {
   it("scopes Zoom's required CSP policy to the static SDK path only", async () => {
     const headers = await nextConfig.headers?.();
 
-    expect(headers).toHaveLength(1);
-    expect(headers?.[0]).toEqual({
+    expect(headers).toContainEqual({
       source: "/zoom-sdk/:path*",
       headers: [
         {

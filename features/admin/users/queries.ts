@@ -298,8 +298,14 @@ async function getDoctorAccountCandidates(query: string): Promise<AdminUserAppro
     {
       AND: [
         {
-          role: { in: ["customer", "doctor"] },
-          status: "active"
+          status: "active",
+          OR: [
+            { role: "doctor" },
+            {
+              role: "customer",
+              doctorProfile: { is: { status: "pending_review" } }
+            }
+          ]
         },
         getSearchWhere(query)
       ]

@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
         source: "/zoom-sdk/:path*",
         headers: [ZOOM_SDK_CSP_HEADER],
       },
+      {
+        source: "/doctor-invite/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
     ];
   },
   experimental: {

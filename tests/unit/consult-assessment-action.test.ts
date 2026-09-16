@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   consentFindUnique: vi.fn(),
   consentUpsert: vi.fn(),
   hasPermission: vi.fn(),
+  requiresDoctorInvitationStatus: vi.fn(),
   headers: vi.fn(),
   redirect: vi.fn(),
   revalidatePath: vi.fn(),
@@ -18,6 +19,10 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("next/headers", () => ({ headers: mocks.headers }));
 vi.mock("@/lib/auth/session", () => ({ requireCurrentSession: mocks.requireCurrentSession }));
 vi.mock("@/lib/permissions", () => ({ hasPermission: mocks.hasPermission }));
+vi.mock("@/features/staff-invite/pending-doctor", () => ({
+  requiresDoctorInvitationStatus: mocks.requiresDoctorInvitationStatus,
+  pendingDoctorStatusPath: "/doctor-invite/status"
+}));
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     consentRecord: { findUnique: mocks.consentFindUnique },
@@ -37,6 +42,7 @@ describe("consult assessment action", () => {
     vi.clearAllMocks();
     mocks.requireCurrentSession.mockResolvedValue({ userId: "customer-1", role: "customer" });
     mocks.hasPermission.mockReturnValue(true);
+    mocks.requiresDoctorInvitationStatus.mockResolvedValue(false);
     mocks.assessmentCreate.mockResolvedValue({ id: "assessment-1" });
     mocks.consentFindUnique.mockResolvedValue({ id: "consent-1", revokedAt: null });
     mocks.consentUpsert.mockResolvedValue({ id: "consent-1" });

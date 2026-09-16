@@ -5,6 +5,10 @@ import { authCookieNames } from "@/lib/auth/cookies";
 import { getPublicAppOrigin } from "@/lib/auth/line-oauth";
 import { authReturnPathHeader } from "@/lib/auth/return-path";
 import {
+  requiresDoctorInvitationStatus,
+  pendingDoctorStatusPath
+} from "@/features/staff-invite/pending-doctor";
+import {
   InvalidRefreshSessionError,
   RefreshSessionConflictError,
   rotateSessionFromToken,
@@ -13,6 +17,8 @@ import {
 import type { Role } from "@/lib/permissions/roles";
 
 const protectedPrefixes = ["/consult", "/store", "/community", "/notifications", "/profile"];
+const protectedStaffInvitePrefix = "/staff-invite";
+const doctorInvitePrefix = "/doctor-invite";
 const maxConcurrentRefreshRetries = 3;
 const concurrentRefreshRetryBaseMs = 75;
 
@@ -63,6 +69,21 @@ function createAuthRedirect(request: NextRequest): NextResponse {
 
 function createRoleHomeRedirect(request: NextRequest, role: Role): NextResponse {
   return NextResponse.redirect(new URL(getRoleHomePath(role), getPublicAppOrigin(request.nextUrl.origin)));
+}
+
+function createPendingDoctorRedirect(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL(pendingDoctorStatusPath, getPublicAppOrigin(request.nextUrl.origin)));
+}
+
+function applyDoctorInvitePrivacyHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  return response;
+}
+
+async function isPendingDoctor(userId: string, role: Role): Promise<boolean> {
+  return role === "customer" && requiresDoctorInvitationStatus(userId);
 }
 
 function createRefreshedRequestRedirect(request: NextRequest): NextResponse {
@@ -128,9 +149,11 @@ async function refreshProtectedRequest(
 
   try {
     const rotation = await rotateSessionFromToken(refreshToken);
-    const response = isAllowedRole(roleBoundary, rotation.session.role)
-      ? createRefreshedRequestRedirect(request)
-      : createRoleHomeRedirect(request, rotation.session.role);
+    const response = await isPendingDoctor(rotation.session.userId, rotation.session.role)
+      ? createPendingDoctorRedirect(request)
+      : isAllowedRole(roleBoundary, rotation.session.role)
+        ? createRefreshedRequestRedirect(request)
+        : createRoleHomeRedirect(request, rotation.session.role);
 
     return setRotatedSessionCookies(response, rotation);
   } catch (error) {
@@ -150,10 +173,16 @@ async function refreshProtectedRequest(
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (pathStartsWith(pathname, doctorInvitePrefix)) {
+    return applyDoctorInvitePrivacyHeaders(NextResponse.next());
+  }
+
   const roleBoundary = roleProtectedPrefixes.find((boundary) => pathStartsWith(pathname, boundary.prefix));
   const isProtectedCustomerRoute = protectedPrefixes.some((prefix) => pathStartsWith(pathname, prefix));
+  const isProtectedStaffInviteRoute = pathStartsWith(pathname, protectedStaffInvitePrefix);
 
-  if (!isProtectedCustomerRoute && !roleBoundary) {
+  if (!isProtectedCustomerRoute && !isProtectedStaffInviteRoute && !roleBoundary) {
     return NextResponse.next();
   }
 
@@ -165,6 +194,10 @@ export async function middleware(request: NextRequest) {
 
   try {
     const claims = await verifyAccessTokenAtEdge(accessToken);
+
+    if (await isPendingDoctor(claims.userId, claims.role)) {
+      return clearRefreshRetryCookie(request, createPendingDoctorRedirect(request));
+    }
 
     if (!isAllowedRole(roleBoundary, claims.role)) {
       return clearRefreshRetryCookie(request, createRoleHomeRedirect(request, claims.role));
@@ -190,6 +223,8 @@ export const config = {
     "/profile/:path*",
     "/admin/:path*",
     "/doctor/:path*",
-    "/pharmacist/:path*"
+    "/pharmacist/:path*",
+    "/staff-invite/:path*",
+    "/doctor-invite/:path*"
   ]
 };

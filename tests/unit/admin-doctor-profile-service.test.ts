@@ -50,7 +50,14 @@ function createTransaction(input?: {
           fullName: null,
           role: "customer" as const,
           status: "active" as const,
-          doctorProfile: null
+          doctorProfile: {
+            id: "doctor-profile-pending-1",
+            specialty: null,
+            licenseNumber: null,
+            bio: null,
+            status: "pending_review" as const,
+            approvedAt: null
+          }
         }
       : input.target;
   const userFindUnique = vi.fn().mockResolvedValueOnce(actor).mockResolvedValueOnce(target);
@@ -128,6 +135,24 @@ describe("manageAdminDoctorProfile", () => {
     await expect(
       manageAdminDoctorProfile(tx, { actorId: "admin-1", data: completeData })
     ).rejects.toMatchObject({ code: "TARGET_NOT_ELIGIBLE" });
+  });
+
+  it("rejects an active customer that has not claimed a Doctor invitation", async () => {
+    const tx = createTransaction({
+      target: {
+        id: "doctor-user-1",
+        lineUserId: "line-real-1",
+        fullName: null,
+        role: "customer",
+        status: "active",
+        doctorProfile: null
+      }
+    });
+
+    await expect(
+      manageAdminDoctorProfile(tx, { actorId: "admin-1", data: completeData })
+    ).rejects.toMatchObject({ code: "TARGET_NOT_ELIGIBLE" });
+    expect(tx.doctor.upsert).not.toHaveBeenCalled();
   });
 
   it("rejects a license number already owned by another doctor", async () => {

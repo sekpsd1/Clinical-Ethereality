@@ -26,6 +26,10 @@ import {
   normalizeAssessmentDoctorId
 } from "@/features/consultations/assessment/routes";
 import { getConsultAssessmentExpiresAt } from "@/features/consultations/assessment/validity";
+import {
+  requiresDoctorInvitationStatus,
+  pendingDoctorStatusPath
+} from "@/features/staff-invite/pending-doctor";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -39,6 +43,10 @@ function getClientIp(headerStore: Headers): string | null {
 
 export async function acceptConsultAssessmentHealthConsentAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
+
+  if (session.role === "customer" && await requiresDoctorInvitationStatus(session.userId)) {
+    redirect(pendingDoctorStatusPath);
+  }
 
   if (!hasPermission(session, "consultation:create:self")) {
     redirect(getAssessmentRoleRedirectPath(session.role) as Route);
@@ -122,6 +130,10 @@ export async function acceptConsultAssessmentHealthConsentAction(formData: FormD
 
 export async function submitConsultAssessmentAction(formData: FormData): Promise<void> {
   const session = await requireCurrentSession();
+
+  if (session.role === "customer" && await requiresDoctorInvitationStatus(session.userId)) {
+    redirect(pendingDoctorStatusPath);
+  }
 
   if (!hasPermission(session, "consultation:create:self")) {
     redirect(getAssessmentRoleRedirectPath(session.role) as Route);
