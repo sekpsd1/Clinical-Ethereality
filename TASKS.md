@@ -573,3 +573,11 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Deny ineligible direct streams, downloads, byte ranges, external-handoff issuance/exchange, and provider metadata/content mismatches while preserving MP4 authorization, replay protection, auditing, and range behavior.
 - [x] Cover mixed MP4/M4A/TIMELINE ingestion and UI, Doctor/Admin queries, provider enforcement, authenticated access, and external handoff with focused regression tests.
 - [ ] Release and authenticated Doctor/Admin UAT remain separately gated. Existing M4A/TIMELINE metadata and provider files are intentionally not deleted; stopping Zoom from creating those artifacts requires a separately approved provider-setting change.
+
+## Full Telemedicine consent text on booking (code only, 2026-09-16)
+
+- [x] Transcribe the approved 2026-09-09 Telemedicine consent source without paraphrasing or omitting its seven numbered sections and two final choices.
+- [x] Use one typed content source for both customer booking and the public `/telemedicine-consent` page, with the system's actual automatic recording and five-year retention disclosure clearly separated from the source wording.
+- [x] Replace the compact adult consent card with a bounded, labelled, focusable, keyboard-scrollable region above the existing two-column 15-minute slots and keep one required acceptance checkbox below it.
+- [x] Preserve server-side current-version validation, per-booking evidence, minor guardian blocking, and paid-consultation rescheduling without a new consent.
+- [x] Add focused full-text, accessibility, adult/minor, reschedule, disabled-submit, and slot-layout regression coverage. Production release and authenticated UAT remain separately gated.

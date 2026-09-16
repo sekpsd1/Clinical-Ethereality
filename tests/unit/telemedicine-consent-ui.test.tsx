@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BookingTimeSlotForm } from "@/features/consultations/booking/BookingTimeSlotForm";
 import type { DoctorBookingData } from "@/features/consultations/booking/types";
+import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
+import {
+  telemedicineConsentFinalChoices,
+  telemedicineConsentSections
+} from "@/features/consultations/consent/content";
 
 const data: DoctorBookingData = {
   doctor: { id: "cmdoctor123456789012345", name: "แพทย์ทดสอบ", specialty: "เวชกรรม", fee: "800 บาท", avatarUrl: "/doctor.png" },
@@ -39,14 +44,29 @@ describe("telemedicine consent booking UI", () => {
     expect(html).not.toContain("30 นาที");
   });
 
-  it("shows the automatic audio/video/chat recording disclosure to an adult", () => {
+  it("shows the complete scrollable consent, current disclosure, and acceptance fields to an adult", () => {
     const html = renderToStaticMarkup(
       <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} />
     );
-    expect(html).toContain("ความยินยอม Telemedicine");
+    for (const section of telemedicineConsentSections) {
+      expect(html).toContain(section.title);
+      for (const block of section.blocks) {
+        expect(html).toContain(block.text);
+      }
+    }
+    for (const choice of telemedicineConsentFinalChoices) {
+      expect(html).toContain(choice);
+    }
     expect(html).toContain("เสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส");
-    expect(html).toContain("telemedicineConsentVersion");
-    expect(html).toContain("required");
+    expect(html).toContain("role=\"region\"");
+    expect(html).toContain("tabindex=\"0\"");
+    expect(html).toContain("aria-labelledby=\"booking-telemedicine-consent-title\"");
+    expect(html).toContain("aria-describedby=\"booking-telemedicine-consent-instructions\"");
+    expect(html).toContain("overflow-y-scroll");
+    expect(html).toContain("name=\"telemedicineConsentAccepted\"");
+    expect(html).toContain(`name="telemedicineConsentVersion" value="${TELEMEDICINE_CONSENT_VERSION}"`);
+    expect(html).toContain("required=\"\"");
+    expect(html).toMatch(/type="submit" disabled=""/);
   });
 
   it("shows a clear guardian requirement and no self-consent checkbox for a minor", () => {
@@ -63,6 +83,7 @@ describe("telemedicine consent booking UI", () => {
       <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} rescheduleConsultationId="consultation-1" />
     );
     expect(html).not.toContain("telemedicineConsentVersion");
+    expect(html).not.toContain("booking-telemedicine-consent-title");
     expect(html).toContain("ยืนยันเวลาใหม่");
   });
 });

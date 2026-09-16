@@ -13,6 +13,8 @@ import { BookingIdentityVerification } from "@/features/identity-verification/Bo
 import type { PatientVerificationStatus } from "@/features/identity-verification/service";
 import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
+import { TelemedicineConsentContent } from "@/features/consultations/consent/TelemedicineConsentContent";
+import { telemedicineConsentFinalChoices } from "@/features/consultations/consent/content";
 
 const staticTimeSlots = ["09:00", "09:15", "09:30", "09:45", "10:00", "10:15"];
 
@@ -99,23 +101,47 @@ export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookin
 
         {requiresNewConsent && verification.isVerified ? (
           isAdult ? (
-            <label className="flex gap-3 rounded-[20px] border border-primary/20 bg-white/75 p-4 text-sm leading-6 text-[#3e494a] shadow-sm">
-              <input
-                type="checkbox"
-                name="telemedicineConsentAccepted"
-                required
-                checked={consentAccepted}
-                onChange={(event) => setConsentAccepted(event.target.checked)}
-                className="mt-1 size-5 shrink-0 accent-primary"
-              />
-              <span>
-                ข้าพเจ้าอ่านและยอมรับ{" "}
-                <Link href={"/telemedicine-consent" as Route} target="_blank" className="font-bold text-primary underline underline-offset-4">
-                  ความยินยอม Telemedicine
-                </Link>{" "}
-                ฉบับ {TELEMEDICINE_CONSENT_VERSION} ซึ่งครอบคลุมการบันทึกเสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส และเก็บรักษา 5 ปี
-              </span>
-            </label>
+            <div className="space-y-3">
+              <section className="rounded-[20px] border border-primary/25 bg-white/80 p-4 shadow-sm" aria-labelledby="booking-telemedicine-consent-title">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold leading-5 text-[#616363]">
+                  <p id="booking-telemedicine-consent-instructions">เลื่อนภายในกรอบเพื่ออ่านเนื้อหาทั้งหมด</p>
+                  <Link
+                    href={"/telemedicine-consent" as Route}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-primary underline underline-offset-4"
+                  >
+                    เปิดหน้าเอกสารเต็ม
+                  </Link>
+                </div>
+                <div
+                  role="region"
+                  tabIndex={0}
+                  aria-labelledby="booking-telemedicine-consent-title"
+                  aria-describedby="booking-telemedicine-consent-instructions"
+                  className="max-h-[22rem] overflow-y-scroll overscroll-contain rounded-[14px] border border-[#bdc9ca]/50 bg-white px-4 py-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <TelemedicineConsentContent titleId="booking-telemedicine-consent-title" />
+                </div>
+                <p className="mt-3 text-xs font-semibold leading-5 text-[#616363]" aria-hidden="true">
+                  พื้นที่ข้อความด้านบนเลื่อนอ่านได้
+                </p>
+              </section>
+
+              <label className="flex gap-3 rounded-[20px] border border-primary/20 bg-white/75 p-4 text-sm leading-6 text-[#3e494a] shadow-sm">
+                <input
+                  type="checkbox"
+                  name="telemedicineConsentAccepted"
+                  required
+                  checked={consentAccepted}
+                  onChange={(event) => setConsentAccepted(event.target.checked)}
+                  className="mt-1 size-5 shrink-0 accent-primary"
+                />
+                <span>
+                  ข้าพเจ้าได้อ่านและเข้าใจข้อความข้างต้น ฉบับ {TELEMEDICINE_CONSENT_VERSION} และเลือก “{telemedicineConsentFinalChoices[0]}” สำหรับการจองนี้
+                </span>
+              </label>
+            </div>
           ) : (
             <p className="rounded-[20px] border border-danger/20 bg-danger/5 p-4 text-sm font-semibold leading-6 text-danger">
               ผู้มีอายุต่ำกว่า 18 ปีไม่สามารถให้ความยินยอมเองได้ การจองต้องได้รับความยินยอมจากผู้ปกครองตามกฎหมาย กรุณาติดต่อแอดมินก่อนดำเนินการ
