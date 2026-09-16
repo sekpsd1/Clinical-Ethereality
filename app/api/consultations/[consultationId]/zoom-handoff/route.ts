@@ -13,6 +13,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const consultationIdSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{8,191}$/);
+const idempotencyKeySchema = z.string().uuid();
 
 export async function POST(
   request: NextRequest,
@@ -35,8 +36,12 @@ export async function POST(
   }
 
   try {
+    const idempotencyKey = idempotencyKeySchema.safeParse(
+      request.headers.get("idempotency-key")
+    );
     const handoff = await issueZoomExternalHandoff(parsedId.data, {
-      ipAddress: getRequestIpAddress(request)
+      ipAddress: getRequestIpAddress(request),
+      idempotencyKey: idempotencyKey.success ? idempotencyKey.data : null
     });
     const launchUrl = new URL("/zoom-sdk/index.html", getPublicAppOrigin(request.nextUrl.origin));
     launchUrl.searchParams.set("consultation", handoff.consultationId);

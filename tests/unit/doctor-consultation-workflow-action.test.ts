@@ -1,15 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  applyTransition: vi.fn(),
-  auditFindFirst: vi.fn(),
-  createZoomMeeting: vi.fn(),
-  findUnique: vi.fn(),
-  revalidatePath: vi.fn(),
-  requireDoctorSession: vi.fn(),
-  transaction: vi.fn(),
-  userFindUnique: vi.fn()
-}));
+const mocks = vi.hoisted(() => {
+  const auditFindFirst = vi.fn();
+  const findUnique = vi.fn();
+  const userFindUnique = vi.fn();
+  const queryRaw = vi.fn();
+
+  return {
+    applyTransition: vi.fn(),
+    auditFindFirst,
+    createZoomMeeting: vi.fn(),
+    findUnique,
+    queryRaw,
+    revalidatePath: vi.fn(),
+    requireDoctorSession: vi.fn(),
+    transaction: vi.fn(),
+    transactionClient: {
+      $queryRaw: queryRaw,
+      consultation: { findUnique },
+      user: { findUnique: userFindUnique },
+      auditLog: { findFirst: auditFindFirst }
+    },
+    userFindUnique
+  };
+});
 
 vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath
@@ -114,7 +128,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       status: "active"
     });
     mocks.transaction.mockImplementation(async (operation: (tx: object) => Promise<unknown>) =>
-      operation({})
+      operation(mocks.transactionClient)
     );
   });
 
@@ -138,7 +152,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       message: "เปิดห้องได้ก่อนเวลานัด 5 นาที กรุณารอจนถึงช่วงเวลาเตรียมห้อง"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
     expect(mocks.applyTransition).not.toHaveBeenCalled();
   });
 
@@ -168,12 +182,42 @@ describe("transitionDoctorConsultationAction start gate", () => {
     }));
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
-      isolationLevel: "Serializable"
+      isolationLevel: "Serializable",
+      maxWait: 5_000,
+      timeout: 40_000
     });
     expect(mocks.applyTransition).toHaveBeenCalledTimes(1);
     expect(mocks.applyTransition).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ identityConfirmed: true })
+    );
+  });
+
+  it("creates one Zoom meeting under the consultation lock and continues directly to handoff", async () => {
+    const scheduledAt = new Date("2030-01-01T10:00:00.000Z");
+    vi.setSystemTime(new Date("2030-01-01T09:55:00.000Z"));
+    mocks.findUnique.mockResolvedValue(scheduledConsultation(scheduledAt));
+    mocks.createZoomMeeting.mockResolvedValue({
+      meetingId: "zoom-meeting-1",
+      password: "pass",
+      joinUrl: "https://zoom.example/join"
+    });
+
+    const result = await transitionDoctorConsultationAction(
+      { status: "idle", message: "" },
+      startFormData()
+    );
+
+    expect(result).toEqual({
+      status: "success",
+      message: "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว กำลังเปิดเบราว์เซอร์ภายนอก...",
+      launchConsultationId: "consultation-1"
+    });
+    expect(mocks.queryRaw).toHaveBeenCalledOnce();
+    expect(mocks.createZoomMeeting).toHaveBeenCalledOnce();
+    expect(mocks.applyTransition).toHaveBeenCalledOnce();
+    expect(mocks.queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.createZoomMeeting.mock.invocationCallOrder[0]
     );
   });
 
@@ -215,7 +259,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       message: "ข้อมูลยืนยันตัวตนยังไม่ครบ กรุณาให้ลูกค้ายืนยันตัวตนก่อน"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("blocks a crafted true flag when this actor did not reveal identity recently", async () => {
@@ -235,7 +279,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       message: "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("requires a fresh reveal when the customer corrected legal identity before Zoom creation", async () => {
@@ -257,7 +301,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       message: "กรุณาเปิดข้อมูลและยืนยันตัวตนกับผู้ป่วยก่อนเริ่มการปรึกษา"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("does not create another Zoom meeting when the consultation already has one", async () => {
@@ -275,7 +319,8 @@ describe("transitionDoctorConsultationAction start gate", () => {
 
     expect(result).toMatchObject({
       status: "success",
-      message: "เริ่มการปรึกษาและเปิดห้อง Zoom เดิมแล้ว"
+      message: "ใช้ห้อง Zoom เดิมแล้ว กำลังเปิดเบราว์เซอร์ภายนอก...",
+      launchConsultationId: "consultation-1"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
@@ -296,7 +341,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       status: "error",
       message: "ยังเริ่มการปรึกษาไม่ได้ กรุณาตรวจสถานะนัดและการตั้งค่า Zoom"
     });
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
     expect(mocks.applyTransition).not.toHaveBeenCalled();
   });
 
@@ -316,7 +361,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
       message: "นัดหมายนี้ไม่มีเวลาเริ่มที่ยืนยันแล้ว กรุณาให้ทีมงานตรวจสอบก่อน"
     });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("blocks a doctor assigned to a different consultation before Zoom creation", async () => {
@@ -337,7 +382,7 @@ describe("transitionDoctorConsultationAction start gate", () => {
 
     expect(result.status).toBe("error");
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("blocks a non-scheduled consultation before Zoom creation", async () => {
@@ -354,10 +399,10 @@ describe("transitionDoctorConsultationAction start gate", () => {
 
     expect(result.status).toBe("error");
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
-  it("rejects a repeated start after the consultation is already live without creating Zoom", async () => {
+  it("reuses a live consultation and meeting without duplicate creation or workflow writes", async () => {
     vi.setSystemTime(new Date("2030-01-01T10:01:00.000Z"));
     mocks.findUnique.mockResolvedValue({
       ...scheduledConsultation(new Date("2030-01-01T10:00:00.000Z")),
@@ -370,9 +415,13 @@ describe("transitionDoctorConsultationAction start gate", () => {
       startFormData()
     );
 
-    expect(result.status).toBe("error");
+    expect(result).toMatchObject({
+      status: "success",
+      launchConsultationId: "consultation-1"
+    });
     expect(mocks.createZoomMeeting).not.toHaveBeenCalled();
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
+    expect(mocks.applyTransition).not.toHaveBeenCalled();
   });
 
   it("returns the both-left attendance reason when a crafted completion request fails server verification", async () => {

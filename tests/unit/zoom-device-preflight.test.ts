@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   checkZoomCameraAndMicrophone,
@@ -19,6 +21,22 @@ function mediaStream(audioTracks: number, videoTracks: number) {
 }
 
 describe("Zoom camera and microphone preflight", () => {
+  it("keeps permission and join behind one primary user gesture with fallback-only device testing", () => {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "zoom-client", "src", "main.ts"),
+      "utf8"
+    );
+
+    expect(source).toContain("async function checkDevicesAndJoin()");
+    expect(source).toContain("await checkZoomCameraAndMicrophone");
+    expect(source).toContain("await connectToMeeting(consultationId)");
+    expect(source).toContain('onClick: checkDevicesAndJoin');
+    expect(source).toContain('"ตรวจอุปกรณ์และเข้าห้อง Zoom"');
+    expect(source).toContain('mediaState === "error" || state === "error"');
+    expect(source).toContain('onClick: checkDevices');
+    expect(source).not.toContain('onClick: joinMeeting');
+  });
+
   it("requires both devices and releases the temporary tracks before Zoom starts", async () => {
     const { stream, tracks } = mediaStream(1, 1);
     const getUserMedia = vi.fn().mockResolvedValue(stream);

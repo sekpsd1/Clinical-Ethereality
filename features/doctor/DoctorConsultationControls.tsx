@@ -1,16 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import type { Route } from "next";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ArrowRight, CheckCircle2, Clock3, UserRoundX, Video } from "lucide-react";
+import { CheckCircle2, Clock3, UserRoundX, Video } from "lucide-react";
 import {
   transitionDoctorConsultationAction,
   type DoctorConsultationWorkflowActionState
 } from "@/features/doctor/consultations/workflow-actions";
 import { cn } from "@/lib/design-system/variants";
 import type { DoctorConsultationItem } from "@/features/doctor/consultations/types";
+import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 
 const initialState: DoctorConsultationWorkflowActionState = {
   status: "idle",
@@ -230,15 +229,18 @@ export function DoctorConsultationControls({
         >
           {state.message}
         </p>
-        {state.status === "success" && state.roomHref ? (
-          <Link
-            href={state.roomHref as Route}
+        {state.status === "success" && state.launchConsultationId ? (
+          <ZoomExternalLauncher
+            consultationId={state.launchConsultationId}
+            autoLaunch
+          />
+        ) : state.status === "success" && state.roomHref ? (
+          <a
+            href={state.roomHref}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-payment-active"
           >
-            <Video aria-hidden="true" className="size-4" strokeWidth={2.1} />
-            เข้าห้องปรึกษา/Zoom ตอนนี้
-            <ArrowRight aria-hidden="true" className="size-4" strokeWidth={2.1} />
-          </Link>
+            เปิดแชทการปรึกษา
+          </a>
         ) : (
           transition ? (
             <WorkflowSubmitButton

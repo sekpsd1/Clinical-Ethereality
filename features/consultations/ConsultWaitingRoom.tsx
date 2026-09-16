@@ -1,7 +1,4 @@
-import Link from "next/link";
-import type { Route } from "next";
 import {
-  Camera,
   Lock,
   MonitorCheck,
   Settings,
@@ -10,6 +7,7 @@ import {
 } from "lucide-react";
 import type { ConsultationWaitingRoomData } from "@/features/consultations/waiting-room/types";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
+import { ZoomExternalLauncher } from "@/features/consultations/zoom/ZoomExternalLauncher";
 
 export function ConsultWaitingRoom({ data }: { data: ConsultationWaitingRoomData }) {
   return (
@@ -152,21 +150,12 @@ function PreparationChecklist() {
 function FooterActions({ data }: { data: ConsultationWaitingRoomData }) {
   return (
     <section className="flex flex-col gap-4 pt-2">
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#e0e3e5] px-6 py-4 text-sm font-bold leading-5 text-primary"
-      >
-        <Camera aria-hidden="true" className="size-5" strokeWidth={2.15} />
-        ทดสอบกล้องและไมโครโฟน
-      </button>
       <div className="flex flex-col gap-2">
-        {data.liveHref ? (
-          <Link
-            href={data.liveHref as Route}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-gradient py-5 text-lg font-bold leading-7 text-white shadow-booking"
-          >
-            เข้าสู่ห้องปรึกษา
-          </Link>
+        {data.canEnterLive ? (
+          <ZoomExternalLauncher
+            consultationId={data.consultationId}
+            waitingRoom
+          />
         ) : (
           <span
             aria-disabled="true"
@@ -177,7 +166,7 @@ function FooterActions({ data }: { data: ConsultationWaitingRoomData }) {
           </span>
         )}
         <p className="text-center text-[11px] leading-[16.5px] text-[#3e494a]">
-          {data.canEnterLive ? "พร้อมเข้าสู่ห้องปรึกษา" : "ปุ่มจะเปิดให้กดเมื่อถึงเวลานัด"}
+          {data.canEnterLive ? "พร้อมเปิด Zoom ในเบราว์เซอร์ภายนอก" : "ปุ่มจะเปิดให้กดเมื่อถึงเวลานัด"}
         </p>
       </div>
     </section>

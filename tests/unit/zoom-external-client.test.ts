@@ -13,11 +13,13 @@ import {
   ZoomExternalLeaveError
 } from "../../zoom-client/src/handoff";
 import {
+  buildAndroidLineChromeIntentUrl,
   buildIosLineExternalBrowserUrl,
   getZoomLaunchTarget,
   isAndroidUserAgent,
   isLineInAppBrowser,
-  isTrustedZoomLaunchUrl
+  isTrustedZoomLaunchUrl,
+  navigateToZoomLaunchTarget
 } from "@/features/consultations/zoom/ZoomExternalLauncher";
 import { buildLineProfileReturnUrl } from "@/features/consultations/zoom/line-return";
 
@@ -33,11 +35,12 @@ describe("Zoom external-browser client helpers", () => {
     expect(launcherSource).not.toContain("liff.init");
     expect(launcherSource).not.toContain("liff.openWindow");
     expect(launcherSource).not.toContain("LIFF_CONTEXT_UNAVAILABLE");
-    expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(2);
+    expect(launcherSource.match(/onClick=\{openZoom\}/g)).toHaveLength(4);
     expect(launcherSource.match(/เริ่มวิดีโอคอลกับแพทย์/g)).toHaveLength(2);
     expect(launcherSource).not.toContain("เปิดวิดีโอคอลในเบราว์เซอร์ภายนอก");
     expect(launcherSource).not.toContain('target="_blank"');
-    expect(launcherSource).toContain("window.location.assign(launchTarget)");
+    expect(launcherSource).toContain("navigateToZoomLaunchTarget(launchTarget, safeLaunchUrl");
+    expect(launcherSource).toContain('headers["Idempotency-Key"]');
     expect(launcherSource).toContain("เริ่มวิดีโอคอลกับแพทย์");
     expect(launcherSource).toContain("col-start-1 row-start-2");
     expect(zoomClientSource).toContain("วิดีโอคอลปรึกษาแพทย์");
@@ -233,7 +236,7 @@ describe("Zoom external-browser client helpers", () => {
     ).toBeNull();
   });
 
-  it("routes iPhone LINE externally while preserving the existing Android and web targets", () => {
+  it("routes iPhone LINE externally, Android LINE directly to Chrome, and preserves the web target", () => {
     const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
     const launchUrl = `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`;
     const iosTarget = getZoomLaunchTarget(
@@ -244,7 +247,7 @@ describe("Zoom external-browser client helpers", () => {
 
     expect(new URL(iosTarget ?? "").searchParams.get("openExternalBrowser")).toBe("1");
     expect(getZoomLaunchTarget(launchUrl, "https://app.example.test", "Mozilla/5.0 (Linux; Android 15) Line/15.20.1")).toBe(
-      launchUrl
+      buildAndroidLineChromeIntentUrl(launchUrl, "https://app.example.test")
     );
     expect(getZoomLaunchTarget(launchUrl, "https://app.example.test", "Mozilla/5.0 Safari/605.1.15")).toBe(launchUrl);
     expect(
@@ -254,6 +257,23 @@ describe("Zoom external-browser client helpers", () => {
         "Mozilla/5.0 (iPhone) Line/15.20.1"
       )
     ).toBeNull();
+  });
+
+  it("falls back to the trusted HTTPS handoff when the Android intent cannot launch", () => {
+    const ticket = `v1.00000000-0000-4000-8000-000000000000.${"a".repeat(43)}`;
+    const launchUrl = `https://app.example.test/zoom-sdk/index.html?consultation=consultation-1#handoff=${ticket}`;
+    const intentUrl = buildAndroidLineChromeIntentUrl(launchUrl, "https://app.example.test")!;
+    const assignments: string[] = [];
+    const scheduled: Array<() => void> = [];
+
+    navigateToZoomLaunchTarget(intentUrl, launchUrl, {
+      assign: (url) => assignments.push(url),
+      isVisible: () => true,
+      schedule: (callback) => scheduled.push(callback)
+    });
+    scheduled[0]?.();
+
+    expect(assignments).toEqual([intentUrl, launchUrl]);
   });
 
   it("accepts a fragment ticket from Android Chrome and rejects query/request URL tickets", () => {

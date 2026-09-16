@@ -164,12 +164,12 @@ describe("Doctor consultation controls", () => {
     expect(workflowMocks.dispatch).toHaveBeenCalledTimes(1);
   });
 
-  it("shows an immediate room route after a successful start", () => {
+  it("automatically continues to the secure Zoom handoff after a successful start", () => {
     workflowMocks.useActionState.mockReturnValue([
       {
         status: "success",
-        message: "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว",
-        roomHref: "/consult/live?consultation=consultation-1"
+        message: "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว กำลังเปิดเบราว์เซอร์ภายนอก...",
+        launchConsultationId: "consultation-1"
       },
       workflowMocks.dispatch,
       false
@@ -179,8 +179,9 @@ describe("Doctor consultation controls", () => {
       <DoctorConsultationControls consultation={consultation("scheduled")} />
     );
 
-    expect(html).toContain("เข้าห้องปรึกษา/Zoom ตอนนี้");
-    expect(html).toContain("/consult/live?consultation=consultation-1");
+    expect(html).toContain("กำลังเปิดเบราว์เซอร์ภายนอก");
+    expect(html).not.toContain("/consult/live?consultation=consultation-1");
+    expect(html).not.toContain("เข้าห้องปรึกษา/Zoom ตอนนี้");
     expect(html).not.toContain(">เริ่มการปรึกษา</button>");
   });
 

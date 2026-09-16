@@ -43,7 +43,8 @@ describe("ConsultWaitingRoom", () => {
       />
     );
 
-    expect(html).toContain("href=\"/consult/live?consultation=consultation-uat\"");
-    expect(html).toContain("พร้อมเข้าสู่ห้องปรึกษา");
+    expect(html).not.toContain("href=\"/consult/live?consultation=consultation-uat\"");
+    expect(html).toContain("เข้าสู่ห้องปรึกษา");
+    expect(html).toContain("พร้อมเปิด Zoom ในเบราว์เซอร์ภายนอก");
   });
 });

@@ -18,8 +18,173 @@ import {
 export type DoctorConsultationWorkflowActionState = {
   status: "idle" | "success" | "error";
   message: string;
+  launchConsultationId?: string;
   roomHref?: string;
 };
+
+const START_TRANSACTION_TIMEOUT_MS = 40_000;
+
+async function getDoctorConsultationStartSnapshot(
+  tx: Prisma.TransactionClient,
+  consultationId: string,
+  actorId: string,
+  now: Date
+) {
+  const [consultation, actor, identityRevealAudit] = await Promise.all([
+    tx.consultation.findUnique({
+      where: { id: consultationId },
+      select: {
+        id: true,
+        patientId: true,
+        status: true,
+        scheduledAt: true,
+        bookedDurationMinutes: true,
+        zoomMeetingId: true,
+        doctor: {
+          select: {
+            userId: true,
+            status: true,
+            user: { select: { status: true } }
+          }
+        },
+        patient: {
+          select: {
+            role: true,
+            status: true,
+            fullName: true,
+            nationalId: true,
+            dateOfBirth: true,
+            phone: true,
+            normalizedPhone: true,
+            phoneVerifiedAt: true
+          }
+        }
+      }
+    }),
+    tx.user.findUnique({
+      where: { id: actorId },
+      select: { id: true, role: true, status: true }
+    }),
+    tx.auditLog.findFirst({
+      where: {
+        actorId,
+        action: "consultation.patient_identity_view",
+        entityType: "consultation",
+        entityId: consultationId,
+        createdAt: {
+          gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS)
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true }
+    })
+  ]);
+  const identityUpdateAfterRevealAudit =
+    consultation && identityRevealAudit
+      ? await tx.auditLog.findFirst({
+          where: {
+            action: "profile.identity.update",
+            entityType: "user",
+            entityId: consultation.patientId,
+            createdAt: { gte: identityRevealAudit.createdAt }
+          },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true }
+        })
+      : null;
+
+  return {
+    consultation,
+    actor,
+    identityRevealAudit,
+    identityUpdateAfterRevealAudit
+  };
+}
+
+async function startDoctorConsultation(
+  consultationId: string,
+  actorId: string,
+  actorRole: "doctor" | "admin",
+  identityConfirmed: boolean
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT \`id\` FROM \`Consultation\` WHERE \`id\` = ${consultationId} FOR UPDATE`
+      );
+      const now = new Date();
+      const {
+        consultation,
+        actor,
+        identityRevealAudit,
+        identityUpdateAfterRevealAudit
+      } = await getDoctorConsultationStartSnapshot(tx, consultationId, actorId, now);
+
+      if (consultation?.status === "live" && consultation.zoomMeetingId) {
+        assertDoctorConsultationStartIdentityGate(
+          consultation as DoctorConsultationStartSnapshot,
+          actor,
+          { userId: actorId, role: actorRole },
+          identityConfirmed,
+          identityRevealAudit,
+          now,
+          identityUpdateAfterRevealAudit
+        );
+
+        return {
+          zoomAvailable: true,
+          meetingCreated: false,
+          reusedLiveConsultation: true
+        };
+      }
+
+      getDoctorConsultationNextStatus(
+        consultation,
+        { userId: actorId, role: actorRole },
+        "start",
+        now
+      );
+      assertDoctorConsultationStartIdentityGate(
+        consultation as DoctorConsultationStartSnapshot,
+        actor,
+        { userId: actorId, role: actorRole },
+        identityConfirmed,
+        identityRevealAudit,
+        now,
+        identityUpdateAfterRevealAudit
+      );
+
+      const zoomMeeting = consultation?.zoomMeetingId
+        ? null
+        : await createZoomMeetingIfConfigured({
+            consultationId,
+            scheduledAt: consultation?.scheduledAt ?? null,
+            bookedDurationMinutes: consultation?.bookedDurationMinutes ?? null
+          });
+
+      await applyDoctorConsultationTransition(tx, {
+        consultationId,
+        transition: "start",
+        actorId,
+        actorRole,
+        zoomMeeting,
+        identityConfirmed,
+        now
+      });
+
+      return {
+        zoomAvailable: Boolean(consultation?.zoomMeetingId || zoomMeeting),
+        meetingCreated: Boolean(zoomMeeting),
+        reusedLiveConsultation: false
+      };
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 5_000,
+      timeout: START_TRANSACTION_TIMEOUT_MS
+    }
+  );
+}
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -43,130 +208,71 @@ export async function transitionDoctorConsultationAction(
   }
 
   try {
-    const now = new Date();
-    const [consultation, actor, identityRevealAudit] = await Promise.all([
-      prisma.consultation.findUnique({
-        where: {
-          id: parsed.data.consultationId
-        },
-        select: {
-          id: true,
-          patientId: true,
-          status: true,
-          scheduledAt: true,
-          bookedDurationMinutes: true,
-          zoomMeetingId: true,
-          doctor: {
-            select: {
-              userId: true,
-              status: true,
-              user: { select: { status: true } }
-            }
-          },
-          patient: {
-            select: {
-              role: true,
-              status: true,
-              fullName: true,
-              nationalId: true,
-              dateOfBirth: true,
-              phone: true,
-              normalizedPhone: true,
-              phoneVerifiedAt: true
-            }
-          }
-        }
-      }),
-      parsed.data.transition === "start"
-        ? prisma.user.findUnique({
-            where: { id: session.userId },
-            select: { id: true, role: true, status: true }
-          })
-        : Promise.resolve(null),
-      parsed.data.transition === "start"
-        ? prisma.auditLog.findFirst({
-            where: {
-              actorId: session.userId,
-              action: "consultation.patient_identity_view",
-              entityType: "consultation",
-              entityId: parsed.data.consultationId,
-              createdAt: {
-                gte: new Date(now.getTime() - PATIENT_IDENTITY_REVEAL_TTL_MS)
-              }
-            },
-            orderBy: { createdAt: "desc" },
-            select: { createdAt: true }
-          })
-        : Promise.resolve(null)
-    ]);
-
-    getDoctorConsultationNextStatus(consultation, session, parsed.data.transition, now);
-
     if (parsed.data.transition === "start") {
-      const identityUpdateAfterRevealAudit =
-        consultation && identityRevealAudit
-          ? await prisma.auditLog.findFirst({
-              where: {
-                action: "profile.identity.update",
-                entityType: "user",
-                entityId: consultation.patientId,
-                createdAt: { gte: identityRevealAudit.createdAt }
-              },
-              orderBy: { createdAt: "desc" },
-              select: { createdAt: true }
-            })
-          : null;
-      assertDoctorConsultationStartIdentityGate(
-        consultation as DoctorConsultationStartSnapshot,
-        actor,
-        session,
-        parsed.data.identityConfirmed,
-        identityRevealAudit,
-        now,
-        identityUpdateAfterRevealAudit
+      const started = await startDoctorConsultation(
+        parsed.data.consultationId,
+        session.userId,
+        "doctor",
+        parsed.data.identityConfirmed === true
       );
+
+      revalidateDoctorWorkflow(parsed.data.consultationId);
+
+      return {
+        status: "success",
+        message: started.zoomAvailable
+          ? started.meetingCreated
+            ? "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว กำลังเปิดเบราว์เซอร์ภายนอก..."
+            : "ใช้ห้อง Zoom เดิมแล้ว กำลังเปิดเบราว์เซอร์ภายนอก..."
+          : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom",
+        launchConsultationId: started.zoomAvailable
+          ? parsed.data.consultationId
+          : undefined,
+        roomHref: started.zoomAvailable
+          ? undefined
+          : `/consult/live?consultation=${parsed.data.consultationId}`
+      };
     }
 
-    const zoomMeeting =
-      parsed.data.transition === "start" && !consultation?.zoomMeetingId
-        ? await createZoomMeetingIfConfigured({
-            consultationId: parsed.data.consultationId,
-            scheduledAt: consultation?.scheduledAt ?? null,
-            bookedDurationMinutes: consultation?.bookedDurationMinutes ?? null
-          })
-        : null;
+    const consultation = await prisma.consultation.findUnique({
+      where: { id: parsed.data.consultationId },
+      select: {
+        id: true,
+        patientId: true,
+        status: true,
+        scheduledAt: true,
+        doctor: { select: { userId: true } }
+      }
+    });
+    getDoctorConsultationNextStatus(
+      consultation,
+      session,
+      parsed.data.transition,
+      new Date()
+    );
 
-    await prisma.$transaction(async (tx) => {
-      await applyDoctorConsultationTransition(tx, {
-        consultationId: parsed.data.consultationId,
-        transition: parsed.data.transition,
-        summary: parsed.data.summary,
-        noShowReason: parsed.data.noShowReason,
-        actorId: session.userId,
-        actorRole: session.role,
-        zoomMeeting,
-        identityConfirmed: parsed.data.identityConfirmed
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    await prisma.$transaction(
+      async (tx) => {
+        await applyDoctorConsultationTransition(tx, {
+          consultationId: parsed.data.consultationId,
+          transition: parsed.data.transition,
+          summary: parsed.data.summary,
+          noShowReason: parsed.data.noShowReason,
+          actorId: session.userId,
+          actorRole: session.role
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     revalidateDoctorWorkflow(parsed.data.consultationId);
 
     return {
       status: "success",
       message:
-        parsed.data.transition === "start"
-          ? zoomMeeting
-            ? "เริ่มการปรึกษาและสร้างห้อง Zoom แล้ว"
-            : consultation?.zoomMeetingId
-              ? "เริ่มการปรึกษาและเปิดห้อง Zoom เดิมแล้ว"
-              : "เริ่มการปรึกษาแล้ว ขณะนี้ใช้แชทในระบบเพราะยังไม่ได้ตั้งค่า Zoom"
-          : parsed.data.transition === "complete_no_show"
-            ? "บันทึกผลผู้ป่วยไม่มาตามนัดและแจ้งผู้ป่วยแล้ว"
-            : "จบการปรึกษาและบันทึกสรุปแล้ว",
-      roomHref:
-        parsed.data.transition === "start"
-          ? `/consult/live?consultation=${parsed.data.consultationId}`
-          : undefined
+        parsed.data.transition === "complete_no_show"
+          ? "บันทึกผลผู้ป่วยไม่มาตามนัดและแจ้งผู้ป่วยแล้ว"
+          : "จบการปรึกษาและบันทึกสรุปแล้ว"
     };
   } catch (error) {
     if (

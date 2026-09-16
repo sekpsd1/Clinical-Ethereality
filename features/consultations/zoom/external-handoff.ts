@@ -1,7 +1,9 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { getAppEnv } from "@/lib/env/schema";
 import {
   buildZoomConsultationAccessWhere,
   type ZoomConsultationViewer
@@ -12,7 +14,9 @@ const HANDOFF_SECRET_BYTES = 32;
 const HANDOFF_TTL_MS = 2 * 60 * 1000;
 const EXTERNAL_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const TOKEN_PATTERN = /^v1\.([0-9a-f-]{36})\.([A-Za-z0-9_-]{40,64})$/;
+const IDEMPOTENCY_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MARKER_PATTERN = /^(zoom-handoff-ticket|zoom-external-session):v1:(customer|doctor):([A-Za-z0-9_-]{8,191})$/;
+const developmentHandoffSecret = randomBytes(HANDOFF_SECRET_BYTES);
 
 export const zoomExternalAccessCookieName = "ce_zoom_access";
 
@@ -47,6 +51,25 @@ function hashesMatch(expected: string | null, actual: string): boolean {
 
 function createOpaqueToken(sessionId: string): string {
   return `${HANDOFF_VERSION}.${sessionId}.${randomBytes(HANDOFF_SECRET_BYTES).toString("base64url")}`;
+}
+
+function createIdempotentHandoffToken(
+  sessionId: string,
+  viewer: ZoomConsultationViewer,
+  consultationId: string
+): string {
+  const configuredSecret = getAppEnv().JWT_SECRET;
+  const secret = configuredSecret
+    ? Buffer.from(configuredSecret, "utf8")
+    : developmentHandoffSecret;
+  const digest = createHmac("sha256", secret)
+    .update(
+      `zoom-handoff\0${sessionId}\0${viewer.userId}\0${viewer.role}\0${consultationId}`,
+      "utf8"
+    )
+    .digest("base64url");
+
+  return `${HANDOFF_VERSION}.${sessionId}.${digest}`;
 }
 
 function parseOpaqueToken(token: string): ParsedToken | null {
@@ -113,6 +136,7 @@ export async function issueZoomExternalHandoff(
   options: {
     now?: Date;
     ipAddress?: string | null;
+    idempotencyKey?: string | null;
   } = {}
 ) {
   const now = options.now ?? new Date();
@@ -131,48 +155,96 @@ export async function issueZoomExternalHandoff(
     role: session.role,
     displayName: session.displayName
   };
-  const ticketSessionId = randomUUID();
-  const ticket = createOpaqueToken(ticketSessionId);
+  const idempotencyKey = options.idempotencyKey?.trim();
+  const ticketSessionId =
+    idempotencyKey && IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)
+      ? idempotencyKey.toLowerCase()
+      : randomUUID();
+  const ticket = idempotencyKey
+    ? createIdempotentHandoffToken(ticketSessionId, viewer, consultationId)
+    : createOpaqueToken(ticketSessionId);
   const expiresAt = new Date(now.getTime() + HANDOFF_TTL_MS);
 
-  await prisma.$transaction(async (tx) => {
-    const consultation = await tx.consultation.findFirst({
-      where: buildZoomConsultationAccessWhere(viewer, consultationId, now),
+  try {
+    await prisma.$transaction(async (tx) => {
+      const consultation = await tx.consultation.findFirst({
+        where: buildZoomConsultationAccessWhere(viewer, consultationId, now),
+        select: {
+          id: true,
+          zoomMeetingId: true
+        }
+      });
+
+      if (!consultation?.zoomMeetingId) {
+        throw new ZoomExternalHandoffError();
+      }
+
+      await tx.authSession.create({
+        data: {
+          id: ticketSessionId,
+          userId: viewer.userId,
+          refreshTokenHash: hashToken(ticket),
+          status: "active",
+          userAgent: createMarker("ticket", viewer.role, consultation.id),
+          ipAddress: options.ipAddress ?? undefined,
+          expiresAt
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: viewer.userId,
+          action: "consultation.zoom_handoff_issued",
+          entityType: "Consultation",
+          entityId: consultation.id,
+          metadataJson: {
+            role: viewer.role,
+            expiresAt: expiresAt.toISOString()
+          }
+        }
+      });
+    });
+  } catch (error) {
+    if (
+      !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+      error.code !== "P2002" ||
+      !idempotencyKey
+    ) {
+      throw error;
+    }
+
+    const existing = await prisma.authSession.findUnique({
+      where: { id: ticketSessionId },
       select: {
-        id: true,
-        zoomMeetingId: true
+        userId: true,
+        refreshTokenHash: true,
+        status: true,
+        userAgent: true,
+        expiresAt: true
       }
     });
+    const marker = parseMarker(existing?.userAgent ?? null);
 
-    if (!consultation?.zoomMeetingId) {
+    if (
+      !existing ||
+      !marker ||
+      marker.stage !== "ticket" ||
+      marker.role !== viewer.role ||
+      marker.consultationId !== consultationId ||
+      existing.userId !== viewer.userId ||
+      existing.status !== "active" ||
+      existing.expiresAt <= now ||
+      !hashesMatch(existing.refreshTokenHash, hashToken(ticket))
+    ) {
       throw new ZoomExternalHandoffError();
     }
 
-    await tx.authSession.create({
-      data: {
-        id: ticketSessionId,
-        userId: viewer.userId,
-        refreshTokenHash: hashToken(ticket),
-        status: "active",
-        userAgent: createMarker("ticket", viewer.role, consultation.id),
-        ipAddress: options.ipAddress ?? undefined,
-        expiresAt
-      }
-    });
-
-    await tx.auditLog.create({
-      data: {
-        actorId: viewer.userId,
-        action: "consultation.zoom_handoff_issued",
-        entityType: "Consultation",
-        entityId: consultation.id,
-        metadataJson: {
-          role: viewer.role,
-          expiresAt: expiresAt.toISOString()
-        }
-      }
-    });
-  });
+    return {
+      ticket,
+      consultationId,
+      expiresAt: existing.expiresAt
+    };
+  }
 
   return {
     ticket,

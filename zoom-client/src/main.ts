@@ -113,6 +113,8 @@ function ZoomClientApp() {
   const [returnToLineUrl, setReturnToLineUrl] = useState<string | null>(null);
   const [message, setMessage] = useState("กำลังตรวจสิทธิ์ชั่วคราวสำหรับนัดหมาย...");
   const completionCleanupGate = useRef(createZoomCompletionCleanupGate());
+  const joinAttemptInFlight = useRef(false);
+  const deviceCheckInFlight = useRef(false);
   const consultationId = getConsultationId();
   const isComplete = new URLSearchParams(window.location.search).get("complete") === "1";
   const chromeIntentUrl = buildAndroidChromeIntentUrl(window.location.href);
@@ -192,7 +194,7 @@ function ZoomClientApp() {
         }
 
         setSessionState("ready");
-        setMessage("ตรวจสิทธิ์แล้ว กรุณาตรวจกล้องและไมโครโฟนก่อนเข้าห้อง");
+        setMessage("ตรวจสิทธิ์แล้ว กดปุ่มครั้งเดียวเพื่ออนุญาตกล้องและไมโครโฟน แล้วเข้าห้อง Zoom");
       })
       .catch(() => {
         if (!active) {
@@ -209,39 +211,38 @@ function ZoomClientApp() {
   }, [chromeIntentUrl, consultationId, isComplete]);
 
   async function checkDevices() {
-    if (sessionState !== "ready" || mediaState === "checking") {
+    if (sessionState !== "ready" || deviceCheckInFlight.current || joinAttemptInFlight.current) {
       return;
     }
 
+    deviceCheckInFlight.current = true;
     setMediaState("checking");
     setMessage("กำลังขอสิทธิ์และตรวจกล้องกับไมโครโฟน...");
 
     try {
       await checkZoomCameraAndMicrophone(window.navigator.mediaDevices, window.isSecureContext);
       setMediaState("ready");
-      setMessage("กล้องและไมโครโฟนพร้อมแล้ว กดเข้าห้อง Zoom ได้");
+      setMessage("กล้องและไมโครโฟนพร้อมแล้ว กดปุ่มหลักเพื่อเข้าห้อง Zoom");
     } catch (error) {
       setMediaState("error");
       setMessage(getZoomMediaPreflightMessage(error));
+    } finally {
+      deviceCheckInFlight.current = false;
     }
   }
 
-  async function joinMeeting() {
-    if (!consultationId || sessionState !== "ready" || mediaState !== "ready" || state === "joining") {
-      return;
-    }
-
+  async function connectToMeeting(targetConsultationId: string): Promise<boolean> {
     setState("joining");
     setMessage("กำลังเตรียมห้อง Zoom...");
     let stage: "init" | "join" | "i18n" | "load" = "load";
 
     try {
-      const data = await fetchJoinData(consultationId);
+      const data = await fetchJoinData(targetConsultationId);
 
       if (!data.available) {
         setState("error");
         setMessage("ห้อง Zoom นี้ไม่พร้อมสำหรับบัญชีและนัดหมายนี้");
-        return;
+        return false;
       }
 
       const { ZoomMtg } = await import("@zoom/meetingsdk");
@@ -279,11 +280,42 @@ function ZoomClientApp() {
         "join"
       );
       setMessage("เชื่อมต่อ Zoom แล้ว");
+      return true;
     } catch (error) {
       reportSafeSdkError(stage, error);
       setState("error");
-      setMessage("เปิด Zoom ไม่สำเร็จ กรุณากลับไปที่ LINE แล้วลองเปิดห้องอีกครั้ง");
+      setMessage("เปิด Zoom ไม่สำเร็จ กรุณากดลองอีกครั้ง หากยังไม่ได้ให้กลับไปเปิดห้องจาก LINE ใหม่");
+      return false;
     }
+  }
+
+  async function checkDevicesAndJoin() {
+    if (
+      !consultationId ||
+      sessionState !== "ready" ||
+      joinAttemptInFlight.current ||
+      deviceCheckInFlight.current
+    ) {
+      return;
+    }
+
+    joinAttemptInFlight.current = true;
+    setState("idle");
+    setMediaState("checking");
+    setMessage("กำลังขอสิทธิ์และตรวจกล้องกับไมโครโฟน...");
+
+    try {
+      await checkZoomCameraAndMicrophone(window.navigator.mediaDevices, window.isSecureContext);
+      setMediaState("ready");
+    } catch (error) {
+      setMediaState("error");
+      setMessage(getZoomMediaPreflightMessage(error));
+      joinAttemptInFlight.current = false;
+      return;
+    }
+
+    const joined = await connectToMeeting(consultationId);
+    joinAttemptInFlight.current = joined;
   }
 
   async function leaveVideoRoom() {
@@ -358,21 +390,34 @@ function ZoomClientApp() {
           createElement(
             "button",
             {
-              disabled: sessionState !== "ready" || mediaState === "checking" || state === "joining",
-              onClick: checkDevices,
+              disabled:
+                !consultationId ||
+                sessionState !== "ready" ||
+                mediaState === "checking" ||
+                state === "joining",
+              onClick: checkDevicesAndJoin,
               type: "button"
             },
-            mediaState === "checking" ? "กำลังตรวจ..." : mediaState === "ready" ? "ตรวจอุปกรณ์อีกครั้ง" : "ตรวจกล้องและไมโครโฟน"
+            mediaState === "checking"
+              ? "กำลังตรวจกล้องและไมโครโฟน..."
+              : state === "joining"
+                ? "กำลังเชื่อมต่อ..."
+                : state === "error" || mediaState === "error"
+                  ? "ลองตรวจและเข้าห้อง Zoom อีกครั้ง"
+                  : "ตรวจอุปกรณ์และเข้าห้อง Zoom"
           ),
-          createElement(
-            "button",
-            {
-              disabled: !consultationId || sessionState !== "ready" || mediaState !== "ready" || state === "joining",
-              onClick: joinMeeting,
-              type: "button"
-            },
-            state === "joining" ? "กำลังเชื่อมต่อ…" : state === "error" ? "ลองเข้าห้องอีกครั้ง" : "เข้าห้อง Zoom"
-          ),
+          mediaState === "error" || state === "error"
+            ? createElement(
+                "button",
+                {
+                  className: "zoom-button-secondary",
+                  disabled: sessionState !== "ready" || mediaState === "checking" || state === "joining",
+                  onClick: checkDevices,
+                  type: "button"
+                },
+                mediaState === "checking" ? "กำลังทดสอบอุปกรณ์..." : "ทดสอบกล้องและไมโครโฟน"
+              )
+            : null,
           createElement(
             "button",
             {

@@ -592,3 +592,14 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Record minimized Doctor-profile audit metadata with actor, action, changed field names, and status only; exclude professional names, license numbers, document URLs, and file contents.
 - [x] Pass 38 focused unit tests, the full 1,477-test unit suite with 8 skips, TypeScript typecheck, ESLint, Prisma validation, the 65-route Production build, and two focused Pixel 5 Playwright checks for the mobile Admin form and disabled Doctor self-service route.
 - [ ] Production release and authenticated mobile Admin UAT remain separately gated; this task performs no push, deploy, restart, migration, or Production data/file mutation.
+
+## Streamlined Zoom entry flow (code only, 2026-09-16)
+
+- [x] Continue Doctor `เริ่มการปรึกษา` directly into the secure external handoff after the existing identity gate; serialize the start, Zoom creation, lifecycle transition, notification, and audit behind the Consultation row lock so repeated/concurrent starts reuse the live meeting without duplicate workflow writes.
+- [x] Replace the Customer waiting-room live-page hop with one direct handoff CTA after the existing server time/live gate while keeping the live consultation page available for chat and existing notification destinations.
+- [x] Launch an Android LINE Chrome intent from the first app CTA with a trusted same-origin HTTPS fallback, retain the supported iOS LINE external-browser signal, and keep ordinary Chrome/Safari on the validated HTTPS target.
+- [x] Combine external-browser camera/microphone permission, live-track validation, and Zoom join into one primary user gesture; expose device-only testing and retry only after a safe failure and retain explicit external-session leave handling.
+- [x] Add client request gating plus server idempotency keys for handoff issuance, keep tickets fragment-only and audit metadata token-free, and preserve one-time exchange, API-scoped HttpOnly/Secure/SameSite cookies, expiry/replay checks, active-account/role/ownership authorization, attendance identity, webhook, recording, no-show, and completion behavior.
+- [x] Cover Doctor created/reused meeting behavior, direct waiting-room entry, Android/iOS/web targets and fallback, idempotent handoff retry, combined device/join control, denied permission, expired/replayed tickets, role/ownership checks, and attendance regressions with focused tests.
+- [x] Pass 121 focused unit tests, all 1,482 unit tests with 8 skips, main and isolated-client TypeScript checks, ESLint, isolated Zoom and 65-route Production builds, Prisma validation, `git diff --check`, and a focused 390×844 Playwright denied-permission/no-overflow check.
+- [ ] Production release and authenticated Android LINE, iOS LINE, Chrome, and Safari UAT remain separately gated. This code-only task includes no schema, migration, push, deploy, restart, provider-setting change, or Production data mutation.

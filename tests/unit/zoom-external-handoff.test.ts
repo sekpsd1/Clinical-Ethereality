@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => {
   const transactionClient = {
@@ -57,6 +58,9 @@ const consultation = {
 describe("Zoom external-browser handoff", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.transactionClient.authSession.create.mockReset();
+    mocks.transactionClient.authSession.findUnique.mockReset();
+    mocks.transactionClient.authSession.updateMany.mockReset();
     mocks.session = {
       userId: "customer-1",
       role: "customer",
@@ -90,6 +94,37 @@ describe("Zoom external-browser handoff", () => {
       status: "live",
       scheduledAt: { lte: now }
     });
+  });
+
+  it("returns the same unconsumed ticket without a duplicate audit when issuance is retried", async () => {
+    const idempotencyKey = "00000000-0000-4000-8000-000000000001";
+    let record: Record<string, unknown> | null = null;
+
+    mocks.transactionClient.authSession.create.mockImplementation(async ({ data }) => {
+      if (record) {
+        throw new Prisma.PrismaClientKnownRequestError("duplicate handoff request", {
+          code: "P2002",
+          clientVersion: "6.19.3"
+        });
+      }
+
+      record = data;
+      return data;
+    });
+    mocks.transactionClient.authSession.findUnique.mockImplementation(async () => record);
+
+    const first = await issueZoomExternalHandoff("consultation-1", {
+      now,
+      idempotencyKey
+    });
+    const second = await issueZoomExternalHandoff("consultation-1", {
+      now,
+      idempotencyKey
+    });
+
+    expect(second).toEqual(first);
+    expect(first.ticket).toContain(`v1.${idempotencyKey}.`);
+    expect(mocks.transactionClient.auditLog.create).toHaveBeenCalledOnce();
   });
 
   it("issues an external handoff to the assigned doctor during the five-minute early-start window", async () => {

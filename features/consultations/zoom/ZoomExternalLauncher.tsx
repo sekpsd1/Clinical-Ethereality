@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -49,59 +49,167 @@ export function buildIosLineExternalBrowserUrl(value: string, currentOrigin: str
   return url.toString();
 }
 
+export function buildAndroidLineChromeIntentUrl(value: string, currentOrigin: string): string | null {
+  if (!isTrustedZoomLaunchUrl(value, currentOrigin)) {
+    return null;
+  }
+
+  const url = new URL(value);
+  const fallbackUrl = url.toString();
+
+  return `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+}
+
 export function getZoomLaunchTarget(value: string, currentOrigin: string, userAgent: string): string | null {
   if (!isTrustedZoomLaunchUrl(value, currentOrigin)) {
     return null;
   }
 
-  return isLineInAppBrowser(userAgent) && !isAndroidUserAgent(userAgent)
-    ? buildIosLineExternalBrowserUrl(value, currentOrigin)
-    : value;
+  if (!isLineInAppBrowser(userAgent)) {
+    return value;
+  }
+
+  return isAndroidUserAgent(userAgent)
+    ? buildAndroidLineChromeIntentUrl(value, currentOrigin)
+    : buildIosLineExternalBrowserUrl(value, currentOrigin);
+}
+
+export function navigateToZoomLaunchTarget(
+  launchTarget: string,
+  safeFallbackUrl: string,
+  navigation: {
+    assign: (url: string) => void;
+    isVisible: () => boolean;
+    schedule: (callback: () => void, delayMs: number) => void;
+  }
+) {
+  if (!launchTarget.startsWith("intent://")) {
+    navigation.assign(launchTarget);
+    return;
+  }
+
+  try {
+    navigation.assign(launchTarget);
+    navigation.schedule(() => {
+      if (navigation.isVisible()) {
+        navigation.assign(safeFallbackUrl);
+      }
+    }, 1_200);
+  } catch {
+    navigation.assign(safeFallbackUrl);
+  }
 }
 
 export function ZoomExternalLauncher({
   consultationId,
-  compact = false
+  compact = false,
+  waitingRoom = false,
+  autoLaunch = false
 }: {
   consultationId: string;
   compact?: boolean;
+  waitingRoom?: boolean;
+  autoLaunch?: boolean;
 }) {
   const [state, setState] = useState<LaunchState>("idle");
   const [message, setMessage] = useState("ระบบจะเปิดเบราว์เซอร์ภายนอกเพื่อตรวจกล้องและไมค์ก่อนเข้าห้อง");
+  const launchInFlight = useRef(false);
+  const requestId = useRef<string | null>(null);
 
-  async function openZoom() {
-    if (state === "preparing") {
+  const openZoom = useCallback(async () => {
+    if (launchInFlight.current) {
       return;
     }
 
+    launchInFlight.current = true;
     setState("preparing");
     setMessage("กำลังสร้างสิทธิ์เข้าห้องแบบใช้ครั้งเดียว...");
 
     try {
+      requestId.current ??= window.crypto?.randomUUID?.() ?? null;
+      const headers: Record<string, string> = {
+        Accept: "application/json"
+      };
+
+      if (requestId.current) {
+        headers["Idempotency-Key"] = requestId.current;
+      }
+
       const response = await fetch(`/api/consultations/${encodeURIComponent(consultationId)}/zoom-handoff`, {
         method: "POST",
         credentials: "same-origin",
-        headers: {
-          Accept: "application/json"
-        }
+        headers
       });
       const payload = (await response.json()) as LaunchResponse;
+      const safeLaunchUrl =
+        typeof payload.launchUrl === "string" &&
+        isTrustedZoomLaunchUrl(payload.launchUrl, window.location.origin)
+          ? payload.launchUrl
+          : null;
       const launchTarget =
-        typeof payload.launchUrl === "string"
-          ? getZoomLaunchTarget(payload.launchUrl, window.location.origin, window.navigator.userAgent)
+        safeLaunchUrl
+          ? getZoomLaunchTarget(safeLaunchUrl, window.location.origin, window.navigator.userAgent)
           : null;
 
-      if (!response.ok || payload.ok !== true || !launchTarget) {
+      if (!response.ok || payload.ok !== true || !safeLaunchUrl || !launchTarget) {
         throw new Error("zoom_handoff_unavailable");
       }
 
-      window.location.assign(launchTarget);
+      navigateToZoomLaunchTarget(launchTarget, safeLaunchUrl, {
+        assign: (url) => window.location.assign(url),
+        isVisible: () => document.visibilityState === "visible",
+        schedule: (callback, delayMs) => {
+          window.setTimeout(callback, delayMs);
+        }
+      });
       return;
-
     } catch {
+      launchInFlight.current = false;
       setState("error");
       setMessage("ยังเปิดเบราว์เซอร์ภายนอกไม่ได้ กรุณาลองใหม่หรือเลือก “เปิดในเบราว์เซอร์” จากเมนู LINE");
     }
+  }, [consultationId]);
+
+  useEffect(() => {
+    if (autoLaunch) {
+      void openZoom();
+    }
+  }, [autoLaunch, openZoom]);
+
+  if (autoLaunch) {
+    return (
+      <div className="flex flex-col items-end gap-2">
+        <p className="text-[11px] font-semibold leading-4 text-muted" role="status">
+          {message}
+        </p>
+        {state === "error" ? (
+          <Button type="button" size="sm" onClick={openZoom}>
+            <ExternalLink aria-hidden="true" className="size-4" strokeWidth={2.2} />
+            ลองเปิด Zoom อีกครั้ง
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (waitingRoom) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          size="lg"
+          onClick={openZoom}
+          disabled={state === "preparing"}
+          className="w-full py-5 text-lg shadow-booking"
+        >
+          <ExternalLink aria-hidden="true" className="size-5" strokeWidth={2.2} />
+          {state === "preparing" ? "กำลังเปิดห้องปรึกษา..." : "เข้าสู่ห้องปรึกษา"}
+        </Button>
+        <p className="text-center text-[11px] leading-4 text-[#3e494a]" role="status">
+          {message}
+        </p>
+      </div>
+    );
   }
 
   if (compact) {

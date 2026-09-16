@@ -88,7 +88,32 @@ describe("Zoom handoff routes", () => {
     expect(launchUrl.searchParams.get("consultation")).toBe("consultation-1");
     expect(launchUrl.search).not.toContain(ticket);
     expect(launchUrl.hash).toContain("handoff=");
-    expect(mocks.issue).toHaveBeenCalledWith("consultation-1", { ipAddress: "203.0.113.10" });
+    expect(mocks.issue).toHaveBeenCalledWith("consultation-1", {
+      ipAddress: "203.0.113.10",
+      idempotencyKey: null
+    });
+  });
+
+  it("forwards a valid idempotency key without placing it in the launch URL", async () => {
+    const request = new NextRequest("https://app.example.test/api/consultations/consultation-1/zoom-handoff", {
+      method: "POST",
+      headers: {
+        origin: "https://app.example.test",
+        "idempotency-key": "00000000-0000-4000-8000-000000000001"
+      }
+    });
+    const response = await issueHandoff(request, {
+      params: Promise.resolve({ consultationId: "consultation-1" })
+    });
+    const body = await response.json();
+    const launchUrl = new URL(body.launchUrl);
+
+    expect(response.status).toBe(200);
+    expect(launchUrl.search).not.toContain("00000000-0000-4000-8000-000000000001");
+    expect(mocks.issue).toHaveBeenCalledWith("consultation-1", {
+      ipAddress: null,
+      idempotencyKey: "00000000-0000-4000-8000-000000000001"
+    });
   });
 
   it("rejects cross-origin issuance before creating a ticket", async () => {
