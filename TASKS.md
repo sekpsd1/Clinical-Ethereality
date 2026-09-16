@@ -515,7 +515,9 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Add an Admin-only manual appointment intake contract that requires a verified active patient, approved active doctor, exact configured future slot, private evidence, controlled reason, and transfer time within 24 hours; create only `pending_payment` / `pending_review` records with a 15-minute slot hold.
 - [x] Add guarded approve/reject review: unique normalized external-bank reference on approval; `scheduled` when the hold is active; `reschedule_required` when it expired; `rejected` / `cancelled` plus slot release on controlled rejection.
 - [x] Preserve audit, actor/time/evidence metadata, row-locking, Serializable/CAS/idempotency boundaries, and block customer provider verification or slip resubmission for Admin-created manual appointments.
-- [ ] Integrate the exported intake Server Action into the Admin appointment calendar in its owning task, then perform separately approved controlled UAT. The current release requires no migration or Production business-data mutation.
+- [x] Integrate the exported intake Server Action into the Admin appointment calendar and clarify the split workflow: the schedule creates a request/temporary hold, while `/admin/payments` performs the existing review decision.
+- [x] Distinguish Admin-created manual intake from ordinary customer pending payment using the existing provenance marker: Admin calendar/drawer and Customer appointment/payment/notification copy show transfer review pending, manual intake has no customer payment/upload-again CTA, and the ordinary payment CTA remains unchanged.
+- [ ] Perform separately approved controlled UAT for the complete manual-intake review path. The current code-only release requires no migration or Production business-data mutation.
 
 ## Admin test consultation reset (code only, 2026-09-05)
 

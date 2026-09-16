@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { assertPermission } from "@/lib/permissions";
 import type { CustomerAppointmentData, CustomerAppointmentDetail } from "@/features/consultations/appointment/types";
+import { hasAdminManualAppointmentIntake } from "@/features/consultations/payment/service";
 
 type ConsultationRecord = NonNullable<Awaited<ReturnType<typeof getConsultationRecord>>>;
 
@@ -85,7 +86,7 @@ function getConsultationRecord(consultationId: string, patientId: string) {
           }
         }
       },
-      payment: { select: { status: true } }
+      payment: { select: { status: true, verificationPayload: true } }
     }
   });
 }
@@ -183,7 +184,16 @@ function getPaymentStatusCopy(
 
 function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentDetail {
   const status = statusContent[consultation.status];
-  const paymentStatus = getPaymentStatusCopy(consultation.status, consultation.payment?.status ?? null);
+  const manualAppointmentReviewPending = Boolean(
+    consultation.payment?.status === "pending_review" &&
+    hasAdminManualAppointmentIntake(consultation.payment.verificationPayload)
+  );
+  const paymentStatus = manualAppointmentReviewPending
+    ? {
+        paymentStatusLabel: "รอแอดมินตรวจรายการโอน",
+        paymentStatusDescription: "ทีมงานได้รับคำขอและหลักฐานแล้ว แต่ยังไม่ยืนยันนัดหมาย กรุณาไม่ชำระหรือส่งหลักฐานซ้ำ"
+      }
+    : getPaymentStatusCopy(consultation.status, consultation.payment?.status ?? null);
   const avatarUrl = consultation.doctor.user.avatarUrl ?? "/images/doctors/somchai-payment.png";
 
   return {
@@ -195,15 +205,17 @@ function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentD
     scheduledTime: formatTime(consultation.scheduledAt),
     scheduledIso: consultation.scheduledAt?.toISOString() ?? null,
     status: consultation.status,
-    statusLabel: status.label,
+    statusLabel: manualAppointmentReviewPending ? "รอแอดมินตรวจรายการโอน" : status.label,
     statusTone: status.tone,
     feeLabel: formatMoney(consultation.doctor.consultationFee),
     paymentStatusLabel: paymentStatus.paymentStatusLabel,
     paymentStatusDescription: paymentStatus.paymentStatusDescription,
-    nextStepLabel: status.nextStepLabel,
-    nextStepDescription: status.nextStepDescription,
-    ctaLabel: status.ctaLabel,
-    ctaHref: getCtaHref(consultation)
+    nextStepLabel: manualAppointmentReviewPending ? "รอผลตรวจจากแอดมิน" : status.nextStepLabel,
+    nextStepDescription: manualAppointmentReviewPending
+      ? "แอดมินจะตรวจรายการโอนในหน้าชำระเงิน และจะแจ้งอีกครั้งเมื่อยืนยันหรือปฏิเสธคำขอ"
+      : status.nextStepDescription,
+    ctaLabel: manualAppointmentReviewPending ? null : status.ctaLabel,
+    ctaHref: manualAppointmentReviewPending ? null : getCtaHref(consultation)
   };
 }
 

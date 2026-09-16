@@ -55,4 +55,23 @@ describe("Admin consultation payment review form", () => {
     expect(html).toContain("เปิดดูได้เฉพาะ Admin");
     expect(html).toContain("ยืนยันรายการนี้ทันทีโดยไม่ต้องรอครบ 24 ชั่วโมง");
   });
+
+  it("identifies a table-origin manual request without offering to create a new slot", () => {
+    const html = renderToStaticMarkup(
+      <AdminConsultationPaymentReviewForm
+        payment={{
+          ...payment,
+          consultationManualReview: {
+            ...payment.consultationManualReview!,
+            kind: "manual_appointment"
+          }
+        }}
+      />
+    );
+
+    expect(html).toContain("ตรวจรายการโอนสำหรับนัดที่ Admin รับเรื่อง");
+    expect(html).toContain("รายการนี้ส่งมาจากตารางแพทย์");
+    expect(html).toContain("ไม่ได้สร้างช่วงเวลาหรือนัดหมายใหม่");
+    expect(html).toContain("ยืนยันรายการโอนและนัดหมาย");
+  });
 });

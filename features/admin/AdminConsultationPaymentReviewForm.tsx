@@ -152,6 +152,9 @@ function ManualAppointmentDecisionForm({
           <p className="text-sm font-bold text-primary">
             ตรวจรายการโอนสำหรับนัดที่ Admin รับเรื่อง
           </p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            รายการนี้ส่งมาจากตารางแพทย์ หน้านี้ใช้ตรวจและยืนยันคำขอเดิมเท่านั้น ไม่ได้สร้างช่วงเวลาหรือนัดหมายใหม่
+          </p>
           <p className="mt-1 text-xs leading-5 text-muted">{review.reason}</p>
         </div>
         {review.slipHref ? (

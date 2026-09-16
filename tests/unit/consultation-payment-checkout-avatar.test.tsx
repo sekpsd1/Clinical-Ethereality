@@ -60,8 +60,18 @@ describe("ConsultPaymentCheckout doctor avatar", () => {
 
     expect(html).toContain("รอแอดมินตรวจรายการโอน");
     expect(html).toContain("กรุณาไม่ส่งสลิปซ้ำ");
+    expect(html).toContain("ยังไม่ยืนยันนัดหมายหรือการชำระเงิน");
     expect(html).not.toContain("อัปโหลดหลักฐานการโอน");
     expect(html).not.toContain("พร้อมเพย์");
+    expect(html).not.toContain("ชำระค่าปรึกษาและส่งข้อมูลสลิป");
+  });
+
+  it("keeps the ordinary pending-payment upload flow", () => {
+    const html = renderToStaticMarkup(<ConsultPaymentCheckout data={data} />);
+
+    expect(html).toContain("รอชำระเงิน");
+    expect(html).toContain("ชำระค่าปรึกษาและส่งข้อมูลสลิป");
+    expect(html).toContain("เลือกรูปสลิปการโอนเงิน");
   });
 
 });

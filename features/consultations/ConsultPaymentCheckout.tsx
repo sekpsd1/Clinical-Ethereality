@@ -252,14 +252,22 @@ function ConsultationPaymentStatusCard({
             body: "ระบบยืนยันค่าปรึกษาแล้ว สามารถเข้าไปยังห้องรอก่อนเวลานัดได้",
             tone: "success" as const
           }
-        : consultation.status === "completed"
-          ? {
+          : consultation.status === "completed"
+            ? {
               icon: CheckCircle2,
               label: "ปิดขั้นตอนแล้ว",
               title: "การปรึกษาเสร็จสิ้นแล้ว",
-              body: "ขั้นตอนชำระเงินสำหรับนัดหมายนี้เสร็จสิ้นแล้ว",
-              tone: "neutral" as const
-            }
+                body: "ขั้นตอนชำระเงินสำหรับนัดหมายนี้เสร็จสิ้นแล้ว",
+                tone: "neutral" as const
+              }
+          : consultation.manualAppointmentReviewPending
+            ? {
+                icon: Clock3,
+                label: "รอแอดมินตรวจรายการโอน",
+                title: "ได้รับคำขอและหลักฐานแล้ว",
+                body: "ยังไม่ยืนยันนัดหมายหรือการชำระเงิน กรุณาไม่ชำระหรือส่งหลักฐานซ้ำ",
+                tone: "warning" as const
+              }
           : needsSlipRetry
             ? {
                 icon: ShieldAlert,

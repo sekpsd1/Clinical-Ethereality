@@ -4,6 +4,7 @@ import { CLINIC_TIME_ZONE, getBangkokCalendarDateKey, getScheduledAtForCalendarD
 import { buildAdminAppointmentCalendarSlots } from "@/features/admin/schedules/appointment-calendar";
 import type { AdminAppointmentCalendarData, AdminDoctorAvailabilityDateOverride, AdminDoctorAvailabilitySlot, AdminDoctorOption, AdminSchedulesData } from "@/features/admin/schedules/types";
 import { getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
+import { hasAdminManualAppointmentIntake } from "@/features/consultations/payment/service";
 
 type DoctorRecord = Awaited<ReturnType<typeof getApprovedDoctors>>[number];
 type AvailabilityRecord = Awaited<ReturnType<typeof getAvailabilitySlots>>[number];
@@ -207,12 +208,24 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
               scheduledAt: true,
               bookedDurationMinutes: true,
               status: true,
+              payment: { select: { status: true, verificationPayload: true } },
               slotLock: { select: { expiresAt: true } }
             }
           })
         ]);
   const doctorName = selectedDoctorId ? getDoctorName(eligibleDoctors.find((doctor) => doctor.id === selectedDoctorId)!) : "แพทย์ผู้ให้คำปรึกษา";
-  const calendarConsultations = consultations.flatMap((consultation) => consultation.status === "pending_payment" || consultation.status === "scheduled" || consultation.status === "live" ? [{ doctorId: consultation.doctorId, scheduledAt: consultation.scheduledAt, bookedDurationMinutes: consultation.bookedDurationMinutes, status: consultation.status, slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null }] : []);
+  const calendarConsultations = consultations.flatMap((consultation) => consultation.status === "pending_payment" || consultation.status === "scheduled" || consultation.status === "live" ? [{
+    doctorId: consultation.doctorId,
+    scheduledAt: consultation.scheduledAt,
+    bookedDurationMinutes: consultation.bookedDurationMinutes,
+    status: consultation.status,
+    slotLockExpiresAt: consultation.slotLock?.expiresAt ?? null,
+    manualAppointmentReviewPending: Boolean(
+      consultation.status === "pending_payment" &&
+      consultation.payment?.status === "pending_review" &&
+      hasAdminManualAppointmentIntake(consultation.payment.verificationPayload)
+    )
+  }] : []);
 
   return {
     dateValue: input.dateValue,
@@ -226,7 +239,11 @@ async function getAppointmentCalendar(input: { doctors: DoctorRecord[]; dateValu
       slots: buildAdminAppointmentCalendarSlots({ availabilities, overrides: overrides.filter((override) => override.scheduleDate.toISOString().slice(0, 10) === dateValue), consultations: calendarConsultations, dateValue, now: input.now }).map((slot) => {
         const consultation = slot.consultation;
         const status = consultation?.status ?? slot.status;
-        return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : status === "blocked" ? "ไม่ว่าง (แอดมินกำหนด)" : "ว่าง", slotMinutes: slot.slotMinutes, lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };
+        const manualAppointmentReviewPending = Boolean(
+          consultation?.status === "pending_payment" &&
+          consultation.manualAppointmentReviewPending
+        );
+        return { id: `${slot.doctorId}:${slot.scheduledAt.toISOString()}`, doctorId: slot.doctorId, doctorName, availabilityId: slot.availabilityId, scheduledAtIso: slot.scheduledAt.toISOString(), timeLabel: slot.timeLabel, status, statusLabel: status === "pending_payment" ? manualAppointmentReviewPending ? "รอตรวจรายการโอน" : "รอชำระเงิน" : status === "scheduled" ? "จองแล้ว" : status === "live" ? "กำลังปรึกษา" : status === "blocked" ? "ไม่ว่าง (แอดมินกำหนด)" : "ว่าง", manualAppointmentReviewPending, slotMinutes: slot.slotMinutes, lockExpiresAt: consultation?.status === "pending_payment" && consultation.slotLockExpiresAt ? formatDate(consultation.slotLockExpiresAt) : null };
       })
     }))
   };

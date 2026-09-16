@@ -71,6 +71,7 @@ export type AdminAppointmentCalendarSlot = {
   timeLabel: string;
   status: "available" | "blocked" | "pending_payment" | "scheduled" | "live" | "closed";
   statusLabel: string;
+  manualAppointmentReviewPending?: boolean;
   slotMinutes: number;
   lockExpiresAt: string | null;
 };

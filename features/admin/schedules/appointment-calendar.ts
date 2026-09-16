@@ -27,6 +27,7 @@ export type AppointmentCalendarOverride = {
 export type AppointmentCalendarConsultation = {
   doctorId: string;
   bookedDurationMinutes?: number | null;
+  manualAppointmentReviewPending?: boolean;
   scheduledAt: Date | null;
   status: "pending_payment" | "scheduled" | "live";
   slotLockExpiresAt: Date | null;

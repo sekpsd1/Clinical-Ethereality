@@ -625,6 +625,15 @@ describe("admin manual appointment payment intake and review", () => {
         })
       })
     );
+    expect(tx.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        title: "รอแอดมินตรวจรายการโอน",
+        body: "ทีมงานได้รับคำขอและหลักฐานแล้ว แต่ยังไม่ยืนยันนัดหมาย กรุณาไม่ชำระหรือส่งหลักฐานซ้ำ",
+        metadataJson: expect.objectContaining({
+          href: "/consult/appointments/consultation-1"
+        })
+      })
+    });
     expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
       "transactionReference"
     );

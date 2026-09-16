@@ -72,13 +72,15 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
               </div>
             </article>
 
-            <Link
-              href={appointment.ctaHref as Route}
-              className="flex h-16 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient px-5 text-base font-bold leading-6 text-white shadow-booking"
-            >
-              <Stethoscope aria-hidden="true" className="size-5" strokeWidth={2.2} />
-              {appointment.ctaLabel}
-            </Link>
+            {appointment.ctaHref && appointment.ctaLabel ? (
+              <Link
+                href={appointment.ctaHref as Route}
+                className="flex h-16 w-full items-center justify-center gap-3 rounded-full bg-primary-gradient px-5 text-base font-bold leading-6 text-white shadow-booking"
+              >
+                <Stethoscope aria-hidden="true" className="size-5" strokeWidth={2.2} />
+                {appointment.ctaLabel}
+              </Link>
+            ) : null}
           </>
         ) : (
           <StateCard

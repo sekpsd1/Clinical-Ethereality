@@ -16,8 +16,8 @@ export type CustomerAppointmentDetail = {
   paymentStatusDescription: string;
   nextStepLabel: string;
   nextStepDescription: string;
-  ctaLabel: string;
-  ctaHref: string;
+  ctaLabel: string | null;
+  ctaHref: string | null;
 };
 
 export type CustomerAppointmentData = {

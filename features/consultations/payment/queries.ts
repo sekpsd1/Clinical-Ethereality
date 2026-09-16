@@ -123,7 +123,9 @@ async function mapConsultation(consultation: ConsultationRecord): Promise<Consul
     scheduledDate: formatDate(consultation.scheduledAt),
     scheduledTime: formatTime(consultation.scheduledAt),
     status: consultation.status,
-    statusLabel: statusLabels[consultation.status],
+    statusLabel: manualAppointmentReviewPending
+      ? "รอแอดมินตรวจรายการโอน"
+      : statusLabels[consultation.status],
     feeAmount,
     feeLabel: formatMoney(feeAmount),
     appointmentHref: `/consult/appointments/${consultation.id}`,

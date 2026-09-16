@@ -652,8 +652,8 @@ export async function createManualAppointmentPaymentIntake(
       userId: input.patientId,
       type: "consultation",
       channel: "in_app",
-      title: "รับคำขอนัดหมายและหลักฐานแล้ว",
-      body: "ทีมงานกำลังตรวจรายการโอน นัดหมายจะยืนยันหลังตรวจสอบสำเร็จเท่านั้น",
+      title: "รอแอดมินตรวจรายการโอน",
+      body: "ทีมงานได้รับคำขอและหลักฐานแล้ว แต่ยังไม่ยืนยันนัดหมาย กรุณาไม่ชำระหรือส่งหลักฐานซ้ำ",
       metadataJson: {
         consultationId: consultation.id,
         paymentId: payment.id,
