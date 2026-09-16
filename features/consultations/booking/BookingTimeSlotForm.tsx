@@ -186,7 +186,10 @@ export function BookingTimeSlotForm({ data, verification, canSelfConsent, bookin
           })}
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mx-auto w-full max-w-[480px] px-4">
+        <div
+          data-testid="booking-submit-bar"
+          className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-sheet mt-2 w-full py-2"
+        >
           <button
             type="submit"
             disabled={!hasBookableSlots || !selectedSlot || !verification.isVerified || (requiresNewConsent && (!isAdult || !consentAccepted))}

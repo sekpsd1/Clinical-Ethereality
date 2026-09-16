@@ -225,6 +225,7 @@ test.describe("customer mobile smoke", () => {
     await page.goto("/consult/booking/somchai");
 
     await expectNoAppError(page);
+    await expect(page.getByTestId("booking-submit-bar")).not.toBeInViewport();
     await expect
       .poll(() =>
         page

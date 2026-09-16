@@ -583,6 +583,11 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Preserve server-side current-version validation, per-booking evidence, minor guardian blocking, and paid-consultation rescheduling without a new consent.
 - [x] Add focused full-text, accessibility, adult/minor, reschedule, disabled-submit, and slot-layout regression coverage. Production release and authenticated UAT remain separately gated.
 
+## Booking consent mobile CTA overlap fix (code only, 2026-09-17)
+
+- [x] Keep the booking confirmation bar out of the Telemedicine consent reading area by changing it from viewport-fixed to in-flow sticky positioning above the shared footer.
+- [x] Add a regression assertion that the booking submit bar is sticky and no longer uses the overlapping fixed positioning. Production release and authenticated LINE mobile UAT remain separately gated.
+
 ## Admin-managed doctor profiles (code only, 2026-09-16)
 
 - [x] Let an active Admin search and select an existing LINE-linked Customer/Doctor account, then manage `User.fullName`, Doctor specialty, unique license number, optional bio, official profile photo, and license proof without accepting a manually entered LINE user ID.
