@@ -563,3 +563,11 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Require `identityConfirmed=true` and recent actor-scoped reveal evidence, then recheck actor/Doctor ownership and the complete active-Customer identity set both before Zoom creation and inside the Serializable start transaction.
 - [x] Require national ID in Admin manual appointment candidates and Server Action/transaction validation so crafted intake requests cannot create a Consultation that is immediately blocked by the start gate.
 - [x] Add focused route, UI, query-privacy, workflow, Admin intake, and consultation lifecycle regression coverage. Production push/deploy remains separately gated.
+
+## Consultation recording MP4-only policy (code only, 2026-09-16)
+
+- [x] Define one fail-closed eligibility policy for Zoom `shared_screen_with_speaker_view` recordings with file type `mp4` and served MIME type `video/mp4`.
+- [x] Persist only eligible files from new `recording.completed` webhooks and filter Doctor/Admin recording lists, counts, and presentation to the same policy.
+- [x] Deny ineligible direct streams, downloads, byte ranges, external-handoff issuance/exchange, and provider metadata/content mismatches while preserving MP4 authorization, replay protection, auditing, and range behavior.
+- [x] Cover mixed MP4/M4A/TIMELINE ingestion and UI, Doctor/Admin queries, provider enforcement, authenticated access, and external handoff with focused regression tests.
+- [ ] Release and authenticated Doctor/Admin UAT remain separately gated. Existing M4A/TIMELINE metadata and provider files are intentionally not deleted; stopping Zoom from creating those artifacts requires a separately approved provider-setting change.

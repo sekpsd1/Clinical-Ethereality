@@ -25,6 +25,18 @@ function payload() {
             recording_end: "2030-01-01T10:30:00.000Z",
             status: "completed",
             download_url: "https://example.invalid/must-not-persist"
+          },
+          {
+            id: "recording-audio-1",
+            file_type: "M4A",
+            recording_type: "audio_only",
+            status: "completed"
+          },
+          {
+            id: "recording-timeline-1",
+            file_type: "TIMELINE",
+            recording_type: "timeline",
+            status: "completed"
           }
         ]
       }
@@ -48,6 +60,7 @@ describe("Zoom recording webhook metadata", () => {
     });
     expect(JSON.stringify(parsed, (_key, value) => typeof value === "bigint" ? value.toString() : value))
       .not.toContain("download_url");
+    expect(parsed?.files).toHaveLength(1);
   });
 
   it("rejects malformed or non-completed file payloads", () => {
@@ -83,5 +96,26 @@ describe("Zoom recording webhook metadata", () => {
     expect(duplicate).toEqual({ consultationId: "consultation-1", duplicate: true, recordingCount: 0 });
     expect(tx.consultationRecording.createMany).toHaveBeenCalledTimes(1);
     expect(mocks.writeAuditLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts an event with no eligible MP4 without persisting hidden metadata", async () => {
+    const value = payload();
+    value.payload.object.recording_files = value.payload.object.recording_files.slice(1);
+    const parsed = parseZoomRecordingCompletedEvent(value)!;
+    const tx = {
+      consultation: { findFirst: vi.fn().mockResolvedValue({ id: "consultation-1" }) },
+      consultationRecordingWebhookEvent: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      consultationRecording: { createMany: vi.fn() }
+    };
+
+    expect(parsed.files).toEqual([]);
+    await expect(
+      applyZoomRecordingCompletedEvent(tx as unknown as Prisma.TransactionClient, parsed)
+    ).resolves.toEqual({ consultationId: "consultation-1", duplicate: false, recordingCount: 0 });
+    expect(tx.consultationRecording.createMany).not.toHaveBeenCalled();
+    expect(mocks.writeAuditLog).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ metadata: expect.objectContaining({ recordingCount: 0 }) })
+    );
   });
 });

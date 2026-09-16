@@ -341,7 +341,7 @@ describe("Zoom webhook route", () => {
         object: {
           id: "12345678901",
           uuid: "meeting-uuid",
-          recording_files: [{ id: "file-1", file_type: "MP4", recording_type: "speaker_view", status: "completed" }]
+          recording_files: [{ id: "file-1", file_type: "MP4", recording_type: "shared_screen_with_speaker_view", status: "completed" }]
         }
       }
     });

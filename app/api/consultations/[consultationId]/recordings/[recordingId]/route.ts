@@ -14,6 +14,7 @@ import {
   zoomRecordingContentProvider
 } from "@/features/consultations/recordings/provider";
 import { parseRecordingRangeHeader } from "@/features/consultations/recordings/range";
+import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function GET(
     : await getRecordingExternalAccess(consultationId, recordingId, mode);
   const recording = mainRecording ?? externalAccess?.recording ?? null;
 
-  if (!recording) {
+  if (!recording || !isEligibleConsultationRecordingMetadata(recording)) {
     return session
       ? NextResponse.json({ error: "Recording not found." }, { status: 404 })
       : NextResponse.json({ error: "Authentication required." }, { status: 401 });

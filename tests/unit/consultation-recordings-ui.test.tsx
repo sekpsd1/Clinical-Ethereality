@@ -2,7 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
-import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
+import {
+  mapConsultationRecording,
+  mapEligibleConsultationRecordings
+} from "@/features/consultations/recordings/presentation";
 
 describe("consultation recording presentation", () => {
   it("maps Zoom video metadata to clear Thai labels", () => {
@@ -32,7 +35,7 @@ describe("consultation recording presentation", () => {
   it("renders client handoff actions without raw protected recording anchors", () => {
     const recording = mapConsultationRecording({
       id: "recording-video-1",
-      recordingType: "speaker_view",
+      recordingType: "shared_screen_with_speaker_view",
       fileType: "MP4",
       fileSizeBytes: null,
       startedAt: new Date("2030-01-01T10:00:00.000Z"),
@@ -51,6 +54,7 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("1 ไฟล์");
     expect(html).toContain("เปิดดู");
     expect(html).toContain("ดาวน์โหลด");
+    expect(html).toContain("grid-cols-2");
     expect(html).not.toContain("href=\"/api/consultations/");
     expect(html).toContain("aria-live=\"polite\"");
     expect(html).toContain("เฉพาะแอดมินและแพทย์ผู้รับผิดชอบเคสนี้เท่านั้น");
@@ -66,5 +70,32 @@ describe("consultation recording presentation", () => {
 
     expect(html).toContain("ยังไม่มีไฟล์บันทึก");
     expect(html).toContain("กรุณารอ Zoom ประมวลผลสักครู่");
+  });
+
+  it("counts and renders only the screen-and-speaker MP4 from mixed Zoom metadata", () => {
+    const base = {
+      fileSizeBytes: BigInt(1024),
+      startedAt: new Date("2030-01-01T10:00:00.000Z"),
+      endedAt: new Date("2030-01-01T10:05:00.000Z"),
+      retentionUntil: new Date("2035-01-01T10:00:00.000Z"),
+      createdAt: new Date("2030-01-01T10:06:00.000Z")
+    };
+    const recordings = mapEligibleConsultationRecordings([
+      { ...base, id: "recording-video-1", fileType: "mp4", recordingType: "shared_screen_with_speaker_view" },
+      { ...base, id: "recording-audio-1", fileType: "m4a", recordingType: "audio_only" },
+      { ...base, id: "recording-timeline-1", fileType: "timeline", recordingType: "timeline" }
+    ]);
+    const html = renderToStaticMarkup(
+      createElement(ConsultationRecordingsPanel, {
+        consultationId: "consultation-1",
+        recordings
+      })
+    );
+
+    expect(recordings).toHaveLength(1);
+    expect(html).toContain("1 ไฟล์");
+    expect(html).toContain("วิดีโอหน้าจอและผู้พูด");
+    expect(html).not.toContain("ไฟล์เสียงการปรึกษา");
+    expect(html).not.toContain("recording-timeline-1");
   });
 });

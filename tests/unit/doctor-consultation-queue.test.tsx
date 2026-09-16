@@ -328,7 +328,7 @@ describe("Doctor consultation queue", () => {
       {
         id: "recording-video-1",
         kind: "video",
-        title: "วิดีโอผู้พูด",
+        title: "วิดีโอหน้าจอและผู้พูด",
         fileTypeLabel: "MP4",
         fileSizeLabel: "12 MB",
         recordedAtLabel: "3 ส.ค. 2569 09:00",
@@ -349,7 +349,7 @@ describe("Doctor consultation queue", () => {
     const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
 
     expect(html).toContain("บันทึกการปรึกษา");
-    expect(html).toContain("วิดีโอผู้พูด");
+    expect(html).toContain("วิดีโอหน้าจอและผู้พูด");
     expect(html).toContain("เปิดดู");
     expect(html).toContain("ดาวน์โหลด");
     expect(html).not.toContain("href=\"/api/consultations/consultation-completed/recordings/recording-video-1");

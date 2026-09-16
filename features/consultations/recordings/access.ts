@@ -2,6 +2,10 @@ import type { Prisma } from "@prisma/client";
 import type { PublicSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
+import {
+  consultationRecordingEligibilityWhere,
+  isEligibleConsultationRecordingMetadata
+} from "@/features/consultations/recordings/policy";
 
 export type AuthorizedRecording = {
   id: string;
@@ -35,6 +39,7 @@ export async function findAuthorizedRecordingWithClient(
       where: {
         id: recordingId,
         consultationId,
+        ...consultationRecordingEligibilityWhere,
         ...(session.role === "doctor" ? { consultation: { doctor: { userId: session.userId } } } : {})
       },
       select: {
@@ -50,7 +55,11 @@ export async function findAuthorizedRecordingWithClient(
     })
   ]);
 
-  if (!activeUser || !recording?.consultation.zoomMeetingId) return null;
+  if (
+    !activeUser ||
+    !recording?.consultation.zoomMeetingId ||
+    !isEligibleConsultationRecordingMetadata(recording)
+  ) return null;
 
   return {
     id: recording.id,

@@ -1,25 +1,11 @@
 import {
-  AudioLines,
   ChevronDown,
-  FileText,
-  MessageSquareText,
   ShieldCheck,
   Video
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import type {
-  ConsultationRecordingKind,
-  ConsultationRecordingListItem
-} from "@/features/consultations/recordings/presentation";
+import type { ConsultationRecordingListItem } from "@/features/consultations/recordings/presentation";
 import { RecordingHandoffActions } from "@/features/consultations/recordings/RecordingHandoffActions";
-
-const recordingIcons: Record<ConsultationRecordingKind, typeof Video> = {
-  audio: AudioLines,
-  chat: MessageSquareText,
-  file: FileText,
-  transcript: FileText,
-  video: Video
-};
 
 export function ConsultationRecordingsPanel({
   consultationId,
@@ -62,7 +48,6 @@ export function ConsultationRecordingsPanel({
         ) : (
           <ul className="flex flex-col gap-2">
           {recordings.map((recording) => {
-            const Icon = recordingIcons[recording.kind];
             const detailParts = [
               recording.recordedAtLabel,
               recording.durationLabel,
@@ -73,7 +58,7 @@ export function ConsultationRecordingsPanel({
               <li key={recording.id} className="rounded-[8px] border border-border/80 bg-white p-3">
                 <div className="flex items-start gap-2">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
-                    <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />
+                    <Video aria-hidden="true" className="size-4" strokeWidth={2.1} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

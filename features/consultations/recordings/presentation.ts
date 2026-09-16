@@ -1,4 +1,6 @@
-export type ConsultationRecordingKind = "audio" | "chat" | "file" | "transcript" | "video";
+import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
+
+export type ConsultationRecordingKind = "video";
 
 export type ConsultationRecordingListItem = {
   id: string;
@@ -21,42 +23,6 @@ export type ConsultationRecordingPresentationInput = {
   retentionUntil: Date;
   createdAt: Date;
 };
-
-const recordingTypeTitles: Record<string, string> = {
-  active_speaker: "วิดีโอผู้พูด",
-  audio_only: "ไฟล์เสียงการปรึกษา",
-  audio_transcript: "คำถอดเสียงการปรึกษา",
-  chat_file: "ข้อความแชทระหว่างปรึกษา",
-  gallery_view: "วิดีโอแบบแกลเลอรี",
-  shared_screen_with_gallery_view: "วิดีโอหน้าจอและแกลเลอรี",
-  shared_screen_with_speaker_view: "วิดีโอหน้าจอและผู้พูด",
-  speaker_view: "วิดีโอผู้พูด"
-};
-
-function getRecordingKind(recordingType: string, fileType: string): ConsultationRecordingKind {
-  const normalizedType = recordingType.toLowerCase();
-  const normalizedFileType = fileType.toUpperCase();
-
-  if (normalizedFileType === "MP4") return "video";
-  if (["M4A", "MP3", "WAV"].includes(normalizedFileType)) return "audio";
-  if (normalizedType.includes("transcript") || ["VTT", "SRT"].includes(normalizedFileType)) return "transcript";
-  if (normalizedType.includes("chat")) return "chat";
-  return "file";
-}
-
-function getRecordingTitle(recordingType: string, kind: ConsultationRecordingKind): string {
-  const normalizedType = recordingType.toLowerCase();
-  const knownTitle = recordingTypeTitles[normalizedType];
-  if (knownTitle) return knownTitle;
-
-  return {
-    audio: "ไฟล์เสียงการปรึกษา",
-    chat: "ข้อความแชทระหว่างปรึกษา",
-    file: "ไฟล์บันทึกการปรึกษา",
-    transcript: "คำถอดเสียงการปรึกษา",
-    video: "วิดีโอการปรึกษา"
-  }[kind];
-}
 
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("th-TH", {
@@ -105,16 +71,26 @@ function formatDuration(startedAt: Date | null, endedAt: Date | null): string | 
 export function mapConsultationRecording(
   recording: ConsultationRecordingPresentationInput
 ): ConsultationRecordingListItem {
-  const kind = getRecordingKind(recording.recordingType, recording.fileType);
+  if (!isEligibleConsultationRecordingMetadata(recording)) {
+    throw new Error("Consultation recording is not available for presentation.");
+  }
 
   return {
     id: recording.id,
-    kind,
-    title: getRecordingTitle(recording.recordingType, kind),
+    kind: "video",
+    title: "วิดีโอหน้าจอและผู้พูด",
     fileTypeLabel: recording.fileType.toUpperCase(),
     fileSizeLabel: formatFileSize(recording.fileSizeBytes),
     recordedAtLabel: formatDateTime(recording.startedAt ?? recording.createdAt),
     durationLabel: formatDuration(recording.startedAt, recording.endedAt),
     retentionUntilLabel: formatDate(recording.retentionUntil)
   };
+}
+
+export function mapEligibleConsultationRecordings(
+  recordings: ConsultationRecordingPresentationInput[]
+): ConsultationRecordingListItem[] {
+  return recordings
+    .filter(isEligibleConsultationRecordingMetadata)
+    .map(mapConsultationRecording);
 }

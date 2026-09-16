@@ -43,6 +43,11 @@ describe("doctor consultation initial query privacy", () => {
     expect(query.include.patient.select).not.toHaveProperty("fullName");
     expect(query.include.patient.select).not.toHaveProperty("nationalId");
     expect(query.include.patient.select).not.toHaveProperty("dateOfBirth");
+    expect(query.include.recordings.where).toEqual({
+      provider: "zoom",
+      fileType: "mp4",
+      recordingType: "shared_screen_with_speaker_view"
+    });
     expect(JSON.stringify(data)).not.toContain("nationalId");
     expect(JSON.stringify(data)).not.toContain("dateOfBirth");
   });

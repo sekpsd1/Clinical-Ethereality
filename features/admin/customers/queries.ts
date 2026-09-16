@@ -13,7 +13,8 @@ import type {
   AdminCustomersData
 } from "@/features/admin/customers/types";
 import { staffFileEntityTypes } from "@/features/staff-files/types";
-import { mapConsultationRecording } from "@/features/consultations/recordings/presentation";
+import { mapEligibleConsultationRecordings } from "@/features/consultations/recordings/presentation";
+import { consultationRecordingEligibilityWhere } from "@/features/consultations/recordings/policy";
 import { formatCustomerReference } from "@/features/admin/customers/reference";
 
 type CustomerListRecord = Awaited<ReturnType<typeof getCustomerListRecords>>[number];
@@ -60,6 +61,7 @@ function consultationInclude() {
       }
     },
     recordings: {
+      where: consultationRecordingEligibilityWhere,
       orderBy: { createdAt: "asc" as const },
       take: 30,
       select: {
@@ -205,7 +207,7 @@ function mapConsultation(consultation: CustomerConsultationRecord): AdminCustome
     scheduledAt: formatDate(consultation.scheduledAt),
     createdAt: formatDate(consultation.createdAt) ?? "",
     assessmentId: consultation.assessmentId,
-    recordings: consultation.recordings.map(mapConsultationRecording)
+    recordings: mapEligibleConsultationRecordings(consultation.recordings)
   };
 }
 
