@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { Route } from "next";
-import { ClipboardList, Clock3, FileText, MessageCircle, Pill, Stethoscope } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ClipboardList, Clock3, FileText, MessageCircle, Pill, Stethoscope } from "lucide-react";
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorPrescriptionForm } from "@/features/doctor/DoctorPrescriptionForm";
@@ -10,6 +13,11 @@ import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features
 import { formatPrescriptionItem } from "@/features/prescriptions/items";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
 import { DoctorConsultationQueueAutoRefresh } from "@/features/doctor/DoctorConsultationQueueAutoRefresh";
+import {
+  filterDoctorConsultationsByQueueStatus,
+  getNonOperationalDoctorConsultationCount,
+  type DoctorQueueStatus
+} from "@/features/doctor/consultations/queue-order";
 
 const telemedicineServices = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"] as const;
 
@@ -74,27 +82,44 @@ function getIssuedPrescriptionStatus(consultation: DoctorConsultationItem): stri
   return "ออกใบสั่งยาแล้ว • ลูกค้าพร้อมสั่งซื้อ";
 }
 
-export function DoctorConsultations({ data }: { data: DoctorConsultationsData }) {
+export function DoctorConsultations({
+  data,
+  initialSelectedStatus = "scheduled"
+}: {
+  data: DoctorConsultationsData;
+  initialSelectedStatus?: DoctorQueueStatus;
+}) {
+  const [selectedStatus, setSelectedStatus] = useState<DoctorQueueStatus>(initialSelectedStatus);
   const hasLiveConsultation = data.consultations.some(
     (consultation) => consultation.status === "live"
   );
   const summaryItems = [
     {
+      status: "scheduled",
       label: "พร้อมตรวจ",
       value: String(data.summary.scheduled),
-      tone: "success"
+      tone: "success",
+      description: "แสดงคิวที่พร้อมเริ่ม consult"
     },
     {
+      status: "live",
       label: "กำลังปรึกษา",
       value: String(data.summary.live),
-      tone: "warning"
+      tone: "warning",
+      description: "แสดงคิวที่กำลังอยู่ใน consult"
     },
     {
+      status: "completed",
       label: "เสร็จสิ้น",
       value: String(data.summary.completed),
-      tone: "neutral"
+      tone: "neutral",
+      description: "แสดงประวัติ consult ที่เสร็จสิ้นแล้ว"
     }
   ] as const;
+  const selectedSummary = summaryItems.find((item) => item.status === selectedStatus) ?? summaryItems[0];
+  const visibleConsultations = filterDoctorConsultationsByQueueStatus(data.consultations, selectedStatus);
+  const nonOperationalCount = getNonOperationalDoctorConsultationCount(data.consultations);
+  const queueListId = "doctor-consultation-status-list";
 
   return (
     <div className="flex flex-col gap-5">
@@ -109,13 +134,32 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
 
       <section className="grid grid-cols-3 gap-2">
         {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[8px] border border-border bg-white/85 p-3 shadow-payment-card">
-            <p className="font-headline text-2xl font-bold text-text">{item.value}</p>
+          <button
+            key={item.status}
+            type="button"
+            aria-pressed={selectedStatus === item.status}
+            aria-controls={queueListId}
+            aria-label={`${item.label} ${item.value} รายการ — ${item.description}`}
+            onClick={() => setSelectedStatus(item.status)}
+            className={
+              selectedStatus === item.status
+                ? "min-h-24 min-w-0 rounded-[8px] border border-primary bg-primary/5 p-3 text-left shadow-payment-active ring-2 ring-primary/20"
+                : "min-h-24 min-w-0 rounded-[8px] border border-border bg-white/85 p-3 text-left shadow-payment-card transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            }
+          >
+            <div className="flex items-start justify-between gap-1">
+              <p className="font-headline text-2xl font-bold text-text">{item.value}</p>
+              <ChevronDown
+                aria-hidden="true"
+                className={`mt-1 size-4 shrink-0 text-primary transition-transform ${selectedStatus === item.status ? "rotate-180" : ""}`}
+                strokeWidth={2.1}
+              />
+            </div>
             <p className="mt-1 min-h-8 text-[10px] font-semibold leading-4 text-muted">{item.label}</p>
             <div className="mt-2">
-              <StatusBadge tone={item.tone}>{item.label}</StatusBadge>
+              <StatusBadge tone={item.tone}>{selectedStatus === item.status ? "กำลังแสดง" : item.label}</StatusBadge>
             </div>
-          </div>
+          </button>
         ))}
       </section>
 
@@ -139,9 +183,12 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section id={queueListId} aria-labelledby="doctor-consultation-list-title" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-headline text-lg font-bold text-text">รายการปรึกษา</h2>
+          <div className="min-w-0">
+            <h2 id="doctor-consultation-list-title" className="font-headline text-lg font-bold text-text">รายการปรึกษา</h2>
+            <p className="mt-0.5 text-xs font-semibold text-muted">กำลังแสดง: {selectedSummary.label} • {selectedSummary.value} รายการ</p>
+          </div>
           <StatusBadge tone={data.unavailable || data.missingDoctorProfile ? "danger" : "success"}>
             {data.unavailable ? "ฐานข้อมูลไม่พร้อม" : data.missingDoctorProfile ? "ต้องมีโปรไฟล์แพทย์" : "พร้อมใช้งาน"}
           </StatusBadge>
@@ -157,11 +204,20 @@ export function DoctorConsultations({ data }: { data: DoctorConsultationsData })
             title="ยังไม่มีโปรไฟล์แพทย์"
             body="อนุมัติหรือสร้างโปรไฟล์แพทย์ก่อนแสดงคิวที่ได้รับมอบหมาย"
           />
-        ) : data.consultations.length === 0 ? (
-          <EmptyDoctorQueue title="ยังไม่มีคิวปรึกษา" body="คิวผู้ป่วยที่ได้รับมอบหมายจะแสดงที่นี่" />
+        ) : visibleConsultations.length === 0 ? (
+          <EmptyDoctorQueue
+            title={`ยังไม่มีรายการ${selectedSummary.label}`}
+            body="เลือกสถานะอื่นด้านบนเพื่อดูคิวในกลุ่มนั้น รายการจะไม่สลับกลุ่มอัตโนมัติ"
+          />
         ) : null}
 
-        {data.consultations.map((consultation) => {
+        {!data.unavailable && !data.missingDoctorProfile && nonOperationalCount > 0 ? (
+          <p className="rounded-[8px] bg-surface px-3 py-2 text-xs leading-5 text-muted">
+            มีรายการสถานะอื่น {nonOperationalCount} รายการ ซึ่งยังไม่อยู่ในคิวปฏิบัติการ 3 สถานะนี้
+          </p>
+        ) : null}
+
+        {visibleConsultations.map((consultation) => {
           const tone = getStatusTone(consultation.status);
 
           return (

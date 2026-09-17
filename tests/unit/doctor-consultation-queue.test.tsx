@@ -2,7 +2,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DoctorConsultations } from "@/features/doctor/DoctorConsultations";
-import { prioritizeDoctorConsultations } from "@/features/doctor/consultations/queue-order";
+import {
+  filterDoctorConsultationsByQueueStatus,
+  getNonOperationalDoctorConsultationCount,
+  prioritizeDoctorConsultations
+} from "@/features/doctor/consultations/queue-order";
 import type { DoctorConsultationItem, DoctorConsultationsData } from "@/features/doctor/consultations/types";
 
 vi.mock("@/features/doctor/DoctorConsultationControls", () => ({
@@ -115,7 +119,7 @@ describe("Doctor consultation queue", () => {
       summary: { scheduled: 1, live: 0, completed: 0 }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "scheduled" }));
     const identityIndex = html.indexOf("data-patient-identity-gate");
     const controlsIndex = html.indexOf("data-consultation-controls");
     const prescriptionIndex = html.indexOf("data-prescription-section");
@@ -132,7 +136,7 @@ describe("Doctor consultation queue", () => {
       summary: { scheduled: 0, live: 1, completed: 0 }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "live" }));
     const completionIndex = html.indexOf("ยืนยันจบการปรึกษา");
     const prescriptionIndex = html.indexOf("data-prescription-section");
 
@@ -187,6 +191,57 @@ describe("Doctor consultation queue", () => {
     expect(html).not.toContain("ตรวจ HPV");
   });
 
+  it("defaults to the ready queue and exposes one accessible status filter at a time", () => {
+    const scheduled = consultation("scheduled", "15 นาที");
+    scheduled.patientName = "Ready patient";
+    const live = consultation("live", "30 นาที");
+    live.patientName = "Live patient";
+    const completed = consultation("completed", "30 นาที");
+    completed.patientName = "Completed patient";
+    const data: DoctorConsultationsData = {
+      consultations: [scheduled, live, completed],
+      prescriptionProducts: [],
+      summary: { scheduled: 1, live: 1, completed: 1 }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-controls="doctor-consultation-status-list"');
+    expect(html).toContain("รายการปรึกษา");
+    expect(html).toContain("กำลังแสดง: พร้อมตรวจ");
+    expect(html).toContain("Ready patient");
+    expect(html).not.toContain("Live patient");
+    expect(html).not.toContain("Completed patient");
+    expect(html.match(/min-h-24/g)).toHaveLength(3);
+  });
+
+  it("maps exactly one operational status group at a time without losing other-status awareness", () => {
+    const scheduled = consultation("scheduled", "15 นาที");
+    const live = consultation("live", "30 นาที");
+    const completed = consultation("completed", "30 นาที");
+    const pending = consultation("pending_payment", "30 นาที");
+    const consultations = [scheduled, live, completed, pending];
+
+    expect(filterDoctorConsultationsByQueueStatus(consultations, "scheduled")).toEqual([scheduled]);
+    expect(filterDoctorConsultationsByQueueStatus(consultations, "live")).toEqual([live]);
+    expect(filterDoctorConsultationsByQueueStatus(consultations, "completed")).toEqual([completed]);
+    expect(getNonOperationalDoctorConsultationCount(consultations)).toBe(1);
+  });
+
+  it("keeps the selected queue empty instead of switching groups automatically", () => {
+    const data: DoctorConsultationsData = {
+      consultations: [consultation("live", "30 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 0, live: 1, completed: 0 }
+    };
+
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+
+    expect(html).toContain("ยังไม่มีรายการพร้อมตรวจ");
+    expect(html).not.toContain("<article");
+  });
+
   it("prioritizes live and scheduled consultations over historical entries", () => {
     const prioritized = prioritizeDoctorConsultations([
       consultation("cancelled", "30 นาที"),
@@ -223,13 +278,10 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "scheduled" }));
 
-    expect(html.match(/ระยะเวลานัด/g)).toHaveLength(data.consultations.length);
-    expect(html).toContain("15 นาที");
-    expect(html).toContain("30 นาที");
+    expect(html.match(/ระยะเวลานัด/g)).toHaveLength(1);
     expect(html).toContain("45 นาที");
-    expect(html).toContain("60 นาที");
     expect(html).toContain("col-span-2");
   });
 
@@ -244,7 +296,7 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" }));
 
     expect(html).toContain("ระยะเวลานัด");
     expect(html).toContain("ยังไม่ระบุ");
@@ -273,7 +325,7 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" }));
 
     expect(html).toContain("ออกใบสั่งยาแล้ว • ลูกค้าพร้อมสั่งซื้อ");
     expect(html).toContain("Paracetamol 500 mg • ขนาด 500 mg • จำนวน 10 เม็ด");
@@ -293,7 +345,7 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" }));
 
     expect(html.match(/<option>รอแพทย์สรุป<\/option>/g)).toHaveLength(1);
     expect(html.match(/<option>มีใบสั่งยา<\/option>/g)).toHaveLength(1);
@@ -314,7 +366,7 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" }));
 
     expect(html).toContain("ผลสรุปใบสั่งยา");
     expect(html).toContain("รอแพทย์สรุป");
@@ -346,7 +398,7 @@ describe("Doctor consultation queue", () => {
       }
     };
 
-    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
+    const html = renderToStaticMarkup(createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" }));
 
     expect(html).toContain("บันทึกการปรึกษา");
     expect(html).toContain("วิดีโอหน้าจอและผู้พูด");
