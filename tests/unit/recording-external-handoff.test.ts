@@ -117,6 +117,11 @@ describe("recording external-browser handoff", () => {
     expect(mocks.tx.consultationRecording.findFirst.mock.calls[0]?.[0].where).toMatchObject({
       id: "recording-1",
       consultationId: "consultation-1",
+      provider: "zoom",
+      OR: [
+        { fileType: "mp4", recordingType: "shared_screen_with_speaker_view" },
+        { fileType: "txt", recordingType: "chat_file" }
+      ],
       consultation: { doctor: { userId: "doctor-1" } }
     });
 
@@ -141,9 +146,29 @@ describe("recording external-browser handoff", () => {
     ).rejects.toBeInstanceOf(RecordingExternalHandoffError);
   });
 
+  it("uses the same scoped handoff for allowed chat TXT", async () => {
+    mocks.tx.consultationRecording.findFirst.mockResolvedValue({
+      ...recordingRow,
+      id: "recording-chat-1",
+      providerRecordingId: "provider-chat-1",
+      fileType: "txt",
+      recordingType: "chat_file"
+    });
+
+    await expect(
+      issueRecordingExternalHandoff("consultation-1", "recording-chat-1", "view", { now })
+    ).resolves.toMatchObject({
+      consultationId: "consultation-1",
+      recordingId: "recording-chat-1",
+      mode: "view"
+    });
+  });
+
   it.each([
     ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
-    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }],
+    ["VTT", { fileType: "vtt", recordingType: "audio_transcript" }],
+    ["other MP4", { fileType: "mp4", recordingType: "shared_screen_with_gallery_view" }]
   ])("does not mint a handoff ticket for hidden %s metadata", async (_label, hidden) => {
     mocks.tx.consultationRecording.findFirst.mockResolvedValueOnce({ ...recordingRow, ...hidden });
 
@@ -155,7 +180,9 @@ describe("recording external-browser handoff", () => {
 
   it.each([
     ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
-    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }],
+    ["VTT", { fileType: "vtt", recordingType: "audio_transcript" }],
+    ["other MP4", { fileType: "mp4", recordingType: "shared_screen_with_gallery_view" }]
   ])("rejects an existing handoff ticket when the target resolves to hidden %s metadata", async (_label, hidden) => {
     const handoff = await issueRecordingExternalHandoff(
       "consultation-1",

@@ -32,6 +32,28 @@ describe("consultation recording presentation", () => {
     expect(item.retentionUntilLabel).toBeTruthy();
   });
 
+  it("maps Zoom chat TXT metadata to the dedicated chat presentation", () => {
+    const item = mapConsultationRecording({
+      id: "recording-chat-1",
+      recordingType: "chat_file",
+      fileType: "txt",
+      fileSizeBytes: BigInt(1024),
+      startedAt: new Date("2030-01-01T10:00:00.000Z"),
+      endedAt: new Date("2030-01-01T10:30:00.000Z"),
+      retentionUntil: new Date("2035-01-01T10:00:00.000Z"),
+      createdAt: new Date("2030-01-01T10:31:00.000Z")
+    });
+
+    expect(item).toMatchObject({
+      id: "recording-chat-1",
+      kind: "chat",
+      title: "ข้อความแชทระหว่างปรึกษา",
+      fileTypeLabel: "TXT",
+      fileSizeLabel: "1 KB",
+      durationLabel: "30 นาที"
+    });
+  });
+
   it("renders client handoff actions without raw protected recording anchors", () => {
     const recording = mapConsultationRecording({
       id: "recording-video-1",
@@ -72,7 +94,7 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("กรุณารอ Zoom ประมวลผลสักครู่");
   });
 
-  it("counts and renders only the screen-and-speaker MP4 from mixed Zoom metadata", () => {
+  it("counts and renders exactly the screen-and-speaker MP4 and chat TXT", () => {
     const base = {
       fileSizeBytes: BigInt(1024),
       startedAt: new Date("2030-01-01T10:00:00.000Z"),
@@ -82,8 +104,11 @@ describe("consultation recording presentation", () => {
     };
     const recordings = mapEligibleConsultationRecordings([
       { ...base, id: "recording-video-1", fileType: "mp4", recordingType: "shared_screen_with_speaker_view" },
+      { ...base, id: "recording-chat-1", fileType: "txt", recordingType: "chat_file" },
       { ...base, id: "recording-audio-1", fileType: "m4a", recordingType: "audio_only" },
-      { ...base, id: "recording-timeline-1", fileType: "timeline", recordingType: "timeline" }
+      { ...base, id: "recording-timeline-1", fileType: "timeline", recordingType: "timeline" },
+      { ...base, id: "recording-transcript-1", fileType: "vtt", recordingType: "audio_transcript" },
+      { ...base, id: "recording-gallery-1", fileType: "mp4", recordingType: "shared_screen_with_gallery_view" }
     ]);
     const html = renderToStaticMarkup(
       createElement(ConsultationRecordingsPanel, {
@@ -92,10 +117,15 @@ describe("consultation recording presentation", () => {
       })
     );
 
-    expect(recordings).toHaveLength(1);
-    expect(html).toContain("1 ไฟล์");
+    expect(recordings).toHaveLength(2);
+    expect(html).toContain("2 ไฟล์");
     expect(html).toContain("วิดีโอหน้าจอและผู้พูด");
+    expect(html).toContain("ข้อความแชทระหว่างปรึกษา");
+    expect(html).toContain("data-recording-kind=\"video\"");
+    expect(html).toContain("data-recording-kind=\"chat\"");
     expect(html).not.toContain("ไฟล์เสียงการปรึกษา");
     expect(html).not.toContain("recording-timeline-1");
+    expect(html).not.toContain("recording-transcript-1");
+    expect(html).not.toContain("recording-gallery-1");
   });
 });

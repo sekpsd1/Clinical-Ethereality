@@ -27,6 +27,15 @@ function payload() {
             download_url: "https://example.invalid/must-not-persist"
           },
           {
+            id: "recording-chat-1",
+            file_type: "TXT",
+            recording_type: "chat_file",
+            file_size: 512,
+            recording_start: "2030-01-01T10:00:00.000Z",
+            recording_end: "2030-01-01T10:30:00.000Z",
+            status: "completed"
+          },
+          {
             id: "recording-audio-1",
             file_type: "M4A",
             recording_type: "audio_only",
@@ -36,6 +45,18 @@ function payload() {
             id: "recording-timeline-1",
             file_type: "TIMELINE",
             recording_type: "timeline",
+            status: "completed"
+          },
+          {
+            id: "recording-transcript-1",
+            file_type: "VTT",
+            recording_type: "audio_transcript",
+            status: "completed"
+          },
+          {
+            id: "recording-gallery-1",
+            file_type: "MP4",
+            recording_type: "shared_screen_with_gallery_view",
             status: "completed"
           }
         ]
@@ -51,16 +72,24 @@ describe("Zoom recording webhook metadata", () => {
     const parsed = parseZoomRecordingCompletedEvent(payload());
     expect(parsed).toMatchObject({
       meetingId: "12345678901",
-      files: [{
-        providerRecordingId: "recording-video-1",
-        fileType: "mp4",
-        recordingType: "shared_screen_with_speaker_view",
-        fileSizeBytes: BigInt(2048)
-      }]
+      files: [
+        {
+          providerRecordingId: "recording-video-1",
+          fileType: "mp4",
+          recordingType: "shared_screen_with_speaker_view",
+          fileSizeBytes: BigInt(2048)
+        },
+        {
+          providerRecordingId: "recording-chat-1",
+          fileType: "txt",
+          recordingType: "chat_file",
+          fileSizeBytes: BigInt(512)
+        }
+      ]
     });
     expect(JSON.stringify(parsed, (_key, value) => typeof value === "bigint" ? value.toString() : value))
       .not.toContain("download_url");
-    expect(parsed?.files).toHaveLength(1);
+    expect(parsed?.files).toHaveLength(2);
   });
 
   it("rejects malformed or non-completed file payloads", () => {
@@ -75,11 +104,11 @@ describe("Zoom recording webhook metadata", () => {
     const tx = {
       consultation: { findFirst: vi.fn().mockResolvedValue({ id: "consultation-1" }) },
       consultationRecordingWebhookEvent: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
-      consultationRecording: { createMany: vi.fn().mockResolvedValue({ count: 1 }) }
+      consultationRecording: { createMany: vi.fn().mockResolvedValue({ count: 2 }) }
     };
 
     const result = await applyZoomRecordingCompletedEvent(tx as unknown as Prisma.TransactionClient, parsed);
-    expect(result).toEqual({ consultationId: "consultation-1", duplicate: false, recordingCount: 1 });
+    expect(result).toEqual({ consultationId: "consultation-1", duplicate: false, recordingCount: 2 });
     expect(tx.consultation.findFirst).toHaveBeenCalledWith({
       where: { zoomMeetingId: "12345678901" },
       select: { id: true }
@@ -87,6 +116,13 @@ describe("Zoom recording webhook metadata", () => {
     expect(tx.consultationRecording.createMany.mock.calls[0][0].data[0]).toMatchObject({
       consultationId: "consultation-1",
       providerRecordingId: "recording-video-1",
+      retentionUntil: new Date("2035-01-01T10:30:00.000Z")
+    });
+    expect(tx.consultationRecording.createMany.mock.calls[0][0].data[1]).toMatchObject({
+      consultationId: "consultation-1",
+      providerRecordingId: "recording-chat-1",
+      fileType: "txt",
+      recordingType: "chat_file",
       retentionUntil: new Date("2035-01-01T10:30:00.000Z")
     });
     expect(mocks.writeAuditLog).toHaveBeenCalledOnce();
@@ -98,9 +134,9 @@ describe("Zoom recording webhook metadata", () => {
     expect(mocks.writeAuditLog).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts an event with no eligible MP4 without persisting hidden metadata", async () => {
+  it("accepts an event with no allowlisted files without persisting hidden metadata", async () => {
     const value = payload();
-    value.payload.object.recording_files = value.payload.object.recording_files.slice(1);
+    value.payload.object.recording_files = value.payload.object.recording_files.slice(2);
     const parsed = parseZoomRecordingCompletedEvent(value)!;
     const tx = {
       consultation: { findFirst: vi.fn().mockResolvedValue({ id: "consultation-1" }) },

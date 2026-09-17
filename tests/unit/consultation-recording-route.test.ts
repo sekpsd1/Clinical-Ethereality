@@ -39,6 +39,14 @@ const recording = {
   zoomMeetingId: "12345678901",
   fileSizeBytes: BigInt(1024)
 };
+const chatRecording = {
+  ...recording,
+  id: "recording-chat-1",
+  providerRecordingId: "provider-chat-1",
+  fileType: "txt",
+  recordingType: "chat_file",
+  fileSizeBytes: BigInt(64)
+};
 const externalAccess = {
   sessionId: "external-session-1",
   tokenHash: "a".repeat(64),
@@ -84,6 +92,33 @@ describe("private consultation recording route", () => {
       "download"
     );
     expect(mocks.external).not.toHaveBeenCalled();
+  });
+
+  it("serves allowed chat TXT through the protected flow as non-executable text", async () => {
+    mocks.session = { userId: "admin-1", role: "admin" };
+    mocks.authorize.mockResolvedValue(chatRecording);
+    mocks.open.mockResolvedValue({
+      body: new Response("<script>alert('blocked')</script>").body,
+      contentType: "text/plain; charset=utf-8",
+      contentLength: "34",
+      contentRange: null,
+      acceptRanges: null,
+      status: 200
+    });
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-chat-1"),
+      { params: Promise.resolve({ consultationId: "consultation-1", recordingId: "recording-chat-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("content-disposition")).toContain("consultation-recording-recording-chat-1.txt");
+    expect(response.headers.get("accept-ranges")).toBeNull();
+    expect(mocks.open).toHaveBeenCalledWith(chatRecording, undefined);
+    expect(mocks.audit).toHaveBeenCalledOnce();
   });
 
   it("accepts an exact external recording session without a LINE cookie", async () => {
@@ -161,7 +196,9 @@ describe("private consultation recording route", () => {
 
   it.each([
     ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
-    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }],
+    ["VTT", { fileType: "vtt", recordingType: "audio_transcript" }],
+    ["other MP4", { fileType: "mp4", recordingType: "shared_screen_with_gallery_view" }]
   ])("denies a direct %s request even if an upstream authorization mock returns it", async (_label, hidden) => {
     mocks.session = { userId: "admin-1", role: "admin" };
     mocks.authorize.mockResolvedValue({ ...recording, ...hidden });
@@ -216,6 +253,23 @@ describe("private consultation recording route", () => {
     );
     expect(response.status).toBe(416);
     expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.auditExternal).not.toHaveBeenCalled();
+  });
+
+  it("rejects chat TXT Range requests before provider access or audit", async () => {
+    mocks.session = { userId: "doctor-1", role: "doctor" };
+    mocks.authorize.mockResolvedValue(chatRecording);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-chat-1", {
+        headers: { range: "bytes=0-6" }
+      }),
+      { params: Promise.resolve({ consultationId: "consultation-1", recordingId: "recording-chat-1" }) }
+    );
+
+    expect(response.status).toBe(416);
+    expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
     expect(mocks.auditExternal).not.toHaveBeenCalled();
   });
 

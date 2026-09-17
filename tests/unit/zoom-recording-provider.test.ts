@@ -21,6 +21,15 @@ const recording = {
   fileSizeBytes: BigInt(1024)
 };
 
+const chatRecording = {
+  ...recording,
+  id: "recording-chat-1",
+  providerRecordingId: "provider-chat-1",
+  fileType: "txt",
+  recordingType: "chat_file",
+  fileSizeBytes: BigInt(64)
+};
+
 describe("feature-flagged Zoom recording provider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -129,6 +138,79 @@ describe("feature-flagged Zoom recording provider", () => {
       }));
 
     await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE"
+    });
+  });
+
+  it("serves exact chat TXT metadata as non-executable UTF-8 text without range semantics", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-chat-1",
+          download_url: "https://zoom.us/private/chat",
+          file_type: "TXT",
+          recording_type: "chat_file"
+        }]
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response("<script>alert('blocked')</script>", {
+        status: 200,
+        headers: {
+          "content-type": "text/plain",
+          "content-length": "34",
+          "accept-ranges": "bytes"
+        }
+      }));
+
+    const content = await zoomRecordingContentProvider.open(chatRecording);
+
+    expect(mocks.fetch.mock.calls[1]?.[1]?.headers).not.toHaveProperty("Range");
+    expect(content).toMatchObject({
+      status: 200,
+      contentType: "text/plain; charset=utf-8",
+      contentLength: "34",
+      contentRange: null,
+      acceptRanges: null
+    });
+  });
+
+  it("rejects ranges and provider pair/MIME mismatches for chat TXT", async () => {
+    await expect(
+      zoomRecordingContentProvider.open(chatRecording, { range: "bytes=0-6" })
+    ).rejects.toMatchObject({ code: "RANGE_NOT_SATISFIABLE" });
+    expect(mocks.fetch).not.toHaveBeenCalled();
+
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      recording_files: [{
+        id: "provider-chat-1",
+        download_url: "https://zoom.us/private/chat",
+        file_type: "MP4",
+        recording_type: "shared_screen_with_speaker_view"
+      }]
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    await expect(zoomRecordingContentProvider.open(chatRecording)).rejects.toMatchObject({
+      code: "METADATA_UNAVAILABLE"
+    });
+
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-chat-1",
+          download_url: "https://zoom.us/private/chat",
+          file_type: "TXT",
+          recording_type: "chat_file"
+        }]
+      }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response("<html>unsafe</html>", {
+        status: 200,
+        headers: { "content-type": "text/html" }
+      }));
+
+    await expect(zoomRecordingContentProvider.open(chatRecording)).rejects.toMatchObject({
       code: "CONTENT_UNAVAILABLE"
     });
   });

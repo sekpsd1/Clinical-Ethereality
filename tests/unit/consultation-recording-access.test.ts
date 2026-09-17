@@ -50,15 +50,29 @@ describe("consultation recording authorization", () => {
       .resolves.toMatchObject({ id: "recording-1" });
     expect(mocks.recordingFindFirst.mock.calls[1][0].where).toMatchObject({
       provider: "zoom",
-      fileType: "mp4",
-      recordingType: "shared_screen_with_speaker_view",
+      OR: [
+        { fileType: "mp4", recordingType: "shared_screen_with_speaker_view" },
+        { fileType: "txt", recordingType: "chat_file" }
+      ],
       consultation: { doctor: { userId: "doctor-1" } }
     });
   });
 
+  it("allows the assigned doctor and an active admin to access chat TXT", async () => {
+    const chat = { ...recording, id: "recording-chat-1", fileType: "txt", recordingType: "chat_file" };
+    mocks.recordingFindFirst.mockResolvedValue(chat);
+
+    await expect(getAuthorizedRecording(session("doctor", "doctor-1"), "consultation-1", "recording-chat-1"))
+      .resolves.toMatchObject({ id: "recording-chat-1", fileType: "txt", recordingType: "chat_file" });
+    await expect(getAuthorizedRecording(session("admin", "admin-1"), "consultation-1", "recording-chat-1"))
+      .resolves.toMatchObject({ id: "recording-chat-1", fileType: "txt", recordingType: "chat_file" });
+  });
+
   it.each([
     ["M4A", { fileType: "m4a", recordingType: "audio_only" }],
-    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }]
+    ["TIMELINE", { fileType: "timeline", recordingType: "timeline" }],
+    ["VTT", { fileType: "vtt", recordingType: "audio_transcript" }],
+    ["crossed TXT", { fileType: "txt", recordingType: "shared_screen_with_speaker_view" }]
   ])("denies hidden %s metadata even when a database mock ignores the query filter", async (_label, hidden) => {
     mocks.recordingFindFirst.mockResolvedValueOnce({ ...recording, ...hidden });
 

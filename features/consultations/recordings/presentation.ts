@@ -1,6 +1,9 @@
-import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
+import {
+  getConsultationRecordingVariant,
+  isEligibleConsultationRecordingMetadata
+} from "@/features/consultations/recordings/policy";
 
-export type ConsultationRecordingKind = "video";
+export type ConsultationRecordingKind = "video" | "chat";
 
 export type ConsultationRecordingListItem = {
   id: string;
@@ -71,15 +74,16 @@ function formatDuration(startedAt: Date | null, endedAt: Date | null): string | 
 export function mapConsultationRecording(
   recording: ConsultationRecordingPresentationInput
 ): ConsultationRecordingListItem {
-  if (!isEligibleConsultationRecordingMetadata(recording)) {
+  const variant = getConsultationRecordingVariant(recording);
+  if (!variant || !isEligibleConsultationRecordingMetadata(recording)) {
     throw new Error("Consultation recording is not available for presentation.");
   }
 
   return {
     id: recording.id,
-    kind: "video",
-    title: "วิดีโอหน้าจอและผู้พูด",
-    fileTypeLabel: recording.fileType.toUpperCase(),
+    kind: variant.kind,
+    title: variant.kind === "video" ? "วิดีโอหน้าจอและผู้พูด" : "ข้อความแชทระหว่างปรึกษา",
+    fileTypeLabel: variant.fileType.toUpperCase(),
     fileSizeLabel: formatFileSize(recording.fileSizeBytes),
     recordedAtLabel: formatDateTime(recording.startedAt ?? recording.createdAt),
     durationLabel: formatDuration(recording.startedAt, recording.endedAt),

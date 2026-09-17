@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  MessageSquareText,
   ShieldCheck,
   Video
 } from "lucide-react";
@@ -48,6 +49,7 @@ export function ConsultationRecordingsPanel({
         ) : (
           <ul className="flex flex-col gap-2">
           {recordings.map((recording) => {
+            const RecordingIcon = recording.kind === "chat" ? MessageSquareText : Video;
             const detailParts = [
               recording.recordedAtLabel,
               recording.durationLabel,
@@ -57,8 +59,11 @@ export function ConsultationRecordingsPanel({
             return (
               <li key={recording.id} className="rounded-[8px] border border-border/80 bg-white p-3">
                 <div className="flex items-start gap-2">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
-                    <Video aria-hidden="true" className="size-4" strokeWidth={2.1} />
+                  <div
+                    className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary"
+                    data-recording-kind={recording.kind}
+                  >
+                    <RecordingIcon aria-hidden="true" className="size-4" strokeWidth={2.1} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

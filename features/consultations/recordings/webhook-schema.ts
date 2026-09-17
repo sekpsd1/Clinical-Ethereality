@@ -71,7 +71,7 @@ export function parseZoomRecordingCompletedEvent(value: unknown): ZoomRecordingC
       .map((file) => ({
         providerRecordingId: String(file.id),
         fileType: file.file_type.toLowerCase(),
-        recordingType: file.recording_type,
+        recordingType: file.recording_type.toLowerCase(),
         fileSizeBytes: file.file_size === undefined ? null : BigInt(file.file_size),
         startedAt: toDate(file.recording_start),
         endedAt: toDate(file.recording_end)

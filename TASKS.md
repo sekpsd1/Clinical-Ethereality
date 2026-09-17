@@ -567,13 +567,14 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Require national ID in Admin manual appointment candidates and Server Action/transaction validation so crafted intake requests cannot create a Consultation that is immediately blocked by the start gate.
 - [x] Add focused route, UI, query-privacy, workflow, Admin intake, and consultation lifecycle regression coverage. Production push/deploy remains separately gated.
 
-## Consultation recording MP4-only policy (code only, 2026-09-16)
+## Consultation recording MP4 and chat TXT allowlist (code only, 2026-09-17)
 
-- [x] Define one fail-closed eligibility policy for Zoom `shared_screen_with_speaker_view` recordings with file type `mp4` and served MIME type `video/mp4`.
-- [x] Persist only eligible files from new `recording.completed` webhooks and filter Doctor/Admin recording lists, counts, and presentation to the same policy.
-- [x] Deny ineligible direct streams, downloads, byte ranges, external-handoff issuance/exchange, and provider metadata/content mismatches while preserving MP4 authorization, replay protection, auditing, and range behavior.
-- [x] Cover mixed MP4/M4A/TIMELINE ingestion and UI, Doctor/Admin queries, provider enforcement, authenticated access, and external handoff with focused regression tests.
-- [ ] Release and authenticated Doctor/Admin UAT remain separately gated. Existing M4A/TIMELINE metadata and provider files are intentionally not deleted; stopping Zoom from creating those artifacts requires a separately approved provider-setting change.
+- [x] Define one fail-closed allowlist for exactly Zoom `mp4` + `shared_screen_with_speaker_view` and `txt` + `chat_file`, with pair-specific provider MIME validation and canonical non-executable response types.
+- [x] Persist only those exact pairs from future `recording.completed` webhooks and filter Doctor/Admin recording lists, counts, presentation, authorization, provider revalidation, and protected handoff through the same policy.
+- [x] Show TXT as `ข้อความแชทระหว่างปรึกษา` with a chat icon and TXT label; retain existing protected view/download actions, private/no-store and audit behavior, and never expose the Zoom provider URL.
+- [x] Preserve MP4 Range behavior while rejecting TXT Range/partial-content semantics; keep M4A, TIMELINE, VTT/transcript, other MP4 views, crossed pairs, and all other types unpersisted from new events, unlisted, unauthorized, and unavailable.
+- [x] Preserve active Admin/assigned-Doctor authorization, assignment rechecks, scoped one-time handoff/replay protection, one logical external access audit, and five-year retention without a schema or migration.
+- [ ] Release, authenticated Doctor/Admin UAT, and Zoom Cloud `Save chat messages from the meeting/webinar` configuration remain separately gated. That external setting saves only chat sent publicly to everyone and applies to future cloud recordings; this code does not backfill or mutate existing Production metadata.
 
 ## Full Telemedicine consent text on booking (code only, 2026-09-16)
 

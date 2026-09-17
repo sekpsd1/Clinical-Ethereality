@@ -22,13 +22,15 @@ describe("Admin customer recording query", () => {
     mocks.doctorFindFirst.mockResolvedValue(null);
   });
 
-  it("loads only the canonical screen-and-speaker MP4 for direct and assessment-linked consultations", async () => {
+  it("loads only the canonical screen-and-speaker MP4 and chat TXT pairs", async () => {
     await getAdminCustomerDetail("customer-1");
     const query = mocks.customerFindFirst.mock.calls[0]?.[0];
     const expectedWhere = {
       provider: "zoom",
-      fileType: "mp4",
-      recordingType: "shared_screen_with_speaker_view"
+      OR: [
+        { fileType: "mp4", recordingType: "shared_screen_with_speaker_view" },
+        { fileType: "txt", recordingType: "chat_file" }
+      ]
     };
 
     expect(query.include.consultations.include.recordings.where).toEqual(expectedWhere);

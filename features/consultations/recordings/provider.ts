@@ -2,6 +2,8 @@ import { getAppEnv } from "@/lib/env/schema";
 import { getZoomServerAccessTokenIfConfigured } from "@/lib/zoom/meetings";
 import type { AuthorizedRecording } from "@/features/consultations/recordings/access";
 import {
+  getConsultationRecordingVariant,
+  isExactConsultationRecordingMetadata,
   isEligibleConsultationRecordingMetadata,
   isEligibleConsultationRecordingMimeType
 } from "@/features/consultations/recordings/policy";
@@ -43,8 +45,12 @@ type ZoomRecordingList = {
 
 export const zoomRecordingContentProvider: RecordingContentProvider = {
   async open(recording, options = {}) {
-    if (!isEligibleConsultationRecordingMetadata(recording)) {
+    const variant = getConsultationRecordingVariant(recording);
+    if (!variant || !isEligibleConsultationRecordingMetadata(recording)) {
       throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+    }
+    if (options.range && !variant.supportsByteRanges) {
+      throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
     }
 
     const env = getAppEnv();
@@ -70,7 +76,7 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       String(candidate.id) === recording.providerRecordingId &&
       typeof candidate.file_type === "string" &&
       typeof candidate.recording_type === "string" &&
-      isEligibleConsultationRecordingMetadata({
+      isExactConsultationRecordingMetadata(recording, {
         fileType: candidate.file_type,
         recordingType: candidate.recording_type
       })
@@ -102,15 +108,18 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
         throw new RecordingProviderError("CONTENT_UNAVAILABLE");
       }
     }
-    if (contentResponse.status === 416) {
+    if (variant.supportsByteRanges && contentResponse.status === 416) {
       throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
     }
-    if (contentResponse.status !== 200 && contentResponse.status !== 206) {
+    if (
+      contentResponse.status !== 200 &&
+      (contentResponse.status !== 206 || !variant.supportsByteRanges)
+    ) {
       throw new RecordingProviderError("CONTENT_UNAVAILABLE");
     }
 
     const contentRange = contentResponse.headers.get("content-range");
-    const safeContentRange = contentRange && /^bytes \d+-\d+\/(?:\d+|\*)$/.test(contentRange)
+    const safeContentRange = variant.supportsByteRanges && contentRange && /^bytes \d+-\d+\/(?:\d+|\*)$/.test(contentRange)
       ? contentRange
       : null;
     if (contentResponse.status === 206 && !safeContentRange) {
@@ -118,7 +127,7 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
     }
 
     const contentType = contentResponse.headers.get("content-type") ?? "application/octet-stream";
-    if (!isEligibleConsultationRecordingMimeType(contentType)) {
+    if (!isEligibleConsultationRecordingMimeType(recording, contentType)) {
       await contentResponse.body?.cancel().catch(() => undefined);
       throw new RecordingProviderError("CONTENT_UNAVAILABLE");
     }
@@ -127,10 +136,13 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
 
     return {
       body: contentResponse.body,
-      contentType,
+      contentType: variant.responseMimeType,
       contentLength: contentLength && /^\d{1,20}$/.test(contentLength) ? contentLength : null,
       contentRange: safeContentRange,
-      acceptRanges: contentResponse.headers.get("accept-ranges")?.toLowerCase() === "bytes" ? "bytes" : null,
+      acceptRanges: variant.supportsByteRanges &&
+        contentResponse.headers.get("accept-ranges")?.toLowerCase() === "bytes"
+        ? "bytes"
+        : null,
       status: contentResponse.status
     };
   }
