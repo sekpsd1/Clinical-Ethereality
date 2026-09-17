@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   env: { ENABLE_ZOOM_CLOUD_RECORDING: false },
   token: vi.fn(),
-  fetch: vi.fn()
+  fetch: vi.fn(),
+  lookup: vi.fn()
 }));
+vi.mock("node:dns/promises", () => ({ lookup: mocks.lookup }));
 vi.mock("@/lib/env/schema", () => ({ getAppEnv: () => mocks.env }));
 vi.mock("@/lib/zoom/meetings", () => ({ getZoomServerAccessTokenIfConfigured: mocks.token }));
 
@@ -34,6 +36,7 @@ describe("feature-flagged Zoom recording provider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = false;
+    mocks.lookup.mockResolvedValue([{ address: "1.1.1.1", family: 4 }]);
     vi.stubGlobal("fetch", mocks.fetch);
   });
 
@@ -318,6 +321,10 @@ describe("feature-flagged Zoom recording provider", () => {
   it("follows a bounded public HTTPS redirect without forwarding Zoom authorization", async () => {
     mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
     mocks.token.mockResolvedValue("provider-token");
+    mocks.lookup.mockResolvedValue([
+      { address: "1.1.1.1", family: 4 },
+      { address: "2606:4700:4700::1111", family: 6 }
+    ]);
     mocks.fetch
       .mockResolvedValueOnce(new Response(JSON.stringify({
         recording_files: [{
@@ -348,6 +355,106 @@ describe("feature-flagged Zoom recording provider", () => {
       Range: "bytes=0-6"
     });
     expect(mocks.fetch.mock.calls[2]?.[1]?.headers).toEqual({ Range: "bytes=0-6" });
+    expect(mocks.lookup).toHaveBeenCalledWith(
+      "signed-storage.example.com",
+      { all: true, verbatim: true }
+    );
+  });
+
+  it.each([
+    ["private IPv4", [{ address: "10.2.3.4", family: 4 }]],
+    ["mixed public and private", [
+      { address: "1.1.1.1", family: 4 },
+      { address: "192.168.1.9", family: 4 }
+    ]],
+    ["private IPv4-mapped IPv6", [{ address: "::ffff:10.2.3.4", family: 6 }]]
+  ])("rejects a non-Zoom hostname resolving to %s before its fetch", async (_label, addresses) => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.lookup.mockResolvedValue(addresses);
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: "https://signed-storage.example.com/object" }
+      }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "redirect",
+      category: "unsafe_target"
+    });
+    expect(mocks.lookup).toHaveBeenCalledOnce();
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails closed on DNS resolution failure without logging the hostname or token", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.lookup.mockRejectedValue(new Error("dns unavailable for signed-storage.example.com"));
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: "https://signed-storage.example.com/object" }
+      }));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({
+      status: "retryable",
+      retryAfterSeconds: 8
+    });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(
+      "Zoom recording readiness check did not complete.",
+      { phase: "redirect", category: "network" }
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("signed-storage.example.com");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("provider-token");
+    warn.mockRestore();
+  });
+
+  it("fails closed when DNS resolution returns no addresses", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.lookup.mockResolvedValue([]);
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: "https://signed-storage.example.com/object" }
+      }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "redirect",
+      category: "network"
+    });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
   });
 
   it.each([

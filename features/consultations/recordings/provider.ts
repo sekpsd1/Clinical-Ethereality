@@ -1,3 +1,4 @@
+import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { getAppEnv } from "@/lib/env/schema";
 import { getZoomServerAccessTokenIfConfigured } from "@/lib/zoom/meetings";
@@ -72,6 +73,7 @@ type ZoomRecordingList = {
 };
 
 const MAX_REDIRECT_HOPS = 4;
+const REDIRECT_DNS_TIMEOUT_MS = 3_000;
 const DEFAULT_RETRY_AFTER_SECONDS = 8;
 const MIN_RETRY_AFTER_SECONDS = 2;
 const MAX_RETRY_AFTER_SECONDS = 30;
@@ -105,19 +107,70 @@ function isUnsafeIpv4(hostname: string): boolean {
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && (b === 0 || b === 168)) ||
+    (a === 192 && b === 88 && octets[2] === 99) ||
     (a === 198 && (b === 18 || b === 19 || b === 51)) ||
     (a === 203 && b === 0) ||
     a >= 224
   );
 }
 
+function parseIpv6Hextets(hostname: string): number[] | null {
+  let normalized = hostname.toLowerCase().replace(/^\[/, "").replace(/\]$/, "").split("%")[0];
+  const dottedIpv4 = normalized.match(/(?:^|:)(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (dottedIpv4) {
+    const octets = dottedIpv4.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+      return null;
+    }
+    normalized = normalized.slice(0, -dottedIpv4.length) +
+      `${((octets[0] << 8) | octets[1]).toString(16)}:${((octets[2] << 8) | octets[3]).toString(16)}`;
+  }
+  if ((normalized.match(/::/g) ?? []).length > 1) return null;
+  const [leftText, rightText] = normalized.split("::");
+  const left = leftText ? leftText.split(":") : [];
+  const right = rightText ? rightText.split(":") : [];
+  const missing = normalized.includes("::") ? 8 - left.length - right.length : 0;
+  const parts = [...left, ...Array.from({ length: missing }, () => "0"), ...right];
+  if (parts.length !== 8 || parts.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
+  return parts.map((part) => Number.parseInt(part, 16));
+}
+
 function isUnsafeIpv6(hostname: string): boolean {
-  const normalized = hostname.toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
-  if (normalized === "::" || normalized === "::1") return true;
-  if (normalized.startsWith("fc") || normalized.startsWith("fd") || /^fe[89ab]/.test(normalized)) return true;
-  if (normalized.startsWith("ff") || normalized.startsWith("2001:db8:")) return true;
-  const mappedIpv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
-  return mappedIpv4 ? isUnsafeIpv4(mappedIpv4) : false;
+  const hextets = parseIpv6Hextets(hostname);
+  if (!hextets) return true;
+  const [first, second, , , , sixth, seventh, eighth] = hextets;
+  const isUnspecified = hextets.every((part) => part === 0);
+  const isLoopback = hextets.slice(0, 7).every((part) => part === 0) && eighth === 1;
+  if (isUnspecified || isLoopback) return true;
+
+  const isMappedIpv4 = hextets.slice(0, 5).every((part) => part === 0) && sixth === 0xffff;
+  if (isMappedIpv4) {
+    return isUnsafeIpv4([
+      seventh >> 8,
+      seventh & 0xff,
+      eighth >> 8,
+      eighth & 0xff
+    ].join("."));
+  }
+
+  const isUniqueLocal = (first & 0xfe00) === 0xfc00;
+  const isLinkOrSiteLocal = (first & 0xffc0) === 0xfe80 || (first & 0xffc0) === 0xfec0;
+  const isMulticast = (first & 0xff00) === 0xff00;
+  const isGlobalUnicast = (first & 0xe000) === 0x2000;
+  const isDocumentation = first === 0x2001 && second === 0x0db8;
+  const isIanaSpecial = first === 0x2001 && second <= 0x01ff;
+  const isSixToFour = first === 0x2002;
+  const isDocumentationV2 = (first & 0xfff0) === 0x3ff0;
+  return !isGlobalUnicast || isUniqueLocal || isLinkOrSiteLocal || isMulticast ||
+    isDocumentation || isIanaSpecial || isSixToFour || isDocumentationV2;
+}
+
+function isUnsafeIpAddress(address: string): boolean {
+  const normalized = address.replace(/^\[/, "").replace(/\]$/, "");
+  const ipVersion = isIP(normalized);
+  if (ipVersion === 4) return isUnsafeIpv4(normalized);
+  if (ipVersion === 6) return isUnsafeIpv6(normalized);
+  return true;
 }
 
 function isSafeHttpsTarget(url: URL): boolean {
@@ -128,9 +181,57 @@ function isSafeHttpsTarget(url: URL): boolean {
   }
   const bareHostname = hostname.replace(/^\[/, "").replace(/\]$/, "");
   const ipVersion = isIP(bareHostname);
-  if (ipVersion === 4) return !isUnsafeIpv4(bareHostname);
-  if (ipVersion === 6) return !isUnsafeIpv6(bareHostname);
+  if (ipVersion > 0) return !isUnsafeIpAddress(bareHostname);
   return hostname.includes(".");
+}
+
+async function assertSafeResolvedRedirectTarget(target: URL): Promise<void> {
+  if (isZoomOwnedHostname(target.hostname)) return;
+  const hostname = target.hostname.replace(/^\[/, "").replace(/\]$/, "");
+  if (isIP(hostname) > 0) {
+    if (isUnsafeIpAddress(hostname)) {
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", "redirect", "unsafe_target");
+    }
+    return;
+  }
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const addresses = await Promise.race([
+      lookup(hostname, { all: true, verbatim: true }),
+      new Promise<never>((_resolve, reject) => {
+        timeoutId = setTimeout(() => reject(
+          new RecordingProviderError(
+            "CONTENT_UNAVAILABLE",
+            "redirect",
+            "network",
+            DEFAULT_RETRY_AFTER_SECONDS
+          )
+        ), REDIRECT_DNS_TIMEOUT_MS);
+      })
+    ]);
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+      throw new RecordingProviderError(
+        "CONTENT_UNAVAILABLE",
+        "redirect",
+        "network",
+        DEFAULT_RETRY_AFTER_SECONDS
+      );
+    }
+    if (addresses.some((entry) => isUnsafeIpAddress(entry.address))) {
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", "redirect", "unsafe_target");
+    }
+  } catch (error) {
+    if (error instanceof RecordingProviderError) throw error;
+    throw new RecordingProviderError(
+      "CONTENT_UNAVAILABLE",
+      "redirect",
+      "network",
+      DEFAULT_RETRY_AFTER_SECONDS
+    );
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function getBoundedRetryAfter(response: Response): number {
@@ -222,6 +323,7 @@ async function fetchContentWithSafeRedirects(
 ): Promise<Response> {
   let target = initialUrl;
   for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop += 1) {
+    await assertSafeResolvedRedirectTarget(target);
     let response: Response;
     try {
       response = await fetch(target, {
