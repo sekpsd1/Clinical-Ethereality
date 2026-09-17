@@ -14,6 +14,20 @@ export type CustomerProfileData = {
   unavailable?: boolean;
 };
 
+export type CustomerUpcomingAppointment = {
+  id: string;
+  doctorName: string;
+  scheduledDateTime: string;
+  relativeDayLabel: string;
+  isImminent: boolean;
+  additionalCount: number;
+};
+
+export type CustomerUpcomingAppointmentData = {
+  appointment: CustomerUpcomingAppointment | null;
+  unavailable?: boolean;
+};
+
 const thaiBuddhistDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
   day: "numeric",
   month: "long",

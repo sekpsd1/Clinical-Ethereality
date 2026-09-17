@@ -13,8 +13,9 @@ import { ProfileSettingsItem } from "@/components/ui/ProfileSettingsItem";
 import { LogoutButton } from "@/features/profile/LogoutButton";
 import { ProfileAvatar } from "@/features/profile/ProfileAvatar";
 import { ProfileNotificationSummary } from "@/features/profile/ProfileNotificationSummary";
+import { ProfileUpcomingAppointment } from "@/features/profile/ProfileUpcomingAppointment";
 import type { CustomerNotificationsData } from "@/features/notifications/types";
-import type { CustomerProfileData } from "@/features/profile/types";
+import type { CustomerProfileData, CustomerUpcomingAppointmentData } from "@/features/profile/types";
 
 type ProfileMenuItem = {
   label: string;
@@ -29,7 +30,7 @@ const profileMenuItems: ProfileMenuItem[] = [
   { label: "ที่อยู่จัดส่ง", icon: Truck, href: "/profile/shipping-addresses" }
 ];
 
-export function UserProfile({ data, notificationData }: { data: CustomerProfileData; notificationData: CustomerNotificationsData }) {
+export function UserProfile({ data, notificationData, upcomingAppointmentData }: { data: CustomerProfileData; notificationData: CustomerNotificationsData; upcomingAppointmentData: CustomerUpcomingAppointmentData }) {
   const profileName = data.fullName?.trim() || data.displayName;
 
   return (
@@ -62,6 +63,8 @@ export function UserProfile({ data, notificationData }: { data: CustomerProfileD
         </section>
 
         <div className="relative z-20 -mt-7 space-y-6 px-4">
+          <ProfileUpcomingAppointment data={upcomingAppointmentData} />
+
           <section className="grid grid-cols-2 rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
             <div className="flex flex-col gap-2 border-r border-[#bdc9ca]/20 text-center">
               <span className="text-xs font-bold uppercase tracking-tight text-[#3e494a]">คำแนะนำ</span>
