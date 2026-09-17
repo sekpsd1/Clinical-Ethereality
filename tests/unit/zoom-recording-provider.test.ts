@@ -52,7 +52,8 @@ describe("feature-flagged Zoom recording provider", () => {
           id: "provider-file-1",
           download_url: "https://zoom.us/private/file",
           file_type: "MP4",
-          recording_type: "shared_screen_with_speaker_view"
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
       .mockResolvedValueOnce(new Response("partial", {
@@ -84,7 +85,8 @@ describe("feature-flagged Zoom recording provider", () => {
         id: "provider-file-1",
         download_url: "https://zoom.us/private/file",
         file_type: "MP4",
-        recording_type: "shared_screen_with_speaker_view"
+        recording_type: "shared_screen_with_speaker_view",
+        status: "completed"
       }]
     }), { status: 200, headers: { "content-type": "application/json" } });
     mocks.fetch
@@ -129,7 +131,8 @@ describe("feature-flagged Zoom recording provider", () => {
           id: "provider-file-1",
           download_url: "https://zoom.us/private/file",
           file_type: "MP4",
-          recording_type: "shared_screen_with_speaker_view"
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
       .mockResolvedValueOnce(new Response("audio-bytes", {
@@ -151,7 +154,8 @@ describe("feature-flagged Zoom recording provider", () => {
           id: "provider-chat-1",
           download_url: "https://zoom.us/private/chat",
           file_type: "TXT",
-          recording_type: "chat_file"
+          recording_type: "chat_file",
+          status: "completed"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
       .mockResolvedValueOnce(new Response("<script>alert('blocked')</script>", {
@@ -202,7 +206,8 @@ describe("feature-flagged Zoom recording provider", () => {
           id: "provider-chat-1",
           download_url: "https://zoom.us/private/chat",
           file_type: "TXT",
-          recording_type: "chat_file"
+          recording_type: "chat_file",
+          status: "completed"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
       .mockResolvedValueOnce(new Response("<html>unsafe</html>", {
@@ -213,5 +218,218 @@ describe("feature-flagged Zoom recording provider", () => {
     await expect(zoomRecordingContentProvider.open(chatRecording)).rejects.toMatchObject({
       code: "CONTENT_UNAVAILABLE"
     });
+  });
+
+  it("requires completed metadata and probes one MP4 byte before reporting ready", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce({
+        status: 206,
+        headers: new Headers({
+          "content-type": "video/mp4",
+          "content-range": "bytes 0-0/1024",
+          "content-length": "1"
+        }),
+        body: { cancel }
+      } as unknown as Response);
+
+    await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({ status: "ready" });
+    expect(mocks.fetch.mock.calls[1]?.[1]).toMatchObject({
+      redirect: "manual",
+      headers: { Authorization: "Bearer provider-token", Range: "bytes=0-0" }
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("reports processing without touching content while provider metadata is not completed", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      recording_files: [{
+        id: "provider-file-1",
+        download_url: "https://zoom.us/private/file",
+        file_type: "MP4",
+        recording_type: "shared_screen_with_speaker_view",
+        status: "processing"
+      }]
+    }), { status: 200 }));
+
+    await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({
+      status: "processing",
+      retryAfterSeconds: 8
+    });
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed if the protected open endpoint is called before provider completion", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      recording_files: [{
+        id: "provider-file-1",
+        download_url: "https://zoom.us/private/file",
+        file_type: "MP4",
+        recording_type: "shared_screen_with_speaker_view",
+        status: "processing"
+      }]
+    }), { status: 200 }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "METADATA_UNAVAILABLE",
+      phase: "metadata",
+      category: "status"
+    });
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("maps transient metadata failures to bounded retryable readiness", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(null, {
+      status: 429,
+      headers: { "retry-after": "600" }
+    }));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({
+      status: "retryable",
+      retryAfterSeconds: 30
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "Zoom recording readiness check did not complete.",
+      { phase: "metadata", category: "throttled" }
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("provider-token");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("provider-file-1");
+    warn.mockRestore();
+  });
+
+  it("follows a bounded public HTTPS redirect without forwarding Zoom authorization", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: "https://signed-storage.example.com/object" }
+      }))
+      .mockResolvedValueOnce(new Response("partial", {
+        status: 206,
+        headers: {
+          "content-type": "video/mp4",
+          "content-range": "bytes 0-6/1024"
+        }
+      }));
+
+    await expect(zoomRecordingContentProvider.open(recording, { range: "bytes=0-6" })).resolves.toMatchObject({
+      status: 206
+    });
+    expect(mocks.fetch.mock.calls[1]?.[1]?.headers).toEqual({
+      Authorization: "Bearer provider-token",
+      Range: "bytes=0-6"
+    });
+    expect(mocks.fetch.mock.calls[2]?.[1]?.headers).toEqual({ Range: "bytes=0-6" });
+  });
+
+  it.each([
+    "http://signed-storage.example.com/object",
+    "https://user:password@signed-storage.example.com/object",
+    "https://localhost/object",
+    "https://127.0.0.1/object",
+    "https://10.2.3.4/object",
+    "https://[::1]/object",
+    "https://signed-storage.example.com:8443/object"
+  ])("rejects an unsafe redirect target without requesting it: %s", async (location) => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 302, headers: { location } }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "redirect",
+      category: "unsafe_target"
+    });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops after the bounded redirect hop count", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      recording_files: [{
+        id: "provider-file-1",
+        download_url: "https://zoom.us/private/file",
+        file_type: "MP4",
+        recording_type: "shared_screen_with_speaker_view",
+        status: "completed"
+      }]
+    }), { status: 200 }));
+    for (let hop = 0; hop < 5; hop += 1) {
+      mocks.fetch.mockResolvedValueOnce(new Response(null, {
+        status: 302,
+        headers: { location: `https://zoom.us/private/hop-${hop}` }
+      }));
+    }
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "redirect",
+      category: "status"
+    });
+    expect(mocks.fetch).toHaveBeenCalledTimes(6);
+  });
+
+  it("probes TXT with a header-only request shape and cancels the response body", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-chat-1",
+          download_url: "https://zoom.us/private/chat",
+          file_type: "TXT",
+          recording_type: "chat_file",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers({ "content-type": "text/plain" }),
+        body: { cancel }
+      } as unknown as Response);
+
+    await expect(zoomRecordingContentProvider.getReadiness(chatRecording)).resolves.toEqual({ status: "ready" });
+    expect(mocks.fetch.mock.calls[1]?.[1]?.headers).toEqual({ Authorization: "Bearer provider-token" });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });

@@ -576,6 +576,15 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Preserve active Admin/assigned-Doctor authorization, assignment rechecks, scoped one-time handoff/replay protection, one logical external access audit, and five-year retention without a schema or migration.
 - [ ] Release, authenticated Doctor/Admin UAT, and Zoom Cloud `Save chat messages from the meeting/webinar` configuration remain separately gated. That external setting saves only chat sent publicly to everyone and applies to future cloud recordings; this code does not backfill or mutate existing Production metadata.
 
+## Consultation recording content readiness gate (code only, 2026-09-18)
+
+- [x] Add a private, exact-recording readiness endpoint for active assigned Doctors and active Admins that returns only `ready`, `processing`, `retryable`, or `unavailable` plus a bounded retry hint; anonymous, Customer, unassigned, and ineligible requests fail generically before provider access.
+- [x] Revalidate exact provider metadata status and perform a minimal cancellable content probe (`bytes=0-0` for MP4; header/minimal response for TXT) before enabling protected view/download actions.
+- [x] Replace implicit provider redirects with a bounded manual policy that accepts only safe HTTPS targets, rejects credentialed/local/private/reserved/invalid targets, and forwards the Zoom bearer only to Zoom-owned hosts while preserving MP4 Range and TXT non-Range behavior.
+- [x] Keep actions disabled through checking/processing/retryable states, add visibility-aware bounded exponential polling for only the newest recording, and provide a manual retry path for terminal/exhausted and historical rows.
+- [x] Preserve one-time external handoff, successful access audit timing, provider URL secrecy, the MP4+TXT allowlist, and five-year retention without schema, migration, dependency, environment, provider-setting, or Production data changes.
+- [ ] Release and authenticated Doctor/Admin UAT with real provider content remain separately gated; local verification uses mocked provider responses only.
+
 ## Full Telemedicine consent text on booking (code only, 2026-09-16)
 
 - [x] Transcribe the approved 2026-09-09 Telemedicine consent source without paraphrasing or omitting its seven numbered sections and two final choices.

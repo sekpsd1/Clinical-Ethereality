@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
 import {
@@ -77,6 +78,9 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("เปิดดู");
     expect(html).toContain("ดาวน์โหลด");
     expect(html).toContain("grid-cols-2");
+    expect(html).toContain("กำลังตรวจความพร้อมของไฟล์");
+    expect(html.match(/disabled=""/g)).toHaveLength(2);
+    expect(html).toContain("min-h-11");
     expect(html).not.toContain("href=\"/api/consultations/");
     expect(html).toContain("aria-live=\"polite\"");
     expect(html).toContain("เฉพาะแอดมินและแพทย์ผู้รับผิดชอบเคสนี้เท่านั้น");
@@ -92,6 +96,24 @@ describe("consultation recording presentation", () => {
 
     expect(html).toContain("ยังไม่มีไฟล์บันทึก");
     expect(html).toContain("กรุณารอ Zoom ประมวลผลสักครู่");
+  });
+
+  it("keeps readiness polling bounded, visibility-aware, abortable, and newest-only", () => {
+    const actionsSource = readFileSync(
+      "features/consultations/recordings/RecordingHandoffActions.tsx",
+      "utf8"
+    );
+    const panelSource = readFileSync(
+      "features/consultations/recordings/ConsultationRecordingsPanel.tsx",
+      "utf8"
+    );
+
+    expect(actionsSource).toContain("RECORDING_READINESS_MAX_AUTO_ATTEMPTS");
+    expect(actionsSource).toContain("RECORDING_READINESS_MAX_WINDOW_MS");
+    expect(actionsSource).toContain('document.addEventListener("visibilitychange"');
+    expect(actionsSource).toContain("new AbortController()");
+    expect(actionsSource).toContain("if (disposed || inFlight) return");
+    expect(panelSource).toContain("autoPoll={index === recordings.length - 1}");
   });
 
   it("counts and renders exactly the screen-and-speaker MP4 and chat TXT", () => {

@@ -48,7 +48,7 @@ export function ConsultationRecordingsPanel({
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
-          {recordings.map((recording) => {
+          {recordings.map((recording, index) => {
             const RecordingIcon = recording.kind === "chat" ? MessageSquareText : Video;
             const detailParts = [
               recording.recordedAtLabel,
@@ -78,7 +78,11 @@ export function ConsultationRecordingsPanel({
                 </div>
 
                 <div className="mt-3">
-                  <RecordingHandoffActions consultationId={consultationId} recordingId={recording.id} />
+                  <RecordingHandoffActions
+                    consultationId={consultationId}
+                    recordingId={recording.id}
+                    autoPoll={index === recordings.length - 1}
+                  />
                 </div>
               </li>
             );
