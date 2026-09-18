@@ -277,6 +277,7 @@ function WorkflowSubmitButton({
 }) {
   const { pending } = useFormStatus();
   const complete = transition !== "start";
+  const isBlockedCompletion = transition === "complete" && disabled && !submittable;
   const Icon = transition === "start" ? Video : transition === "complete_no_show" ? UserRoundX : CheckCircle2;
 
   return (
@@ -285,10 +286,12 @@ function WorkflowSubmitButton({
       disabled={pending || disabled}
       aria-describedby={describedBy}
       className={cn(
-        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60",
-        complete
-          ? "border border-danger/30 bg-white text-danger"
-          : "bg-primary text-white"
+        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:cursor-not-allowed",
+        isBlockedCompletion
+          ? "border border-muted/30 bg-muted/15 text-muted disabled:opacity-100"
+          : complete
+            ? "border border-danger/30 bg-white text-danger disabled:opacity-60"
+            : "bg-primary text-white disabled:opacity-60"
       )}
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={2.1} />

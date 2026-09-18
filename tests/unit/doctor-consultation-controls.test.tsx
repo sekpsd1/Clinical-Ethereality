@@ -342,12 +342,17 @@ describe("Doctor consultation controls", () => {
     });
     const component = DoctorConsultationControls({ consultation: waitingConsultation });
     const html = renderToStaticMarkup(component);
+    const blockedButton = html.match(/<button[^>]*type="button"[^>]*>/)?.[0];
     const result = await submitForm(findWorkflowForm(component));
 
     expect(html).toContain("รอผู้ป่วย");
     expect(html).toContain("ยืนยันจบการปรึกษา");
-    expect(html).toContain('type="button"');
-    expect(html).toContain("disabled");
+    expect(blockedButton).toContain("disabled");
+    expect(blockedButton).toContain("border-muted/30");
+    expect(blockedButton).toContain("bg-muted/15");
+    expect(blockedButton).toContain("text-muted");
+    expect(blockedButton).toContain("disabled:opacity-100");
+    expect(blockedButton).not.toContain("text-danger");
     expect(html).toContain('aria-describedby="attendance-status-consultation-1 attendance-description-consultation-1 attendance-reason-consultation-1"');
     expect(html).not.toContain('name="transition"');
     expect(html).not.toContain("ยืนยันไม่มาตามนัด");
