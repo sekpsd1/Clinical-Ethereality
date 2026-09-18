@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
+import { recordingHandoffUiCopy } from "@/features/consultations/recordings/RecordingHandoffActions";
 import {
   mapConsultationRecording,
   mapEligibleConsultationRecordings
@@ -78,9 +79,12 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("เปิดดู");
     expect(html).toContain("ดาวน์โหลด");
     expect(html).toContain("grid-cols-2");
-    expect(html).toContain("กำลังตรวจความพร้อมของไฟล์");
+    expect(html).toContain("กำลังตรวจสอบสถานะไฟล์");
     expect(html.match(/disabled=""/g)).toHaveLength(2);
     expect(html).toContain("min-h-11");
+    expect(html).toContain("รีเฟรชสถานะไฟล์");
+    expect(html).toContain('aria-busy="false"');
+    expect(html).toContain('data-readiness-status="checking"');
     expect(html).not.toContain("href=\"/api/consultations/");
     expect(html).toContain("aria-live=\"polite\"");
     expect(html).toContain("เฉพาะแอดมินและแพทย์ผู้รับผิดชอบเคสนี้เท่านั้น");
@@ -98,7 +102,19 @@ describe("consultation recording presentation", () => {
     expect(html).toContain("กรุณารอ Zoom ประมวลผลสักครู่");
   });
 
-  it("keeps readiness polling bounded, visibility-aware, abortable, and newest-only", () => {
+  it("provides explicit, honest copy for every readiness state", () => {
+    expect(recordingHandoffUiCopy).toMatchObject({
+      checking: "กำลังตรวจสอบสถานะไฟล์...",
+      ready: "ไฟล์พร้อมแล้ว สามารถเปิดดูหรือดาวน์โหลดได้",
+      processing: expect.stringContaining("Zoom ยังประมวลผลไฟล์อยู่"),
+      retryable: expect.stringContaining("ชั่วคราว"),
+      unavailable: expect.stringContaining("ไฟล์ยังไม่พร้อมใช้งาน"),
+      refresh: "รีเฟรชสถานะไฟล์"
+    });
+    expect(Object.values(recordingHandoffUiCopy).join(" ")).not.toContain("24");
+  });
+
+  it("keeps readiness polling bounded, visibility-aware, abortable, newest-first, and manually restartable", () => {
     const actionsSource = readFileSync(
       "features/consultations/recordings/RecordingHandoffActions.tsx",
       "utf8"
@@ -112,7 +128,14 @@ describe("consultation recording presentation", () => {
     expect(actionsSource).toContain("RECORDING_READINESS_MAX_WINDOW_MS");
     expect(actionsSource).toContain('document.addEventListener("visibilitychange"');
     expect(actionsSource).toContain("new AbortController()");
-    expect(actionsSource).toContain("if (disposed || inFlight) return");
+    expect(actionsSource).toContain("createRecordingReadinessRequestGate");
+    expect(actionsSource).toContain("autoPoll || readinessCycle > 0");
+    expect(actionsSource).toContain("if (readinessRequestInFlightRef.current) return");
+    expect(actionsSource).toContain("const refreshBusy = readinessRequestInFlight || pending");
+    expect(actionsSource).toContain('disabled={refreshBusy}');
+    expect(actionsSource).toContain('aria-busy={refreshBusy}');
+    expect(actionsSource).toContain("รีเฟรชสถานะไฟล์");
+    expect(actionsSource).toContain("ไฟล์พร้อมแล้ว สามารถเปิดดูหรือดาวน์โหลดได้");
     expect(panelSource).toContain("autoPoll={index === recordings.length - 1}");
   });
 

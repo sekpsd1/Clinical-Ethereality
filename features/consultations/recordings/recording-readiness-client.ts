@@ -32,6 +32,29 @@ export function shouldAutoRetryRecordingReadiness(status: RecordingReadinessStat
   return status === "processing" || status === "retryable";
 }
 
+export function createRecordingReadinessRequestGate() {
+  let pending: Promise<unknown> | null = null;
+  return {
+    async run<T>(task: () => Promise<T>): Promise<T | null> {
+      if (pending) return null;
+      const current = Promise.resolve().then(task);
+      pending = current;
+      try {
+        return await current;
+      } finally {
+        if (pending === current) pending = null;
+      }
+    },
+    async waitForIdle(): Promise<void> {
+      try {
+        await pending;
+      } catch {
+        // The active caller owns error handling. Waiters only need the gate to reopen.
+      }
+    }
+  };
+}
+
 export async function requestRecordingReadiness(
   consultationId: string,
   recordingId: string,

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createRecordingReadinessRequestGate,
   getRecordingReadinessDelayMs,
   requestRecordingReadiness,
   shouldAutoRetryRecordingReadiness
@@ -53,5 +54,30 @@ describe("recording readiness client", () => {
     expect(shouldAutoRetryRecordingReadiness("retryable")).toBe(true);
     expect(shouldAutoRetryRecordingReadiness("ready")).toBe(false);
     expect(shouldAutoRetryRecordingReadiness("unavailable")).toBe(false);
+  });
+
+  it("rejects duplicate readiness work while one request is pending and reopens after completion", async () => {
+    const gate = createRecordingReadinessRequestGate();
+    let release!: (value: string) => void;
+    const firstTask = vi.fn(() => new Promise<string>((resolve) => {
+      release = resolve;
+    }));
+    const duplicateTask = vi.fn().mockResolvedValue("duplicate");
+
+    const first = gate.run(firstTask);
+    await expect(gate.run(duplicateTask)).resolves.toBeNull();
+    expect(duplicateTask).not.toHaveBeenCalled();
+
+    release("first");
+    await expect(gate.waitForIdle()).resolves.toBeUndefined();
+    await expect(first).resolves.toBe("first");
+    await expect(gate.run(() => Promise.resolve("next-cycle"))).resolves.toBe("next-cycle");
+  });
+
+  it("reopens the readiness gate after a failed request", async () => {
+    const gate = createRecordingReadinessRequestGate();
+
+    await expect(gate.run(() => Promise.reject(new Error("temporary")))).rejects.toThrow("temporary");
+    await expect(gate.run(() => Promise.resolve("retry"))).resolves.toBe("retry");
   });
 });

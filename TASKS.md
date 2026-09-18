@@ -585,6 +585,15 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Preserve one-time external handoff, successful access audit timing, provider URL secrecy, the MP4+TXT allowlist, and five-year retention without schema, migration, dependency, environment, provider-setting, or Production data changes.
 - [ ] Release and authenticated Doctor/Admin UAT with real provider content remain separately gated; local verification uses mocked provider responses only.
 
+## Consultation recording manual status refresh and sanitized Production RCA (code only, 2026-09-18)
+
+- [x] Keep an accessible `รีเฟรชสถานะไฟล์` button visible for checking, processing, retryable, unavailable, and ready rows; disable it and show a spinner during an active readiness request or the same row's view/download handoff.
+- [x] Show explicit Thai readiness copy, including `ไฟล์พร้อมแล้ว สามารถเปิดดูหรือดาวน์โหลดได้` for ready, without implying that Zoom must finish within 24 hours; keep view/download disabled until the private content probe succeeds.
+- [x] Preserve newest-first bounded visibility-aware polling, and make every manual refresh start a new bounded cycle without duplicate concurrent readiness requests from repeated clicks or effect restarts.
+- [x] Preserve private/no-store, active Admin/assigned-Doctor authorization, MP4/TXT policy, provider URL secrecy, redirect/DNS protection, one-time handoff, and successful-access audit behavior.
+- [x] Perform a sanitized read-only Production RCA: 3/3 eligible rows older than 24 hours were terminal `unavailable`, reached authorized readiness, and matched Zoom cloud metadata with download controls and no meeting-level processing/deleted/expired indication. Do not claim an exact cause until sanitized Plesk `{phase, category}` warnings distinguish authorization/configuration, exact-file mismatch, redirect/DNS, or response/MIME/range/content validation.
+- [ ] Controller review, sanitized Plesk warning-log discrimination, authenticated Doctor/Admin real-provider UAT, push, and release remain separately gated. No Production mutation, provider download, setting change, deployment, restart, or migration is included here.
+
 ## Full Telemedicine consent text on booking (code only, 2026-09-16)
 
 - [x] Transcribe the approved 2026-09-09 Telemedicine consent source without paraphrasing or omitting its seven numbered sections and two final choices.
