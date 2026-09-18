@@ -104,11 +104,13 @@ export function ZoomExternalLauncher({
   consultationId,
   compact = false,
   waitingRoom = false,
+  waitingRoomLabel,
   autoLaunch = false
 }: {
   consultationId: string;
   compact?: boolean;
   waitingRoom?: boolean;
+  waitingRoomLabel?: string;
   autoLaunch?: boolean;
 }) {
   const [state, setState] = useState<LaunchState>("idle");
@@ -203,7 +205,11 @@ export function ZoomExternalLauncher({
           className="w-full py-5 text-lg shadow-booking"
         >
           <ExternalLink aria-hidden="true" className="size-5" strokeWidth={2.2} />
-          {state === "preparing" ? "กำลังเปิดห้องปรึกษา..." : "เข้าสู่ห้องปรึกษา"}
+          {state === "preparing"
+            ? waitingRoomLabel
+              ? "กำลังเปิด Zoom..."
+              : "กำลังเปิดห้องปรึกษา..."
+            : waitingRoomLabel ?? "เข้าสู่ห้องปรึกษา"}
         </Button>
         <p className="text-center text-[11px] leading-4 text-[#3e494a]" role="status">
           {message}

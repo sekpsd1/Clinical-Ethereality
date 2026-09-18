@@ -43,8 +43,27 @@ describe("ConsultWaitingRoom", () => {
       />
     );
 
+    expect(html).toContain("href=\"/consult/live?consultation=consultation-uat\"");
+    expect(html).toContain("แชตกับแพทย์");
+    expect(html).toContain("เปิดวิดีโอคอลผ่าน Zoom");
+    expect(html).toContain("วิดีโอคอล Zoom จะเปิดแยกในเบราว์เซอร์ภายนอก");
+  });
+
+  it("does not expose the customer chat entry on the doctor waiting-room surface", () => {
+    const html = renderToStaticMarkup(
+      <ConsultWaitingRoom
+        data={waitingRoomData({
+          viewerRole: "doctor",
+          consultationStatus: "live",
+          canEnterLive: true,
+          liveHref: "/consult/live?consultation=consultation-uat"
+        })}
+      />
+    );
+
+    expect(html).not.toContain("แชตกับแพทย์");
     expect(html).not.toContain("href=\"/consult/live?consultation=consultation-uat\"");
+    expect(html).not.toContain("เปิดวิดีโอคอลผ่าน Zoom");
     expect(html).toContain("เข้าสู่ห้องปรึกษา");
-    expect(html).toContain("พร้อมเปิด Zoom ในเบราว์เซอร์ภายนอก");
   });
 });
