@@ -13,6 +13,7 @@ export type DoctorPatientConsultationDetail = {
   scheduledAt: string | null;
   createdAt: string;
   summary: string | null;
+  chatHistoryHref: string | null;
   assessment:
     | {
         id: string;

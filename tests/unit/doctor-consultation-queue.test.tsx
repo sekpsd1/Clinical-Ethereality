@@ -79,6 +79,7 @@ function consultation(status: DoctorConsultationItem["status"], durationLabel: s
     paymentReviewedAt: null,
     canOpenConsultRoom: false,
     consultRoomHref: null,
+    chatHistoryHref: status === "completed" ? "/doctor/consultations/consultation-completed/chat-history" : null,
     scheduledAt: "3 ส.ค. 2569 09:00",
     canStartConsultation: false,
     startAvailableAt: "2026-08-03T01:55:00.000Z",
@@ -300,6 +301,22 @@ describe("Doctor consultation queue", () => {
 
     expect(html).toContain("ระยะเวลานัด");
     expect(html).toContain("ยังไม่ระบุ");
+  });
+
+  it("links a completed assigned consultation to its read-only chat history", () => {
+    const data: DoctorConsultationsData = {
+      consultations: [consultation("completed", "30 นาที")],
+      prescriptionProducts: [],
+      summary: { scheduled: 0, live: 0, completed: 1 }
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DoctorConsultations, { data, initialSelectedStatus: "completed" })
+    );
+
+    expect(html).toContain("ประวัติแชต");
+    expect(html).toContain("/doctor/consultations/consultation-completed/chat-history");
+    expect(html).not.toContain("เปิดแชท/ห้องปรึกษา");
   });
 
   it("shows an issued prescription as read-only and offers no duplicate prescription control", () => {

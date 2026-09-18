@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { PublicSession } from "@/lib/auth/types";
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +21,7 @@ vi.mock("@/lib/db/prisma", () => ({
 }));
 
 import { getCustomerAppointmentDetail } from "@/features/consultations/appointment/queries";
+import { AppointmentDetail } from "@/features/consultations/AppointmentDetail";
 
 const session: PublicSession = {
   userId: "customer-1",
@@ -56,6 +59,12 @@ describe("completed appointment advice link", () => {
     expect(data.appointment?.ctaHref).toBe(
       "/consult/advice-log?consultation=consultation-1"
     );
+    expect(data.appointment?.chatHistoryHref).toBe(
+      "/consult/appointments/consultation-1/chat-history"
+    );
+    const html = renderToStaticMarkup(createElement(AppointmentDetail, { data }));
+    expect(html).toContain("ประวัติแชต");
+    expect(html).toContain("/consult/appointments/consultation-1/chat-history");
     expect(mocks.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

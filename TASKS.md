@@ -54,6 +54,7 @@ This file retains historical phases and active work. Planning checklists below d
 - [x] Add external prescription attachment metadata foundation and upload UX stub for prescription-required purchases using owner-managed storage URLs, order linkage, attachment visibility, and audit logs without storing file bytes in the database
 - [x] Add in-app consultation chat foundation that is not LINE chat, with persisted Prisma/MySQL messages, consultation access checks, audit logs, notifications, live consult UI binding, and latest-message visibility in the doctor queue
 - [x] Add a Customer-only `แชตกับแพทย์` entry from the authorized live waiting room into the existing in-app consultation chat, while preserving the one-tap external Zoom handoff and clearly separating the two actions
+- [x] Add read-only completed-Consultation chat history for the owning active Customer and active approved assigned Doctor, with deterministic pagination, minimized view audits, explicit exclusion of Zoom Chat, and no changes to live sending or five-year retention
 - [x] Add owner-managed integration readiness panel for PromptPay, EasySlip/SlipOK, storage, LINE LIFF, and Zoom without exposing secret values
 - [x] Add file storage foundation for Cloudinary/S3 readiness, hosted URL base validation, storage key extraction, and external prescription metadata without storing file bytes in the database; payment slips now use completed private Plesk storage
 - [x] Draft prescription verification, medicine preparation, and shipment SOP flows for client review

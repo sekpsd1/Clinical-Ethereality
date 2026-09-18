@@ -447,6 +447,10 @@ function mapConsultation(
     paymentReviewedAt: formatDate(consultation.payment?.reviewedAt ?? null),
     canOpenConsultRoom,
     consultRoomHref: canOpenConsultRoom ? `/consult/live?consultation=${consultation.id}` : null,
+    chatHistoryHref:
+      consultation.status === "completed"
+        ? `/doctor/consultations/${consultation.id}/chat-history`
+        : null,
     scheduledAt: formatDate(consultation.scheduledAt),
     canStartConsultation: consultation.status === "scheduled" && startWindow.canStart,
     startAvailableAt: startWindow.opensAt?.toISOString() ?? null,
