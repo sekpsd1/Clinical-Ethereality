@@ -594,6 +594,15 @@ The entries below are the current production handoff and supersede earlier SMS O
 - [x] Perform a sanitized read-only Production RCA: 3/3 eligible rows older than 24 hours were terminal `unavailable`, reached authorized readiness, and matched Zoom cloud metadata with download controls and no meeting-level processing/deleted/expired indication. Do not claim an exact cause until sanitized Plesk `{phase, category}` warnings distinguish authorization/configuration, exact-file mismatch, redirect/DNS, or response/MIME/range/content validation.
 - [ ] Controller review, sanitized Plesk warning-log discrimination, authenticated Doctor/Admin real-provider UAT, push, and release remain separately gated. No Production mutation, provider download, setting change, deployment, restart, or migration is included here.
 
+## Direct Zoom recording binary compatibility fix (code only, 2026-09-18)
+
+- [x] Start from exact deployed commit `4da80698fb23e3561d17951188eb2bb59508adaa` on `codex/zoom-recording-direct-download-fix`, excluding the Store corrective commit and unrelated dirty documentation.
+- [x] Run one bounded Test/UAT Production diagnosis for a video older than 24 hours and confirm that local authorization succeeds, readiness remains terminal unavailable, and the same Zoom cloud recording is completed, playable, and exposes a provider download action without downloading the full file or exposing identifiers, URLs, tokens, payloads, logs, secrets, or patient data.
+- [x] Keep fresh Zoom OAuth/metadata lookup, Authorization-header authentication, bounded safe redirects, cross-origin token stripping, exact metadata matching, and SSRF/DNS protections unchanged; do not add a public URL or query token.
+- [x] Accept `application/octet-stream` only for the exact allowlisted MP4 tuple after a bounded 12-byte `ftyp` signature check, preserve prefix bytes while streaming zero-based responses, and probe the signature separately before nonzero range streaming.
+- [x] Keep TXT canonical MIME behavior, MP4+TXT allowlist, M4A/TIMELINE/VTT exclusion, active Admin/assigned-Doctor authorization, private/no-store/nosniff response headers, and idempotent external-handoff audit semantics unchanged.
+- [x] Complete 53 focused provider/readiness/route/handoff tests, all 1,594 unit tests with 8 skips, main and isolated-client typechecks, ESLint, Prisma validation, the 67-route Production build, the isolated Zoom-client build, and `git diff --check`; then commit locally and hand off to the Controller. Push, deploy, restart, migration, Production setting mutation, and Google Cloud Storage remain prohibited in this implementation round.
+
 ## Full Telemedicine consent text on booking (code only, 2026-09-16)
 
 - [x] Transcribe the approved 2026-09-09 Telemedicine consent source without paraphrasing or omitting its seven numbered sections and two final choices.

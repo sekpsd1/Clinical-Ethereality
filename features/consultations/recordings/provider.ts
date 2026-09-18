@@ -74,6 +74,8 @@ type ZoomRecordingList = {
 
 const MAX_REDIRECT_HOPS = 4;
 const REDIRECT_DNS_TIMEOUT_MS = 3_000;
+const MP4_SIGNATURE_BYTES = 12;
+const MP4_PROBE_RANGE = `bytes=0-${MP4_SIGNATURE_BYTES - 1}`;
 const DEFAULT_RETRY_AFTER_SECONDS = 8;
 const MIN_RETRY_AFTER_SECONDS = 2;
 const MAX_RETRY_AFTER_SECONDS = 30;
@@ -367,11 +369,109 @@ function getSafeContentRange(response: Response, supportsByteRanges: boolean): s
     : null;
 }
 
+function isGenericBinaryMimeType(contentType: string): boolean {
+  return contentType.split(";", 1)[0]?.trim().toLowerCase() === "application/octet-stream";
+}
+
+function isRangeStartingAtZero(range?: string): boolean {
+  return !range || /^bytes=0-\d*$/.test(range);
+}
+
+function hasMp4FileTypeSignature(prefix: Uint8Array): boolean {
+  return prefix.byteLength >= MP4_SIGNATURE_BYTES &&
+    prefix[4] === 0x66 &&
+    prefix[5] === 0x74 &&
+    prefix[6] === 0x79 &&
+    prefix[7] === 0x70;
+}
+
+async function readMp4Prefix(
+  body: ReadableStream<Uint8Array> | null
+): Promise<{
+  reader: ReadableStreamDefaultReader<Uint8Array>;
+  chunks: Uint8Array[];
+}> {
+  if (!body) throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "invalid_response");
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+
+  try {
+    while (byteLength < MP4_SIGNATURE_BYTES) {
+      const result = await reader.read();
+      if (result.done || !result.value) break;
+      chunks.push(result.value);
+      byteLength += result.value.byteLength;
+    }
+    const prefix = new Uint8Array(Math.min(byteLength, MP4_SIGNATURE_BYTES));
+    let offset = 0;
+    for (const chunk of chunks) {
+      const remaining = prefix.byteLength - offset;
+      if (remaining <= 0) break;
+      const slice = chunk.subarray(0, remaining);
+      prefix.set(slice, offset);
+      offset += slice.byteLength;
+    }
+    if (!hasMp4FileTypeSignature(prefix)) {
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "invalid_response");
+    }
+    return { reader, chunks };
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+    if (error instanceof RecordingProviderError) throw error;
+    throw new RecordingProviderError(
+      "CONTENT_UNAVAILABLE",
+      "content",
+      "network",
+      DEFAULT_RETRY_AFTER_SECONDS
+    );
+  }
+}
+
+async function validateAndDiscardMp4Prefix(body: ReadableStream<Uint8Array> | null): Promise<void> {
+  const { reader } = await readMp4Prefix(body);
+  await reader.cancel().catch(() => undefined);
+  reader.releaseLock();
+}
+
+async function validateAndRestoreMp4Stream(
+  body: ReadableStream<Uint8Array> | null
+): Promise<ReadableStream<Uint8Array>> {
+  const { reader, chunks } = await readMp4Prefix(body);
+  let prefixIndex = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (prefixIndex < chunks.length) {
+        controller.enqueue(chunks[prefixIndex]);
+        prefixIndex += 1;
+        return;
+      }
+      try {
+        const result = await reader.read();
+        if (result.done) {
+          reader.releaseLock();
+          controller.close();
+          return;
+        }
+        if (result.value) controller.enqueue(result.value);
+      } catch (error) {
+        reader.releaseLock();
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      await reader.cancel(reason).catch(() => undefined);
+      reader.releaseLock();
+    }
+  });
+}
+
 async function validateContentResponse(
   recording: AuthorizedRecording,
   response: Response,
-  options: { probe: boolean; requestedRange?: string }
-): Promise<{ contentRange: string | null }> {
+  options: { probe: boolean; requestedRange?: string; allowGenericMp4?: boolean }
+): Promise<{ contentRange: string | null; genericMp4: boolean }> {
   const variant = getConsultationRecordingVariant(recording);
   if (!variant) throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "invalid_response");
   if (variant.supportsByteRanges && response.status === 416) {
@@ -385,15 +485,28 @@ async function validateContentResponse(
   if (response.status === 206 && !contentRange) {
     throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "range");
   }
-  if (options.probe && options.requestedRange === "bytes=0-0" && response.status === 206 && !contentRange?.startsWith("bytes 0-0/")) {
+  const expectedProbeRange = options.requestedRange?.match(/^bytes=(\d+)-(\d+)$/);
+  if (
+    options.probe &&
+    response.status === 206 &&
+    expectedProbeRange &&
+    !contentRange?.startsWith(`bytes ${expectedProbeRange[1]}-${expectedProbeRange[2]}/`)
+  ) {
     throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "range");
   }
 
-  const contentType = response.headers.get("content-type") ?? "application/octet-stream";
-  if (!isEligibleConsultationRecordingMimeType(recording, contentType)) {
+  const contentType = response.headers.get("content-type")?.trim();
+  if (!contentType) {
     throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "invalid_response");
   }
-  return { contentRange };
+  const genericMp4 = variant.kind === "video" && isGenericBinaryMimeType(contentType);
+  if (
+    !isEligibleConsultationRecordingMimeType(recording, contentType) &&
+    !(options.allowGenericMp4 && genericMp4)
+  ) {
+    throw new RecordingProviderError("CONTENT_UNAVAILABLE", "content", "invalid_response");
+  }
+  return { contentRange, genericMp4 };
 }
 
 function mapReadinessError(error: unknown): PrivateRecordingReadiness {
@@ -449,9 +562,14 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       }
 
       const downloadUrl = getSafeInitialDownloadUrl(file.download_url);
-      const range = variant.supportsByteRanges ? "bytes=0-0" : undefined;
+      const range = variant.supportsByteRanges ? MP4_PROBE_RANGE : undefined;
       response = await fetchContentWithSafeRedirects(downloadUrl, accessToken, range);
-      await validateContentResponse(recording, response, { probe: true, requestedRange: range });
+      await validateContentResponse(recording, response, {
+        probe: true,
+        requestedRange: range,
+        allowGenericMp4: variant.kind === "video"
+      });
+      if (variant.kind === "video") await validateAndDiscardMp4Prefix(response.body);
       return { status: "ready" };
     } catch (error) {
       logReadinessFailure(error);
@@ -472,21 +590,43 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       throw new RecordingProviderError("METADATA_UNAVAILABLE", "metadata", "status");
     }
     const downloadUrl = getSafeInitialDownloadUrl(file.download_url);
+    let genericMp4Validated = false;
+    if (variant.kind === "video" && !isRangeStartingAtZero(options.range)) {
+      let probeResponse: Response | null = null;
+      try {
+        probeResponse = await fetchContentWithSafeRedirects(downloadUrl, accessToken, MP4_PROBE_RANGE);
+        await validateContentResponse(recording, probeResponse, {
+          probe: true,
+          requestedRange: MP4_PROBE_RANGE,
+          allowGenericMp4: true
+        });
+        await validateAndDiscardMp4Prefix(probeResponse.body);
+        genericMp4Validated = true;
+      } finally {
+        await probeResponse?.body?.cancel().catch(() => undefined);
+      }
+    }
     const contentResponse = await fetchContentWithSafeRedirects(downloadUrl, accessToken, options.range);
 
     try {
-      const { contentRange } = await validateContentResponse(recording, contentResponse, {
+      const { contentRange, genericMp4 } = await validateContentResponse(recording, contentResponse, {
         probe: false,
-        requestedRange: options.range
+        requestedRange: options.range,
+        allowGenericMp4: variant.kind === "video" && (
+          genericMp4Validated || isRangeStartingAtZero(options.range)
+        )
       });
+      const body = genericMp4 && !genericMp4Validated
+        ? await validateAndRestoreMp4Stream(contentResponse.body)
+        : contentResponse.body;
       const contentLength = contentResponse.headers.get("content-length");
       return {
-        body: contentResponse.body,
+        body,
         contentType: variant.responseMimeType,
         contentLength: contentLength && /^\d{1,20}$/.test(contentLength) ? contentLength : null,
         contentRange,
         acceptRanges: variant.supportsByteRanges &&
-          contentResponse.headers.get("accept-ranges")?.toLowerCase() === "bytes"
+          (contentResponse.status === 206 || contentResponse.headers.get("accept-ranges")?.toLowerCase() === "bytes")
           ? "bytes"
           : null,
         status: contentResponse.status as 200 | 206

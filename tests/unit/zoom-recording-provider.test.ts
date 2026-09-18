@@ -32,6 +32,12 @@ const chatRecording = {
   fileSizeBytes: BigInt(64)
 };
 
+const mp4Prefix = new Uint8Array([
+  0x00, 0x00, 0x00, 0x18,
+  0x66, 0x74, 0x79, 0x70,
+  0x69, 0x73, 0x6f, 0x6d
+]);
+
 describe("feature-flagged Zoom recording provider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -223,10 +229,16 @@ describe("feature-flagged Zoom recording provider", () => {
     });
   });
 
-  it("requires completed metadata and probes one MP4 byte before reporting ready", async () => {
+  it("requires completed metadata and probes the bounded MP4 signature before reporting ready", async () => {
     mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
     mocks.token.mockResolvedValue("provider-token");
     const cancel = vi.fn().mockResolvedValue(undefined);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(mp4Prefix);
+      },
+      cancel
+    });
     mocks.fetch
       .mockResolvedValueOnce(new Response(JSON.stringify({
         recording_files: [{
@@ -237,22 +249,152 @@ describe("feature-flagged Zoom recording provider", () => {
           status: "completed"
         }]
       }), { status: 200 }))
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce(new Response(body, {
         status: 206,
-        headers: new Headers({
+        headers: {
           "content-type": "video/mp4",
-          "content-range": "bytes 0-0/1024",
-          "content-length": "1"
-        }),
-        body: { cancel }
-      } as unknown as Response);
+          "content-range": "bytes 0-11/1024",
+          "content-length": "12"
+        }
+      }));
 
     await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({ status: "ready" });
     expect(mocks.fetch.mock.calls[1]?.[1]).toMatchObject({
       redirect: "manual",
-      headers: { Authorization: "Bearer provider-token", Range: "bytes=0-0" }
+      headers: { Authorization: "Bearer provider-token", Range: "bytes=0-11" }
     });
     expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("accepts Zoom generic binary MP4 only after validating the ftyp signature", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    const metadata = () => new Response(JSON.stringify({
+      recording_files: [{
+        id: "provider-file-1",
+        download_url: "https://zoom.us/private/file",
+        file_type: "MP4",
+        recording_type: "shared_screen_with_speaker_view",
+        status: "completed"
+      }]
+    }), { status: 200 });
+
+    mocks.fetch
+      .mockResolvedValueOnce(metadata())
+      .mockResolvedValueOnce(new Response(mp4Prefix, {
+        status: 206,
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-range": "bytes 0-11/1024"
+        }
+      }));
+
+    await expect(zoomRecordingContentProvider.getReadiness(recording)).resolves.toEqual({ status: "ready" });
+
+    mocks.fetch
+      .mockResolvedValueOnce(metadata())
+      .mockResolvedValueOnce(new Response(mp4Prefix, {
+        status: 200,
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-length": String(mp4Prefix.byteLength)
+        }
+      }));
+
+    const content = await zoomRecordingContentProvider.open(recording);
+    await expect(new Response(content.body).arrayBuffer()).resolves.toEqual(mp4Prefix.buffer);
+    expect(content).toMatchObject({
+      status: 200,
+      contentType: "video/mp4",
+      contentLength: "12"
+    });
+  });
+
+  it("rejects generic binary content without an MP4 signature", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response("not-an-mp4!!", {
+        status: 200,
+        headers: { "content-type": "application/octet-stream" }
+      }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "content",
+      category: "invalid_response"
+    });
+  });
+
+  it("rejects MP4 content when the provider omits Content-Type", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(mp4Prefix, { status: 200 }));
+
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+      phase: "content",
+      category: "invalid_response"
+    });
+  });
+
+  it("uses a bounded signature probe before streaming a nonzero generic MP4 range", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recording_files: [{
+          id: "provider-file-1",
+          download_url: "https://zoom.us/private/file",
+          file_type: "MP4",
+          recording_type: "shared_screen_with_speaker_view",
+          status: "completed"
+        }]
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(mp4Prefix, {
+        status: 206,
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-range": "bytes 0-11/1024"
+        }
+      }))
+      .mockResolvedValueOnce(new Response("range-8-15", {
+        status: 206,
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-range": "bytes 8-15/1024"
+        }
+      }));
+
+    const content = await zoomRecordingContentProvider.open(recording, { range: "bytes=8-15" });
+
+    expect(mocks.fetch.mock.calls[1]?.[1]?.headers).toMatchObject({ Range: "bytes=0-11" });
+    expect(mocks.fetch.mock.calls[2]?.[1]?.headers).toMatchObject({ Range: "bytes=8-15" });
+    expect(content).toMatchObject({
+      status: 206,
+      contentRange: "bytes 8-15/1024",
+      acceptRanges: "bytes",
+      contentType: "video/mp4"
+    });
   });
 
   it("reports processing without touching content while provider metadata is not completed", async () => {
