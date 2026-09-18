@@ -277,10 +277,22 @@ describe("store catalog component safety", () => {
     expect(html).toContain("สินค้าทั่วไป");
   });
 
-  it("uses the full-card product image as the only detail link and clamps names to two lines", () => {
+  it("uses one full-width card per product and renders long names without truncation", () => {
     const products = [
-      toListItem(createProduct({ id: "featured", name: "สินค้าแนะนำ", slug: "featured", href: "/store/featured", imageUrl: "/images/featured.png", featured: true })),
-      toListItem(createProduct({ id: "standard", name: "สินค้าทั่วไป", slug: "standard", href: "/store/standard" }))
+      toListItem(createProduct({
+        id: "featured",
+        name: "ชุดตรวจคัดกรองมะเร็งปากมดลูก Liquid-Based Cytology (LBC) สำหรับการตรวจด้วยตนเอง",
+        slug: "featured",
+        href: "/store/featured",
+        imageUrl: "/images/featured.png",
+        featured: true
+      })),
+      toListItem(createProduct({
+        id: "standard",
+        name: "HPV/STIs Complete Screening Kit with Extended English Product Name",
+        slug: "standard",
+        href: "/store/standard"
+      }))
     ];
 
     const html = renderToStaticMarkup(
@@ -289,11 +301,16 @@ describe("store catalog component safety", () => {
 
     expect(html.match(/href="\/store\/featured"/g)).toHaveLength(1);
     expect(html.match(/href="\/store\/standard"/g)).toHaveLength(1);
-    expect(html).toContain('aria-label="ดูรายละเอียด สินค้าแนะนำ"');
-    expect(html).toContain('aria-label="ดูรายละเอียด สินค้าทั่วไป"');
+    expect(html).toContain('data-testid="store-product-list"');
+    expect(html).toContain('class="mt-6 grid grid-cols-1 gap-4"');
+    expect(html.match(/data-testid="store-product-card"/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="ดูรายละเอียด ชุดตรวจคัดกรองมะเร็งปากมดลูก Liquid-Based Cytology (LBC) สำหรับการตรวจด้วยตนเอง"');
+    expect(html).toContain('aria-label="ดูรายละเอียด HPV/STIs Complete Screening Kit with Extended English Product Name"');
     expect(html).toContain("rounded-t-[5px]");
     expect(html).toContain("rounded-[5px]");
-    expect(html).toContain("line-clamp-2");
+    expect(html).toContain("break-words text-lg font-bold leading-6");
+    expect(html).not.toContain("line-clamp-2");
+    expect(html).not.toContain("min-h-[300px]");
     expect(html).toContain('class="object-contain"');
     expect(html).not.toContain("ดูสินค้า");
   });

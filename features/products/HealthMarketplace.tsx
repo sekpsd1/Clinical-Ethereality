@@ -33,10 +33,6 @@ const categories: Category[] = productCategories
 export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
   const marketplaceProducts = data.products;
   const hasFilters = Boolean(data.query || data.category);
-  const featuredProduct = marketplaceProducts.find((product) => product.featured) ?? marketplaceProducts[0];
-  const standardProducts = featuredProduct
-    ? marketplaceProducts.filter((product) => product.id !== featuredProduct.id)
-    : [];
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[#f7f9fb] px-4 pb-8 text-[#3e494a]">
@@ -106,15 +102,11 @@ export function HealthMarketplace({ data }: { data: StoreMarketplaceData }) {
             icon={<PackageSearch aria-hidden="true" className="size-5" />}
           />
         ) : (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              {standardProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {featuredProduct ? <FeaturedProductCard product={featuredProduct} /> : null}
-          </>
+          <div data-testid="store-product-list" className="mt-6 grid grid-cols-1 gap-4">
+            {marketplaceProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         )}
       </section>
     </div>
@@ -205,11 +197,14 @@ function CategoryCard({
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <article className="flex min-h-[300px] flex-col overflow-hidden rounded-[5px] border border-[#bdc9ca]/15 bg-white/70 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
+    <article
+      data-testid="store-product-card"
+      className="flex flex-col overflow-hidden rounded-[5px] border border-[#bdc9ca]/15 bg-white/70 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px] sm:flex-row"
+    >
       <Link
         href={product.href}
         aria-label={`ดูรายละเอียด ${product.name}`}
-        className="relative block aspect-square w-full overflow-hidden rounded-t-[5px] bg-[#eceef0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        className="relative block aspect-square w-full shrink-0 overflow-hidden rounded-t-[5px] bg-[#eceef0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:min-h-[264px] sm:w-72 sm:self-stretch sm:aspect-auto sm:rounded-l-[5px] sm:rounded-tr-none md:w-80"
       >
         <ProductMedia product={product} />
         {product.requiresPrescription ? (
@@ -219,32 +214,13 @@ function ProductCard({ product }: { product: Product }) {
         ) : null}
       </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col px-4 pb-4 pt-4">
-        <p className="truncate text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="line-clamp-2 min-h-10 text-base font-bold leading-5 text-[#191c1e]">{product.name}</h3>
-        <p className="mt-1.5 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
-      </div>
-    </article>
-  );
-}
-
-function FeaturedProductCard({ product }: { product: Product }) {
-  return (
-    <article className="mt-5 flex min-h-[220px] overflow-hidden rounded-[5px] border border-[#bdc9ca]/15 bg-white/70 shadow-[0_8px_32px_rgba(0,96,103,0.04)] backdrop-blur-[24px]">
-      <Link
-        href={product.href}
-        aria-label={`ดูรายละเอียด ${product.name}`}
-        className="relative block w-[46%] max-w-[168px] shrink-0 self-stretch overflow-hidden bg-[#eceef0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-      >
-        <ProductMedia product={product} />
-      </Link>
-
-      <div className="flex min-w-0 flex-1 flex-col p-4">
+      <div className="flex min-w-0 flex-1 flex-col px-4 pb-4 pt-4 sm:px-6 sm:py-5">
         <p className="text-[10px] font-bold text-primary">{product.categoryLabel}</p>
-        <h3 className="line-clamp-2 text-[17px] font-bold leading-6 text-[#191c1e]">{product.name}</h3>
-        <p className="mt-2 text-xs leading-5 text-[#3e494a]">{product.description}</p>
-        <p className="mt-3 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
+        <h3 className="mt-1 break-words text-lg font-bold leading-6 text-[#191c1e]">{product.name}</h3>
+        {product.featured && product.description ? (
+          <p className="mt-2 text-sm leading-6 text-[#3e494a]">{product.description}</p>
+        ) : null}
+        <p className="mt-1.5 text-xl font-extrabold leading-6 text-primary">{product.price}</p>
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6e797a]">{product.stockLabel}</p>
       </div>
     </article>
