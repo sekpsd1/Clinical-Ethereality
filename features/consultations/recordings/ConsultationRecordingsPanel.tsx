@@ -27,7 +27,7 @@ export function ConsultationRecordingsPanel({
           </div>
           <div className="min-w-0">
             <h4 className="text-sm font-bold text-text">บันทึกการปรึกษา</h4>
-            <p className="mt-0.5 text-[11px] leading-4 text-muted">เปิดดูหรือดาวน์โหลดไฟล์ที่ Zoom ประมวลผลเสร็จแล้ว</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted">ระบบจะตรวจสอบความพร้อมจาก Zoom ก่อนเปิดดูหรือดาวน์โหลดทุกครั้ง</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

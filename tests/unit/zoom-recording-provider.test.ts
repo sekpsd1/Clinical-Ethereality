@@ -8,7 +8,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/env/schema", () => ({ getAppEnv: () => mocks.env }));
 vi.mock("@/lib/zoom/meetings", () => ({ getZoomServerAccessTokenIfConfigured: mocks.token }));
 
-import { zoomRecordingContentProvider } from "@/features/consultations/recordings/provider";
+import {
+  probeRecordingContentAvailability,
+  type RecordingContentProvider,
+  zoomRecordingContentProvider
+} from "@/features/consultations/recordings/provider";
 
 const recording = {
   id: "recording-1",
@@ -41,6 +45,24 @@ describe("feature-flagged Zoom recording provider", () => {
     await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({ code: "NOT_CONFIGURED" });
     expect(mocks.token).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("probes MP4 with one byte and cancels the stream without buffering or auditing", async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    const open = vi.fn().mockResolvedValue({
+        body: { cancel } as unknown as ReadableStream<Uint8Array>,
+        contentType: "video/mp4",
+        contentLength: "1",
+        contentRange: "bytes 0-0/1024",
+        acceptRanges: "bytes" as const,
+        status: 206 as const
+      });
+    const provider: RecordingContentProvider = { open };
+
+    await probeRecordingContentAvailability(recording, provider);
+
+    expect(open).toHaveBeenCalledWith(recording, { range: "bytes=0-0" });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it("forwards one byte range and accepts only safe partial-content headers", async () => {

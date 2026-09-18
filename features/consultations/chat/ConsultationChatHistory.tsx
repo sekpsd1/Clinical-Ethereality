@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowLeft, ChevronLeft, ChevronRight, LockKeyhole, MessageCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, LockKeyhole, MessageCircle } from "lucide-react";
+import { consultationChatExportFilename } from "@/features/consultations/chat/history-queries";
 import type {
   ConsultationChatHistoryData,
   ConsultationChatHistoryMessage
@@ -56,6 +57,7 @@ export function ConsultationChatHistory({
 }) {
   const previousHref = `${pageHref}?page=${data.page - 1}` as Route;
   const nextHref = `${pageHref}?page=${data.page + 1}` as Route;
+  const downloadHref = `/api/consultations/${encodeURIComponent(data.consultationId)}/chat-history/download`;
 
   return (
     <section className="-mx-4 min-h-dvh bg-app pb-8">
@@ -84,6 +86,14 @@ export function ConsultationChatHistory({
               <p className="mt-1 text-xs leading-5 text-muted">
                 แสดงเฉพาะแชตในแอป Clinical lab service เท่านั้น ไม่รวม Zoom Chat
               </p>
+              <a
+                href={downloadHref}
+                download={consultationChatExportFilename}
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-payment-active sm:w-auto"
+              >
+                <Download aria-hidden="true" className="size-4" strokeWidth={2.1} />
+                ดาวน์โหลดแชต
+              </a>
             </div>
           </div>
         </aside>

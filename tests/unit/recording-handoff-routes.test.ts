@@ -1,7 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const mocks = vi.hoisted(() => ({ issue: vi.fn(), exchange: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  issue: vi.fn(),
+  exchange: vi.fn(),
+  authorize: vi.fn(),
+  probe: vi.fn(),
+  session: { userId: "doctor-1", role: "doctor" as const }
+}));
 
 vi.mock("@/features/consultations/recordings/external-handoff", () => {
   class RecordingExternalHandoffError extends Error {}
@@ -17,6 +23,17 @@ vi.mock("@/features/consultations/recordings/external-handoff", () => {
       maxAge: 7200
     }),
     RecordingExternalHandoffError
+  };
+});
+vi.mock("@/lib/auth/session", () => ({ getCurrentSession: async () => mocks.session }));
+vi.mock("@/features/consultations/recordings/access", () => ({
+  getAuthorizedRecording: mocks.authorize
+}));
+vi.mock("@/features/consultations/recordings/provider", () => {
+  class RecordingProviderError extends Error {}
+  return {
+    probeRecordingContentAvailability: mocks.probe,
+    RecordingProviderError
   };
 });
 
@@ -38,6 +55,17 @@ beforeEach(() => {
     mode: "view",
     expiresAt: new Date("2030-01-01T10:02:00.000Z")
   });
+  mocks.authorize.mockResolvedValue({
+    id: "recording-1",
+    consultationId: "consultation-1",
+    provider: "zoom",
+    providerRecordingId: "provider-file-1",
+    fileType: "mp4",
+    recordingType: "shared_screen_with_speaker_view",
+    zoomMeetingId: "12345678901",
+    fileSizeBytes: BigInt(1024)
+  });
+  mocks.probe.mockResolvedValue(undefined);
   mocks.exchange.mockResolvedValue({
     externalSessionToken: `v1.00000000-0000-4000-8000-000000000000.${"b".repeat(43)}`,
     consultationId: "consultation-1",
@@ -82,6 +110,7 @@ describe("recording handoff routes", () => {
       "view",
       { ipAddress: "203.0.113.10" }
     );
+    expect(mocks.probe).toHaveBeenCalledOnce();
   });
 
   it("rejects cross-origin issuance and malformed modes before minting a ticket", async () => {
@@ -104,6 +133,24 @@ describe("recording handoff routes", () => {
       }
     ), { params });
     expect(wrongMode.status).toBe(400);
+    expect(mocks.issue).not.toHaveBeenCalled();
+    expect(mocks.probe).not.toHaveBeenCalled();
+  });
+
+  it("does not mint a handoff or access audit when provider content is unavailable", async () => {
+    mocks.probe.mockRejectedValue(new Error("provider unavailable"));
+
+    const response = await issue(new NextRequest(
+      "https://app.example.test/api/consultations/consultation-1/recordings/recording-1/handoff",
+      {
+        method: "POST",
+        headers: { origin: "https://app.example.test", "content-type": "application/json" },
+        body: JSON.stringify({ mode: "view" })
+      }
+    ), { params });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ ok: false, error: "Unable to open this recording." });
     expect(mocks.issue).not.toHaveBeenCalled();
   });
 

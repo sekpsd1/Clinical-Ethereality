@@ -54,7 +54,10 @@ describe("read-only consultation chat history UI", () => {
     expect(html).not.toContain("message-1");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("<textarea");
-    expect(html).not.toContain("ดาวน์โหลด");
+    expect(html).toContain("ดาวน์โหลดแชต");
+    expect(html).toContain("clinical-lab-chat-history.txt");
+    expect(html).toContain("/api/consultations/consultation-1/chat-history/download");
+    expect(html).not.toContain("ดาวน์โหลด Zoom Chat");
     expect(html).not.toContain("ส่งข้อความ");
     expect(html).not.toContain("แก้ไข");
     expect(html).not.toContain("ลบข้อความ");

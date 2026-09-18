@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Route } from "next";
 import { chromium } from "@playwright/test";
@@ -62,6 +62,10 @@ describe("consultation chat history mobile browser UAT", () => {
       await expect(page.getByRole("heading", { name: "ประวัติแชต" }).isVisible()).resolves.toBe(true);
       await expect(page.getByText("อ่านอย่างเดียวหลังจบการปรึกษา").isVisible()).resolves.toBe(true);
       await expect(page.getByText("ไม่รวม Zoom Chat", { exact: false }).isVisible()).resolves.toBe(true);
+      const download = page.getByRole("link", { name: "ดาวน์โหลดแชต" });
+      await expect(download.isVisible()).resolves.toBe(true);
+      await expect(download.getAttribute("download")).resolves.toBe("clinical-lab-chat-history.txt");
+      await expect(download.evaluate((element) => element.getBoundingClientRect().height)).resolves.toBeGreaterThanOrEqual(44);
       await expect(page.getByRole("link", { name: "ถัดไป" }).isVisible()).resolves.toBe(true);
       await expect(page.locator("form, textarea, input, button").count()).resolves.toBe(0);
 
@@ -71,6 +75,8 @@ describe("consultation chat history mobile browser UAT", () => {
       }));
       expect(viewport.clientWidth).toBe(390);
       expect(viewport.scrollWidth).toBeLessThanOrEqual(390);
+      await mkdir("test-results", { recursive: true });
+      await page.screenshot({ path: "test-results/chat-history-download-mobile.png", fullPage: true });
     } finally {
       await browser.close();
     }

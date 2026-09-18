@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildAndroidRecordingChromeIntentUrl,
   buildIosRecordingExternalBrowserUrl,
+  checkProtectedRecordingReadiness,
   createRecordingHandoffRequestGate,
   exchangeRecordingHandoffSession,
   getProtectedRecordingUrl,
@@ -87,16 +88,37 @@ describe("recording external handoff client", () => {
     );
     expect(getRecordingHandoffDescriptor(launchUrl)).toEqual(descriptor);
     expect(getProtectedRecordingUrl(descriptor)).toBe(
-      "/api/consultations/consultation-1/recordings/recording-1"
+      "/api/consultations/consultation-1/recordings/recording-1?safe=1"
     );
     expect(getProtectedRecordingUrl({ ...descriptor, mode: "download" })).toBe(
-      "/api/consultations/consultation-1/recordings/recording-1?download=1"
+      "/api/consultations/consultation-1/recordings/recording-1?download=1&safe=1"
     );
+  });
+
+  it("checks protected content readiness without downloading or auditing the file", async () => {
+    const fetchReadiness = vi.fn().mockResolvedValue({ ok: true });
+
+    await expect(checkProtectedRecordingReadiness(descriptor, fetchReadiness)).resolves.toBeUndefined();
+    expect(fetchReadiness).toHaveBeenCalledWith(
+      "/api/consultations/consultation-1/recordings/recording-1?safe=1",
+      expect.objectContaining({ method: "HEAD", credentials: "same-origin", cache: "no-store" })
+    );
+
+    fetchReadiness.mockResolvedValueOnce({ ok: false, status: 503 });
+    await expect(checkProtectedRecordingReadiness(descriptor, fetchReadiness)).rejects.toMatchObject({
+      retryable: true
+    });
+
+    fetchReadiness.mockResolvedValueOnce({ ok: false, status: 404 });
+    await expect(checkProtectedRecordingReadiness(descriptor, fetchReadiness)).rejects.toMatchObject({
+      retryable: false
+    });
   });
 
   it("requests a fresh handoff for each action and rejects untrusted server URLs", async () => {
     const fetchHandoff = vi.fn().mockResolvedValue({
       ok: true,
+      status: 200,
       json: async () => ({ ok: true, launchUrl })
     });
     await expect(
@@ -109,6 +131,7 @@ describe("recording external handoff client", () => {
 
     fetchHandoff.mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => ({ ok: true, launchUrl: launchUrl.replace("app.example.test", "attacker.example") })
     });
     await expect(
@@ -160,6 +183,8 @@ describe("recording external handoff client", () => {
       "utf8"
     );
     expect(source).toContain("กลับไปที่ LINE แล้วกดเปิดไฟล์ใหม่อีกครั้ง");
+    expect(source).toContain("ตรวจสอบและลองอีกครั้ง");
+    expect(source).toContain("checkProtectedRecordingReadiness");
     expect(source).not.toMatch(/patient|displayName|providerRecordingId|download_url/i);
     expect(source).toContain("window.history.replaceState");
   });

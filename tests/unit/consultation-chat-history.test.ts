@@ -20,6 +20,8 @@ vi.mock("@/lib/db/prisma", () => ({
 
 import {
   consultationChatHistoryPageSize,
+  formatConsultationChatExport,
+  getConsultationChatExport,
   getConsultationChatHistory
 } from "@/features/consultations/chat/history-queries";
 
@@ -202,5 +204,86 @@ describe("consultation chat history authorization and pagination", () => {
     const auditPayload = JSON.stringify(mocks.writeAuditLog.mock.calls[0][1]);
     expect(auditPayload).not.toContain("sensitive body");
     expect(auditPayload).not.toContain("พญ. แพทย์หนึ่ง");
+  });
+
+  it.each([
+    [customerSession, "customer" as const],
+    [doctorSession, "doctor" as const]
+  ])("exports all visible messages only after the same completed-case authorization", async (session, role) => {
+    const messages = [message(1), message(2), message(2)];
+    mocks.messageFindMany.mockResolvedValue(messages);
+
+    const result = await getConsultationChatExport(session, "consultation-1", role);
+
+    expect(result?.messageCount).toBe(3);
+    expect(mocks.consultationFindFirst.mock.calls.at(-1)?.[0].where).toMatchObject({
+      id: "consultation-1",
+      status: "completed"
+    });
+    expect(mocks.messageFindMany).toHaveBeenCalledWith({
+      where: { consultationId: "consultation-1", status: "visible" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        sender: { select: { role: true } }
+      }
+    });
+    expect(result?.content.startsWith("\uFEFF")).toBe(true);
+    expect(result?.content.match(/sensitive body 2/g)).toHaveLength(2);
+  });
+
+  it("fails export closed for role mismatch and inaccessible or non-completed cases", async () => {
+    await expect(
+      getConsultationChatExport({ ...customerSession, role: "admin" }, "consultation-1", "customer")
+    ).resolves.toBeNull();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+
+    mocks.consultationFindFirst.mockResolvedValue(null);
+    await expect(
+      getConsultationChatExport(doctorSession, "consultation-1", "doctor")
+    ).resolves.toBeNull();
+    expect(mocks.messageFindMany).not.toHaveBeenCalled();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("formats empty, duplicate, Thai, and long messages without names or identifiers in the header", () => {
+    const empty = formatConsultationChatExport([]);
+    expect(empty).toContain("ไม่มีข้อความ");
+
+    const longBody = `ภาษาไทย ${"ยาว".repeat(4_000)}`;
+    const content = formatConsultationChatExport([
+      { body: "ข้อความซ้ำ", createdAt: new Date("2030-01-01T03:00:00.000Z"), sender: { role: "customer" } },
+      { body: "ข้อความซ้ำ", createdAt: new Date("2030-01-01T03:01:00.000Z"), sender: { role: "doctor" } },
+      { body: longBody, createdAt: new Date("2030-01-01T03:02:00.000Z"), sender: { role: "customer" } }
+    ]);
+    const header = content.split("\n").slice(0, 2).join("\n");
+
+    expect(content.match(/ข้อความซ้ำ/g)).toHaveLength(2);
+    expect(content).toContain(longBody);
+    expect(content).toContain("ผู้รับบริการ");
+    expect(content).toContain("แพทย์");
+    expect(header).not.toMatch(/ผู้รับบริการหนึ่ง|พญ\. แพทย์หนึ่ง|consultation-1|line-customer/i);
+  });
+
+  it("audits a history download once with safe count and IDs but no message content or names", async () => {
+    mocks.messageFindMany.mockResolvedValue([message(1), message(2)]);
+
+    await getConsultationChatExport(customerSession, "consultation-1", "customer");
+
+    expect(mocks.writeAuditLog).toHaveBeenCalledWith(expect.anything(), {
+      actorId: "customer-1",
+      action: "consultation_message.history_download",
+      entityType: "consultation",
+      entityId: "consultation-1",
+      metadata: {
+        consultationId: "consultation-1",
+        messageCount: 2,
+        messageIds: ["message-001", "message-002"]
+      }
+    });
+    const auditPayload = JSON.stringify(mocks.writeAuditLog.mock.calls.at(-1)?.[1]);
+    expect(auditPayload).not.toMatch(/sensitive body|ผู้รับบริการหนึ่ง|พญ\. แพทย์หนึ่ง/);
   });
 });

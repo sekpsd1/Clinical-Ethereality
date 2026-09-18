@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdir } from "node:fs/promises";
+import { chromium } from "@playwright/test";
 import { NextRequest } from "next/server";
+
+const browserUat = process.env.RUN_RECORDING_BROWSER_UAT === "true" ? it : it.skip;
 
 const mocks = vi.hoisted(() => ({
   session: null as null | { userId: string; role: "doctor" | "admin" | "customer" },
@@ -24,7 +28,7 @@ vi.mock("@/features/consultations/recordings/provider", async (importOriginal) =
   return { ...actual, zoomRecordingContentProvider: { open: mocks.open } };
 });
 
-import { GET } from "@/app/api/consultations/[consultationId]/recordings/[recordingId]/route";
+import { GET, HEAD } from "@/app/api/consultations/[consultationId]/recordings/[recordingId]/route";
 import { RecordingProviderError } from "@/features/consultations/recordings/provider";
 import { parseRecordingRangeHeader } from "@/features/consultations/recordings/range";
 
@@ -285,5 +289,96 @@ describe("private consultation recording route", () => {
     expect(response.status).toBe(502);
     expect(mocks.auditExternal).not.toHaveBeenCalled();
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("checks readiness with HEAD without writing a view/download audit", async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    mocks.session = { userId: "doctor-1", role: "doctor" };
+    mocks.authorize.mockResolvedValue(recording);
+    mocks.open.mockResolvedValue({
+      body: { cancel } as unknown as ReadableStream<Uint8Array>,
+      contentType: "video/mp4",
+      contentLength: "1",
+      contentRange: "bytes 0-0/1024",
+      acceptRanges: "bytes",
+      status: 206
+    });
+
+    const response = await HEAD(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1?safe=1", {
+        method: "HEAD"
+      }),
+      { params }
+    );
+
+    expect(response.status).toBe(204);
+    expect(mocks.open).toHaveBeenCalledWith(recording, { range: "bytes=0-0" });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.auditExternal).not.toHaveBeenCalled();
+  });
+
+  it("returns an accessible Thai retry page instead of raw JSON for a safe browser access failure", async () => {
+    mocks.session = { userId: "doctor-1", role: "doctor" };
+    mocks.authorize.mockResolvedValue(recording);
+    mocks.open.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE"));
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1?safe=1"),
+      { params }
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(body).toContain("ไฟล์บันทึกยังไม่พร้อมใช้งาน");
+    expect(body).toContain("ตรวจสอบและลองอีกครั้ง");
+    expect(body).not.toMatch(/provider-file-1|12345678901|download_url|CONTENT_UNAVAILABLE/);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("keeps readiness authorization fail-closed before contacting the provider", async () => {
+    mocks.session = { userId: "customer-1", role: "customer" };
+
+    const response = await HEAD(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1?safe=1", {
+        method: "HEAD"
+      }),
+      { params }
+    );
+
+    expect(response.status).toBe(404);
+    expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  browserUat("renders the provider-unavailable retry state at 390x844 without raw JSON", async () => {
+    mocks.session = { userId: "doctor-1", role: "doctor" };
+    mocks.authorize.mockResolvedValue(recording);
+    mocks.open.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE"));
+    const response = await GET(
+      new NextRequest("http://localhost/api/consultations/consultation-1/recordings/recording-1?safe=1"),
+      { params }
+    );
+    const html = await response.text();
+    const browser = await chromium.launch({ headless: true });
+
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      await page.setContent(html);
+      const retry = page.getByRole("link", { name: "ตรวจสอบและลองอีกครั้ง" });
+      await expect(page.getByRole("heading", { name: "ไฟล์บันทึกยังไม่พร้อมใช้งาน" }).isVisible()).resolves.toBe(true);
+      await expect(retry.isVisible()).resolves.toBe(true);
+      await expect(retry.evaluate((element) => element.getBoundingClientRect().height)).resolves.toBeGreaterThanOrEqual(44);
+      const viewport = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(viewport).toEqual({ clientWidth: 390, scrollWidth: 390 });
+      await mkdir("test-results", { recursive: true });
+      await page.screenshot({ path: "test-results/recording-unavailable-mobile.png", fullPage: true });
+    } finally {
+      await browser.close();
+    }
   });
 });

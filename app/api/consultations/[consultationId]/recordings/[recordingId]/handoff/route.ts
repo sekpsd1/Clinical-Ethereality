@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPublicAppOrigin } from "@/lib/auth/line-oauth";
+import { getCurrentSession } from "@/lib/auth/session";
+import { getAuthorizedRecording } from "@/features/consultations/recordings/access";
 import {
   issueRecordingExternalHandoff,
   RecordingExternalHandoffError
@@ -9,6 +11,10 @@ import {
   getRecordingHandoffRequestIp,
   hasTrustedRecordingHandoffOrigin
 } from "@/features/consultations/recordings/handoff-request";
+import {
+  probeRecordingContentAvailability,
+  RecordingProviderError
+} from "@/features/consultations/recordings/provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +48,28 @@ export async function POST(
 
   const body = bodySchema.safeParse(payload);
   if (!consultationId.success || !recordingId.success || !body.success) return unavailable(400);
+
+  const session = await getCurrentSession();
+  const viewer = session &&
+    !session.userId.startsWith("dev:") &&
+    (session.role === "admin" || session.role === "doctor")
+    ? { userId: session.userId, role: session.role }
+    : null;
+  const recording = await getAuthorizedRecording(
+    viewer,
+    consultationId.data,
+    recordingId.data
+  );
+  if (!recording) return unavailable(403);
+
+  try {
+    await probeRecordingContentAvailability(recording);
+  } catch (error) {
+    if (!(error instanceof RecordingProviderError)) {
+      console.error("Recording readiness check failed.", { code: "unexpected" });
+    }
+    return unavailable(503);
+  }
 
   try {
     const handoff = await issueRecordingExternalHandoff(
