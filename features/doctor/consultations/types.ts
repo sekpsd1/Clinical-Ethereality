@@ -29,6 +29,7 @@ export type DoctorConsultationItem = {
   paymentReviewedAt: string | null;
   canOpenConsultRoom: boolean;
   consultRoomHref: string | null;
+  chatHistoryHref: string | null;
   scheduledAt: string | null;
   canStartConsultation: boolean;
   startAvailableAt: string | null;
