@@ -139,14 +139,16 @@ function MessageComposer({ chat }: { chat: LiveConsultationChatData }) {
       <div className="flex items-end gap-3">
         <ConsultationMessageComposer consultationId={chat.consultationId} canSend={chat.canSend} />
 
-        <Link href={chat.returnHref as Route} aria-label="ออกจากห้องปรึกษา" className="mb-1 flex flex-col items-center gap-1 text-danger">
-          <span className="flex size-12 items-center justify-center rounded-full bg-danger text-white shadow-live-end">
-            <Phone aria-hidden="true" className="size-6 fill-white" strokeWidth={2.2} />
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-normal">
-            {chat.viewerRole === "doctor" || chat.viewerRole === "admin" ? "กลับคิว" : "วางสาย"}
-          </span>
-        </Link>
+        {chat.viewerRole !== "doctor" ? (
+          <Link href={chat.returnHref as Route} aria-label="ออกจากห้องปรึกษา" className="mb-1 flex flex-col items-center gap-1 text-danger">
+            <span className="flex size-12 items-center justify-center rounded-full bg-danger text-white shadow-live-end">
+              <Phone aria-hidden="true" className="size-6 fill-white" strokeWidth={2.2} />
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-normal">
+              {chat.viewerRole === "admin" ? "กลับคิว" : "วางสาย"}
+            </span>
+          </Link>
+        ) : null}
       </div>
       <div className="mx-auto mt-4 h-1 w-32 rounded-full bg-slate-200/80" />
     </footer>
