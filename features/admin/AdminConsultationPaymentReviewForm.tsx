@@ -9,6 +9,7 @@ import {
   type AdminPaymentActionState
 } from "@/features/admin/payments/actions";
 import type { AdminPaymentQueueItem } from "@/features/admin/payments/types";
+import { AdminThaiDateTimeField } from "@/features/admin/payments/AdminThaiDateTimeField";
 import { cn } from "@/lib/design-system/variants";
 
 const initialState: AdminPaymentActionState = { status: "idle", message: "" };
@@ -78,24 +79,8 @@ export function AdminConsultationPaymentReviewForm({
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs font-bold text-muted">
-          วันเวลาโอน (ประเทศไทย)
-          <input
-            required
-            type="datetime-local"
-            name="transferredAt"
-            className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
-          />
-        </label>
-        <label className="block text-xs font-bold text-muted">
-          เวลาที่ลูกค้าติดต่อ LINE OA
-          <input
-            required
-            type="datetime-local"
-            name="customerReportedAt"
-            className="mt-1 h-11 w-full rounded-[8px] border border-border bg-white px-3 text-sm text-text outline-none focus:border-primary"
-          />
-        </label>
+        <AdminThaiDateTimeField label="วันเวลาโอน" name="transferredAt" />
+        <AdminThaiDateTimeField label="เวลาที่ลูกค้าติดต่อ LINE OA" name="customerReportedAt" />
       </div>
 
       <input type="hidden" name="reasonCode" value={review.reasonCode} />

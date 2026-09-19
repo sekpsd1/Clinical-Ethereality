@@ -54,6 +54,11 @@ describe("Admin consultation payment review form", () => {
     expect(html).toContain('name="evidenceSource"');
     expect(html).toContain("เปิดดูได้เฉพาะ Admin");
     expect(html).toContain("ยืนยันรายการนี้ทันทีโดยไม่ต้องรอครบ 24 ชั่วโมง");
+    expect(html).toContain("DD/MM/YYYY");
+    expect(html).toContain("HH:mm");
+    expect(html).toContain('name="transferredAt"');
+    expect(html).toContain('name="customerReportedAt"');
+    expect(html).not.toContain('type="datetime-local"');
   });
 
   it("identifies a table-origin manual request without offering to create a new slot", () => {
