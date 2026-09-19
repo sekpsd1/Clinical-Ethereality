@@ -215,7 +215,11 @@ function mapConsultation(consultation: ConsultationRecord): CustomerAppointmentD
       ? "แอดมินจะตรวจรายการโอนในหน้าชำระเงิน และจะแจ้งอีกครั้งเมื่อยืนยันหรือปฏิเสธคำขอ"
       : status.nextStepDescription,
     ctaLabel: manualAppointmentReviewPending ? null : status.ctaLabel,
-    ctaHref: manualAppointmentReviewPending ? null : getCtaHref(consultation)
+    ctaHref: manualAppointmentReviewPending ? null : getCtaHref(consultation),
+    chatHistoryHref:
+      consultation.status === "completed"
+        ? `/consult/appointments/${consultation.id}/chat-history`
+        : null
   };
 }
 

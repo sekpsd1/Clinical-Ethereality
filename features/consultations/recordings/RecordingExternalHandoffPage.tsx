@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   buildAndroidRecordingChromeIntentUrl,
+  checkProtectedRecordingReadiness,
   exchangeRecordingHandoffSession,
   getProtectedRecordingUrl,
   getRecordingHandoffDescriptor,
   getSanitizedRecordingHandoffPath,
   isAndroidUserAgent,
-  isLineInAppBrowser
+  isLineInAppBrowser,
+  RecordingHandoffRequestError,
+  type RecordingHandoffDescriptor
 } from "@/features/consultations/recordings/recording-handoff-client";
 
-type PageState = "checking" | "android" | "error";
+type PageState = "checking" | "android" | "unavailable" | "error";
 
 export function RecordingExternalHandoffPage() {
   const [state, setState] = useState<PageState>("checking");
   const [androidIntent, setAndroidIntent] = useState<string | null>(null);
+  const [descriptor, setDescriptor] = useState<RecordingHandoffDescriptor | null>(null);
+
+  const openWhenReady = useCallback(async (target: RecordingHandoffDescriptor) => {
+    setState("checking");
+    try {
+      await checkProtectedRecordingReadiness(target);
+      window.location.replace(getProtectedRecordingUrl(target));
+    } catch (error) {
+      setState(error instanceof RecordingHandoffRequestError && !error.retryable ? "error" : "unavailable");
+    }
+  }, []);
 
   useEffect(() => {
     const descriptor = getRecordingHandoffDescriptor(window.location.href);
@@ -23,6 +37,7 @@ export function RecordingExternalHandoffPage() {
       setState("error");
       return;
     }
+    setDescriptor(descriptor);
 
     if (isLineInAppBrowser(window.navigator.userAgent)) {
       if (isAndroidUserAgent(window.navigator.userAgent)) {
@@ -40,9 +55,9 @@ export function RecordingExternalHandoffPage() {
     if (sanitized) window.history.replaceState(null, "", sanitized);
 
     exchangeRecordingHandoffSession(descriptor, fragment)
-      .then(() => window.location.replace(getProtectedRecordingUrl(descriptor)))
+      .then(() => openWhenReady(descriptor))
       .catch(() => setState("error"));
-  }, []);
+  }, [openWhenReady]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center px-5 py-10">
@@ -53,6 +68,8 @@ export function RecordingExternalHandoffPage() {
             ? "กำลังตรวจสิทธิ์ชั่วคราว กรุณารอสักครู่..."
             : state === "android"
               ? "กดปุ่มด้านล่างเพื่อเปิดไฟล์ใน Chrome"
+              : state === "unavailable"
+                ? "ไฟล์ยังไม่พร้อมใช้งานจาก Zoom กรุณารอสักครู่แล้วตรวจสอบอีกครั้ง"
               : "ลิงก์นี้หมดอายุหรือใช้แล้ว กรุณากลับไปที่ LINE แล้วกดเปิดไฟล์ใหม่อีกครั้ง"}
         </p>
         {state === "android" && androidIntent ? (
@@ -62,6 +79,15 @@ export function RecordingExternalHandoffPage() {
           >
             เปิดไฟล์ใน Chrome
           </a>
+        ) : null}
+        {state === "unavailable" && descriptor ? (
+          <button
+            type="button"
+            onClick={() => openWhenReady(descriptor)}
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-white"
+          >
+            ตรวจสอบและลองอีกครั้ง
+          </button>
         ) : null}
       </section>
     </main>

@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ConsultationRecordingsPanel } from "@/features/consultations/recordings/ConsultationRecordingsPanel";
+import { recordingHandoffUiCopy } from "@/features/consultations/recordings/RecordingHandoffActions";
 import {
   mapConsultationRecording,
   mapEligibleConsultationRecordings
@@ -74,8 +75,9 @@ describe("consultation recording presentation", () => {
 
     expect(html).toContain("บันทึกการปรึกษา");
     expect(html).toContain("1 ไฟล์");
-    expect(html).toContain("เปิดดู");
-    expect(html).toContain("ดาวน์โหลด");
+    expect(html).toContain("ตรวจสอบเพื่อเปิด");
+    expect(html).toContain("ตรวจสอบเพื่อดาวน์โหลด");
+    expect(html).toContain("ตรวจสอบความพร้อมจาก Zoom");
     expect(html).toContain("grid-cols-2");
     expect(html).not.toContain("href=\"/api/consultations/");
     expect(html).toContain("aria-live=\"polite\"");
@@ -92,6 +94,11 @@ describe("consultation recording presentation", () => {
 
     expect(html).toContain("ยังไม่มีไฟล์บันทึก");
     expect(html).toContain("กรุณารอ Zoom ประมวลผลสักครู่");
+  });
+
+  it("provides an explicit Thai unavailable state for a deliberate readiness retry", () => {
+    expect(recordingHandoffUiCopy.unavailable).toContain("ไฟล์ยังไม่พร้อมใช้งาน");
+    expect(recordingHandoffUiCopy.unavailable).toContain("ตรวจสอบอีกครั้ง");
   });
 
   it("counts and renders exactly the screen-and-speaker MP4 and chat TXT", () => {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeft, CalendarDays, Clock3, CreditCard, ShieldCheck, Stethoscope } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock3, CreditCard, MessageCircle, ShieldCheck, Stethoscope } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { CustomerAppointmentData } from "@/features/consultations/appointment/types";
@@ -79,6 +79,16 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
               >
                 <Stethoscope aria-hidden="true" className="size-5" strokeWidth={2.2} />
                 {appointment.ctaLabel}
+              </Link>
+            ) : null}
+
+            {appointment.chatHistoryHref ? (
+              <Link
+                href={appointment.chatHistoryHref as Route}
+                className="flex h-14 w-full items-center justify-center gap-3 rounded-full bg-white px-5 text-sm font-bold leading-5 text-primary shadow-payment-card ring-1 ring-primary/20"
+              >
+                <MessageCircle aria-hidden="true" className="size-5" strokeWidth={2.2} />
+                ประวัติแชต
               </Link>
             ) : null}
           </>

@@ -24,7 +24,19 @@ type ExchangeResponse = {
 export type FetchRecordingHandoff = (
   input: RequestInfo | URL,
   init?: RequestInit
-) => Promise<Pick<Response, "ok" | "json">>;
+) => Promise<Pick<Response, "ok" | "json"> & { status?: number }>;
+
+export type FetchRecordingReadiness = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Pick<Response, "ok"> & { status?: number }>;
+
+export class RecordingHandoffRequestError extends Error {
+  constructor(public readonly retryable: boolean) {
+    super("recording_handoff_unavailable");
+    this.name = "RecordingHandoffRequestError";
+  }
+}
 
 export function isLineInAppBrowser(userAgent: string): boolean {
   return /\bLine\/[0-9.]+/i.test(userAgent);
@@ -156,7 +168,22 @@ export function getRecordingHandoffDescriptor(currentUrl: string): RecordingHand
 
 export function getProtectedRecordingUrl(descriptor: RecordingHandoffDescriptor): string {
   const base = `/api/consultations/${encodeURIComponent(descriptor.consultationId)}/recordings/${encodeURIComponent(descriptor.recordingId)}`;
-  return descriptor.mode === "download" ? `${base}?download=1` : base;
+  return descriptor.mode === "download" ? `${base}?download=1&safe=1` : `${base}?safe=1`;
+}
+
+export async function checkProtectedRecordingReadiness(
+  descriptor: RecordingHandoffDescriptor,
+  fetchReadiness: FetchRecordingReadiness = fetch
+): Promise<void> {
+  const response = await fetchReadiness(getProtectedRecordingUrl(descriptor), {
+    method: "HEAD",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+    cache: "no-store"
+  });
+  if (!response.ok) {
+    throw new RecordingHandoffRequestError((response.status ?? 500) >= 500);
+  }
 }
 
 export async function requestRecordingHandoff(
@@ -178,7 +205,9 @@ export async function requestRecordingHandoff(
   const target = typeof payload.launchUrl === "string"
     ? getRecordingLaunchTarget(payload.launchUrl, currentOrigin, userAgent, descriptor)
     : null;
-  if (!response.ok || payload.ok !== true || !target) throw new Error("recording_handoff_unavailable");
+  if (!response.ok || payload.ok !== true || !target) {
+    throw new RecordingHandoffRequestError(response.ok || (response.status ?? 0) >= 500);
+  }
   return target;
 }
 

@@ -18,6 +18,7 @@ export type CustomerAppointmentDetail = {
   nextStepDescription: string;
   ctaLabel: string | null;
   ctaHref: string | null;
+  chatHistoryHref: string | null;
 };
 
 export type CustomerAppointmentData = {

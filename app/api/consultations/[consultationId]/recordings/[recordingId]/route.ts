@@ -10,6 +10,7 @@ import {
   type RecordingAccessMode
 } from "@/features/consultations/recordings/external-handoff";
 import {
+  probeRecordingContentAvailability,
   RecordingProviderError,
   zoomRecordingContentProvider
 } from "@/features/consultations/recordings/provider";
@@ -26,9 +27,42 @@ function rangeNotSatisfiable() {
   );
 }
 
-export async function GET(
+function safeProviderUnavailable(mode: RecordingAccessMode, status: 502 | 503) {
+  const retryHref = mode === "download" ? "?download=1&amp;safe=1" : "?safe=1";
+  const html = `<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ไฟล์บันทึกยังไม่พร้อมใช้งาน</title>
+</head>
+<body style="margin:0;background:#f4f8f7;color:#183b3a;font-family:system-ui,sans-serif">
+  <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box">
+    <section style="max-width:420px;background:white;border:1px solid #d9e7e4;border-radius:16px;padding:24px;text-align:center;box-shadow:0 12px 30px rgba(24,59,58,.08)">
+      <h1 style="font-size:20px;margin:0">ไฟล์บันทึกยังไม่พร้อมใช้งาน</h1>
+      <p style="font-size:14px;line-height:1.7;color:#5d7471;margin:12px 0 0">ระบบยังรับไฟล์จาก Zoom ไม่สำเร็จ กรุณารอสักครู่แล้วตรวจสอบอีกครั้ง</p>
+      <a href="${retryHref}" style="display:inline-flex;min-height:48px;align-items:center;justify-content:center;margin-top:20px;padding:0 24px;border-radius:999px;background:#087f78;color:white;font-size:14px;font-weight:700;text-decoration:none">ตรวจสอบและลองอีกครั้ง</a>
+    </section>
+  </main>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "Content-Type": "text/html; charset=utf-8",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff"
+    }
+  });
+}
+
+async function handleRecordingRequest(
   request: NextRequest,
-  context: { params: Promise<{ consultationId: string; recordingId: string }> }
+  context: { params: Promise<{ consultationId: string; recordingId: string }> },
+  readinessOnly: boolean
 ) {
   const { consultationId, recordingId } = await context.params;
   const mode: RecordingAccessMode = request.nextUrl.searchParams.get("download") === "1" ? "download" : "view";
@@ -56,6 +90,17 @@ export async function GET(
   if (range.kind === "invalid") return rangeNotSatisfiable();
 
   try {
+    if (readinessOnly) {
+      await probeRecordingContentAvailability(recording, zoomRecordingContentProvider);
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff"
+        }
+      });
+    }
+
     const content = await zoomRecordingContentProvider.open(
       recording,
       range.kind === "valid" ? { range: range.value } : undefined
@@ -89,9 +134,26 @@ export async function GET(
       return rangeNotSatisfiable();
     }
     const status = error instanceof RecordingProviderError && error.code === "NOT_CONFIGURED" ? 503 : 502;
+    if (!readinessOnly && request.nextUrl.searchParams.get("safe") === "1") {
+      return safeProviderUnavailable(mode, status);
+    }
     return NextResponse.json(
       { error: status === 503 ? "Recording access is not enabled." : "Recording is temporarily unavailable." },
       { status, headers: { "Cache-Control": "private, no-store" } }
     );
   }
+}
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ consultationId: string; recordingId: string }> }
+) {
+  return handleRecordingRequest(request, context, false);
+}
+
+export async function HEAD(
+  request: NextRequest,
+  context: { params: Promise<{ consultationId: string; recordingId: string }> }
+) {
+  return handleRecordingRequest(request, context, true);
 }

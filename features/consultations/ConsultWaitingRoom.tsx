@@ -1,5 +1,8 @@
+import Link from "next/link";
+import type { Route } from "next";
 import {
   Lock,
+  MessageCircle,
   MonitorCheck,
   Settings,
   ShieldCheck,
@@ -150,11 +153,26 @@ function PreparationChecklist() {
 function FooterActions({ data }: { data: ConsultationWaitingRoomData }) {
   return (
     <section className="flex flex-col gap-4 pt-2">
+      {data.viewerRole === "customer" && data.canEnterLive && data.liveHref ? (
+        <div className="flex flex-col gap-2">
+          <Link
+            href={data.liveHref as Route}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border border-primary/25 bg-white/80 px-5 text-base font-bold leading-6 text-primary shadow-chip backdrop-blur-topbar"
+          >
+            <MessageCircle aria-hidden="true" className="size-5" strokeWidth={2.2} />
+            แชตกับแพทย์
+          </Link>
+          <p className="text-center text-[11px] leading-4 text-[#3e494a]">
+            เปิดแชตของ Clinical lab service ในแอปนี้ระหว่างการปรึกษา
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-2">
         {data.canEnterLive ? (
           <ZoomExternalLauncher
             consultationId={data.consultationId}
             waitingRoom
+            waitingRoomLabel={data.viewerRole === "customer" ? "เปิดวิดีโอคอลผ่าน Zoom" : undefined}
           />
         ) : (
           <span
@@ -166,7 +184,9 @@ function FooterActions({ data }: { data: ConsultationWaitingRoomData }) {
           </span>
         )}
         <p className="text-center text-[11px] leading-[16.5px] text-[#3e494a]">
-          {data.canEnterLive ? "พร้อมเปิด Zoom ในเบราว์เซอร์ภายนอก" : "ปุ่มจะเปิดให้กดเมื่อถึงเวลานัด"}
+          {data.canEnterLive
+            ? "วิดีโอคอล Zoom จะเปิดแยกในเบราว์เซอร์ภายนอก"
+            : "ปุ่มจะเปิดให้กดเมื่อถึงเวลานัด"}
         </p>
       </div>
     </section>

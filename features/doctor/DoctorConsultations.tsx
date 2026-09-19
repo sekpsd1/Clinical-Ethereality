@@ -367,6 +367,14 @@ function ActionRow({ consultation }: { consultation: DoctorConsultationItem }) {
           <MessageCircle aria-hidden="true" className="size-4" strokeWidth={2.1} />
           เปิดแชท/ห้องปรึกษา
         </Link>
+      ) : consultation.chatHistoryHref ? (
+        <Link
+          href={consultation.chatHistoryHref as Route}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-3 text-xs font-bold text-primary ring-1 ring-primary/25"
+        >
+          <MessageCircle aria-hidden="true" className="size-4" strokeWidth={2.1} />
+          ประวัติแชต
+        </Link>
       ) : (
         <span className="inline-flex min-h-11 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-muted ring-1 ring-border">
           ยังไม่พร้อมเปิดห้อง

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import {
   ArrowLeft,
   CalendarClock,
@@ -164,6 +165,16 @@ function ConsultationDetailCard({ consultation }: { consultation: DoctorPatientC
             ))}
           </div>
         </section>
+      ) : null}
+
+      {consultation.chatHistoryHref ? (
+        <Link
+          href={consultation.chatHistoryHref as Route}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-white px-4 text-xs font-bold text-primary ring-1 ring-primary/25"
+        >
+          <MessageCircle aria-hidden="true" className="size-4" strokeWidth={2.1} />
+          ประวัติแชต
+        </Link>
       ) : null}
 
       <p className="mt-3 flex items-center gap-2 text-[10px] font-semibold text-muted">

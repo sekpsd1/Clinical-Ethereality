@@ -148,6 +148,22 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
   }
 };
 
+export async function probeRecordingContentAvailability(
+  recording: AuthorizedRecording,
+  provider: RecordingContentProvider = zoomRecordingContentProvider
+): Promise<void> {
+  const variant = getConsultationRecordingVariant(recording);
+  if (!variant || !isEligibleConsultationRecordingMetadata(recording)) {
+    throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+  }
+
+  const content = await provider.open(
+    recording,
+    variant.supportsByteRanges ? { range: "bytes=0-0" } : undefined
+  );
+  await content.body?.cancel().catch(() => undefined);
+}
+
 // Future archival storage plugs into this contract without exposing a public URL.
 export interface PrivateRecordingArchive {
   archive(input: {

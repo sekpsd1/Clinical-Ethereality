@@ -96,6 +96,10 @@ function mapConsultation(
     scheduledAt: formatDate(consultation.scheduledAt),
     createdAt: formatDate(consultation.createdAt) ?? "",
     summary: consultation.summary,
+    chatHistoryHref:
+      consultation.status === "completed"
+        ? `/doctor/consultations/${consultation.id}/chat-history`
+        : null,
     assessment: consultation.assessment
       ? {
           id: consultation.assessment.id,
