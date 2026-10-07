@@ -8,13 +8,15 @@ import {
   isEligibleConsultationRecordingMimeType
 } from "@/features/consultations/recordings/policy";
 
+export type RecordingProviderFailureReason = "metadata_response" | "metadata_missing" | "download_host" | "redirect_host" | "content_status" | "content_range" | "content_mime";
 export class RecordingProviderError extends Error {
   constructor(
     public readonly code:
       | "NOT_CONFIGURED"
       | "METADATA_UNAVAILABLE"
       | "CONTENT_UNAVAILABLE"
-      | "RANGE_NOT_SATISFIABLE"
+      | "RANGE_NOT_SATISFIABLE",
+    public readonly diagnostic?: { reason: RecordingProviderFailureReason; httpStatus?: number }
   ) {
     super(code);
     this.name = "RecordingProviderError";
@@ -69,7 +71,7 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
         signal: AbortSignal.timeout(15_000)
       }
     );
-    if (!metadataResponse.ok) throw new RecordingProviderError("METADATA_UNAVAILABLE");
+    if (!metadataResponse.ok) throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "metadata_response", httpStatus: metadataResponse.status });
 
     const metadata = await metadataResponse.json() as ZoomRecordingList;
     const file = metadata.recording_files?.find((candidate) =>
@@ -82,12 +84,12 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       })
     );
     if (!file || typeof file.download_url !== "string") {
-      throw new RecordingProviderError("METADATA_UNAVAILABLE");
+      throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "metadata_missing" });
     }
 
     const downloadUrl = new URL(file.download_url);
     if (downloadUrl.protocol !== "https:" || (downloadUrl.hostname !== "zoom.us" && !downloadUrl.hostname.endsWith(".zoom.us"))) {
-      throw new RecordingProviderError("METADATA_UNAVAILABLE");
+      throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "download_host" });
     }
 
     const contentResponse = await fetch(downloadUrl, {
@@ -105,17 +107,17 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
         finalUrl.protocol !== "https:" ||
         (finalUrl.hostname !== "zoom.us" && !finalUrl.hostname.endsWith(".zoom.us"))
       ) {
-        throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+        throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "redirect_host", httpStatus: contentResponse.status });
       }
     }
     if (variant.supportsByteRanges && contentResponse.status === 416) {
-      throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
+      throw new RecordingProviderError("RANGE_NOT_SATISFIABLE", { reason: "content_status", httpStatus: contentResponse.status });
     }
     if (
       contentResponse.status !== 200 &&
       (contentResponse.status !== 206 || !variant.supportsByteRanges)
     ) {
-      throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_status", httpStatus: contentResponse.status });
     }
 
     const contentRange = contentResponse.headers.get("content-range");
@@ -123,13 +125,13 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       ? contentRange
       : null;
     if (contentResponse.status === 206 && !safeContentRange) {
-      throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_range", httpStatus: contentResponse.status });
     }
 
     const contentType = contentResponse.headers.get("content-type") ?? "application/octet-stream";
     if (!isEligibleConsultationRecordingMimeType(recording, contentType)) {
       await contentResponse.body?.cancel().catch(() => undefined);
-      throw new RecordingProviderError("CONTENT_UNAVAILABLE");
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_mime", httpStatus: contentResponse.status });
     }
 
     const contentLength = contentResponse.headers.get("content-length");

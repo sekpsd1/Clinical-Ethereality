@@ -101,6 +101,18 @@ describe("durable private Drive archive", () => {
     mocks.getToken.mockRejectedValue(error);
     expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE" });
   });
+  it("propagates fixed source reason and bounded status only", async () => {
+    mocks.getToken.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_status", httpStatus: 403 }));
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "CONTENT_UNAVAILABLE", reason: "content_status", httpStatus: 403 });
+  });
+  it("omits forged diagnostic text and out-of-range status", async () => {
+    const error = new RecordingProviderError("CONTENT_UNAVAILABLE");
+    Object.assign(error, { diagnostic: { reason: "Bearer SECRET", httpStatus: 999 } });
+    mocks.getToken.mockRejectedValue(error);
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "CONTENT_UNAVAILABLE" });
+    Object.assign(error, { diagnostic: { reason: "content_status", httpStatus: 999 } });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "CONTENT_UNAVAILABLE", reason: "content_status" });
+  });
 });
 
 describe("archive safety primitives", () => {

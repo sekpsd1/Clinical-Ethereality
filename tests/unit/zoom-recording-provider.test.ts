@@ -46,6 +46,21 @@ describe("feature-flagged Zoom recording provider", () => {
     expect(mocks.token).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
+  it.each([
+    { status: 403, headers: {}, reason: "content_status", finalUrl: undefined },
+    { status: 206, headers: { "content-range": "invalid" }, reason: "content_range", finalUrl: undefined },
+    { status: 200, headers: { "content-type": "text/html" }, reason: "content_mime", finalUrl: undefined },
+    { status: 200, headers: { "content-type": "video/mp4" }, reason: "redirect_host", finalUrl: "https://untrusted.example/private-token" }
+  ])("reports only fixed diagnostic reason $reason and numeric status", async ({ status, headers, reason, finalUrl }) => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    const response = new Response(null, { status, headers: headers as HeadersInit });
+    if (finalUrl) Object.defineProperty(response, "url", { value: finalUrl });
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{ id: recording.providerRecordingId,
+      file_type: "MP4", recording_type: recording.recordingType, download_url: "https://zoom.us/private/file" }] })))
+      .mockResolvedValueOnce(response);
+    await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({ diagnostic: { reason, httpStatus: status } });
+  });
 
   it("probes MP4 with one byte and cancels the stream without buffering or auditing", async () => {
     const cancel = vi.fn().mockResolvedValue(undefined);
