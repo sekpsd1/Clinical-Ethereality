@@ -14,6 +14,7 @@ const {
   PATIENT_NATIONAL_ID_MIGRATION_TARGET,
   COMMUNITY_PINNED_ARTICLES_MIGRATION_TARGET,
   DOCTOR_INVITATIONS_MIGRATION_TARGET,
+  GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET,
   getCurrentMigrationTarget,
   runPleskRuntimeMigration
 } = require("../../scripts/plesk-runtime-migration-runner.cjs");
@@ -59,6 +60,17 @@ afterEach(() => {
 });
 
 describe("Plesk runtime migration runner", () => {
+  it("allows only the exact reviewed archive target when latest, not an older or future target", () => {
+    const rootDir = createRunnerWorkspace([DOCTOR_INVITATIONS_MIGRATION_TARGET, GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET]);
+    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+    expect(runPleskRuntimeMigration({ rootDir, env: { [MIGRATION_APPROVAL_ENV]: GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET }, spawnSync, log: vi.fn() })).toEqual({ shouldStart: true, migrationRun: true });
+    expect(spawnSync).toHaveBeenCalledOnce();
+    for (const target of [DOCTOR_INVITATIONS_MIGRATION_TARGET, "20261007120001_google_drive_recording_archive"]) {
+      spawnSync.mockClear();
+      expect(runPleskRuntimeMigration({ rootDir, env: { [MIGRATION_APPROVAL_ENV]: target }, spawnSync, error: vi.fn() })).toEqual({ shouldStart: false, migrationRun: false });
+      expect(spawnSync).not.toHaveBeenCalled();
+    }
+  });
   it("derives the current target from the latest migration directory", () => {
     const rootDir = createRunnerWorkspace([
       "20260809140000_add_manual_store_refund_fields",
