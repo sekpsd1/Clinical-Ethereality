@@ -1,5 +1,15 @@
 # Project State
 
+## Google Drive recording archive (local implementation, 2026-10-07)
+
+Owner approved adding Google Drive as a private recording archive. The isolated implementation uses
+Workspace-user OAuth with only `drive.file`, an app-created private My Drive folder, encrypted durable
+resumable sessions, preallocated file IDs, bounded chunk jobs/retry/leases and verified private proxy
+playback with Zoom fallback. MP4 and current eligible Zoom TXT only; Clinical Lab chat stays separate.
+Disabled by default. Prepared schema migration and one-time loopback operator setup/runbook are in
+`GOOGLE_DRIVE_RECORDING_ARCHIVE.md`. No Production migration, grant, environment setup, recording
+transfer, push/deploy or Zoom deletion is included. Five-year automatic deletion is not implemented.
+
 ## Reading Guide And Governance Update (2026-09-15)
 
 The application is implemented and operates on Plesk Node.js. Below is retained decision/release history, not a live deployment monitor.

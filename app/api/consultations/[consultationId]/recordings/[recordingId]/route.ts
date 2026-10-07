@@ -11,9 +11,9 @@ import {
 } from "@/features/consultations/recordings/external-handoff";
 import {
   probeRecordingContentAvailability,
-  RecordingProviderError,
-  zoomRecordingContentProvider
+  RecordingProviderError
 } from "@/features/consultations/recordings/provider";
+import { privateRecordingContentProvider } from "@/features/consultations/recordings/private-provider";
 import { parseRecordingRangeHeader } from "@/features/consultations/recordings/range";
 import { isEligibleConsultationRecordingMetadata } from "@/features/consultations/recordings/policy";
 
@@ -91,7 +91,7 @@ async function handleRecordingRequest(
 
   try {
     if (readinessOnly) {
-      await probeRecordingContentAvailability(recording, zoomRecordingContentProvider);
+      await probeRecordingContentAvailability(recording, privateRecordingContentProvider);
       return new Response(null, {
         status: 204,
         headers: {
@@ -101,7 +101,7 @@ async function handleRecordingRequest(
       });
     }
 
-    const content = await zoomRecordingContentProvider.open(
+    const content = await privateRecordingContentProvider.open(
       recording,
       range.kind === "valid" ? { range: range.value } : undefined
     );

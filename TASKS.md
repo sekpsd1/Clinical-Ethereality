@@ -1,5 +1,13 @@
 # Tasks
 
+## Google Drive recording archive — local, 2026-10-07
+
+- [x] Prepare disabled-by-default private My Drive OAuth archive, durable resumable chunks and protected playback fallback.
+- [x] Prepare schema migration, operator setup and scheduled-task runbook; local verification only.
+- [ ] Admin owner: integrate exact Drive cleanup into existing scoped Test/UAT deletion before activation.
+- [ ] Controller/release owner: review schema, OAuth account/quota and credentials, approve migration/configuration/release.
+- [ ] Run exact controlled archive/download/restart/idempotency UAT before automatic backfill acceptance.
+
 ## Reading Guide
 
 This file retains historical phases and active work. Planning checklists below do not mean the app is still unimplemented.

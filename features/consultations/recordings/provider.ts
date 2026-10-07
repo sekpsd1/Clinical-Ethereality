@@ -150,14 +150,15 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
 
 export async function probeRecordingContentAvailability(
   recording: AuthorizedRecording,
-  provider: RecordingContentProvider = zoomRecordingContentProvider
+  provider?: RecordingContentProvider
 ): Promise<void> {
   const variant = getConsultationRecordingVariant(recording);
   if (!variant || !isEligibleConsultationRecordingMetadata(recording)) {
     throw new RecordingProviderError("CONTENT_UNAVAILABLE");
   }
 
-  const content = await provider.open(
+  const activeProvider = provider ?? (await import("./private-provider")).privateRecordingContentProvider;
+  const content = await activeProvider.open(
     recording,
     variant.supportsByteRanges ? { range: "bytes=0-0" } : undefined
   );

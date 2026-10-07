@@ -1,0 +1,113 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), updateMany: vi.fn(), transaction: vi.fn(), audit: vi.fn(),
+  getToken: vi.fn(), folder: vi.fn(), file: vi.fn(), driveFetch: vi.fn(), zoomOpen: vi.fn() }));
+vi.mock("@/lib/db/prisma", () => ({ prisma: { consultationRecording: { findFirst: mocks.findFirst,
+  updateMany: mocks.updateMany }, $transaction: mocks.transaction } }));
+vi.mock("@/lib/audit/audit-log", () => ({ writeAuditLog: mocks.audit }));
+vi.mock("@/features/consultations/recordings/provider", () => ({ zoomRecordingContentProvider: { open: mocks.zoomOpen } }));
+vi.mock("@/features/consultations/recordings/drive-client", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/features/consultations/recordings/drive-client")>(),
+  getDriveArchiveConfig: () => ({ folderId: "private-folder", sessionKey: "ab".repeat(32) }),
+  getDriveAccessToken: mocks.getToken, assertPrivateArchiveFolder: mocks.folder, getDriveFile: mocks.file,
+  driveFetch: mocks.driveFetch
+}));
+import { archiveOneRecordingStep, parseUploadOffset, readBoundedChunk, ARCHIVE_CHUNK_BYTES } from "@/features/consultations/recordings/drive-archive";
+import { decryptUploadSession, encryptUploadSession, validateUploadSession, verifyDriveFile } from "@/features/consultations/recordings/drive-client";
+
+const sessionUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=test";
+const candidate = { id: "recording-test", consultationId: "consult-test", provider: "zoom", fileType: "MP4",
+  recordingType: "shared_screen_with_speaker_view", fileSizeBytes: BigInt(4), archiveDriveFileId: "file-test",
+  archiveSession: encryptUploadSession(sessionUrl, "recording-test", "ab".repeat(32)), archiveAttempts: 0,
+  consultation: { zoomMeetingId: "meeting-test" } };
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.findFirst.mockResolvedValue(candidate); mocks.updateMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.mockImplementation(async (fn) => fn({ consultationRecording: { updateMany: mocks.updateMany } }));
+  mocks.getToken.mockResolvedValue("test-token"); mocks.folder.mockResolvedValue(undefined); mocks.file.mockResolvedValue(null);
+  vi.stubGlobal("fetch", vi.fn());
+});
+
+describe("durable private Drive archive", () => {
+  it("deduplicates a completed upload after a lost completion response and audits exactly once", async () => {
+    mocks.file.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
+      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" } });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "archived" });
+    expect(fetch).not.toHaveBeenCalled(); expect(mocks.zoomOpen).not.toHaveBeenCalled();
+    expect(mocks.audit).toHaveBeenCalledTimes(1);
+    expect(mocks.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ archiveStatus: "archived", archiveSession: null }) }));
+  });
+  it("uploads one bounded chunk and persists offset; verifies completion on a later invocation", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    mocks.zoomOpen.mockResolvedValue({ status: 206, contentRange: "bytes 0-3/4",
+      body: new ReadableStream({ start(c) { c.enqueue(new Uint8Array([1, 2, 3, 4])); c.close(); } }) });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "progress" });
+    expect(mocks.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ archiveOffset: BigInt(4), archiveStatus: "uploading" }) }));
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+  it("honors provider offset after restart rather than stale database offset", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308, headers: { Range: "bytes=0-1" } }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    mocks.zoomOpen.mockResolvedValue({ status: 206, contentRange: "bytes 2-3/4",
+      body: new ReadableStream({ start(c) { c.enqueue(new Uint8Array([3, 4])); c.close(); } }) });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "progress" });
+    expect(mocks.zoomOpen).toHaveBeenCalledWith(expect.anything(), { range: "bytes=2-3" });
+  });
+  it("refuses concurrent lease losers without an external request", async () => {
+    mocks.updateMany.mockResolvedValueOnce({ count: 0 });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "idle" });
+    expect(mocks.getToken).not.toHaveBeenCalled();
+  });
+  it("retries provider failures without marking archived", async () => {
+    mocks.getToken.mockRejectedValue(new Error("safe test failure"));
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+  it("stops after the bounded retry budget", async () => {
+    mocks.findFirst.mockResolvedValue({ ...candidate, archiveAttempts: 11 });
+    mocks.getToken.mockRejectedValue(new Error("safe test failure"));
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+  });
+  it("refuses different bytes/metadata under a reserved Drive ID", async () => {
+    mocks.file.mockResolvedValue({ id: "file-test", size: "5", mimeType: "video/mp4", trashed: false,
+      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" } });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+    expect(mocks.zoomOpen).not.toHaveBeenCalled(); expect(mocks.audit).not.toHaveBeenCalled();
+  });
+  it("rejects Zoom ignoring byte ranges rather than buffering full recordings", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }));
+    mocks.zoomOpen.mockResolvedValue({ status: 200, contentRange: null, body: null });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+  });
+});
+
+describe("archive safety primitives", () => {
+  it("encrypts upload capability and binds it to recording ID", () => {
+    const value = encryptUploadSession(sessionUrl, "one", "ab".repeat(32));
+    expect(value).not.toContain("upload_id");
+    expect(decryptUploadSession(value, "one", "ab".repeat(32))).toEqual(sessionUrl);
+    expect(() => decryptUploadSession(value, "two", "ab".repeat(32))).toThrow();
+  });
+  it.each(["http://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=x",
+    "https://evil.example/upload/drive/v3/files?uploadType=resumable&upload_id=x",
+    "https://www.googleapis.com/drive/v3/files?uploadType=resumable&upload_id=x"])("rejects unsafe upload URL %s", (url) => {
+    expect(() => validateUploadSession(url)).toThrow();
+  });
+  it("validates acknowledged contiguous ranges", () => {
+    expect(parseUploadOffset(null, BigInt(8))).toBe(BigInt(0));
+    expect(parseUploadOffset("bytes=0-3", BigInt(8))).toBe(BigInt(4));
+    expect(() => parseUploadOffset("bytes=1-3", BigInt(8))).toThrow();
+    expect(() => parseUploadOffset("bytes=0-9", BigInt(8))).toThrow();
+  });
+  it("rejects oversized and truncated streams", async () => {
+    const stream = () => new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array(5)); c.close(); } });
+    await expect(readBoundedChunk(stream(), 4)).rejects.toThrow();
+    await expect(readBoundedChunk(stream(), 6)).rejects.toThrow();
+    await expect(readBoundedChunk(stream(), ARCHIVE_CHUNK_BYTES + 1)).rejects.toThrow();
+  });
+  it("requires folder identity and app recording binding", () => {
+    expect(() => verifyDriveFile({ id: "f", size: "2", mimeType: "video/mp4", trashed: false, parents: ["other"] },
+      { id: "f", size: BigInt(2), mimeType: "video/mp4", folderId: "expected", recordingId: "r" })).toThrow();
+  });
+});

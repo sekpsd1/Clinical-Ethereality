@@ -59,6 +59,13 @@ export const envSchema = z.object({
   ZOOM_CLIENT_SECRET: z.string().optional(),
   ZOOM_HOST_USER_ID: z.string().optional(),
   ZOOM_WEBHOOK_SECRET: z.string().optional(),
+  ENABLE_GOOGLE_DRIVE_RECORDING_ARCHIVE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  GOOGLE_DRIVE_CLIENT_ID: z.string().optional(),
+  GOOGLE_DRIVE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_DRIVE_REFRESH_TOKEN: z.string().optional(),
+  GOOGLE_DRIVE_ARCHIVE_FOLDER_ID: z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^[A-Za-z0-9_-]+$/).optional()),
+  GOOGLE_DRIVE_ARCHIVE_SESSION_KEY: z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^[a-fA-F0-9]{64}$/).optional()),
+  GOOGLE_DRIVE_ARCHIVE_JOB_SECRET: z.preprocess((value) => value === "" ? undefined : value, z.string().min(32).optional()),
   ENABLE_ZOOM_CLOUD_RECORDING: z
     .enum(["true", "false"])
     .default("false")

@@ -497,6 +497,15 @@ model ConsultationRecording {
   startedAt           DateTime?
   endedAt             DateTime?
   retentionUntil      DateTime
+  archiveStatus       String            @default("pending") @db.VarChar(20)
+  archiveDriveFileId  String?           @unique @db.VarChar(191)
+  archiveSession     String?           @db.Text
+  archiveOffset      BigInt            @default(0)
+  archiveAttempts    Int               @default(0)
+  archiveRetryAt     DateTime?
+  archiveLeaseToken  String?           @db.VarChar(64)
+  archiveLeaseUntil  DateTime?
+  archivedAt         DateTime?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
@@ -505,6 +514,7 @@ model ConsultationRecording {
   @@unique([provider, providerRecordingId], map: "ConsultRecording_provider_file_key")
   @@index([consultationId, createdAt], map: "ConsultRecording_consult_created_idx")
   @@index([retentionUntil], map: "ConsultRecording_retention_idx")
+  @@index([archiveStatus, archiveRetryAt], map: "ConsultRecording_archive_idx")
 }
 
 model ConsultationRecordingWebhookEvent {

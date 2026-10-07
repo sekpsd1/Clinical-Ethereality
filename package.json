@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "job:recording-archive": "node scripts/recording-archive-runner.cjs",
     "dev": "next dev",
     "build": "next build",
     "build:plesk": "npm run build && node scripts/prepare-plesk-artifact.cjs",
