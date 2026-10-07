@@ -167,7 +167,7 @@ the optional `download_access_token`. The reviewed documentation does not establ
 the response MIME for this request; no token/authentication change is justified by
 the observed MIME failure alone.
 
-### Prepared local diagnostic proposal; not released
+### Reviewed MIME diagnostic and release evidence
 
 The provider now classifies rejected MIME headers into exactly `missing`, `octet_stream`,
 `html`, `video_mp4`, `text_plain`, or `other`. Parameters, unknown header text, URLs,
@@ -178,9 +178,20 @@ only for `content_mime`; forged values and unrelated reasons omit the field.
 There is no policy, authentication, transfer, host, schema or scheduler change.
 Local verification passed 62 focused provider/archive/policy/job tests, TypeScript
 typecheck, ESLint and the 67-page Next build. Controller16 accepted the diagnostic-only
-local review and authorized a scoped local commit. It has not been released.
+local review and authorized scoped commit `ea1386ef24f78ac374db3392fe27784b684aff66`.
 
-Controller review is required before a further release. Proposed exact runtime
+After direct owner approval, that commit was deployed to the exact existing Plesk app.
+Non-migration preflight and the 67-page host build passed, with 137 static and 24 public
+files verified. One explicit restart was followed by health HTTP200 / `status: ok`.
+Exactly one additional manual invocation returned `retry / zoom_download /
+CONTENT_UNAVAILABLE / content_mime / 206 / octet_stream`. This proves the request's
+MIME essence was `application/octet-stream`, not that its bytes were valid MP4.
+No copy completed, no policy was changed, and the unsaved task was cancelled; the
+scheduler list remained empty. This release added host build1/restart1/job1,
+environment saves0/migration0. Credential recovery remains unexecuted.
+The single-run approval is consumed; do not rerun under it.
+
+The following was the reviewed, now-consumed runtime validation proposal. Proposed exact runtime
 validation: reverify the reviewed commit and remote, deploy only that diagnostic,
 non-migration build and one restart/health check, then run the existing private curl
 command once with no saved/active scheduled task. Return only the existing fixed
@@ -273,3 +284,121 @@ Provider references for the approval review:
 [LINE channel-secret handling](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/),
 and [Plesk database users](https://docs.plesk.com/en-US/obsidian/administrator-guide/website-management/website-databases/managing-database-user-accounts.69539/).
 Use the database-user operation for this app, not database-administrator credential changes.
+
+## Local corrective MP4 proposal after observed octet-stream (not released)
+
+The observed `application/octet-stream` response motivates a provider-specific,
+MP4-only exception with bounded initial format evidence. The shared MIME policy and
+strict TXT rule remain unchanged. Missing/unknown MIME and crossed recording metadata
+remain rejected. The implementation is prepared locally for review and not released;
+production is `ea1386e`. Final verification passed 161 focused tests (one existing
+opt-in browser UAT skipped), TypeScript, ESLint and the 67-page Next.js build.
+
+Before accepting binary MIME, require current Zoom metadata `file_size` to be a positive
+safe integer exactly equal to the recording's stored size. Require the requested response
+to match status200/full size or status206/exact normalized single range and known total,
+with exact Content-Length and identity Content-Encoding. No wildcard total, multipart
+range, ignored range, header mismatch or unknown size is admitted.
+
+Every binary open then makes a separate authenticated initial range request for
+`bytes=0-min(4095,size-1)` to the same freshly retrieved provider URL. This includes
+initial archive chunks, one-byte readiness, suffix ranges and resumed nonzero chunks.
+No prior verification or durable marker is assumed. Probe status/range/length/encoding
+are checked independently; only video/mp4 or octet-stream is allowed for its response.
+Its final HTTPS host must still be zoom.us or a subdomain. If either response has an
+ETag, both must supply an identical syntactically strong quoted validator. Missing,
+mismatched, weak or malformed validators fail closed and cancel both bodies. Neither
+response having a validator remains permitted under the documented trusted-source
+limitation; this is not a claim of cross-request byte identity.
+
+The probe reads at most 4096 bytes into one fixed buffer, with a ten-second body-read
+deadline, exact body length and cancellation on completion/failure. A complete initial
+ordinary-size `ftyp` box must start at byte zero, fit the probe and actual file, and have
+valid four-byte compatible-brand alignment. Major brands are limited to isom, iso2,
+avc1, mp41 and mp42; an explicit mp41/mp42 major or compatible brand is required.
+QuickTime, M4A, image brands, generic ISO-only compatibility, HTML/arbitrary prefixes,
+truncated/oversized/misaligned boxes and control-byte brands fail closed.
+These deliberately conservative limits may reject legitimate uncommon files; they
+do not authorize broadening the subset after a failure without evidence/review.
+
+The [MP4 Registration Authority brand registry](https://mp4ra.org/registered-types/brands)
+identifies MP4v1/v2 and ISO/AVC brands. The
+[W3C ISO BMFF byte stream note](https://www.w3.org/TR/mse-byte-stream-format-isobmff/)
+describes initialization beginning with ftyp and moov. This implementation checks only
+bounded initial file-type evidence: it does not claim whole-file conformance to that
+stream note, decode codecs, locate/validate a tail moov, scan malware, or prove that
+every media sample is playable. A hostile payload can forge a valid prefix. Existing
+canonical metadata and trusted private Zoom source are still required; the evidence
+is a guarded MIME normalization, not validation of an arbitrary uploaded binary.
+Same URL/size plus optional ETag comparison is not a cryptographic identity proof across
+two requests when no strong validator is available. This tradeoff needs Controller review.
+
+After evidence passes, return normalized video/mp4 through a pull-driven stream that
+preserves the requested bytes, checks total emitted length and propagates cancellation.
+No tee/eager pump or whole-file buffer is introduced. The probe bytes are discarded,
+never prepended to a resumed range, logged or persisted. Rejections cancel the requested
+body as well as the probe. The existing archive chunk reader still enforces its 8 MiB
+limit; Drive completion size/MIME/parent/privacy/app-binding verification remains intact.
+Permissions, bearer token path, download hosts, schema and scheduler are unchanged.
+
+Proposed subsequent controlled acceptance, requiring fresh release/UAT approval:
+
+1. Review/commit the exact scoped fix, verify remote ancestry, deploy/build and restart
+   once, then health check. No schema or credential change. Record all actual counts.
+2. Run exactly one manual archive step on the existing approved Test/UAT queue without
+   resetting leases/attempts/mappings. Report aggregate progress/fixed error only. Stop
+   on retry/failed/idle; do not widen brands/hosts, fall back to unverified bytes, or retry
+   under this one-run authorization. A progress result does not prove archive completion.
+3. If progress succeeds, obtain finite follow-on copy approval based on privately verified
+   candidate size and acknowledged offset: remaining chunk steps plus one metadata
+   completion verification. Confirm the same candidate/binding before claiming acceptance;
+   the current queue may select another eligible recording on a subsequent invocation.
+   Exact-target control needs separate review if queue selection cannot demonstrate this.
+4. Complete same-file private size/MIME/bytes verification, authorized Doctor/Admin
+   view/download/ranges, anonymous/customer/cross-doctor denial, and explicitly bounded
+   concurrent/restart recovery checks. Browser media decode/playback and controlled
+   byte comparison remain required; synthetic prefixes cannot replace real recording UAT.
+   Activate one periodic task only after all acceptance gates pass.
+
+Credential exposure recovery remains separate and unexecuted. No further provider calls,
+job invocations, release/restart, scheduler activation or secret rotation occurred while
+preparing this local corrective implementation.
+
+### Finite candidate completion gate for Controller review
+
+The current queue endpoint accepts no exact candidate target and returns no candidate
+binding. Its findFirst selects any eligible pending/uploading/retry recording ordered
+by retry time and creation time. The lease protects a claimed row during one invocation,
+not ownership across invocations. A retry becoming eligible, another operator invocation
+or an intervening record change can change selection. With several pending recordings,
+the current interface therefore cannot guarantee that a finite sequence completes the
+same privately selected recording. Do not promise same-file completion from progress
+alone or disable/reset other records to force queue selection.
+
+Exact candidate completion is presently blocked on reviewed target affinity and a
+private precheck; this proposal does not add that capability. The precheck must verify
+the exact eligible Test/UAT candidate, private byte size and durable offset plus current
+lease/retry state without exposing identifiers. Before approving copy completion,
+review a target-bound runner/claim path (same permissions, canonical metadata and leases)
+or evidence that an isolated eligible queue guarantees that binding. Do not infer queue
+isolation from an empty scheduler or assume that disabling other recording rows is safe.
+
+Once target affinity is established, propose one cohesive approval with an explicit
+finite ceiling `ceil((size - verified_offset) / 8388608) + 1` manual job invocations
+(remaining chunks plus one completion metadata verification). Offset must be acknowledged
+by the provider; a stale DB offset is not evidence. If only the source size is known,
+use the conservative ceiling `ceil(size / 8388608) + 1`, with each job still reconciling
+the actual offset. Missing sessions/provider offsets or recovery paths require reviewed
+precheck handling; an unexpected session-reset/retry/idle/error stops the batch, not an
+automatic expansion of the approved ceiling. No bulk queue drain or unlimited retry is
+implied. Record every actual call and stop as soon as exact verified completion occurs.
+
+That same approval should name the same-file private Drive byte comparison and one
+Doctor/Admin view/download/range check each, anonymous/customer/cross-doctor denial
+checks, and separately bounded concurrency/restart checks with explicit total call/restart
+ceilings and expected queue effects. Determine those numbers from the private precheck
+and chosen recovery fixture before approval; they are not executable authority yet.
+If repeat lease/restart UAT would touch another recording after the candidate completes,
+use a separately named Test/UAT fixture rather than silently claiming another queue item.
+This groups completion acceptance into a finite operation without repeated per-chunk
+approval or abandoning target ownership safeguards.
