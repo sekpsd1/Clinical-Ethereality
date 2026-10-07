@@ -5,6 +5,24 @@ const os = require("node:os");
 const path = require("node:path");
 const { prepareRunnerConfig } = require("../../scripts/prepare-recording-archive-runner-config.cjs");
 const roots: string[] = [];
+it("exports exact target as escaped JSON curl data or minimal private JSON", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "archive-target-config-")); roots.push(root);
+  const input = path.join(root, "input.json");
+  const target = { recordingId: "recording-test", consultationId: "consult-test", providerRecordingId: "provider-test",
+    zoomMeetingId: "meeting-test", fileSizeBytes: "4", fileType: "mp4", recordingType: "shared_screen_with_speaker_view" };
+  fs.writeFileSync(input, JSON.stringify({ GOOGLE_DRIVE_ARCHIVE_JOB_SECRET: "a".repeat(48), target }), { mode: 0o600 });
+  const curl = path.join(root, "job.curl"), json = path.join(root, "job.json");
+  prepareRunnerConfig(["--config", input, "--output", curl, "--curl"]);
+  const text = fs.readFileSync(curl, "utf8");
+  const dataLine = text.split("\n").find((line: string) => line.startsWith("data = "));
+  expect(JSON.parse(JSON.parse(dataLine.slice(7)))).toEqual({ target });
+  expect(text).toContain('header = "Content-Type: application/json"');
+  prepareRunnerConfig(["--config", input, "--output", json]);
+  expect(JSON.parse(fs.readFileSync(json, "utf8")).target).toEqual(target);
+  if (process.platform !== "win32") expect(fs.statSync(curl).mode & 0o777).toBe(0o600);
+  fs.writeFileSync(input, JSON.stringify({ GOOGLE_DRIVE_ARCHIVE_JOB_SECRET: "a".repeat(48), target: { ...target, zoomMeetingId: "bad\nheader" } }));
+  expect(() => prepareRunnerConfig(["--config", input, "--output", path.join(root, "bad.json")])).toThrow();
+});
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 it("writes only bounded canonical curl job configuration exclusively", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "archive-runner-config-test-")); roots.push(root);

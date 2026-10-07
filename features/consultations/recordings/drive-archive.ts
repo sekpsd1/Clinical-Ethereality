@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { archiveTargetSchema, type ArchiveTarget } from "./archive-target";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { consultationRecordingEligibilityWhere, getConsultationRecordingVariant } from "./policy";
@@ -52,28 +53,46 @@ export async function readBoundedChunk(body: ReadableStream<Uint8Array> | null, 
 }
 
 /** One resumable step per scheduled invocation. No in-process/background promise is relied upon. */
-export async function archiveOneRecordingStep(): Promise<ArchiveStepResult> {
+export async function archiveOneRecordingStep(target?: ArchiveTarget): Promise<ArchiveStepResult & { targetMatched?: boolean }> {
+  if (target !== undefined && !archiveTargetSchema.safeParse(target).success) {
+    return { status: "failed", code: "INVALID_METADATA", targetMatched: false };
+  }
+  const result = await archiveRecordingStep(target);
+  return target ? { ...result, targetMatched: result.status !== "idle" } : result;
+}
+
+async function archiveRecordingStep(target?: ArchiveTarget): Promise<ArchiveStepResult> {
   const config = getDriveArchiveConfig();
   const now = new Date();
+  const binding = target ? { id: target.recordingId, consultationId: target.consultationId,
+    providerRecordingId: target.providerRecordingId, fileSizeBytes: BigInt(target.fileSizeBytes),
+    fileType: target.fileType, recordingType: target.recordingType,
+    consultation: { zoomMeetingId: target.zoomMeetingId } } : {};
   const candidate = await prisma.consultationRecording.findFirst({
     where: { ...consultationRecordingEligibilityWhere, archiveStatus: { in: ["pending", "uploading", "retry"] },
       retentionUntil: { gt: now }, archiveAttempts: { lt: MAX_ATTEMPTS },
       AND: [{ OR: [{ archiveRetryAt: null }, { archiveRetryAt: { lte: now } }] },
         { OR: [{ archiveLeaseUntil: null }, { archiveLeaseUntil: { lte: now } }] }],
-      consultation: { zoomMeetingId: { not: null } } },
+      consultation: { zoomMeetingId: { not: null } }, ...binding },
     orderBy: [{ archiveRetryAt: "asc" }, { createdAt: "asc" }],
     include: { consultation: { select: { zoomMeetingId: true } } }
   });
   if (!candidate) return { status: "idle" };
+  if (target && (candidate.id !== target.recordingId || candidate.consultationId !== target.consultationId ||
+      candidate.provider !== "zoom" || candidate.providerRecordingId !== target.providerRecordingId ||
+      candidate.fileSizeBytes !== BigInt(target.fileSizeBytes) || candidate.fileType.toLowerCase() !== target.fileType ||
+      candidate.recordingType !== target.recordingType || candidate.consultation.zoomMeetingId !== target.zoomMeetingId)) {
+    return { status: "idle" };
+  }
   const leaseToken = randomUUID();
   const claimed = await prisma.consultationRecording.updateMany({ where: { id: candidate.id,
-    ...consultationRecordingEligibilityWhere, archiveStatus: { in: ["pending", "uploading", "retry"] },
+    ...consultationRecordingEligibilityWhere, ...binding, archiveStatus: { in: ["pending", "uploading", "retry"] },
     archiveAttempts: { lt: MAX_ATTEMPTS }, retentionUntil: { gt: now },
     AND: [{ OR: [{ archiveRetryAt: null }, { archiveRetryAt: { lte: now } }] }],
     OR: [{ archiveLeaseUntil: null }, { archiveLeaseUntil: { lte: now } }] },
     data: { archiveLeaseToken: leaseToken, archiveLeaseUntil: new Date(now.getTime() + LEASE_MS), archiveStatus: "uploading" } });
   if (claimed.count !== 1) return { status: "idle" };
-  const owned = { id: candidate.id, archiveLeaseToken: leaseToken };
+  const owned = { ...binding, id: candidate.id, archiveLeaseToken: leaseToken };
   const assertOwned = async () => {
     const result = await prisma.consultationRecording.updateMany({ where: { ...owned, archiveStatus: "uploading" },
       data: { archiveLeaseUntil: new Date(Date.now() + LEASE_MS) } });

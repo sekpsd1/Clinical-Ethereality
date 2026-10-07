@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require("node:fs");
 const path = require("node:path");
+const { validateTarget } = require("./recording-archive-runner.cjs");
 
 function prepareRunnerConfig(argv = process.argv.slice(2)) {
   const curl = argv.length === 5 && argv[4] === "--curl";
@@ -17,9 +18,14 @@ function prepareRunnerConfig(argv = process.argv.slice(2)) {
   const config = JSON.parse(fs.readFileSync(input, "utf8"));
   const secret = config.GOOGLE_DRIVE_ARCHIVE_JOB_SECRET;
   if (typeof secret !== "string" || !/^[A-Za-z0-9_-]{32,512}$/.test(secret)) throw new Error("Invalid configuration");
+  const target = config.target !== undefined ? validateTarget(config.target) : undefined;
+  if (target && process.platform !== "win32" && (fs.statSync(parent).mode & 0o077)) throw new Error("Private parent required");
+  const body = target ? JSON.stringify({ target }) : undefined;
   const content = curl
-    ? `url = "https://app.bccgroup-thailand.com/api/jobs/recording-archive"\nrequest = "POST"\nheader = "x-clinical-job-secret: ${secret}"\n`
-    : JSON.stringify({ NEXT_PUBLIC_APP_URL: "https://app.bccgroup-thailand.com", GOOGLE_DRIVE_ARCHIVE_JOB_SECRET: secret });
+    ? `url = "https://app.bccgroup-thailand.com/api/jobs/recording-archive"\nrequest = "POST"\nheader = "x-clinical-job-secret: ${secret}"\n` +
+      (body ? `header = "Content-Type: application/json"\ndata = "${body.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"\n` : "")
+    : JSON.stringify({ NEXT_PUBLIC_APP_URL: "https://app.bccgroup-thailand.com", GOOGLE_DRIVE_ARCHIVE_JOB_SECRET: secret,
+      ...(target ? { target } : {}) });
   fs.writeFileSync(output, content, { flag: "wx", mode: 0o600 });
 }
 

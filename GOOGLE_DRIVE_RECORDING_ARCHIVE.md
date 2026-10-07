@@ -402,3 +402,55 @@ If repeat lease/restart UAT would touch another recording after the candidate co
 use a separately named Test/UAT fixture rather than silently claiming another queue item.
 This groups completion acceptance into a finite operation without repeated per-chunk
 approval or abandoning target ownership safeguards.
+
+### Exact-target local implementation and delivery packet (not released)
+
+The existing authenticated POST job now accepts an optional strict JSON `target` body,
+limited to 2048 actual streamed bytes with a five-second input deadline. Authentication
+precedes body reading. Empty bodies preserve the scheduler's existing selection behavior.
+Target fields bind recording/consultation/provider recording/Zoom meeting, positive safe
+integer source size as a decimal string, and the exact supported file/type pair. Unknown
+fields, malformed input and mismatched pairs are rejected without queue invocation.
+Target mode preserves all eligibility, retention, attempts, retry and CAS lease checks;
+the immutable binding is applied to selection, claim and subsequent owned writes. Missing,
+changed or unavailable targets return fixed idle/targetMatched=false with no queue fallback.
+The runner accepts only matched progress/archived results. No identifiers enter output.
+
+Private runner JSON/curl preparation supports the same target, writes exclusively with
+0600 mode outside the repository/web root, and requires a private parent on POSIX.
+Target runner destination is the canonical HTTPS application origin. Target binding stays
+inside the private config and JSON POST body, never command arguments or URLs. This is
+the existing operator job-secret authority, not a new customer/doctor access route.
+No new schema, service, scheduler setting, credential or production operation is added.
+
+Production read-only aggregate SELECT found 12 eligible-policy MP4 records: eight pending
+without sessions and four retry records with sessions/reserved Drive IDs. All had DB
+offset zero, attempts zero (pending) or one (retry), no active lease, retry ready, retained
+and a meeting binding present at inspection. Five files are <=8 MiB, five need two chunks,
+one needs three and one needs four. Zero-offset ceilings including completion verification
+are respectively 2, 3, 4 and 5 jobs per file. No queue isolation exists. This snapshot does
+not establish current Zoom metadata, session validity or provider-acknowledged offsets.
+
+Minimal acceptance proposal: privately bind the pending 1,616,264-byte Test recording,
+recheck canonical Zoom size/type and current eligibility, prepare its private exact-target
+config, and approve at most two jobs (one chunk plus completion verification). Stop on
+retry/failed/idle/mismatch/session reset; do not expand the ceiling or touch another row.
+Then compare the exact private Drive bytes with the Zoom source once, verify decoding,
+and perform one Doctor and one Admin view/download/range set, plus one anonymous,
+customer and cross-doctor denial each. These checks need their own named identities and
+private binding; passing synthetic tests is not real-use acceptance.
+
+For separate recovery coverage propose a privately bound pending two-chunk fixture:
+two concurrent job calls, one restart, at most three recovery calls and one completion
+verification (six job calls total). Choose and confirm fixture and expected timing before
+approval. A naturally observed live lease is required to claim contention coverage; merely
+launching two quick calls is not sufficient. Stop on unexpected effects. Scheduler remains
+inactive until completion/privacy/access acceptance; credential exposure recovery is a
+separate unresolved client-handover blocker requiring assessment and resolution.
+
+Booking readiness is independent of post-consult recording archival. These checks do not
+create bookings, payments or Zoom meetings, and do not establish whole-project acceptance.
+Delivery blockers are real-copy/private-view acceptance and credential recovery assessment;
+periodic scheduling and broader recovery coverage can remain deferred only with explicit
+owner acceptance and documented operational limits. Teaching/manual deliverables must
+state those limits rather than claim complete acceptance.

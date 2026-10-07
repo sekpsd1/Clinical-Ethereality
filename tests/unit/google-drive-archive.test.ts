@@ -32,6 +32,61 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn());
 });
 
+const exactCandidate = { ...candidate, providerRecordingId: "provider-test" };
+const target = { recordingId: candidate.id, consultationId: candidate.consultationId, providerRecordingId: "provider-test",
+  zoomMeetingId: "meeting-test", fileSizeBytes: "4", fileType: "mp4" as const, recordingType: "shared_screen_with_speaker_view" as const };
+describe("exact target ownership", () => {
+  it("selects and CAS claims only the bound row, keeping binding on subsequent writes", async () => {
+    mocks.findFirst.mockResolvedValue(exactCandidate);
+    mocks.getToken.mockRejectedValue(new Error("unavailable"));
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "retry", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE", targetMatched: true });
+    const binding = { id: target.recordingId, consultationId: target.consultationId, providerRecordingId: target.providerRecordingId,
+      fileSizeBytes: BigInt(4), consultation: { zoomMeetingId: target.zoomMeetingId } };
+    expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining(binding) }));
+    for (const [query] of mocks.updateMany.mock.calls) expect(query.where).toEqual(expect.objectContaining(binding));
+  });
+  it("does not select another row when target is missing/ineligible", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "idle", targetMatched: false });
+    expect(mocks.findFirst).toHaveBeenCalledTimes(1); expect(mocks.updateMany).not.toHaveBeenCalled();
+    expect(mocks.getToken).not.toHaveBeenCalled();
+  });
+  it.each([ { id: "other" }, { consultationId: "other" }, { providerRecordingId: "other" },
+    { fileSizeBytes: BigInt(5) }, { fileType: "txt" }, { recordingType: "chat_file" }, { provider: "other" },
+    { consultation: { zoomMeetingId: "other" } } ])("rejects changed immutable binding before any claim: %#", async change => {
+    mocks.findFirst.mockResolvedValue({ ...exactCandidate, ...change });
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "idle", targetMatched: false });
+    expect(mocks.updateMany).not.toHaveBeenCalled(); expect(mocks.getToken).not.toHaveBeenCalled();
+  });
+  it("does not fall back after losing the target lease", async () => {
+    mocks.findFirst.mockResolvedValue(exactCandidate); mocks.updateMany.mockResolvedValueOnce({ count: 0 });
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "idle", targetMatched: false });
+    expect(mocks.findFirst).toHaveBeenCalledTimes(1); expect(mocks.getToken).not.toHaveBeenCalled();
+  });
+  it("validates targets even for direct callers", async () => {
+    expect(await archiveOneRecordingStep({ ...target, fileSizeBytes: "0" })).toEqual({ status: "failed", code: "INVALID_METADATA", targetMatched: false });
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+  it("reconciles exactly the same completed file on a later target invocation", async () => {
+    mocks.findFirst.mockResolvedValue(exactCandidate);
+    mocks.file.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
+      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" }, permissions: [{ type: "user", role: "owner" }] });
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "archived", targetMatched: true });
+    expect(mocks.audit).toHaveBeenCalledTimes(1); expect(mocks.zoomOpen).not.toHaveBeenCalled();
+  });
+  it("resumes the exact target from provider acknowledgment and releases its bound lease", async () => {
+    mocks.findFirst.mockResolvedValue(exactCandidate);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308, headers: { Range: "bytes=0-1" } }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    mocks.zoomOpen.mockResolvedValue({ status: 206, contentRange: "bytes 2-3/4",
+      body: new ReadableStream({ start(c) { c.enqueue(new Uint8Array([3, 4])); c.close(); } }) });
+    expect(await archiveOneRecordingStep(target)).toEqual({ status: "progress", targetMatched: true });
+    expect(mocks.zoomOpen).toHaveBeenCalledWith(expect.objectContaining({ providerRecordingId: target.providerRecordingId }), { range: "bytes=2-3" });
+    expect(mocks.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      id: target.recordingId, providerRecordingId: target.providerRecordingId }), data: expect.objectContaining({ archiveOffset: BigInt(4), archiveLeaseToken: null }) }));
+  });
+});
+
 describe("durable private Drive archive", () => {
   it("deduplicates a completed upload after a lost completion response and audits exactly once", async () => {
     mocks.file.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
