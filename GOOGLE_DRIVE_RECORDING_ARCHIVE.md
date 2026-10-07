@@ -126,3 +126,9 @@ Official references:
 - https://developers.google.com/workspace/drive/api/guides/manage-uploads
 - https://developers.google.com/workspace/drive/api/guides/api-specific-auth
 - https://developers.google.com/identity/protocols/oauth2/web-server
+
+# Plesk chroot scheduler alternative
+
+If the existing cron chroot cannot access the verified Plesk Node executable, do not change SSH, shell, or chroot security. Where `/bin/curl` is already available, prepare a private minimal curl configuration with `scripts/prepare-recording-archive-runner-config.cjs --config ABSOLUTE_PRIVATE_INPUT --output ABSOLUTE_NEW_PRIVATE_OUTPUT --curl`. Only the canonical HTTPS job URL, POST method and job header are exported. Upload that output only into a verified owner-only (0700) directory outside the app/public root, and set the file to 0600 before testing.
+
+Use `/bin/curl --disable --config /clinical-archive-ops/runner-config.curl --proto =https --max-time 150 --connect-timeout 15 --silent --show-error --fail` in the existing chroot. `--disable` must be first, avoiding inherited curlrc options. Do not follow redirects, disable TLS checks, or put secrets into command arguments/URLs. Test once with the feature off (expected HTTP 503), then verify an enabled manual successful archive step before creating one active per-minute task. HTTP 503 with the flag off proves transport, not authentication. Responses contain aggregate job status only.
