@@ -62,13 +62,22 @@ afterEach(() => {
 describe("Plesk runtime migration runner", () => {
   it("allows only the exact reviewed archive target when latest, not an older or future target", () => {
     const rootDir = createRunnerWorkspace([DOCTOR_INVITATIONS_MIGRATION_TARGET, GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET]);
-    const spawnSync = vi.fn().mockReturnValue({ status: 0 });
+    const spawnSync = vi.fn().mockReturnValueOnce({ status: 0, stdout: "pending" }).mockReturnValue({ status: 0 });
     expect(runPleskRuntimeMigration({ rootDir, env: { [MIGRATION_APPROVAL_ENV]: GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET }, spawnSync, log: vi.fn() })).toEqual({ shouldStart: true, migrationRun: true });
-    expect(spawnSync).toHaveBeenCalledOnce();
+    expect(spawnSync).toHaveBeenCalledTimes(2);
     for (const target of [DOCTOR_INVITATIONS_MIGRATION_TARGET, "20261007120001_google_drive_recording_archive"]) {
       spawnSync.mockClear();
       expect(runPleskRuntimeMigration({ rootDir, env: { [MIGRATION_APPROVAL_ENV]: target }, spawnSync, error: vi.fn() })).toEqual({ shouldStart: false, migrationRun: false });
       expect(spawnSync).not.toHaveBeenCalled();
+    }
+  });
+  it("does not rerun already applied archive migration or start on unavailable preflight", () => {
+    const rootDir = createRunnerWorkspace([GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET]);
+    for (const [stdout, expected] of [["ready", true], ["blocked", false], ["", false]] as const) {
+      const spawnSync = vi.fn().mockReturnValue({ status: 0, stdout });
+      expect(runPleskRuntimeMigration({ rootDir, env: { [MIGRATION_APPROVAL_ENV]: GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET }, spawnSync, log: vi.fn(), error: vi.fn() })).toEqual({ shouldStart: expected, migrationRun: false });
+      expect(spawnSync).toHaveBeenCalledOnce();
+      expect(spawnSync.mock.calls[0][2].timeout).toBe(30000);
     }
   });
   it("derives the current target from the latest migration directory", () => {

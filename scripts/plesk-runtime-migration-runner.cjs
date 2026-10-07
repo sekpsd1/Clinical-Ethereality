@@ -89,6 +89,22 @@ function runPleskRuntimeMigration({
 
   const prismaCli = path.join(rootDir, "node_modules", "prisma", "build", "index.js");
 
+  if (approvedTarget === GOOGLE_DRIVE_RECORDING_ARCHIVE_MIGRATION_TARGET) {
+    const probe = spawnSync(process.execPath, [path.join(rootDir, "scripts", "plesk-archive-migration-preflight.cjs"), approvedTarget], {
+      cwd: rootDir, env, shell: false, encoding: "utf8", timeout: 30000,
+      maxBuffer: 1024, stdio: ["ignore", "pipe", "ignore"]
+    });
+    const status = typeof probe.stdout === "string" ? probe.stdout.trim() : "blocked";
+    if (probe.error || probe.status !== 0 || !["ready", "pending"].includes(status)) {
+      error("[plesk-migration] Archive migration database preflight failed; standalone server will not start.");
+      return { shouldStart: false, migrationRun: false };
+    }
+    if (status === "ready") {
+      log("[plesk-migration] Archive migration already applied; starting standalone server without migration.");
+      return { shouldStart: true, migrationRun: false };
+    }
+  }
+
   if (!fs.existsSync(prismaCli)) {
     error("[plesk-migration] Prisma CLI is unavailable; standalone server will not start.");
     return {
