@@ -3,6 +3,7 @@
 "use strict";
 
 const { Prisma, PrismaClient } = require("@prisma/client");
+const { assertNoDriveArchivesForLegacyPurge } = require("./drive-archive-legacy-preflight.cjs");
 const path = require("node:path");
 const {
   PurgeGuardError,
@@ -431,6 +432,7 @@ function createZoomAdapter(prisma) {
     },
     async remove(snapshot) {
       if (!token) fail("ZOOM_DELETE_ADAPTER_NOT_VALIDATED");
+      await assertNoDriveArchivesForLegacyPurge(prisma, snapshot.liveConsultations.map((row) => row.id));
       for (const consultation of snapshot.liveConsultations) {
         const mapping = state.get(consultation.id);
         if (!mapping) continue;
@@ -491,6 +493,7 @@ function createDatabaseAdapter(prisma, lineUserId) {
         if (fingerprintSnapshot(fresh) !== fingerprint) fail("TRANSACTION_FINGERPRINT_DRIFT");
         assertExpectedCounts(aggregateSnapshot(fresh), expectedCounts);
         const consultationIds = ids(fresh.liveConsultations);
+        await assertNoDriveArchivesForLegacyPurge(tx, consultationIds, true);
         const paymentIds = ids(fresh.payments);
         const prescriptionIds = ids(fresh.prescriptions);
         const attachmentIds = ids([...fresh.privateAttachments, ...fresh.otherScopedAttachments]);

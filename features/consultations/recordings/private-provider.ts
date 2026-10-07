@@ -4,6 +4,17 @@ import { getConsultationRecordingVariant } from "./policy";
 import { assertPrivateArchiveFolder, driveFetch, getDriveAccessToken, getDriveArchiveConfig, getDriveFile, verifyDriveFile } from "./drive-client";
 import { RecordingProviderError, zoomRecordingContentProvider, type RecordingContentProvider } from "./provider";
 
+export function expectedDriveRange(range: string, size: bigint): {value: string; length: bigint} {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!match || (!match[1] && !match[2])) throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
+  const one = BigInt(1);
+  const start = match[1] ? BigInt(match[1]) : size > BigInt(match[2]) ? size - BigInt(match[2]) : BigInt(0);
+  const requestedEnd = match[1] && match[2] ? BigInt(match[2]) : size - one;
+  const end = requestedEnd < size ? requestedEnd : size - one;
+  if (start > end || start < BigInt(0)) throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
+  return { value: `bytes ${start}-${end}/${size}`, length: end - start + one };
+}
+
 export const privateRecordingContentProvider: RecordingContentProvider = {
   async open(recording, options) {
     if (getAppEnv().ENABLE_GOOGLE_DRIVE_RECORDING_ARCHIVE) {
@@ -27,12 +38,14 @@ export const privateRecordingContentProvider: RecordingContentProvider = {
           if (response.status === 416) throw new RecordingProviderError("RANGE_NOT_SATISFIABLE");
           const contentRange = response.headers.get("content-range");
           const type = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
-          if ((response.status !== 200 && response.status !== 206) || type !== variant.responseMimeType.split(";")[0] ||
-            response.status === 206 && (!variant.supportsByteRanges || !contentRange || !/^bytes \d+-\d+\/\d+$/.test(contentRange))) {
+          const expected = options?.range ? expectedDriveRange(options.range, archived.fileSizeBytes) : null;
+          const length = response.headers.get("content-length");
+          if (response.status !== (expected ? 206 : 200) || type !== variant.responseMimeType.split(";")[0] ||
+            (expected ? contentRange !== expected.value : Boolean(contentRange)) ||
+            !length || !/^\d{1,20}$/.test(length) || BigInt(length) !== (expected?.length ?? archived.fileSizeBytes)) {
             await response.body?.cancel().catch(() => undefined);
             throw new RecordingProviderError("CONTENT_UNAVAILABLE");
           }
-          const length = response.headers.get("content-length");
           return { body: response.body, contentType: variant.responseMimeType,
             contentLength: length && /^\d{1,20}$/.test(length) ? length : null,
             contentRange: response.status === 206 ? contentRange : null,

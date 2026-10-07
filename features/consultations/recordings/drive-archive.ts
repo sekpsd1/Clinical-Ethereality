@@ -21,21 +21,28 @@ export function parseUploadOffset(range: string | null, size: bigint): bigint {
 }
 
 // The payload buffer is bounded to one Drive chunk, never to the recording size.
-export async function readBoundedChunk(body: ReadableStream<Uint8Array> | null, expected: number): Promise<Uint8Array> {
+export async function readBoundedChunk(body: ReadableStream<Uint8Array> | null, expected: number, timeoutMs = 25_000): Promise<Uint8Array> {
   if (!body || expected <= 0 || expected > ARCHIVE_CHUNK_BYTES) throw new DriveArchiveError("INVALID_METADATA");
   const reader = body.getReader();
   const result = new Uint8Array(expected);
   let offset = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new DriveArchiveError("PROVIDER_UNAVAILABLE")), timeoutMs);
+  });
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await Promise.race([reader.read(), timeout]);
       if (done) break;
       if (offset + value.length > expected) throw new DriveArchiveError("INVALID_METADATA");
       result.set(value, offset); offset += value.length;
     }
     if (offset !== expected) throw new DriveArchiveError("INVALID_METADATA");
     return result;
-  } finally { await reader.cancel().catch(() => undefined); }
+  } finally {
+    clearTimeout(timer);
+    void reader.cancel().catch(() => undefined);
+  }
 }
 
 /** One resumable step per scheduled invocation. No in-process/background promise is relied upon. */
@@ -54,10 +61,18 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
   if (!candidate) return { status: "idle" };
   const leaseToken = randomUUID();
   const claimed = await prisma.consultationRecording.updateMany({ where: { id: candidate.id,
+    ...consultationRecordingEligibilityWhere, archiveStatus: { in: ["pending", "uploading", "retry"] },
+    archiveAttempts: { lt: MAX_ATTEMPTS }, retentionUntil: { gt: now },
+    AND: [{ OR: [{ archiveRetryAt: null }, { archiveRetryAt: { lte: now } }] }],
     OR: [{ archiveLeaseUntil: null }, { archiveLeaseUntil: { lte: now } }] },
     data: { archiveLeaseToken: leaseToken, archiveLeaseUntil: new Date(now.getTime() + LEASE_MS), archiveStatus: "uploading" } });
   if (claimed.count !== 1) return { status: "idle" };
   const owned = { id: candidate.id, archiveLeaseToken: leaseToken };
+  const assertOwned = async () => {
+    const result = await prisma.consultationRecording.updateMany({ where: { ...owned, archiveStatus: "uploading" },
+      data: { archiveLeaseUntil: new Date(Date.now() + LEASE_MS) } });
+    if (result.count !== 1) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");
+  };
   let fileId = candidate.archiveDriveFileId;
   let session = candidate.archiveSession;
   const release = async (data: Parameters<typeof prisma.consultationRecording.updateMany>[0]["data"]) => {
@@ -99,6 +114,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
       return { status: "archived" };
     }
     if (!session) {
+      await assertOwned();
       const created = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
         method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json",
           "X-Upload-Content-Type": mimeType, "X-Upload-Content-Length": String(size) },
@@ -114,7 +130,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
     const sessionUrl = decryptUploadSession(session, candidate.id, config.sessionKey);
     const uploadRequest = (headers: Record<string, string>, body?: Uint8Array) => fetch(sessionUrl, {
       method: "PUT", headers: { Authorization: `Bearer ${token}`, ...headers },
-      body: body as BodyInit | undefined, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(25_000)
+      body: body as BodyInit | undefined, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(25_000)
     });
     const probe = await uploadRequest({ "Content-Range": `bytes */${size}`, "Content-Length": "0" });
     if (probe.status === 404 || probe.status === 410) {
@@ -140,6 +156,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
       throw new DriveArchiveError("INVALID_METADATA");
     }
     const chunk = await readBoundedChunk(content.body, Number(end - offset + BigInt(1)));
+    await assertOwned();
     const uploaded = await uploadRequest({ "Content-Type": mimeType, "Content-Length": String(chunk.byteLength),
       "Content-Range": `bytes ${offset}-${end}/${size}` }, chunk);
     if (!uploaded.ok && uploaded.status !== 308) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");

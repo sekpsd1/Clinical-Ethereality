@@ -7,9 +7,9 @@ export class DriveArchiveError extends Error {
   }
 }
 
-export function getDriveArchiveConfig() {
+export function getDriveArchiveConfig(allowDisabled = false) {
   const env = getAppEnv();
-  if (!env.ENABLE_GOOGLE_DRIVE_RECORDING_ARCHIVE || !env.GOOGLE_DRIVE_CLIENT_ID ||
+  if ((!allowDisabled && !env.ENABLE_GOOGLE_DRIVE_RECORDING_ARCHIVE) || !env.GOOGLE_DRIVE_CLIENT_ID ||
       !env.GOOGLE_DRIVE_CLIENT_SECRET || !env.GOOGLE_DRIVE_REFRESH_TOKEN ||
       !env.GOOGLE_DRIVE_ARCHIVE_FOLDER_ID || !env.GOOGLE_DRIVE_ARCHIVE_SESSION_KEY ||
       !env.GOOGLE_DRIVE_ARCHIVE_JOB_SECRET) throw new DriveArchiveError("NOT_CONFIGURED");
@@ -20,8 +20,8 @@ export function getDriveArchiveConfig() {
   };
 }
 
-export async function getDriveAccessToken(): Promise<string> {
-  const config = getDriveArchiveConfig();
+export async function getDriveAccessToken(allowDisabled = false): Promise<string> {
+  const config = getDriveArchiveConfig(allowDisabled);
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST", body: new URLSearchParams({ grant_type: "refresh_token", client_id: config.clientId,
       client_secret: config.clientSecret, refresh_token: config.refreshToken }),
@@ -82,18 +82,24 @@ export async function assertPrivateArchiveFolder(token: string) {
 }
 
 export type DriveFileMetadata = { id?: string; size?: string; mimeType?: string; trashed?: boolean;
-  parents?: string[]; appProperties?: Record<string, string> };
+  parents?: string[]; appProperties?: Record<string, string>; driveId?: string;
+  permissions?: Array<{type?: string; role?: string}> };
 
 export async function getDriveFile(token: string, id: string): Promise<DriveFileMetadata | null> {
-  const response = await driveFetch(token, `files/${encodeURIComponent(id)}?fields=id,size,mimeType,trashed,parents,appProperties`);
+  const response = await driveFetch(token, `files/${encodeURIComponent(id)}?fields=id,size,mimeType,trashed,parents,appProperties,driveId,permissions(type,role)`);
   if (response.status === 404) return null;
   if (!response.ok) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");
   return response.json();
 }
 
-export function verifyDriveFile(file: DriveFileMetadata, expected: {id: string; size: bigint; mimeType: string; recordingId: string; folderId: string}) {
-  if (file.id !== expected.id || file.size !== String(expected.size) || file.mimeType !== expected.mimeType || file.trashed !== false ||
+export function verifyDriveFile(file: DriveFileMetadata, expected: {id: string; size: bigint; mimeType: string; recordingId: string; folderId: string}, requirePrivate = true) {
+  if (file.id !== expected.id || file.size !== String(expected.size) || file.mimeType !== expected.mimeType ||
+      (requirePrivate ? file.trashed !== false : typeof file.trashed !== "boolean") ||
       !file.parents?.includes(expected.folderId) || file.appProperties?.clinicalRecording !== expected.recordingId) {
+    throw new DriveArchiveError("INVALID_METADATA");
+  }
+  if (file.driveId || !file.permissions?.some((permission) => permission.type === "user" && permission.role === "owner") ||
+      requirePrivate && file.permissions.some((permission) => permission.type !== "user" || permission.role !== "owner")) {
     throw new DriveArchiveError("INVALID_METADATA");
   }
 }

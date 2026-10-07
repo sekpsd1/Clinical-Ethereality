@@ -74,7 +74,9 @@ describe("Admin permanent user deletion action", () => {
       userId: "customer-1"
     });
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 120_000
     });
     expect(mocks.cleanup).toHaveBeenCalledWith([]);
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/users");

@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { assertNoDriveArchivesForLegacyPurge } = require("./drive-archive-legacy-preflight.cjs");
 const path = require("node:path");
 const { PrismaClient } = require("@prisma/client");
 
@@ -135,6 +136,7 @@ async function main() {
 
     const deleted = await prisma.$transaction(
       async (transaction) => {
+        await assertNoDriveArchivesForLegacyPurge(transaction, null, true);
         const detachedOrderItems = await transaction.orderItem.updateMany({
           where: {
             prescriptionId: {

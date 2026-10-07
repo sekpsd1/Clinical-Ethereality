@@ -10,6 +10,12 @@ Disabled by default. Prepared schema migration and one-time loopback operator se
 `GOOGLE_DRIVE_RECORDING_ARCHIVE.md`. No Production migration, grant, environment setup, recording
 transfer, push/deploy or Zoom deletion is included. Five-year automatic deletion is not implemented.
 
+Follow-up local implementation integrates exact Drive cleanup into Admin permanent Test/UAT deletion,
+including interrupted/completed upload recovery and flag-off cleanup, with rollback retaining retry
+metadata. Legacy reset/purge now blocks archive mappings/active leases. Controller synthetic provider
+proof verified private folder/quota, TXT byte equality, completed-session immutability and cancellation
+499 plus rejected resume, with zero synthetic leftovers. Application migration/release/UAT remain pending.
+
 ## Reading Guide And Governance Update (2026-09-15)
 
 The application is implemented and operates on Plesk Node.js. Below is retained decision/release history, not a live deployment monitor.

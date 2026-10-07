@@ -10,6 +10,7 @@ import {
 } from "@/features/payments/private-slips";
 import { deleteStaffFile } from "@/features/staff-files/service";
 import { staffFileEntityTypes } from "@/features/staff-files/types";
+import { deleteDriveArchivesForRecordings } from "@/features/consultations/recordings/drive-deletion";
 
 export type UserDeletionFile = {
   entityType: string;
@@ -487,6 +488,7 @@ export async function deleteUserPermanently(
   );
   const relatedEntityIds = [...deletedEntityReferences, ...ids(notifications)];
 
+  await deleteDriveArchivesForRecordings(tx, ids(recordings));
   await tx.auditLog.deleteMany({
     where: {
       OR: [

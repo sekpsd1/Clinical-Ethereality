@@ -20,7 +20,7 @@ beforeEach(() => {
   mocks.lookup.mockResolvedValue({ archiveDriveFileId: "file-test", fileSizeBytes: BigInt(4) });
   mocks.token.mockResolvedValue("test-token"); mocks.folder.mockResolvedValue(undefined);
   mocks.metadata.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
-    parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" } });
+    parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" }, permissions: [{ type: "user", role: "owner" }] });
   mocks.zoom.mockResolvedValue({ status: 200, contentType: "video/mp4", body: null });
 });
 it("keeps disabled-by-default playback on Zoom without archive lookup", async () => {
@@ -50,5 +50,22 @@ it("never serves mismatched recording binding from Drive", async () => {
 it("rejects executable Drive content and uses validated Zoom fallback", async () => {
   mocks.fetch.mockResolvedValue(new Response("<html>", { status: 200, headers: { "Content-Type": "text/html" } }));
   await privateRecordingContentProvider.open(recording);
+  expect(mocks.zoom).toHaveBeenCalledOnce();
+});
+it("refuses individually shared child even when destination folder is private", async () => {
+  mocks.metadata.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
+    parents: ["private-folder"], appProperties: { clinicalRecording: recording.id },
+    permissions: [{ type: "user", role: "owner" }, { type: "anyone", role: "reader" }] });
+  await privateRecordingContentProvider.open(recording);
+  expect(mocks.fetch).not.toHaveBeenCalled(); expect(mocks.zoom).toHaveBeenCalledOnce();
+});
+it.each([
+  { status: 200, headers: { "Content-Type": "video/mp4", "Content-Length": "4" } },
+  { status: 206, headers: { "Content-Type": "video/mp4", "Content-Range": "bytes 0-1/5", "Content-Length": "2" } },
+  { status: 206, headers: { "Content-Type": "video/mp4", "Content-Range": "bytes 1-2/4", "Content-Length": "2" } },
+  { status: 206, headers: { "Content-Type": "video/mp4", "Content-Range": "bytes 0-1/4", "Content-Length": "3" } }
+])("refuses ignored or mismatched Drive byte-range response %#", async (init) => {
+  mocks.fetch.mockResolvedValue(new Response(new Uint8Array([1, 2]), init as ResponseInit));
+  await privateRecordingContentProvider.open(recording, { range: "bytes=0-1" });
   expect(mocks.zoom).toHaveBeenCalledOnce();
 });

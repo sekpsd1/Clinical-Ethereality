@@ -31,7 +31,7 @@ beforeEach(() => {
 describe("durable private Drive archive", () => {
   it("deduplicates a completed upload after a lost completion response and audits exactly once", async () => {
     mocks.file.mockResolvedValue({ id: "file-test", size: "4", mimeType: "video/mp4", trashed: false,
-      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" } });
+      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" }, permissions: [{ type: "user", role: "owner" }] });
     expect(await archiveOneRecordingStep()).toEqual({ status: "archived" });
     expect(fetch).not.toHaveBeenCalled(); expect(mocks.zoomOpen).not.toHaveBeenCalled();
     expect(mocks.audit).toHaveBeenCalledTimes(1);
@@ -71,7 +71,7 @@ describe("durable private Drive archive", () => {
   });
   it("refuses different bytes/metadata under a reserved Drive ID", async () => {
     mocks.file.mockResolvedValue({ id: "file-test", size: "5", mimeType: "video/mp4", trashed: false,
-      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" } });
+      parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" }, permissions: [{ type: "user", role: "owner" }] });
     expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
     expect(mocks.zoomOpen).not.toHaveBeenCalled(); expect(mocks.audit).not.toHaveBeenCalled();
   });
@@ -83,6 +83,12 @@ describe("durable private Drive archive", () => {
 });
 
 describe("archive safety primitives", () => {
+  it("bounds a stalled body read and cancels the stream", async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    await expect(readBoundedChunk(stream, 4, 10)).rejects.toThrow("PROVIDER_UNAVAILABLE");
+    expect(cancel).toHaveBeenCalledOnce();
+  });
   it("encrypts upload capability and binds it to recording ID", () => {
     const value = encryptUploadSession(sessionUrl, "one", "ab".repeat(32));
     expect(value).not.toContain("upload_id");

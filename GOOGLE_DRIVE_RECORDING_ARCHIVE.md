@@ -52,7 +52,8 @@ is implemented. Existing five-year metadata remains unchanged; Drive is not immu
 
 ## Operational behavior and recovery
 
-Each job processes at most one 8 MiB chunk. State is durable in `ConsultationRecording`; leases avoid
+Each job processes at most one 8 MiB chunk (roughly 8 MiB/minute with the recommended schedule;
+large files/backlogs can take hours, not immediate delivery). State is durable in `ConsultationRecording`; leases avoid
 concurrent writers and expire after five minutes. Upload session capabilities are AES-256-GCM
 encrypted with the recording ID bound as authenticated data. A Drive-generated file ID is persisted
 before upload creation, so a lost final response is reconciled with `files.get`, never a second file.
@@ -87,10 +88,34 @@ fallback; repeat webhook/job does not create another file. Verify actual availab
 licensed account longevity, scheduled-job monitoring and account access before bulk backfill. Automatic
 five-year deletion, Drive previews/public links, Shared Drive and Clinical Lab TXT exports are out of scope.
 
-**Release blocker:** existing Admin/Test-UAT deletion paths do not yet remove Drive archived files.
-Before activation, the Admin owner must integrate exact private Drive cleanup (including in-progress
-reserved IDs) and verify scoped account/consultation deletion does not orphan private recording bytes.
-This implementation deliberately leaves those independently owned paths untouched and remains disabled.
+## Permanent Test/UAT deletion integration
+
+Admin account deletion locks exact related recording rows, rejects active upload leases (including jobs
+that have not reserved a Drive ID), fences future claims and cleans private bytes before removing rows.
+The existing flag may be off; retained archive credentials are still needed for cleanup. Persisted upload
+sessions are cancelled and probed for terminal state; already-completed sessions are reconciled against
+their exact file. DELETE targets only the stored app-bound, parent-bound owner file ID, including an
+owner file accidentally shared or trashed. Shared files remain ineligible for playback/completion.
+Provider404 is idempotent. Provider failure rolls back DB deletion and retains mapping/session for retry;
+no success is reported while cleanup is unverified. Cleanup has a 45-second overall network budget,
+individual requests at most eight seconds (two cancellation calls divide that budget), and the Admin
+serializable transaction has a 120-second timeout. Large account deletions can require operator review
+and an exact retry after partial external cleanup; never clear IDs to bypass a failure.
+
+Legacy `reset-consult-flow-data.cjs` and `purge-stuck-uat-consultations.cjs` now refuse archive mappings
+or active leases before their destructive scope; their transaction guards lock exact recording rows.
+Use reviewed exact archive cleanup before legacy purge; do not bypass those preflights.
+
+Controller-run non-sensitive synthetic provider diagnostics on 2026-10-07 verified private folder,
+available quota, TXT upload/download byte equality, completed-session immutability, interrupted upload
+status308, cancellation499, status-probe499 and rejected resume499, with zero synthetic files remaining.
+The earlier diagnostic attempts/recovery are separate from application UAT. Session requests must use
+`redirect: manual`: 308 is resumable progress, not a redirect to follow or reject. Cancellation behavior
+was verified against the current provider rather than assumed from historical GData documentation.
+The synthetic operator tool accepts private config/recovery paths and reports only booleans/counts,
+safe stage/error classifications and numeric HTTP statuses. `--recover-only` creates no new files and
+cleans only exact retained app-marker-bound synthetic IDs. Config/recovery capabilities stay private.
+Full application schema/deployment/restart and authorized-recording UAT are still pending.
 
 Official references:
 - https://developers.google.com/workspace/drive/api/guides/manage-uploads

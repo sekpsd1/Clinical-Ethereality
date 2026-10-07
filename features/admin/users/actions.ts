@@ -59,7 +59,7 @@ export async function deleteUserPermanentlyAction(
           actorId: session.userId,
           userId: parsed.data.userId
         }),
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 120_000 }
     );
     await cleanupDeletedUserFiles(result.files);
   } catch (error) {

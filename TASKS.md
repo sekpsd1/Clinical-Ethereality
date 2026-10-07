@@ -4,7 +4,8 @@
 
 - [x] Prepare disabled-by-default private My Drive OAuth archive, durable resumable chunks and protected playback fallback.
 - [x] Prepare schema migration, operator setup and scheduled-task runbook; local verification only.
-- [ ] Admin owner: integrate exact Drive cleanup into existing scoped Test/UAT deletion before activation.
+- [x] Integrate exact transaction-fenced Drive cleanup into Admin Test/UAT deletion; block legacy reset/purge when archive cleanup is required.
+- [x] Controller synthetic provider proof: private folder/quota, bytes, completed-session immutability and cancellation499; zero synthetic leftovers.
 - [ ] Controller/release owner: review schema, OAuth account/quota and credentials, approve migration/configuration/release.
 - [ ] Run exact controlled archive/download/restart/idempotency UAT before automatic backfill acceptance.
 
