@@ -46,7 +46,12 @@ is implemented. Existing five-year metadata remains unchanged; Drive is not immu
   back to Zoom. The owner can still share outside this app; account governance remains their responsibility.
 - Set Plesk scheduled task once per minute to run `node scripts/recording-archive-runner.cjs` from the
   app checkout with the job secret and canonical HTTPS app origin in its environment. Verify Plesk
-  scheduled-task environment separately from Node application's environment. Capture exit status;
+  scheduled-task environment separately from Node application's environment. Alternatively use
+  `--config /absolute/private-sibling/runner.json` containing only `NEXT_PUBLIC_APP_URL` and
+  `GOOGLE_DRIVE_ARCHIVE_JOB_SECRET`. Verify a 0700 directory outside application/document roots
+  and a 0600 regular file before uploading the minimal configuration; never include OAuth tokens
+  in this runner file or put secret values into scheduled command arguments. Use the actual host
+  Node executable and source checkout script path, not an assumed standalone script path. Capture exit status;
   alert on nonzero outcomes. The endpoint accepts POST with a timing-safe secret check and returns
   only aggregate status, never tokens, file IDs or recording details. No public user trigger is exposed.
 
