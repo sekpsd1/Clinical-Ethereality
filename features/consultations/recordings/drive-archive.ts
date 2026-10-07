@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { consultationRecordingEligibilityWhere, getConsultationRecordingVariant } from "./policy";
-import { zoomRecordingContentProvider } from "./provider";
+import { RecordingProviderError, zoomRecordingContentProvider } from "./provider";
 import { assertPrivateArchiveFolder, decryptUploadSession, DriveArchiveError, driveFetch,
   encryptUploadSession, getDriveAccessToken, getDriveArchiveConfig, getDriveFile,
   validateUploadSession, verifyDriveFile } from "./drive-client";
@@ -10,6 +10,10 @@ import { assertPrivateArchiveFolder, decryptUploadSession, DriveArchiveError, dr
 export const ARCHIVE_CHUNK_BYTES = 8 * 1024 * 1024;
 const MAX_ATTEMPTS = 12;
 const LEASE_MS = 5 * 60_000;
+type ArchiveStage = "drive_prepare" | "completion_verify" | "session_create" | "session_probe" | "zoom_download" | "chunk_read" | "drive_upload";
+type ArchiveDiagnosticCode = "NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "INVALID_METADATA" | "METADATA_UNAVAILABLE" | "CONTENT_UNAVAILABLE" | "RANGE_NOT_SATISFIABLE";
+const DIAGNOSTIC_CODES = new Set<string>(["NOT_CONFIGURED", "PROVIDER_UNAVAILABLE", "INVALID_METADATA", "METADATA_UNAVAILABLE", "CONTENT_UNAVAILABLE", "RANGE_NOT_SATISFIABLE"]);
+type ArchiveStepResult = { status: "idle" | "progress" | "archived" | "retry" | "failed"; stage?: ArchiveStage; code?: ArchiveDiagnosticCode };
 
 export function parseUploadOffset(range: string | null, size: bigint): bigint {
   if (!range) return BigInt(0);
@@ -46,7 +50,7 @@ export async function readBoundedChunk(body: ReadableStream<Uint8Array> | null, 
 }
 
 /** One resumable step per scheduled invocation. No in-process/background promise is relied upon. */
-export async function archiveOneRecordingStep(): Promise<{status: "idle" | "progress" | "archived" | "retry" | "failed"}> {
+export async function archiveOneRecordingStep(): Promise<ArchiveStepResult> {
   const config = getDriveArchiveConfig();
   const now = new Date();
   const candidate = await prisma.consultationRecording.findFirst({
@@ -80,6 +84,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
       data: { ...data, archiveLeaseToken: null, archiveLeaseUntil: null } });
     if (result.count !== 1) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");
   };
+  let stage: ArchiveStage = "drive_prepare";
   try {
     const variant = getConsultationRecordingVariant(candidate);
     const size = candidate.fileSizeBytes;
@@ -100,6 +105,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
     }
     const expected = { id: fileId, size, mimeType, recordingId: candidate.id, folderId: config.folderId };
     // A stable preallocated ID lets a restart reconcile a response lost after final commit.
+    stage = "completion_verify";
     const completed = await getDriveFile(token, fileId);
     if (completed) {
       verifyDriveFile(completed, expected);
@@ -114,6 +120,7 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
       return { status: "archived" };
     }
     if (!session) {
+      stage = "session_create";
       await assertOwned();
       const created = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
         method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json",
@@ -132,12 +139,13 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
       method: "PUT", headers: { Authorization: `Bearer ${token}`, ...headers },
       body: body as BodyInit | undefined, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(25_000)
     });
+    stage = "session_probe";
     const probe = await uploadRequest({ "Content-Range": `bytes */${size}`, "Content-Length": "0" });
     if (probe.status === 404 || probe.status === 410) {
       const failed = candidate.archiveAttempts + 1 >= MAX_ATTEMPTS;
       await release({ archiveSession: null, archiveStatus: failed ? "failed" : "retry", archiveRetryAt: failed ? null : new Date(now.getTime() + 60_000),
         archiveAttempts: { increment: 1 } });
-      return { status: failed ? "failed" : "retry" };
+      return { status: failed ? "failed" : "retry", stage, code: "PROVIDER_UNAVAILABLE" };
     }
     if (probe.ok) {
       // Do not trust a final upload response; verify metadata with files.get on the next step.
@@ -149,14 +157,17 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
     if (offset === size) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");
     const end = offset + BigInt(ARCHIVE_CHUNK_BYTES) < size ? offset + BigInt(ARCHIVE_CHUNK_BYTES) - BigInt(1) : size - BigInt(1);
     const recording = { ...candidate, zoomMeetingId: candidate.consultation.zoomMeetingId! };
+    stage = "zoom_download";
     const content = await zoomRecordingContentProvider.open(recording,
       variant.supportsByteRanges ? { range: `bytes=${offset}-${end}` } : undefined);
     if (variant.supportsByteRanges && (content.status !== 206 || content.contentRange !== `bytes ${offset}-${end}/${size}`)) {
       await content.body?.cancel().catch(() => undefined);
       throw new DriveArchiveError("INVALID_METADATA");
     }
+    stage = "chunk_read";
     const chunk = await readBoundedChunk(content.body, Number(end - offset + BigInt(1)));
     await assertOwned();
+    stage = "drive_upload";
     const uploaded = await uploadRequest({ "Content-Type": mimeType, "Content-Length": String(chunk.byteLength),
       "Content-Range": `bytes ${offset}-${end}/${size}` }, chunk);
     if (!uploaded.ok && uploaded.status !== 308) throw new DriveArchiveError("PROVIDER_UNAVAILABLE");
@@ -169,6 +180,10 @@ export async function archiveOneRecordingStep(): Promise<{status: "idle" | "prog
     const failed = attempts >= MAX_ATTEMPTS || error instanceof DriveArchiveError && error.code === "INVALID_METADATA";
     await release({ archiveStatus: failed ? "failed" : "retry", archiveAttempts: { increment: 1 },
       archiveRetryAt: failed ? null : new Date(Date.now() + Math.min(60 * 60_000, 60_000 * 2 ** attempts)) });
-    return { status: failed ? "failed" : "retry" };
+    // Only fixed provider codes are returned; never serialize arbitrary error text/cause.
+    const knownProvider = error instanceof DriveArchiveError || error instanceof RecordingProviderError;
+    const code: ArchiveDiagnosticCode = knownProvider && DIAGNOSTIC_CODES.has(error.code)
+      ? error.code : "PROVIDER_UNAVAILABLE";
+    return { status: failed ? "failed" : "retry", stage, code };
   }
 }

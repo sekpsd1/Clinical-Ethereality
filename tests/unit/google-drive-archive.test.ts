@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), updateMany: vi.fn(), trans
 vi.mock("@/lib/db/prisma", () => ({ prisma: { consultationRecording: { findFirst: mocks.findFirst,
   updateMany: mocks.updateMany }, $transaction: mocks.transaction } }));
 vi.mock("@/lib/audit/audit-log", () => ({ writeAuditLog: mocks.audit }));
-vi.mock("@/features/consultations/recordings/provider", () => ({ zoomRecordingContentProvider: { open: mocks.zoomOpen } }));
+vi.mock("@/features/consultations/recordings/provider", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/features/consultations/recordings/provider")>(),
+  zoomRecordingContentProvider: { open: mocks.zoomOpen }
+}));
 vi.mock("@/features/consultations/recordings/drive-client", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/features/consultations/recordings/drive-client")>(),
   getDriveArchiveConfig: () => ({ folderId: "private-folder", sessionKey: "ab".repeat(32) }),
@@ -13,6 +16,7 @@ vi.mock("@/features/consultations/recordings/drive-client", async (importOrigina
 }));
 import { archiveOneRecordingStep, parseUploadOffset, readBoundedChunk, ARCHIVE_CHUNK_BYTES } from "@/features/consultations/recordings/drive-archive";
 import { decryptUploadSession, encryptUploadSession, validateUploadSession, verifyDriveFile } from "@/features/consultations/recordings/drive-client";
+import { RecordingProviderError } from "@/features/consultations/recordings/provider";
 
 const sessionUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=test";
 const candidate = { id: "recording-test", consultationId: "consult-test", provider: "zoom", fileType: "MP4",
@@ -61,24 +65,41 @@ describe("durable private Drive archive", () => {
   });
   it("retries provider failures without marking archived", async () => {
     mocks.getToken.mockRejectedValue(new Error("safe test failure"));
-    expect(await archiveOneRecordingStep()).toEqual({ status: "retry" });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE" });
     expect(mocks.audit).not.toHaveBeenCalled();
   });
   it("stops after the bounded retry budget", async () => {
     mocks.findFirst.mockResolvedValue({ ...candidate, archiveAttempts: 11 });
     mocks.getToken.mockRejectedValue(new Error("safe test failure"));
-    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE" });
   });
   it("refuses different bytes/metadata under a reserved Drive ID", async () => {
     mocks.file.mockResolvedValue({ id: "file-test", size: "5", mimeType: "video/mp4", trashed: false,
       parents: ["private-folder"], appProperties: { clinicalRecording: "recording-test" }, permissions: [{ type: "user", role: "owner" }] });
-    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed", stage: "completion_verify", code: "INVALID_METADATA" });
     expect(mocks.zoomOpen).not.toHaveBeenCalled(); expect(mocks.audit).not.toHaveBeenCalled();
   });
   it("rejects Zoom ignoring byte ranges rather than buffering full recordings", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }));
     mocks.zoomOpen.mockResolvedValue({ status: 200, contentRange: null, body: null });
-    expect(await archiveOneRecordingStep()).toEqual({ status: "failed" });
+    expect(await archiveOneRecordingStep()).toEqual({ status: "failed", stage: "zoom_download", code: "INVALID_METADATA" });
+  });
+  it("identifies Zoom source failure with a fixed code only", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }));
+    mocks.zoomOpen.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE"));
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "zoom_download", code: "CONTENT_UNAVAILABLE" });
+  });
+  it("does not serialize secret-bearing unknown errors", async () => {
+    mocks.getToken.mockRejectedValue(new Error("Bearer SECRET https://private.example/patient"));
+    const result = await archiveOneRecordingStep();
+    expect(result).toEqual({ status: "retry", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE" });
+    expect(JSON.stringify(result)).not.toMatch(/SECRET|Bearer|private|patient/);
+  });
+  it("rejects a forged provider code at the serialization boundary", async () => {
+    const error = new RecordingProviderError("CONTENT_UNAVAILABLE");
+    Object.assign(error, { code: "Bearer SECRET", message: "private patient URL" });
+    mocks.getToken.mockRejectedValue(error);
+    expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "PROVIDER_UNAVAILABLE" });
   });
 });
 
