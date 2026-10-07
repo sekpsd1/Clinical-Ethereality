@@ -9,6 +9,18 @@ import {
 } from "@/features/consultations/recordings/policy";
 
 export type RecordingProviderFailureReason = "metadata_response" | "metadata_missing" | "download_host" | "redirect_host" | "content_status" | "content_range" | "content_mime";
+export type RecordingProviderMimeClass = "missing" | "octet_stream" | "html" | "video_mp4" | "text_plain" | "other";
+
+function classifyProviderMime(contentType: string | null): RecordingProviderMimeClass {
+  if (contentType === null) return "missing";
+  switch (contentType.split(";", 1)[0].trim().toLowerCase()) {
+    case "application/octet-stream": return "octet_stream";
+    case "text/html": return "html";
+    case "video/mp4": return "video_mp4";
+    case "text/plain": return "text_plain";
+    default: return "other";
+  }
+}
 export class RecordingProviderError extends Error {
   constructor(
     public readonly code:
@@ -16,7 +28,7 @@ export class RecordingProviderError extends Error {
       | "METADATA_UNAVAILABLE"
       | "CONTENT_UNAVAILABLE"
       | "RANGE_NOT_SATISFIABLE",
-    public readonly diagnostic?: { reason: RecordingProviderFailureReason; httpStatus?: number }
+    public readonly diagnostic?: { reason: RecordingProviderFailureReason; httpStatus?: number; mimeClass?: RecordingProviderMimeClass }
   ) {
     super(code);
     this.name = "RecordingProviderError";
@@ -128,10 +140,12 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
       throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_range", httpStatus: contentResponse.status });
     }
 
-    const contentType = contentResponse.headers.get("content-type") ?? "application/octet-stream";
+    const providerContentType = contentResponse.headers.get("content-type");
+    const contentType = providerContentType ?? "application/octet-stream";
     if (!isEligibleConsultationRecordingMimeType(recording, contentType)) {
       await contentResponse.body?.cancel().catch(() => undefined);
-      throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_mime", httpStatus: contentResponse.status });
+      throw new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_mime", httpStatus: contentResponse.status,
+        mimeClass: classifyProviderMime(providerContentType) });
     }
 
     const contentLength = contentResponse.headers.get("content-length");

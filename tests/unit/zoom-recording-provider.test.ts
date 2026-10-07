@@ -80,6 +80,42 @@ describe("feature-flagged Zoom recording provider", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    [null, "missing"],
+    ["Application/Octet-Stream; private=SECRET", "octet_stream"],
+    ["text/html; private=SECRET", "html"],
+    ["text/plain; charset=utf-8", "text_plain"],
+    ["audio/mp4; private=SECRET", "other"],
+    ["SECRET", "other"]
+  ])("classifies rejected MP4 MIME as %s without serializing headers", async (contentType, mimeClass) => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    const cancel = vi.fn();
+    const headers = new Headers({ "content-range": "bytes 0-3/1024" });
+    if (contentType !== null) headers.set("content-type", contentType);
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
+      id: recording.providerRecordingId, file_type: "MP4", recording_type: recording.recordingType,
+      download_url: "https://zoom.us/private/file"
+    }] }))).mockResolvedValueOnce(new Response(new ReadableStream({ cancel }), { status: 206, headers }));
+    const error = await zoomRecordingContentProvider.open(recording, { range: "bytes=0-3" }).catch((value) => value);
+    expect(error).toMatchObject({ code: "CONTENT_UNAVAILABLE",
+      diagnostic: { reason: "content_mime", httpStatus: 206, mimeClass } });
+    expect(JSON.stringify(error.diagnostic)).not.toMatch(/SECRET|private|provider-token/);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("classifies a rejected chat video MIME without enabling it", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
+      id: chatRecording.providerRecordingId, file_type: "TXT", recording_type: "chat_file",
+      download_url: "https://zoom.us/private/chat"
+    }] }))).mockResolvedValueOnce(new Response(null, { headers: { "content-type": "video/mp4" } }));
+    await expect(zoomRecordingContentProvider.open(chatRecording)).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE", diagnostic: { reason: "content_mime", httpStatus: 200, mimeClass: "video_mp4" }
+    });
+  });
+
   it("forwards one byte range and accepts only safe partial-content headers", async () => {
     mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
     mocks.token.mockResolvedValue("provider-token");

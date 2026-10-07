@@ -120,7 +120,7 @@ was verified against the current provider rather than assumed from historical GD
 The synthetic operator tool accepts private config/recovery paths and reports only booleans/counts,
 safe stage/error classifications and numeric HTTP statuses. `--recover-only` creates no new files and
 cleans only exact retained app-marker-bound synthetic IDs. Config/recovery capabilities stay private.
-Full application schema/deployment/restart and authorized-recording UAT are still pending.
+That synthetic test did not establish application acceptance. See the release checkpoint below for later application deployment and the remaining real-recording UAT.
 
 Official references:
 - https://developers.google.com/workspace/drive/api/guides/manage-uploads
@@ -136,3 +136,140 @@ Use `/bin/curl --disable --config /clinical-archive-ops/runner-config.curl --pro
 If the existing chroot lacks its default CA bundle, never use insecure TLS options. `scripts/prepare-recording-archive-ca-bundle.cjs --output ABSOLUTE_NEW_PRIVATE_FILE` exports the installed official Node runtime's bundled Mozilla roots and reports source/version/count/SHA256 only. Upload into the same verified private directory, set 0600, and verify the uploaded SHA256 matches. Add `--cacert /clinical-archive-ops/ca-bundle.pem` to the command. Keep this trust bundle updated with the official Node runtime; do not export browser cookies or add arbitrary/self-signed trust roots.
 
 2026-10-07 operator provisioning: installed official Node v24.12.0 exported 146 bundled Mozilla roots; uploaded SHA256 verified `b3efddb96fca5c2602ca1d07c9e5471541d539f38daf9bf54ec334ba11f9232c`. Plesk runtime remains v24.21.0; no runtime downgrade or chroot/shell/security change.
+
+## Diagnostic release checkpoint and next review (2026-10-07)
+
+Archive2 reused the clean archive branch at `27bded7fb2d37fa034525e3cb83cb338c3bbb62c`.
+The expected remote `350fba3` was reverified before a normal fast-forward push to `main`.
+Plesk Pull/Deploy confirmed `27bded7`; non-migration preflight and `build:plesk-host` passed
+on Node 24.21.0, including lint/type checks, 67 generated pages and 137 static/24 public
+files verified. One explicit restart was followed by health HTTP 200 / `status: ok`.
+This worker turn added one successful host build, one restart and one manual job;
+it repeated no migration and saved no environment changes. Earlier handoff counts
+remain separate. The existing private backup and additive archive columns were retained.
+
+The single approved job returned only:
+`status=retry`, `stage=zoom_download`, `code=CONTENT_UNAVAILABLE`,
+`reason=content_mime`, `httpStatus=206`. It did not complete a recording copy.
+The unsaved scheduler form was cancelled and the task list verified empty.
+No periodic task is active. Do not repeat the job using its consumed one-run approval.
+
+Evidence proves the application reached its MIME rejection after a Zoom partial-content
+response. It does not identify the returned MIME, prove expiration, validate media bytes,
+or justify new download hosts or arbitrary binary acceptance.
+The current policy requires `video/mp4` for the canonical MP4 pair and `text/plain`
+with an absent or UTF-8 charset for the canonical chat TXT pair.
+
+Zoom's [Get meeting recordings](https://developers.zoom.us/docs/api/meetings/)
+and [Download URL guidance](https://developers.zoom.us/docs/api/using-zoom-apis/#download-url)
+describe dynamically generated download URLs and Bearer authentication, including
+the optional `download_access_token`. The reviewed documentation does not establish
+the response MIME for this request; no token/authentication change is justified by
+the observed MIME failure alone.
+
+### Prepared local diagnostic proposal; not released
+
+The provider now classifies rejected MIME headers into exactly `missing`, `octet_stream`,
+`html`, `video_mp4`, `text_plain`, or `other`. Parameters, unknown header text, URLs,
+tokens and media bytes are never returned. Missing headers are distinguished before
+the existing octet-stream fallback. Content remains rejected and its stream cancelled.
+The archive serialization boundary independently allowlists the class and emits it
+only for `content_mime`; forged values and unrelated reasons omit the field.
+There is no policy, authentication, transfer, host, schema or scheduler change.
+Local verification passed 62 focused provider/archive/policy/job tests, TypeScript
+typecheck, ESLint and the 67-page Next build. Controller16 accepted the diagnostic-only
+local review and authorized a scoped local commit. It has not been released.
+
+Controller review is required before a further release. Proposed exact runtime
+validation: reverify the reviewed commit and remote, deploy only that diagnostic,
+non-migration build and one restart/health check, then run the existing private curl
+command once with no saved/active scheduled task. Return only the existing fixed
+stage/code/reason/status plus `mimeClass`. Do not clear attempts, leases, file IDs or
+encrypted sessions to force selection. `idle` is inconclusive and does not authorize
+a second invocation. Selection remains the existing one-eligible-record queue policy;
+an exact-record probe would need a separate reviewed design.
+
+If `octet_stream` is observed, prepare a separate MP4-only proposal with bounded
+format validation and range/size binding; that class alone does not prove MP4 content.
+If `html`, investigate an authentication/login response without exposing its body.
+If `missing`, `other` or a crossed MIME is observed, retain rejection and prepare
+bounded additional evidence. Any eventual fix must retain strict TXT handling,
+canonical metadata, private proxy authorization, safe hosts, byte-range limits and
+Drive completion/privacy verification. Real copy/view/download/ranges, unauthorized
+denial, concurrency and restart recovery remain incomplete.
+
+## Credential exposure review proposal; no rotation performed
+
+An unfiltered Node dashboard accessibility snapshot exposed environment values in tool
+output during the release. This document records key names and dependencies only.
+Do not reproduce the snapshot, values, header strings, screenshots or provider payloads.
+No credential rotation, revocation, permission change or data rewrite has been executed.
+Controller/owner must approve the exact targets, credentials channel, maintenance
+window, validation and rollback before recovery mutations.
+
+Proposed order, subject to owner review:
+
+1. Establish an owner-controlled recovery channel and verify backups privately. Inventory
+   all consumers by key name, including Plesk runtime, operator configuration, job runners,
+   webhooks and other hosts. Keep scheduler inactive. Build a recovery checklist without
+   copying environment values into chat, Git or screenshots. Unexposed credentials do
+   not automatically require rotation; public IDs, paths and flags are not secrets.
+2. Rotate `DATABASE_URL`'s database-user password and `JWT_SECRET` in an agreed short
+   maintenance window. Database provider and runtime must agree before returning service;
+   verify health and authenticated database reads. JWT is shared by access/refresh tokens,
+   staff invites and Zoom handoff flows: existing signed capabilities will fail, so verify
+   fresh LINE login and require users to obtain new invites/handoffs. Current code has one
+   JWT key, not an overlapping key ring. Do not test by invoking payment or meeting creation.
+3. Rotate `GOOGLE_DRIVE_CLIENT_SECRET` and replace/revoke the exposed
+   `GOOGLE_DRIVE_REFRESH_TOKEN` under the existing OAuth client/account and `drive.file`
+   scope. Do not substitute a new client or broaden scope: existing file ownership/access
+   is a dependency. Reauthorization/revocation order depends on provider support for
+   overlapping credentials; verify privately before executing. Token revocation can affect
+   the app grant, so do not assume a new token from the same grant survives revocation.
+   Google's current revocation documentation states that revocation invalidates issued
+   access/refresh tokens across clients in the project for that user's grant. Inventory
+   those consumers first, revoke the exposed grant in the approved window, then obtain
+   fresh offline authorization with the existing client and scope. Allow for propagation;
+   do not revoke the old token after creating its replacement and assume the new one works.
+   Update protected operator configuration along with runtime, and verify token/folder
+   access privately with aggregate output, without another archive job.
+4. Rotate `GOOGLE_DRIVE_ARCHIVE_JOB_SECRET` and `STORE_RESERVATION_CLEANUP_SECRET`
+   in both runtime and every runner configuration before restarting/resuming any runner.
+   Check private file ownership/modes; an old secret must be rejected. Do not test the
+   destructive store-cleanup job through a live cleanup invocation.
+5. Coordinate `ZOOM_CLIENT_SECRET`, `ZOOM_MEETING_SDK_CLIENT_SECRET` and
+   `ZOOM_WEBHOOK_SECRET` with the corresponding provider apps and runtime. Verify token
+   acquisition/read-only metadata, then webhook verification and SDK configuration via
+   approved non-mutating/synthetic checks. Provider revocation may invalidate cached or
+   in-flight credentials; no meeting or recording delete is part of rotation.
+6. Coordinate `LINE_CHANNEL_SECRET`, `SMS_OTP_API_KEY`/`SMS_OTP_API_SECRET`,
+   `SLIP_VERIFICATION_API_KEY`, and `PAYMENT_WEBHOOK_SECRET` with their providers and
+   all senders/consumers. Validate fresh login, readiness and synthetic signature checks.
+   Paid slip verification, OTP sends and payment mutations need their own explicit test
+   approval; do not use them as routine health probes.
+7. Rotate encrypted-state keys through separately reviewed state-preservation work.
+   `GOOGLE_DRIVE_ARCHIVE_SESSION_KEY` decrypts persisted upload capabilities: replacing
+   it alone strands resume and cleanup. Inventory non-null sessions by count, preserve
+   file IDs/offsets, stop writers, and prepare a guarded per-record old-key/new-key
+   re-encryption transaction with round-trip verification and private backup. Do not
+   clear mappings or cancel provider sessions as a shortcut. Approval for that data
+   rewrite is separate from this diagnostic. `SMS_OTP_CHALLENGE_ENCRYPTION_KEY` likewise
+   decrypts pending challenges; pause requests and let the existing ten-minute challenge
+   lifetime expire before replacement, or review an exact challenge migration separately.
+
+After each group, verify dependency checks and report only key names, counts and fixed
+outcomes. Environment saves may restart Passenger implicitly; record actual saves and
+explicit restarts, never assume zero disruption. Restore service by correcting new
+credentials or issuing another new credential. Revoked provider secrets/tokens have no
+guaranteed rollback, and reintroducing exposed signing keys would restore the exposure.
+Encrypted-state rollback must restore matching encrypted rows and key together using
+the approved private recovery path; a source-code rollback cannot repair a key mismatch.
+Do not restore the entire database just to roll back a credential setting.
+
+Provider references for the approval review:
+[Google OAuth security practices](https://developers.google.com/identity/protocols/oauth2/resources/best-practices),
+[Google token revocation](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke),
+[Zoom Server-to-Server app](https://developers.zoom.us/docs/internal-apps/create/),
+[LINE channel-secret handling](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/),
+and [Plesk database users](https://docs.plesk.com/en-US/obsidian/administrator-guide/website-management/website-databases/managing-database-user-accounts.69539/).
+Use the database-user operation for this app, not database-administrator credential changes.

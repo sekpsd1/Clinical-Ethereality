@@ -113,6 +113,38 @@ describe("durable private Drive archive", () => {
     Object.assign(error, { diagnostic: { reason: "content_status", httpStatus: 999 } });
     expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "CONTENT_UNAVAILABLE", reason: "content_status" });
   });
+
+  it.each(["missing", "octet_stream", "html", "video_mp4", "text_plain", "other"] as const)(
+    "serializes only fixed MIME class %s at the archive boundary", async (mimeClass) => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }));
+      mocks.zoomOpen.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE", {
+        reason: "content_mime", httpStatus: 206, mimeClass
+      }));
+      expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "zoom_download",
+        code: "CONTENT_UNAVAILABLE", reason: "content_mime", httpStatus: 206, mimeClass });
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(mocks.audit).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["content_mime", "content_status", "Bearer SECRET"])(
+    "omits secret-bearing forged MIME class for reason %s", async (reason) => {
+      const error = new RecordingProviderError("CONTENT_UNAVAILABLE");
+      Object.assign(error, { diagnostic: { reason, httpStatus: 206, mimeClass: "Bearer SECRET private-url" } });
+      mocks.getToken.mockRejectedValue(error);
+      const result = await archiveOneRecordingStep();
+      expect(result).not.toHaveProperty("mimeClass");
+      expect(JSON.stringify(result)).not.toMatch(/SECRET|private-url|Bearer/);
+    }
+  );
+
+  it("does not propagate even an allowlisted MIME class for unrelated errors", async () => {
+    const error = new RecordingProviderError("CONTENT_UNAVAILABLE", {
+      reason: "content_status", httpStatus: 403, mimeClass: "octet_stream"
+    });
+    mocks.getToken.mockRejectedValue(error);
+    expect(await archiveOneRecordingStep()).not.toHaveProperty("mimeClass");
+  });
 });
 
 describe("archive safety primitives", () => {

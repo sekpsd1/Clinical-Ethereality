@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { consultationRecordingEligibilityWhere, getConsultationRecordingVariant } from "./policy";
-import { RecordingProviderError, zoomRecordingContentProvider, type RecordingProviderFailureReason } from "./provider";
+import { RecordingProviderError, zoomRecordingContentProvider, type RecordingProviderFailureReason, type RecordingProviderMimeClass } from "./provider";
 import { assertPrivateArchiveFolder, decryptUploadSession, DriveArchiveError, driveFetch,
   encryptUploadSession, getDriveAccessToken, getDriveArchiveConfig, getDriveFile,
   validateUploadSession, verifyDriveFile } from "./drive-client";
@@ -14,7 +14,8 @@ type ArchiveStage = "drive_prepare" | "completion_verify" | "session_create" | "
 type ArchiveDiagnosticCode = "NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "INVALID_METADATA" | "METADATA_UNAVAILABLE" | "CONTENT_UNAVAILABLE" | "RANGE_NOT_SATISFIABLE";
 const DIAGNOSTIC_CODES = new Set<string>(["NOT_CONFIGURED", "PROVIDER_UNAVAILABLE", "INVALID_METADATA", "METADATA_UNAVAILABLE", "CONTENT_UNAVAILABLE", "RANGE_NOT_SATISFIABLE"]);
 const DIAGNOSTIC_REASONS = new Set<string>(["metadata_response", "metadata_missing", "download_host", "redirect_host", "content_status", "content_range", "content_mime"]);
-type ArchiveStepResult = { status: "idle" | "progress" | "archived" | "retry" | "failed"; stage?: ArchiveStage; code?: ArchiveDiagnosticCode; reason?: RecordingProviderFailureReason; httpStatus?: number };
+const DIAGNOSTIC_MIME_CLASSES = new Set<string>(["missing", "octet_stream", "html", "video_mp4", "text_plain", "other"]);
+type ArchiveStepResult = { status: "idle" | "progress" | "archived" | "retry" | "failed"; stage?: ArchiveStage; code?: ArchiveDiagnosticCode; reason?: RecordingProviderFailureReason; httpStatus?: number; mimeClass?: RecordingProviderMimeClass };
 
 export function parseUploadOffset(range: string | null, size: bigint): bigint {
   if (!range) return BigInt(0);
@@ -189,6 +190,9 @@ export async function archiveOneRecordingStep(): Promise<ArchiveStepResult> {
     const reason = diagnostic && DIAGNOSTIC_REASONS.has(diagnostic.reason) ? diagnostic.reason : undefined;
     const httpStatus = reason && Number.isInteger(diagnostic?.httpStatus) && diagnostic!.httpStatus! >= 100 && diagnostic!.httpStatus! <= 599
       ? diagnostic!.httpStatus : undefined;
-    return { status: failed ? "failed" : "retry", stage, code, ...(reason ? { reason } : {}), ...(httpStatus ? { httpStatus } : {}) };
+    const mimeClass = reason === "content_mime" && diagnostic?.mimeClass && DIAGNOSTIC_MIME_CLASSES.has(diagnostic.mimeClass)
+      ? diagnostic.mimeClass : undefined;
+    return { status: failed ? "failed" : "retry", stage, code, ...(reason ? { reason } : {}), ...(httpStatus ? { httpStatus } : {}),
+      ...(mimeClass ? { mimeClass } : {}) };
   }
 }
