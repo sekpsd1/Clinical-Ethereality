@@ -41,6 +41,46 @@ describe("feature-flagged Zoom recording provider", () => {
     vi.stubGlobal("fetch", mocks.fetch);
   });
 
+  it.each([undefined, null, "processing", "failed", "unknown", "COMPLETED"])(
+    "rejects incomplete or unknown MP4 status %s before content requests", async (status) => {
+      mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+      mocks.token.mockResolvedValue("provider-token");
+      mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
+        id: recording.providerRecordingId, file_type: "MP4", recording_type: recording.recordingType,
+        file_size: 1024, status, download_url: "https://zoom.us/private/file"
+      }] })));
+      await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({
+        code: "METADATA_UNAVAILABLE", diagnostic: { reason: "metadata_status" }
+      });
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each([undefined, null, 0, -1, 1023, 1024.5, "1024", Number.MAX_SAFE_INTEGER + 1])(
+    "rejects mismatched or unsafe canonical MP4 size %s before content requests", async (fileSize) => {
+      mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+      mocks.token.mockResolvedValue("provider-token");
+      mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
+        id: recording.providerRecordingId, file_type: "MP4", recording_type: recording.recordingType,
+        status: "completed", file_size: fileSize, download_url: "https://zoom.us/private/file"
+      }] })));
+      await expect(zoomRecordingContentProvider.open(recording, { range: "bytes=0-0" })).rejects.toMatchObject({
+        code: "METADATA_UNAVAILABLE", diagnostic: { reason: "metadata_size" }
+      });
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("retains native MP4 support for legacy unknown DB size after completed metadata", async () => {
+    mocks.env.ENABLE_ZOOM_CLOUD_RECORDING = true;
+    mocks.token.mockResolvedValue("provider-token");
+    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
+      id: recording.providerRecordingId, file_type: "MP4", recording_type: recording.recordingType,
+      status: "completed", download_url: "https://zoom.us/private/file"
+    }] }))).mockResolvedValueOnce(new Response("video", { headers: { "content-type": "video/mp4" } }));
+    await expect(zoomRecordingContentProvider.open({ ...recording, fileSizeBytes: null })).resolves.toMatchObject({ status: 200 });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
   it("fails closed without token or provider requests while the flag is off", async () => {
     await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({ code: "NOT_CONFIGURED" });
     expect(mocks.token).not.toHaveBeenCalled();
@@ -57,7 +97,7 @@ describe("feature-flagged Zoom recording provider", () => {
     const response = new Response(null, { status, headers: headers as HeadersInit });
     if (finalUrl) Object.defineProperty(response, "url", { value: finalUrl });
     mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{ id: recording.providerRecordingId,
-      file_type: "MP4", recording_type: recording.recordingType, download_url: "https://zoom.us/private/file" }] })))
+      file_type: "MP4", status: "completed", file_size: 1024, recording_type: recording.recordingType, download_url: "https://zoom.us/private/file" }] })))
       .mockResolvedValueOnce(response);
     await expect(zoomRecordingContentProvider.open(recording)).rejects.toMatchObject({ diagnostic: { reason, httpStatus: status } });
   });
@@ -94,7 +134,7 @@ describe("feature-flagged Zoom recording provider", () => {
     const headers = new Headers({ "content-range": "bytes 0-3/1024" });
     if (contentType !== null) headers.set("content-type", contentType);
     mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ recording_files: [{
-      id: recording.providerRecordingId, file_type: "MP4", recording_type: recording.recordingType,
+      id: recording.providerRecordingId, file_type: "MP4", status: "completed", file_size: 1024, recording_type: recording.recordingType,
       download_url: "https://zoom.us/private/file"
     }] }))).mockResolvedValueOnce(new Response(new ReadableStream({ cancel }), { status: 206, headers }));
     const error = await zoomRecordingContentProvider.open(recording, { range: "bytes=0-3" }).catch((value) => value);
@@ -124,7 +164,7 @@ describe("feature-flagged Zoom recording provider", () => {
         recording_files: [{
           id: "provider-file-1",
           download_url: "https://zoom.us/private/file",
-          file_type: "MP4",
+          file_type: "MP4", status: "completed", file_size: 1024,
           recording_type: "shared_screen_with_speaker_view"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
@@ -156,7 +196,7 @@ describe("feature-flagged Zoom recording provider", () => {
       recording_files: [{
         id: "provider-file-1",
         download_url: "https://zoom.us/private/file",
-        file_type: "MP4",
+        file_type: "MP4", status: "completed", file_size: 1024,
         recording_type: "shared_screen_with_speaker_view"
       }]
     }), { status: 200, headers: { "content-type": "application/json" } });
@@ -201,7 +241,7 @@ describe("feature-flagged Zoom recording provider", () => {
         recording_files: [{
           id: "provider-file-1",
           download_url: "https://zoom.us/private/file",
-          file_type: "MP4",
+          file_type: "MP4", status: "completed", file_size: 1024,
           recording_type: "shared_screen_with_speaker_view"
         }]
       }), { status: 200, headers: { "content-type": "application/json" } }))
@@ -260,7 +300,7 @@ describe("feature-flagged Zoom recording provider", () => {
       recording_files: [{
         id: "provider-chat-1",
         download_url: "https://zoom.us/private/chat",
-        file_type: "MP4",
+        file_type: "MP4", status: "completed", file_size: 1024,
         recording_type: "shared_screen_with_speaker_view"
       }]
     }), { status: 200, headers: { "content-type": "application/json" } }));

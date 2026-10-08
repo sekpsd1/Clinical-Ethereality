@@ -9,7 +9,7 @@ import {
   isEligibleConsultationRecordingMimeType
 } from "@/features/consultations/recordings/policy";
 
-export type RecordingProviderFailureReason = "metadata_response" | "metadata_missing" | "download_host" | "redirect_host" | "content_status" | "content_range" | "content_mime";
+export type RecordingProviderFailureReason = "metadata_response" | "metadata_missing" | "metadata_status" | "metadata_size" | "download_host" | "redirect_host" | "content_status" | "content_range" | "content_mime";
 export type RecordingProviderMimeClass = "missing" | "octet_stream" | "html" | "video_mp4" | "text_plain" | "other";
 
 function classifyProviderMime(contentType: string | null): RecordingProviderMimeClass {
@@ -56,6 +56,7 @@ type ZoomRecordingList = {
     file_type?: unknown;
     recording_type?: unknown;
     file_size?: unknown;
+    status?: unknown;
   }>;
 };
 
@@ -99,6 +100,16 @@ export const zoomRecordingContentProvider: RecordingContentProvider = {
     );
     if (!file || typeof file.download_url !== "string") {
       throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "metadata_missing" });
+    }
+
+    if (variant.kind === "video" && file.status !== "completed") {
+      throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "metadata_status" });
+    }
+    if (variant.kind === "video" && recording.fileSizeBytes !== null &&
+        (recording.fileSizeBytes <= BigInt(0) || typeof file.file_size !== "number" ||
+         !Number.isSafeInteger(file.file_size) || file.file_size <= 0 ||
+         BigInt(file.file_size) !== recording.fileSizeBytes)) {
+      throw new RecordingProviderError("METADATA_UNAVAILABLE", { reason: "metadata_size" });
     }
 
     const downloadUrl = new URL(file.download_url);

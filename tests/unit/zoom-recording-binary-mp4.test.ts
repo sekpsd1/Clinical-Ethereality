@@ -19,7 +19,7 @@ function stream(bytes: Uint8Array, cancel = vi.fn()) {
 }
 function metadata(size: unknown = 8192, pair = { file_type: "MP4", recording_type: recording.recordingType }) {
   return new Response(JSON.stringify({ recording_files: [{ id: "f", download_url: "https://zoom.us/private/file",
-    file_size: size, ...pair }] }));
+    file_size: size, status: "completed", ...pair }] }));
 }
 function content(body: ReadableStream<Uint8Array> | null, headers: Record<string, string> = {}, status = 206) {
   return new Response(body, { status, headers: { "content-type": "application/octet-stream",
@@ -74,11 +74,11 @@ describe("bounded octet-stream MP4 provider", () => {
     expect(result.status).toBe(200);
     expect((await new Response(result.body).arrayBuffer()).byteLength).toBe(8192);
   });
-  it.each([null, 8191, "8192", 0, Number.MAX_SAFE_INTEGER + 1])("rejects unbound source size %s before probing", async (size) => {
+  it.each([null, 8191, "8192", 0, Number.MAX_SAFE_INTEGER + 1])("rejects unbound source size %s before fetching content", async (size) => {
     const cancel = vi.fn();
     mocks.fetch.mockResolvedValueOnce(metadata(size)).mockResolvedValueOnce(content(new ReadableStream({ cancel })));
-    await expect(zoomRecordingContentProvider.open(recording, { range: "bytes=4096-4099" })).rejects.toMatchObject({ code: "CONTENT_UNAVAILABLE" });
-    expect(mocks.fetch).toHaveBeenCalledTimes(2); expect(cancel).toHaveBeenCalledOnce();
+    await expect(zoomRecordingContentProvider.open(recording, { range: "bytes=4096-4099" })).rejects.toMatchObject({ code: "METADATA_UNAVAILABLE", diagnostic: { reason: "metadata_size" } });
+    expect(mocks.fetch).toHaveBeenCalledOnce(); expect(cancel).not.toHaveBeenCalled();
   });
   it.each([
     [{ "content-range": "bytes 4095-4098/8192" }, 206],
