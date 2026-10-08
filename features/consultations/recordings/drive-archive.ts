@@ -14,7 +14,7 @@ const LEASE_MS = 5 * 60_000;
 type ArchiveStage = "drive_prepare" | "completion_verify" | "session_create" | "session_probe" | "zoom_download" | "chunk_read" | "drive_upload";
 type ArchiveDiagnosticCode = "NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "INVALID_METADATA" | "METADATA_UNAVAILABLE" | "CONTENT_UNAVAILABLE" | "RANGE_NOT_SATISFIABLE";
 const DIAGNOSTIC_CODES = new Set<string>(["NOT_CONFIGURED", "PROVIDER_UNAVAILABLE", "INVALID_METADATA", "METADATA_UNAVAILABLE", "CONTENT_UNAVAILABLE", "RANGE_NOT_SATISFIABLE"]);
-const DIAGNOSTIC_REASONS = new Set<string>(["metadata_response", "metadata_missing", "download_host", "redirect_host", "content_status", "content_range", "content_mime"]);
+const DIAGNOSTIC_REASONS = new Set<string>(["metadata_response", "metadata_missing", "metadata_status", "metadata_size", "download_host", "redirect_host", "content_status", "content_range", "content_mime"]);
 const DIAGNOSTIC_MIME_CLASSES = new Set<string>(["missing", "octet_stream", "html", "video_mp4", "text_plain", "other"]);
 type ArchiveStepResult = { status: "idle" | "progress" | "archived" | "retry" | "failed"; stage?: ArchiveStage; code?: ArchiveDiagnosticCode; reason?: RecordingProviderFailureReason; httpStatus?: number; mimeClass?: RecordingProviderMimeClass };
 

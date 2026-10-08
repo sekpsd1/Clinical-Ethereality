@@ -160,6 +160,16 @@ describe("durable private Drive archive", () => {
     mocks.getToken.mockRejectedValue(new RecordingProviderError("CONTENT_UNAVAILABLE", { reason: "content_status", httpStatus: 403 }));
     expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "drive_prepare", code: "CONTENT_UNAVAILABLE", reason: "content_status", httpStatus: 403 });
   });
+  it.each(["metadata_status", "metadata_size"] as const)(
+    "preserves canonical MP4 guard reason %s at the archive boundary", async (reason) => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 308 }));
+      mocks.zoomOpen.mockRejectedValue(new RecordingProviderError("METADATA_UNAVAILABLE", { reason }));
+      expect(await archiveOneRecordingStep()).toEqual({ status: "retry", stage: "zoom_download",
+        code: "METADATA_UNAVAILABLE", reason });
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(mocks.audit).not.toHaveBeenCalled();
+    }
+  );
   it("omits forged diagnostic text and out-of-range status", async () => {
     const error = new RecordingProviderError("CONTENT_UNAVAILABLE");
     Object.assign(error, { diagnostic: { reason: "Bearer SECRET", httpStatus: 999 } });
@@ -182,7 +192,7 @@ describe("durable private Drive archive", () => {
     }
   );
 
-  it.each(["content_mime", "content_status", "Bearer SECRET"])(
+  it.each(["content_mime", "content_status", "metadata_status", "metadata_size", "Bearer SECRET"])(
     "omits secret-bearing forged MIME class for reason %s", async (reason) => {
       const error = new RecordingProviderError("CONTENT_UNAVAILABLE");
       Object.assign(error, { diagnostic: { reason, httpStatus: 206, mimeClass: "Bearer SECRET private-url" } });
