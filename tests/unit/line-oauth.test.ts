@@ -13,9 +13,12 @@ afterEach(() => {
 
 describe("LINE OAuth URL helpers", () => {
   it("accepts only local absolute next paths", () => {
+    const chatDownloadPath = "/api/consultations/consultation-1/chat-history/download";
+
     expect(normalizeLineAuthNextPath("/admin/payments?status=pending&from=line")).toBe(
       "/admin/payments?status=pending&from=line"
     );
+    expect(normalizeLineAuthNextPath(chatDownloadPath)).toBe(chatDownloadPath);
     expect(normalizeLineAuthNextPath("//attacker.example")).toBe("/auth/role-home");
     expect(normalizeLineAuthNextPath("/\\attacker.example")).toBe("/auth/role-home");
     expect(normalizeLineAuthNextPath("https://attacker.example")).toBe("/auth/role-home");

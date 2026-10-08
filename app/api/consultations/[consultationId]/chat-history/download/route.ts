@@ -3,6 +3,7 @@ import {
   consultationChatExportFilename,
   getConsultationChatExport
 } from "@/features/consultations/chat/history-queries";
+import { getPublicAppOrigin, normalizeLineAuthNextPath } from "@/lib/auth/line-oauth";
 import { getCurrentSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
@@ -15,28 +16,39 @@ const privateHeaders = {
   "X-Content-Type-Options": "nosniff"
 } as const;
 
-function unavailable(status: 401 | 404) {
+function unavailable() {
   return NextResponse.json(
-    { error: status === 401 ? "Authentication required." : "Chat history not found." },
-    { status, headers: privateHeaders }
+    { error: "Chat history not found." },
+    { status: 404, headers: privateHeaders }
   );
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ consultationId: string }> }
 ) {
-  const session = await getCurrentSession();
-  if (!session) return unavailable(401);
-  if (session.role !== "customer" && session.role !== "doctor") return unavailable(404);
-
   const { consultationId } = await context.params;
+  const session = await getCurrentSession();
+  if (!session) {
+    const downloadPath = normalizeLineAuthNextPath(
+      `/api/consultations/${encodeURIComponent(consultationId)}/chat-history/download`
+    );
+    const signInUrl = new URL("/auth/line", getPublicAppOrigin(new URL(request.url).origin));
+    signInUrl.searchParams.set("next", downloadPath);
+
+    return NextResponse.redirect(signInUrl, {
+      status: 307,
+      headers: privateHeaders
+    });
+  }
+  if (session.role !== "customer" && session.role !== "doctor") return unavailable();
+
   const result = await getConsultationChatExport(
     session,
     consultationId,
     session.role
   );
-  if (!result) return unavailable(404);
+  if (!result) return unavailable();
 
   return new Response(result.content, {
     status: 200,

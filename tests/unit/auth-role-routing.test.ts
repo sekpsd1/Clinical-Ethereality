@@ -22,10 +22,14 @@ describe("role-aware authentication routing", () => {
   });
 
   it("keeps explicit internal destinations", () => {
+    const chatDownloadPath = "/api/consultations/consultation-1/chat-history/download";
+
     expect(resolvePostLoginPath("doctor", "/doctor/patients?tab=history&from=login")).toBe(
       "/doctor/patients?tab=history&from=login"
     );
     expect(resolvePostLoginPath("customer", "/profile")).toBe("/profile");
+    expect(resolvePostLoginPath("doctor", chatDownloadPath)).toBe(chatDownloadPath);
+    expect(resolvePostLoginPath("customer", chatDownloadPath)).toBe(chatDownloadPath);
   });
 
   it.each([
