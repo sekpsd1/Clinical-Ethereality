@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { Bell, ClipboardList, UsersRound } from "lucide-react";
+import { Bell, CircleUserRound, ClipboardList, UsersRound } from "lucide-react";
 import { cn } from "@/lib/design-system/variants";
 
 const doctorNavItems = [
@@ -15,11 +16,24 @@ const doctorNavItems = [
     label: "ผู้ป่วย",
     href: "/doctor/patients",
     icon: UsersRound
+  },
+  {
+    label: "โปรไฟล์",
+    href: "/doctor/profile",
+    icon: CircleUserRound,
+    doctorOnly: true
   }
 ] as const;
 
-export function DoctorShell({ children }: { children: React.ReactNode }) {
+export function DoctorShell({
+  children,
+  viewerRole
+}: {
+  children: React.ReactNode;
+  viewerRole: "doctor" | "admin";
+}) {
   const pathname = usePathname();
+  const visibleNavItems = doctorNavItems.filter((item) => !("doctorOnly" in item) || viewerRole === "doctor");
 
   return (
     <div className="min-h-dvh bg-app text-text">
@@ -47,15 +61,20 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         aria-label="เมนูแพทย์"
         className="fixed inset-x-0 bottom-0 z-footer border-t border-white/30 bg-white/85 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-bottom-nav backdrop-blur-topbar"
       >
-        <div className="mx-auto grid w-full max-w-mobile grid-cols-2 gap-1">
-          {doctorNavItems.map((item) => {
+        <div
+          className={cn(
+            "mx-auto grid w-full max-w-mobile gap-1",
+            viewerRole === "doctor" ? "grid-cols-3" : "grid-cols-2"
+          )}
+        >
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname.startsWith(item.href);
 
             return (
               <Link
                 key={item.label}
-                href={item.href}
+                href={item.href as Route}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex min-h-[50px] flex-col items-center justify-center rounded-[14px] px-1 text-[10px] font-bold text-muted transition-colors",

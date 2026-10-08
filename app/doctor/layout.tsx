@@ -6,7 +6,7 @@ export default async function DoctorLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await requireDoctorSession();
+  const session = await requireDoctorSession();
 
-  return <DoctorShell>{children}</DoctorShell>;
+  return <DoctorShell viewerRole={session.role === "admin" ? "admin" : "doctor"}>{children}</DoctorShell>;
 }
