@@ -344,6 +344,7 @@ This file retains historical phases and active work. Planning checklists below d
 
 - [x] Build doctor consultation list
 - [x] Add a Doctor-only profile entry with read-only current-account context and the existing current-session logout flow while preserving consultation and patient navigation
+- [x] Hide only the Doctor live-room return phone control while preserving the shared chat composer and the existing Customer/Admin controls
 - [x] Add doctor consultation workflow polish for readiness, payment status, assessment, chat, and prescription actions
 - [x] Build patient log access for doctors
 - [x] Add Thai doctor patient-log language and privacy polish
