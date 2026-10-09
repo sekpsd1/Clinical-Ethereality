@@ -19,6 +19,7 @@ function json(state: string, status = 200) {
 
 export async function GET(request: NextRequest) {
   const session = await getCurrentSession();
+  const ticket = request.cookies.get(getDoctorInviteCookieName())?.value;
 
   if (session && !session.userId.startsWith("dev:")) {
     if (await hasPendingDoctorInvitation(session.userId)) return json("pending");
@@ -45,13 +46,13 @@ export async function GET(request: NextRequest) {
       persisted?.role === "customer" &&
       persisted.status === "active" &&
       persisted.doctorProfile?.status === "rejected" &&
-      persisted.claimedDoctorInvitations[0]?.revokedAt
+      persisted.claimedDoctorInvitations[0]?.revokedAt &&
+      !ticket
     ) {
       return json("revoked");
     }
   }
 
-  const ticket = request.cookies.get(getDoctorInviteCookieName())?.value;
   if (!ticket) return json("unavailable", 400);
 
   try {
