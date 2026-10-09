@@ -35,6 +35,15 @@ function snapshot() {
 }
 
 describe("four Websthai live purge guard", () => {
+  it("allows only payment-bound manual evidence from the actual reviewer", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = snapshot() as any;
+    value.payments.push({ id: "payment-1", consultationId: "live-1", orderId: null, status: "verified", reviewedById: "admin-1", manualEvidenceId: "evidence-1" });
+    value.otherScopedAttachments.push({ id: "evidence-1", ownerId: "admin-1", purpose: "other", entityType: "consultation_manual_review_evidence", entityId: "payment-1", storagePaymentId: "payment-1", storageProvider: "plesk_private_local", visibility: "admin_only", paymentKind: "consultation", submissionSource: "admin_external_bank_confirmation", storageUrl: "/api/admin/payments/evidence/evidence-1" });
+    expect(core.assertSnapshot(value, runner.SNAPSHOT_POLICY)).toBeTruthy();
+    value.otherScopedAttachments[0].ownerId = "another-admin";
+    expect(() => core.assertSnapshot(value, runner.SNAPSHOT_POLICY)).toThrow("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
+  });
   it("requires exactly four live consultations across the three approved Bangkok dates", () => {
     expect(core.assertSnapshot(snapshot(), runner.SNAPSHOT_POLICY)).toBeTruthy();
     const wrongDate = snapshot();

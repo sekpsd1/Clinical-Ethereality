@@ -237,7 +237,7 @@ async function buildSnapshot(db, lineUserId, snapshotPolicy) {
     db.telemedicineConsent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } }),
     db.payment.findMany({
       where: { consultationId: { in: consultationIds } },
-      select: { id: true, consultationId: true, orderId: true, status: true, verificationPayload: true, updatedAt: true }
+      select: { id: true, consultationId: true, orderId: true, status: true, reviewedById: true, verificationPayload: true, updatedAt: true }
     }),
     db.prescription.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } })
   ]);
@@ -286,7 +286,8 @@ async function buildSnapshot(db, lineUserId, snapshotPolicy) {
   ]);
   const minimizedPayments = payments.map(({ verificationPayload, ...payment }) => ({
     ...payment,
-    ...minimizePaymentVerificationPayload(verificationPayload)
+    ...minimizePaymentVerificationPayload(verificationPayload),
+    manualEvidenceId: jsonObject(jsonObject(verificationPayload)?.manualReview)?.supportingEvidenceAttachmentId || null
   }));
   const paymentByConsultation = new Map(minimizedPayments.map((payment) => [payment.consultationId, payment.id]));
   const consultationByPrescription = new Map(prescriptions.map((prescription) => [prescription.id, prescription.consultationId]));
@@ -517,7 +518,7 @@ function createDatabaseAdapter(prisma, lineUserId, options = {}) {
 
         await deleteExact(tx.auditLog.deleteMany({ where: { id: { in: auditIds } } }), fresh.directAuditRows.length);
         await deleteExact(
-          tx.fileAttachment.deleteMany({ where: { id: { in: attachmentIds }, ownerId: fresh.customer.id } }),
+          tx.fileAttachment.deleteMany({ where: { id: { in: attachmentIds }, ...(options.preserveExternalFiles ? {} : { ownerId: fresh.customer.id }) } }),
           fresh.privateAttachments.length + fresh.otherScopedAttachments.length
         );
         await deleteExact(

@@ -174,12 +174,20 @@ function assertSnapshot(snapshot, policy = DEFAULT_SNAPSHOT_POLICY) {
     fail("AUDIT_SCOPE_VIOLATION");
   }
   const allAttachments = [...snapshot.privateAttachments, ...snapshot.otherScopedAttachments];
+  const isManualEvidence = (row) => {
+    const payment = snapshot.payments.find((item) => item.id === row.entityId);
+    return policy.allowManualReviewEvidence === true && row.entityType === "consultation_manual_review_evidence" &&
+      row.purpose === "other" && payment?.reviewedById === row.ownerId && payment?.manualEvidenceId === row.id &&
+      row.storagePaymentId === payment.id && row.storageProvider === "plesk_private_local" &&
+      row.visibility === "admin_only" && row.paymentKind === "consultation" &&
+      row.submissionSource === "admin_external_bank_confirmation" && row.storageUrl === `/api/admin/payments/evidence/${row.id}`;
+  };
   if (
     allAttachments.some(
       (row) =>
-        row.ownerId !== snapshot.customer.id ||
+        !isManualEvidence(row) && (row.ownerId !== snapshot.customer.id ||
         row.purpose !== "payment_slip" ||
-        !paymentIds.has(row.storagePaymentId)
+        !paymentIds.has(row.storagePaymentId))
     )
   ) {
     fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
@@ -193,7 +201,7 @@ function assertSnapshot(snapshot, policy = DEFAULT_SNAPSHOT_POLICY) {
   if (
     snapshot.otherScopedAttachments.some(
       (row) =>
-        !(
+        !isManualEvidence(row) && !(
           (row.entityType === "payment" && paymentIds.has(row.entityId)) ||
           (row.entityType === "consultation" && liveIds.has(row.entityId)) ||
           (row.entityType === "prescription" && snapshot.prescriptions.some((item) => item.id === row.entityId))

@@ -10,6 +10,8 @@ const {
   aggregateSnapshot,
   executePurge,
   fingerprintSnapshot,
+  expectedStorageKey,
+  resolvePrivatePath,
   localDateBangkok,
   PurgeGuardError
 } = require("./lib/stuck-uat-consultation-purge.cjs");
@@ -28,7 +30,8 @@ const SNAPSHOT_POLICY = Object.freeze({
   liveCount: 4,
   scheduledCount: null,
   liveDayCount: null,
-  allowedLiveDates: TARGET_DATES
+  allowedLiveDates: TARGET_DATES,
+  allowManualReviewEvidence: true
 });
 const RUNTIME_ENV_KEYS = Object.freeze([
   "DATABASE_URL",
@@ -300,7 +303,20 @@ function createPreservingFileAdapter(prisma) {
   return {
     async validate(snapshot, context) {
       if (snapshot.privateAttachments.length + snapshot.otherScopedAttachments.length === 0) return [];
-      return base.validate(snapshot, context);
+      const manual = snapshot.otherScopedAttachments.filter((row) => row.entityType === "consultation_manual_review_evidence");
+      const validated = await base.validate({ ...snapshot, otherScopedAttachments: snapshot.otherScopedAttachments.filter((row) => !manual.includes(row)) }, context);
+      for (const row of manual) {
+        const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[row.mimeType];
+        if (!extension || row.storageKey !== expectedStorageKey(row.ownerId, `admin-confirmation:${row.entityId}`, row.id, extension)) fail("MANUAL_EVIDENCE_PATH_INVALID");
+        if (await prisma.fileAttachment.count({ where: { storageKey: row.storageKey } }) !== 1) fail("PRIVATE_FILE_NOT_EXCLUSIVE");
+        const filePath = resolvePrivatePath(process.env.PAYMENT_UPLOAD_DIR, row.storageKey);
+        const fileRealPath = await realpath(filePath);
+        const root = await realpath(process.env.PAYMENT_UPLOAD_DIR);
+        const stats = await lstat(filePath);
+        if (!stats.isFile() || stats.isSymbolicLink() || !fileRealPath.startsWith(`${root}${path.sep}`) || stats.size !== row.byteSize) fail("MANUAL_EVIDENCE_FILE_INVALID");
+        validated.push({ filePath, fileRealPath, alreadyAbsent: false });
+      }
+      return validated;
     },
     async remove() {},
     async verifyPreserved(files) {
