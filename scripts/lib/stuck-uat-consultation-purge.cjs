@@ -196,7 +196,9 @@ function assertSnapshot(snapshot, policy = DEFAULT_SNAPSHOT_POLICY) {
     fail("PRIVATE_ATTACHMENT_SCOPE_VIOLATION");
   }
   for (const attachment of snapshot.privateAttachments) {
-    assertPrivateAttachmentBinding(snapshot, attachment);
+    if (policy.preserveAttachmentFiles === true) {
+      if (attachment.storageProvider !== "plesk_private_local" || attachment.visibility !== "private" || attachment.paymentKind !== "consultation" || attachment.storageUrl !== `/api/payments/slips/${attachment.id}`) fail("PRIVATE_FILE_METADATA_INVALID");
+    } else assertPrivateAttachmentBinding(snapshot, attachment);
   }
   if (
     snapshot.otherScopedAttachments.some(

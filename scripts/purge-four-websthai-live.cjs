@@ -18,7 +18,6 @@ const {
 const {
   buildSnapshot,
   createDatabaseAdapter,
-  createFileAdapter,
   parseArguments,
   parseExpectedCounts
 } = require("./purge-stuck-uat-consultations.cjs");
@@ -31,7 +30,8 @@ const SNAPSHOT_POLICY = Object.freeze({
   scheduledCount: null,
   liveDayCount: null,
   allowedLiveDates: TARGET_DATES,
-  allowManualReviewEvidence: true
+  allowManualReviewEvidence: true,
+  preserveAttachmentFiles: true
 });
 const RUNTIME_ENV_KEYS = Object.freeze([
   "DATABASE_URL",
@@ -299,22 +299,23 @@ function createPreservingExternalAdapter(prisma) {
 }
 
 function createPreservingFileAdapter(prisma) {
-  const base = createFileAdapter(prisma);
   return {
-    async validate(snapshot, context) {
+    async validate(snapshot) {
       if (snapshot.privateAttachments.length + snapshot.otherScopedAttachments.length === 0) return [];
-      const manual = snapshot.otherScopedAttachments.filter((row) => row.entityType === "consultation_manual_review_evidence");
-      const validated = await base.validate({ ...snapshot, otherScopedAttachments: snapshot.otherScopedAttachments.filter((row) => !manual.includes(row)) }, context);
-      for (const row of manual) {
+      const validated = [];
+      for (const row of [...snapshot.privateAttachments, ...snapshot.otherScopedAttachments]) {
         const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[row.mimeType];
-        if (!extension || row.storageKey !== expectedStorageKey(row.ownerId, `admin-confirmation:${row.entityId}`, row.id, extension)) fail("MANUAL_EVIDENCE_PATH_INVALID");
+        const ownerHash = createHash("sha256").update(row.ownerId).digest("hex").slice(0, 24);
+        const parts = row.storageKey?.split("/");
+        if (!extension || parts?.length !== 4 || parts[0] !== "payments" || parts[1] !== ownerHash || !/^[a-f0-9]{24}$/.test(parts[2]) || parts[3] !== `${row.id}.${extension}`) fail("PRIVATE_FILE_PATH_INVALID");
+        if (row.entityType === "consultation_manual_review_evidence" && row.storageKey !== expectedStorageKey(row.ownerId, `admin-confirmation:${row.entityId}`, row.id, extension)) fail("MANUAL_EVIDENCE_PATH_INVALID");
         if (await prisma.fileAttachment.count({ where: { storageKey: row.storageKey } }) !== 1) fail("PRIVATE_FILE_NOT_EXCLUSIVE");
         const filePath = resolvePrivatePath(process.env.PAYMENT_UPLOAD_DIR, row.storageKey);
         const fileRealPath = await realpath(filePath);
         const root = await realpath(process.env.PAYMENT_UPLOAD_DIR);
         const stats = await lstat(filePath);
         if (!stats.isFile() || stats.isSymbolicLink() || !fileRealPath.startsWith(`${root}${path.sep}`) || stats.size !== row.byteSize) fail("MANUAL_EVIDENCE_FILE_INVALID");
-        validated.push({ filePath, fileRealPath, alreadyAbsent: false });
+        validated.push({ filePath, fileRealPath, alreadyAbsent: false, digest: createHash("sha256").update(await readFile(filePath)).digest("hex") });
       }
       return validated;
     },
@@ -325,6 +326,7 @@ function createPreservingFileAdapter(prisma) {
         const stats = await lstat(file.filePath);
         const current = await realpath(file.filePath);
         if (!stats.isFile() || stats.isSymbolicLink() || current !== file.fileRealPath) fail("PRIVATE_FILE_CHANGED");
+        if (createHash("sha256").update(await readFile(file.filePath)).digest("hex") !== file.digest) fail("PRIVATE_FILE_CHANGED");
       }
     }
   };
