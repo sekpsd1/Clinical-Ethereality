@@ -125,11 +125,11 @@ function archiveStatusCounts(snapshot) {
   );
 }
 
-async function findExactCustomer(prisma) {
+async function findExactCustomer(prisma, label = CUSTOMER_LABEL) {
   const matches = await prisma.user.findMany({
     where: {
       role: "customer",
-      OR: [{ displayName: CUSTOMER_LABEL }, { fullName: CUSTOMER_LABEL }]
+      OR: [{ displayName: label }, { fullName: label }]
     },
     select: { id: true, lineUserId: true, role: true, status: true, updatedAt: true },
     take: 2
@@ -329,12 +329,13 @@ async function main() {
 
   const prisma = new PrismaClient();
   try {
-    const customer = await findExactCustomer(prisma);
+    const customer = await findExactCustomer(prisma, args["customer-label"] || CUSTOMER_LABEL);
     const snapshot = await buildSnapshot(prisma, customer.lineUserId, SNAPSHOT_POLICY);
     if (snapshot.liveConsultations.some((row) => !row.scheduledAt || !TARGET_DATES.includes(localDateBangkok(row.scheduledAt)))) {
       fail("LIVE_DATE_SET_MISMATCH");
     }
     const targetIds = snapshot.liveConsultations.map((row) => row.id);
+    if (args["customer-label"] && args["target-set"] !== hash([...targetIds].sort())) fail("APPROVED_TARGET_SET_MISMATCH");
     const preservation = await preservationSnapshot(prisma, targetIds, customer.id);
     const preservationHash = hash(preservation);
     const external = createPreservingExternalAdapter(prisma);
