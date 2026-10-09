@@ -33,6 +33,7 @@ const SNAPSHOT_POLICY = Object.freeze({
 const RUNTIME_ENV_KEYS = Object.freeze([
   "DATABASE_URL",
   "NODE_ENV",
+  "NEXT_PUBLIC_APP_URL",
   "ZOOM_ACCOUNT_ID",
   "ZOOM_CLIENT_ID",
   "ZOOM_CLIENT_SECRET",
@@ -74,18 +75,19 @@ function parseProcessEnvironment(buffer) {
 
 async function loadPleskRuntimeEnvironment() {
   if (process.platform !== "linux") fail("PLESK_RUNTIME_ENV_UNAVAILABLE");
-  const root = path.resolve(process.cwd());
   const candidates = [];
   for (const entry of await readdir("/proc")) {
     if (!/^\d+$/.test(entry) || Number(entry) === process.pid) continue;
     const base = `/proc/${entry}`;
     try {
-      const cwd = path.resolve(await readlink(`${base}/cwd`));
-      if (cwd !== root && cwd !== path.join(root, ".next", "standalone")) continue;
-      const command = (await readFile(`${base}/cmdline`, "utf8")).split("\0").filter(Boolean);
-      if (!command.some((part) => /(^|[\\/])server\.js$/.test(part))) continue;
+      const executable = await readlink(`${base}/exe`);
+      if (path.basename(executable) !== "node") continue;
       const environment = parseProcessEnvironment(await readFile(`${base}/environ`));
-      if (environment.NODE_ENV !== "production" || !environment.DATABASE_URL) continue;
+      if (
+        environment.NODE_ENV !== "production" ||
+        environment.NEXT_PUBLIC_APP_URL !== "https://app.bccgroup-thailand.com" ||
+        !environment.DATABASE_URL
+      ) continue;
       candidates.push(environment);
     } catch {
       // Processes can exit while /proc is being inspected; ignore incomplete candidates.
