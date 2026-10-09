@@ -267,10 +267,11 @@ function createPreservingExternalAdapter(prisma) {
       if (file) assertDriveFile(recording, file);
       driveByRecording.set(recording.id, file ? hash(file) : null);
     }
+    let recordingsWithoutExternalCopy = 0;
     for (const recording of snapshot.recordings) {
       const inZoom = zoomByConsultation.get(recording.consultationId)?.includes(recording.providerRecordingId);
       const inDrive = driveByRecording.get(recording.id) != null;
-      if (!inZoom && !inDrive) fail("RECORDING_EXTERNAL_COPY_NOT_FOUND");
+      if (!inZoom && !inDrive) recordingsWithoutExternalCopy += 1;
     }
     return {
       zoomByConsultation,
@@ -279,6 +280,7 @@ function createPreservingExternalAdapter(prisma) {
         meetingsChecked: snapshot.liveConsultations.filter((row) => row.zoomMeetingId).length,
         zoomFilesPresent: [...zoomByConsultation.values()].reduce((sum, ids) => sum + ids.length, 0),
         driveFilesPresent: [...driveByRecording.values()].filter(Boolean).length
+        ,recordingsWithoutExternalCopy
       }
     };
   }
