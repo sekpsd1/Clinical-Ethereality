@@ -67,6 +67,16 @@ describe("four Websthai live purge guard", () => {
     expect(runner.databaseBoundaryHash("mysql://user:secret@db.example.test:3306/clinical")).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("imports only the allowlisted runtime keys from a process environment", () => {
+    const parsed = runner.parseProcessEnvironment(Buffer.from(
+      "DATABASE_URL=mysql://user:secret@127.0.0.1/db\0NODE_ENV=production\0JWT_SECRET=must-not-import\0"
+    ));
+    expect(parsed).toEqual({
+      DATABASE_URL: "mysql://user:secret@127.0.0.1/db",
+      NODE_ENV: "production"
+    });
+  });
+
   it("verifies preservation adapters after the database transaction without deleting external files", async () => {
     const value = snapshot();
     const counts = core.aggregateSnapshot(value);

@@ -3,7 +3,8 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { lstat, realpath } = require("node:fs/promises");
+const { lstat, readdir, readFile, readlink, realpath } = require("node:fs/promises");
+const path = require("node:path");
 const { PrismaClient } = require("@prisma/client");
 const {
   aggregateSnapshot,
@@ -29,6 +30,18 @@ const SNAPSHOT_POLICY = Object.freeze({
   liveDayCount: null,
   allowedLiveDates: TARGET_DATES
 });
+const RUNTIME_ENV_KEYS = Object.freeze([
+  "DATABASE_URL",
+  "NODE_ENV",
+  "ZOOM_ACCOUNT_ID",
+  "ZOOM_CLIENT_ID",
+  "ZOOM_CLIENT_SECRET",
+  "GOOGLE_DRIVE_CLIENT_ID",
+  "GOOGLE_DRIVE_CLIENT_SECRET",
+  "GOOGLE_DRIVE_REFRESH_TOKEN",
+  "GOOGLE_DRIVE_ARCHIVE_FOLDER_ID",
+  "PAYMENT_UPLOAD_DIR"
+]);
 
 function fail(code) {
   throw new PurgeGuardError(code);
@@ -46,6 +59,44 @@ function canonicalize(value) {
 
 function hash(value) {
   return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+}
+
+function parseProcessEnvironment(buffer) {
+  const result = {};
+  for (const entry of buffer.toString("utf8").split("\0")) {
+    const separator = entry.indexOf("=");
+    if (separator <= 0) continue;
+    const key = entry.slice(0, separator);
+    if (RUNTIME_ENV_KEYS.includes(key)) result[key] = entry.slice(separator + 1);
+  }
+  return result;
+}
+
+async function loadPleskRuntimeEnvironment() {
+  if (process.platform !== "linux") fail("PLESK_RUNTIME_ENV_UNAVAILABLE");
+  const root = path.resolve(process.cwd());
+  const candidates = [];
+  for (const entry of await readdir("/proc")) {
+    if (!/^\d+$/.test(entry) || Number(entry) === process.pid) continue;
+    const base = `/proc/${entry}`;
+    try {
+      const cwd = path.resolve(await readlink(`${base}/cwd`));
+      if (cwd !== root && cwd !== path.join(root, ".next", "standalone")) continue;
+      const command = (await readFile(`${base}/cmdline`, "utf8")).split("\0").filter(Boolean);
+      if (!command.some((part) => /(^|[\\/])server\.js$/.test(part))) continue;
+      const environment = parseProcessEnvironment(await readFile(`${base}/environ`));
+      if (environment.NODE_ENV !== "production" || !environment.DATABASE_URL) continue;
+      candidates.push(environment);
+    } catch {
+      // Processes can exit while /proc is being inspected; ignore incomplete candidates.
+    }
+  }
+  if (candidates.length === 0) fail("PLESK_RUNTIME_ENV_UNAVAILABLE");
+  const baseline = hash(candidates[0]);
+  if (candidates.some((candidate) => hash(candidate) !== baseline)) fail("PLESK_RUNTIME_ENV_AMBIGUOUS");
+  for (const key of RUNTIME_ENV_KEYS) {
+    if (!process.env[key] && candidates[0][key]) process.env[key] = candidates[0][key];
+  }
 }
 
 function databaseBoundaryHash(databaseUrl) {
@@ -262,7 +313,10 @@ function createPreservingFileAdapter(prisma) {
 }
 
 async function main() {
-  const args = parseArguments(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const runtimeEnvRequested = argv.includes("--plesk-runtime-env");
+  if (runtimeEnvRequested) await loadPleskRuntimeEnvironment();
+  const args = parseArguments(argv.filter((argument) => argument !== "--plesk-runtime-env"));
   if (!process.env.DATABASE_URL) fail("DATABASE_URL_REQUIRED");
   const boundary = databaseBoundaryHash(process.env.DATABASE_URL);
   if (args.execute) {
@@ -356,5 +410,6 @@ module.exports = {
   archiveStatusCounts,
   databaseBoundaryHash,
   paymentStatusCounts,
+  parseProcessEnvironment,
   preservationSnapshot
 };
