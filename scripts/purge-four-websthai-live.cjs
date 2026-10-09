@@ -279,8 +279,8 @@ function createPreservingExternalAdapter(prisma) {
       summary: {
         meetingsChecked: snapshot.liveConsultations.filter((row) => row.zoomMeetingId).length,
         zoomFilesPresent: [...zoomByConsultation.values()].reduce((sum, ids) => sum + ids.length, 0),
-        driveFilesPresent: [...driveByRecording.values()].filter(Boolean).length
-        ,recordingsWithoutExternalCopy
+        driveFilesPresent: [...driveByRecording.values()].filter(Boolean).length,
+        recordingsWithoutExternalCopy
       }
     };
   }
@@ -366,6 +366,8 @@ async function main() {
     }
     const targetIds = snapshot.liveConsultations.map((row) => row.id);
     if (args["customer-label"] && args["target-set"] !== hash([...targetIds].sort())) fail("APPROVED_TARGET_SET_MISMATCH");
+    const doctorMatchedCount = await prisma.consultation.count({ where: { id: { in: targetIds }, doctor: { user: { OR: [{ displayName: CUSTOMER_LABEL }, { fullName: CUSTOMER_LABEL }] } } } });
+    if (doctorMatchedCount !== 4) fail("WEBSTHAI_DOCTOR_TARGET_MISMATCH");
     const preservation = await preservationSnapshot(prisma, targetIds, customer.id);
     const preservationHash = hash(preservation);
     const external = createPreservingExternalAdapter(prisma);
@@ -379,6 +381,7 @@ async function main() {
         mode: "dry-run",
         eligible: true,
         customerMatched: true,
+        doctorMatched: true,
         targetDates: TARGET_DATES,
         fingerprint: fingerprintSnapshot(snapshot),
         preservationHash,
