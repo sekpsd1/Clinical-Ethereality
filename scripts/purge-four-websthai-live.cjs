@@ -330,6 +330,16 @@ async function main() {
   const prisma = new PrismaClient();
   try {
     const customer = await findExactCustomer(prisma, args["customer-label"] || CUSTOMER_LABEL);
+    if (args["inspect-attachments"] === "true") {
+      const consultations = await prisma.consultation.findMany({ where: { patientId: customer.id, status: "live" }, select: { id: true } });
+      const consultationIds = consultations.map((row) => row.id);
+      if (args["target-set"] !== hash([...consultationIds].sort())) fail("APPROVED_TARGET_SET_MISMATCH");
+      const payments = await prisma.payment.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true } });
+      const prescriptions = await prisma.prescription.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true } });
+      const rows = await prisma.fileAttachment.findMany({ where: { entityId: { in: [...consultationIds, ...payments.map((row) => row.id), ...prescriptions.map((row) => row.id)] } }, select: { ownerId: true, purpose: true, entityType: true, entityId: true } });
+      process.stdout.write(`${JSON.stringify({ mode: "attachment-inspection", count: rows.length, bindings: rows.map((row) => ({ customerOwned: row.ownerId === customer.id, purpose: row.purpose, entityType: row.entityType, directPayment: payments.some((payment) => payment.id === row.entityId), directConsultation: consultationIds.includes(row.entityId) })) })}\n`);
+      return;
+    }
     const snapshot = await buildSnapshot(prisma, customer.lineUserId, SNAPSHOT_POLICY);
     if (snapshot.liveConsultations.some((row) => !row.scheduledAt || !TARGET_DATES.includes(localDateBangkok(row.scheduledAt)))) {
       fail("LIVE_DATE_SET_MISMATCH");
