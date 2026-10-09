@@ -180,7 +180,7 @@ function directAuditWhere(groups) {
   return entityIds.length ? { entityId: { in: entityIds } } : { id: { in: [] } };
 }
 
-async function buildSnapshot(db, lineUserId) {
+async function buildSnapshot(db, lineUserId, snapshotPolicy) {
   const customer = await db.user.findUnique({
     where: { lineUserId },
     select: { id: true, role: true, updatedAt: true }
@@ -228,12 +228,16 @@ async function buildSnapshot(db, lineUserId) {
     db.consultationAttendanceCredential.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, createdAt: true } }),
     db.consultationAttendanceEvent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, createdAt: true } }),
     db.consultationMessage.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } }),
-    db.consultationRecording.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, provider: true, providerRecordingId: true, updatedAt: true } }),
+    db.consultationRecording.findMany({ where: { consultationId: { in: consultationIds } }, select: {
+      id: true, consultationId: true, provider: true, providerRecordingId: true, recordingType: true,
+      fileType: true, fileSizeBytes: true, archiveStatus: true, archiveDriveFileId: true,
+      archiveSession: true, archiveLeaseUntil: true, archivedAt: true, updatedAt: true
+    } }),
     db.consultationRecordingWebhookEvent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, createdAt: true } }),
     db.telemedicineConsent.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } }),
     db.payment.findMany({
       where: { consultationId: { in: consultationIds } },
-      select: { id: true, consultationId: true, verificationPayload: true, updatedAt: true }
+      select: { id: true, consultationId: true, orderId: true, status: true, verificationPayload: true, updatedAt: true }
     }),
     db.prescription.findMany({ where: { consultationId: { in: consultationIds } }, select: { id: true, consultationId: true, updatedAt: true } })
   ]);
@@ -370,7 +374,7 @@ async function buildSnapshot(db, lineUserId) {
     zoomHandoffSessions,
     directAuditRows,
     linkedOrderItems
-  });
+  }, snapshotPolicy);
 }
 
 async function getZoomToken() {
@@ -485,15 +489,20 @@ function createFileAdapter(prisma) {
   };
 }
 
-function createDatabaseAdapter(prisma, lineUserId) {
+function createDatabaseAdapter(prisma, lineUserId, options = {}) {
   return {
     async remove(snapshot, fingerprint, expectedCounts) {
       await prisma.$transaction(async (tx) => {
-        const fresh = await buildSnapshot(tx, lineUserId);
+        if (options.preserveExternalFiles) {
+          const targetIds = ids(snapshot.liveConsultations);
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM Consultation WHERE id IN (${Prisma.join(targetIds)}) FOR UPDATE`);
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM ConsultationRecording WHERE consultationId IN (${Prisma.join(targetIds)}) FOR UPDATE`);
+        }
+        const fresh = await buildSnapshot(tx, lineUserId, options.snapshotPolicy);
         if (fingerprintSnapshot(fresh) !== fingerprint) fail("TRANSACTION_FINGERPRINT_DRIFT");
         assertExpectedCounts(aggregateSnapshot(fresh), expectedCounts);
         const consultationIds = ids(fresh.liveConsultations);
-        await assertNoDriveArchivesForLegacyPurge(tx, consultationIds, true);
+        if (!options.preserveExternalFiles) await assertNoDriveArchivesForLegacyPurge(tx, consultationIds, true);
         const paymentIds = ids(fresh.payments);
         const prescriptionIds = ids(fresh.prescriptions);
         const attachmentIds = ids([...fresh.privateAttachments, ...fresh.otherScopedAttachments]);
@@ -553,7 +562,7 @@ function createDatabaseAdapter(prisma, lineUserId) {
         );
         await tx.consultation.updateMany({ where: { id: { in: consultationIds }, patientId: fresh.customer.id, status: "live" }, data: { slotLockId: null } });
         const deleted = await tx.consultation.deleteMany({ where: { id: { in: consultationIds }, patientId: fresh.customer.id, status: "live" } });
-        if (deleted.count !== 3) fail("TRANSACTION_DELETE_COUNT_DRIFT");
+        if (deleted.count !== (options.snapshotPolicy?.liveCount ?? 3)) fail("TRANSACTION_DELETE_COUNT_DRIFT");
         await deleteExact(tx.consultationSlotLock.deleteMany({ where: { id: { in: slotLockIds } } }), fresh.slotLocks.length);
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 60_000 });
     },

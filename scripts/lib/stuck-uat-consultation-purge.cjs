@@ -102,11 +102,31 @@ function fingerprintSnapshot(snapshot) {
   return createHash("sha256").update(JSON.stringify(canonicalize(sensitiveEnvelope))).digest("hex");
 }
 
-function assertSnapshot(snapshot) {
+const DEFAULT_SNAPSHOT_POLICY = Object.freeze({
+  liveCount: 3,
+  scheduledCount: 2,
+  liveDayCount: 2,
+  allowedLiveDates: null
+});
+
+function localDateBangkok(value) {
+  return new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function assertSnapshot(snapshot, policy = DEFAULT_SNAPSHOT_POLICY) {
   if (!snapshot.customer || snapshot.customer.role !== "customer") fail("TARGET_NOT_EXACT_CUSTOMER");
-  if (snapshot.liveConsultations.length !== 3) fail("LIVE_COUNT_MISMATCH");
-  if (snapshot.scheduledConsultations.length !== 2) fail("SCHEDULED_COUNT_MISMATCH");
-  if (aggregateSnapshot(snapshot).liveConsultationDays !== 2) fail("LIVE_DAY_COUNT_MISMATCH");
+  if (snapshot.liveConsultations.length !== policy.liveCount) fail("LIVE_COUNT_MISMATCH");
+  if (Number.isSafeInteger(policy.scheduledCount) && snapshot.scheduledConsultations.length !== policy.scheduledCount) {
+    fail("SCHEDULED_COUNT_MISMATCH");
+  }
+  if (Number.isSafeInteger(policy.liveDayCount) && aggregateSnapshot(snapshot).liveConsultationDays !== policy.liveDayCount) {
+    fail("LIVE_DAY_COUNT_MISMATCH");
+  }
+  if (Array.isArray(policy.allowedLiveDates)) {
+    const actualDates = [...new Set(snapshot.liveConsultations.map((row) => localDateBangkok(row.scheduledAt)))].sort();
+    const expectedDates = [...policy.allowedLiveDates].sort();
+    if (JSON.stringify(actualDates) !== JSON.stringify(expectedDates)) fail("LIVE_DATE_SET_MISMATCH");
+  }
 
   const liveIds = new Set(snapshot.liveConsultations.map((row) => row.id));
   const paymentIds = new Set(snapshot.payments.map((row) => row.id));
@@ -205,6 +225,7 @@ function assertSnapshot(snapshot) {
     }
   }
   if (snapshot.linkedOrderItems > 0) fail("PRESCRIPTION_HAS_COMMERCE_DEPENDENCY");
+  if (snapshot.payments.some((row) => row.orderId)) fail("PAYMENT_HAS_ORDER_DEPENDENCY");
   return snapshot;
 }
 
@@ -397,7 +418,7 @@ function safeReport(mode, snapshot, extra = {}) {
 }
 
 async function executePurge(input) {
-  assertSnapshot(input.snapshot);
+  assertSnapshot(input.snapshot, input.snapshotPolicy);
   const counts = aggregateSnapshot(input.snapshot);
   const fingerprint = fingerprintSnapshot(input.snapshot);
   validateExecutionConfirmation({
@@ -412,7 +433,7 @@ async function executePurge(input) {
   validateBackupGate(input.backupGate, input.now);
   validateBackupGate(input.fileBackupGate, input.now);
 
-  const fresh = assertSnapshot(await input.reinspect());
+  const fresh = assertSnapshot(await input.reinspect(), input.snapshotPolicy);
   if (fingerprintSnapshot(fresh) !== fingerprint) fail("FINGERPRINT_DRIFT");
   assertExpectedCounts(aggregateSnapshot(fresh), input.expectedCounts);
 
@@ -423,12 +444,15 @@ async function executePurge(input) {
   await input.files.remove(validatedFiles);
   await input.database.remove(fresh, fingerprint, input.expectedCounts);
 
+  if (input.provider.verifyPreserved) await input.provider.verifyPreserved(fresh);
+  if (input.files.verifyPreserved) await input.files.verifyPreserved(validatedFiles);
+
   const verification = await input.database.verify(fresh);
   if (
     verification.remainingLiveConsultations !== 0 ||
     verification.remainingScopedDependencies !== 0 ||
-    verification.scheduledConsultations !== 2 ||
-    verification.totalScheduledConsultations !== 2 ||
+    verification.scheduledConsultations !== fresh.scheduledConsultations.length ||
+    verification.totalScheduledConsultations !== fresh.scheduledConsultations.length ||
     verification.customerExists !== true
   ) {
     fail("POST_PURGE_VERIFICATION_FAILED");
@@ -438,6 +462,7 @@ async function executePurge(input) {
 
 module.exports = {
   COUNT_KEYS,
+  DEFAULT_SNAPSHOT_POLICY,
   PurgeGuardError,
   aggregateSnapshot,
   assertExpectedCounts,
@@ -447,6 +472,7 @@ module.exports = {
   executePurge,
   expectedStorageKey,
   fingerprintSnapshot,
+  localDateBangkok,
   resolvePrivatePath,
   safeReport,
   validateBackupGate,
