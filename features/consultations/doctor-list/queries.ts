@@ -7,6 +7,7 @@ import {
   getConsultBookingPath
 } from "@/features/consultations/assessment/routes";
 import { getActiveConsultAssessmentWhere } from "@/features/consultations/assessment/validity";
+import { getCustomerDoctorDisplayName } from "@/features/consultations/doctor-display-name";
 
 type ApprovedDoctorRecord = Awaited<ReturnType<typeof getApprovedDoctors>>[number];
 
@@ -43,6 +44,7 @@ function getApprovedDoctors() {
       user: {
         select: {
           avatarUrl: true,
+          fullName: true,
           displayName: true
         }
       }
@@ -61,7 +63,7 @@ function mapDoctor(
 ): ConsultDoctorListDoctor {
   return {
     id: doctor.id,
-    name: doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
+    name: getCustomerDoctorDisplayName(doctor.user),
     specialty: doctor.specialty ?? "ปรึกษาออนไลน์",
     tags: ["#Telemedicine", "#VideoChat"],
     price: `${formatMoney(doctor.consultationFee)} / 15 นาที`,

@@ -6,6 +6,7 @@ import type { BookingSlot, DoctorBookingData } from "@/features/consultations/bo
 import { isSlotBlockedByDateOverride } from "@/features/consultations/booking/blocked-overrides";
 import { getBookedConsultationDurationMinutes, getNewScheduleDurationMinutes } from "@/features/consultations/duration-policy";
 import { doesConsultationTimeOverlap } from "@/features/consultations/booking/interval-lock";
+import { getCustomerDoctorDisplayName } from "@/features/consultations/doctor-display-name";
 
 type DoctorRecord = NonNullable<Awaited<ReturnType<typeof getBookingDoctor>>>;
 type AvailabilityRecord = DoctorRecord["availability"][number];
@@ -37,6 +38,7 @@ function getBookingDoctor(doctorId?: string) {
       user: {
         select: {
           avatarUrl: true,
+          fullName: true,
           displayName: true
         }
       },
@@ -262,7 +264,7 @@ export async function getDoctorBookingData(doctorId?: string): Promise<DoctorBoo
     return {
       doctor: {
         id: doctor.id,
-        name: doctor.user.displayName ?? "แพทย์ผู้ให้คำปรึกษา",
+        name: getCustomerDoctorDisplayName(doctor.user),
         specialty: doctor.specialty ?? "ปรึกษาออนไลน์",
         fee: formatMoney(doctor.consultationFee),
         avatarUrl: doctor.user.avatarUrl ?? "/images/doctors/kamonpat.jpg"
