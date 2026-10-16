@@ -1,5 +1,11 @@
 # Consultation payment receipt PDF: local handoff
 
+## Presentation follow-up (2026-10-16)
+
+After implementation `9c15dd7`, the owner requested a more polished format. Renderer-only styling adds the existing English clinic brand above the Thai title, a restrained teal rule, separately labelled two-column reference/confirmation date, payer block, aligned fee table and soft-teal total strip. Disclaimer remains clearly separated at the bottom. No logo, seal, signature or tax/legal data was invented. All issuer/address/payment/reference/date/current-name values and eligibility/auth/download behavior remain unchanged. Fonts/dependencies/tracing/schema are unchanged.
+
+Normal synthetic 1,000.00 THB and long/max-value stress examples were rendered and visually inspected. Both are one A4 page with four embedded FontFile2 fonts and no clipped/overlapping text; independent character bounds checks passed (564 normal and 841 stress characters). Added a normal-render fixture; receipt model/API/UI/PDF tests passed 41/41 across three files. Lint and TypeScript passed; the affected local build is reported in the final handoff. New normal PDF and preview are in visualization `output/pdf/receipt-restyled/consultation-receipt-preview.pdf` and `receipt-normal-final-1.png`; stress output is QA-only. No Production access/write, push, deploy, restart or data mutation. Actual LINE/device UAT remains pending.
+
 ## Contract and boundaries
 
 Controller17 cleared the five choices in `consultation-receipt-design-gate.md` and authorized local implementation only. This receipt is not a tax invoice or an immutable issued-original snapshot. Identity is `CP-<full Payment.id>`, labelled `เลขอ้างอิงใบเสร็จ`. Repeated downloads retain the same reference, but display the current account name and current authoritative payment record. No sequential/statutory numbering, tax ID, signature, legal-name claim, fabricated transfer timestamp or guessed historical identity.

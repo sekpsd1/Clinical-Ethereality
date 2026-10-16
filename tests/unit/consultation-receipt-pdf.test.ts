@@ -4,6 +4,18 @@ import path from "node:path";
 import { renderConsultationReceipt } from "@/features/consultations/receipt/pdf";
 
 describe("actual Thai receipt PDF renderer", () => {
+  it("renders the ordinary one-item receipt with synthetic account identity", async () => {
+    const bytes = await renderConsultationReceipt({
+      reference: "CP-csyntheticreceipt0000001",
+      payerAccountName: "คุณทดสอบ ใจดี (ข้อมูลจำลอง)",
+      amount: "1000.00", confirmedAt: new Date("2026-01-31T18:00:00Z"), currency: "THB", channel: "PromptPay"
+    });
+    expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    if (process.env.RECEIPT_QA_OUTPUT) {
+      await mkdir(process.env.RECEIPT_QA_OUTPUT, { recursive: true });
+      await writeFile(path.join(process.env.RECEIPT_QA_OUTPUT, "consultation-receipt-preview.pdf"), bytes);
+    }
+  });
   it("fails closed for unsupported glyphs instead of rendering missing-character boxes", async () => {
     await expect(renderConsultationReceipt({
       reference: "CP-synthetic", payerAccountName: "ทดสอบ😀", amount: "1234.50",

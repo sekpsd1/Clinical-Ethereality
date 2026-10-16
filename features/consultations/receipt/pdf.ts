@@ -25,13 +25,21 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
       Latin: "NotoSans-Regular.ttf", LatinBold: "NotoSans-Bold.ttf"
     })) doc.registerFont(name, path.join(fontRoot, file));
 
-    const width = doc.page.width - 96;
+    const pageWidth = doc.page.width - 96;
+    const ink = "#191c1e";
+    const teal = "#115e59";
+    const muted = "#4b5563";
     // Layout explicitly: PDFKit's continued-run wrapper can overflow long references.
     // Fontkit shapes whole runs; Thai graphemes are never split at a line boundary.
     const words = new Intl.Segmenter("th", { granularity: "word" });
     const graphemes = new Intl.Segmenter("th", { granularity: "grapheme" });
-    function text(value: string, size = 12, bold = false) {
+    function text(value: string, size = 12, bold = false, options: {
+      x?: number; width?: number; align?: "left" | "right"; color?: string; gap?: number;
+    } = {}) {
       if (!hasReceiptGlyphs(value)) throw new Error("Unsupported receipt glyph");
+      const width = options.width ?? pageWidth;
+      const left = options.x ?? 48;
+      doc.fillColor(options.color ?? ink);
       doc.fontSize(size);
       function runs(line: string) {
         return (line.match(/[\u0e00-\u0e7f]+|[^\u0e00-\u0e7f]+/gu) ?? []).map(value => {
@@ -46,8 +54,9 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
         if (!line.trim()) return;
         if (doc.y + lineHeight > doc.page.height - 48) doc.addPage();
         const y = doc.y;
-        let x = 48;
-        for (const run of runs(line)) {
+        const parts = runs(line);
+        let x = left + (options.align === "right" ? width - measure(line) : 0);
+        for (const run of parts) {
           doc.font(run.font).text(run.value, x, y, { lineBreak: false });
           x += run.width;
         }
@@ -65,30 +74,69 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
         }
       }
       flush(line);
-      doc.y += size * 0.65;
+      doc.y += options.gap ?? size * 0.65;
     }
-    doc.fillColor("#115e59");
-    text("ใบเสร็จรับเงินค่าปรึกษา", 20, true);
-    doc.fillColor("#191c1e");
-    text(receiptIssuer.name, 14, true);
-    text(receiptIssuer.address);
-    doc.moveDown();
-    text(`เลขอ้างอิงใบเสร็จ: ${receipt.reference}`);
-    text(`วันที่ยืนยันรับชำระเงิน: ${formatReceiptDate(receipt.confirmedAt)}`);
-    text(`ชื่อผู้ชำระตามบัญชีผู้ใช้: ${receipt.payerAccountName}`);
-    doc.moveDown();
-    const ruleY = doc.y;
-    doc.moveTo(48, ruleY).lineTo(doc.page.width - 48, ruleY).strokeColor("#cbd5d1").stroke();
-    doc.moveDown();
-    text("รายการ: ค่าปรึกษาแพทย์", 14, true);
-    text(`จำนวนเงินที่รับชำระ: ${Number(receipt.amount).toLocaleString("en-US", {
+    const rule = (y: number) => {
+      doc.save().moveTo(48, y).lineTo(doc.page.width - 48, y)
+        .lineWidth(0.6).strokeColor("#cbd5d1").stroke().restore();
+    };
+    const paid = Number(receipt.amount).toLocaleString("en-US", {
       minimumFractionDigits: 2, maximumFractionDigits: 2
-    })} ${receipt.currency}`, 16, true);
-    text(`ช่องทางชำระเงิน: ${receipt.channel}`);
-    doc.moveDown();
-    doc.fillColor("#4b5563");
-    text("เอกสารรับชำระเงินจากระบบ ไม่ใช่ใบกำกับภาษี", 10);
-    text("ชื่อผู้ชำระแสดงตามบัญชีผู้ใช้ปัจจุบัน วันที่แสดงเป็นวันที่ยืนยันรับชำระเงิน ไม่ใช่เวลาโอนจากธนาคาร", 10);
+    });
+
+    // Calm document hierarchy, no invented logo, signature, tax ID or seal.
+    doc.save().rect(48, 48, pageWidth, 3).fill(teal).restore();
+    doc.y = 63;
+    text("BANGKOK CYTOGENETICS CLINIC", 9, true, { color: teal });
+    doc.y = 91;
+    text("ใบเสร็จรับเงินค่าปรึกษา", 23, true, { color: teal });
+    doc.y = Math.max(doc.y + 5, 151);
+    text(receiptIssuer.name, 12, true, { gap: 4 });
+    text(receiptIssuer.address, 10, false, { color: muted });
+    const dividerY = doc.y + 12;
+    rule(dividerY);
+
+    const detailsY = dividerY + 18;
+    doc.y = detailsY;
+    text("เลขอ้างอิงใบเสร็จ", 9, false, { color: muted, gap: 2, width: 270 });
+    text(receipt.reference, 10.5, true, { width: 270, gap: 0 });
+    const referenceEnd = doc.y;
+    doc.y = detailsY;
+    const rightColumn = { x: 340, width: pageWidth - 292 };
+    text("วันที่ยืนยันรับชำระเงิน", 9, false, { ...rightColumn, color: muted, gap: 2 });
+    text(formatReceiptDate(receipt.confirmedAt), 10.5, false, { ...rightColumn, gap: 0 });
+    doc.y = Math.max(referenceEnd, doc.y) + 18;
+    text("ชื่อผู้ชำระตามบัญชีผู้ใช้", 9, false, { color: muted, gap: 2 });
+    text(receipt.payerAccountName, 12, false, { gap: 0 });
+
+    // All receipt inputs are bounded; reserve a complete table rather than splitting rows.
+    if (doc.y + 200 > doc.page.height - 140) doc.addPage();
+    const tableY = doc.y + 24;
+    doc.save().rect(48, tableY, pageWidth, 30).fill("#f3f6f5").restore();
+    doc.y = tableY + 7;
+    text("รายการ", 10, true, { x: 62, width: 270, gap: 0 });
+    doc.y = tableY + 7;
+    text("จำนวนเงิน (THB)", 10, true, { x: 350, width: pageWidth - 316, align: "right", gap: 0 });
+    doc.y = tableY + 45;
+    text("ค่าปรึกษาแพทย์", 12, false, { x: 62, width: 270, gap: 0 });
+    doc.y = tableY + 45;
+    text(paid, 12, false, { x: 350, width: pageWidth - 316, align: "right", gap: 0 });
+    const totalY = tableY + 84;
+    doc.save().rect(48, totalY, pageWidth, 66).fill("#e0f7f6").restore();
+    doc.y = totalY + 22;
+    text("ยอดรับชำระทั้งหมด", 11, true, { x: 62, width: 180, color: teal, gap: 0 });
+    doc.y = totalY + 14;
+    text(`${paid} ${receipt.currency}`, 20, true, {
+      x: 256, width: pageWidth - 222, align: "right", color: teal, gap: 0
+    });
+    doc.y = totalY + 82;
+    text(`ช่องทางชำระเงิน: ${receipt.channel}`, 10, false, { color: muted });
+
+    const footerY = Math.max(doc.y + 22, doc.page.height - 121);
+    rule(footerY);
+    doc.y = footerY + 14;
+    text("เอกสารรับชำระเงินจากระบบ ไม่ใช่ใบกำกับภาษี", 9, true, { color: muted, gap: 4 });
+    text("ชื่อผู้ชำระแสดงตามบัญชีผู้ใช้ปัจจุบัน วันที่แสดงเป็นวันที่ยืนยันรับชำระเงิน ไม่ใช่เวลาโอนจากธนาคาร", 8.5, false, { color: muted, gap: 0 });
     doc.end();
     return await complete;
   } catch (error) {
