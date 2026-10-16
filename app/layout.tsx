@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.bccgroup-thailand.com"),
-  title: "Clinical lab service",
+  title: "Bangkok Cytogenetics Clinic",
   description: "Secure clinical aesthetics consultation, commerce, pharmacy, and community workflows."
 };
 

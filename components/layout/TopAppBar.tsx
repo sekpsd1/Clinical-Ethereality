@@ -4,14 +4,14 @@ import { Menu } from "lucide-react";
 export function TopAppBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-header border-b border-[#eceef0] bg-white/70 backdrop-blur-topbar">
-      <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <Menu aria-hidden="true" className="size-[18px] text-primary" strokeWidth={2.25} />
-          <p className="font-display text-base font-extrabold tracking-normal text-primary">
-            Clinical lab service
+      <div className="mx-auto flex h-14 w-full max-w-mobile items-center justify-between gap-3 px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Menu aria-hidden="true" className="size-[18px] shrink-0 text-primary" strokeWidth={2.25} />
+          <p className="min-w-0 font-display text-base font-extrabold leading-tight tracking-normal text-primary">
+            Bangkok Cytogenetics Clinic
           </p>
         </div>
-        <div className="relative size-8 overflow-hidden rounded-full border border-primary/10 p-px">
+        <div className="relative size-8 shrink-0 overflow-hidden rounded-full border border-primary/10 p-px">
           <Image
             src="/images/profiles/current-user.png"
             alt="Current user profile"
