@@ -9,6 +9,7 @@ export type ConsultDoctorListDoctor = {
   rating: string;
   imageSrc: string;
   bookingHref: Route;
+  profileHref?: Route;
   isRecommended: boolean;
 };
 

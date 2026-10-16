@@ -1,5 +1,17 @@
 # Project State
 
+## Customer Doctor profile (local implementation, 2026-10-17)
+
+Owner requested photo/name/explicit history links in Consult. New authenticated Customer route
+`/consult/doctors/[doctorId]` reads only approved active Doctor professional fields, stored Admin bio,
+license and current fee. Biography remains escaped plain text; empty fields are explicit. Booking CTA
+preserves the active-assessment gate; availability stays authoritative on the existing booking screen.
+Shared footer and normal-flow CTA retain shell bottom clearance. No schema/data changes or new
+Production deployment in this task. Earlier owner-authorized Admin example bios are a separate data edit.
+Verification: 22 targeted tests across four files, lint, TypeScript and local build passed. Synthetic
+320/390px previews had no horizontal overflow; at maximum scroll CTA bottom740 stayed above footer
+top772. Customer/LINE Production UAT remains pending release approval. No migration or restart.
+
 ## Google Drive recording archive (local implementation, 2026-10-07)
 
 Owner approved adding Google Drive as a private recording archive. The isolated implementation uses

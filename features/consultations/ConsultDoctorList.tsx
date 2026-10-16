@@ -61,12 +61,18 @@ function DoctorCard({ doctor }: { doctor: ConsultDoctorListDoctor }) {
   return (
     <article className="flex min-h-[112px] gap-3 overflow-hidden rounded-[12px] border border-white/40 bg-white/70 p-3 shadow-doctor backdrop-blur-card">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-lg">
-        <DoctorAvatar src={doctor.imageSrc} alt={doctor.name} />
+        {doctor.profileHref ? (
+          <Link href={doctor.profileHref} aria-label={`ดูประวัติ ${doctor.name}`}>
+            <DoctorAvatar src={doctor.imageSrc} alt={doctor.name} />
+          </Link>
+        ) : <DoctorAvatar src={doctor.imageSrc} alt={doctor.name} />}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-start justify-between gap-2">
-          <h2 className="truncate text-[14px] font-bold leading-5 text-primary">{doctor.name}</h2>
+          <h2 className="truncate text-[14px] font-bold leading-5 text-primary">
+            {doctor.profileHref ? <Link href={doctor.profileHref}>{doctor.name}</Link> : doctor.name}
+          </h2>
           <span className="inline-flex h-[19px] shrink-0 items-center gap-0.5 rounded bg-[#d4e4fc]/30 px-1.5 py-0.5 text-[10px] font-bold leading-[15px] text-primary">
             <Star aria-hidden="true" className="size-2.5 fill-primary text-primary" />
             {doctor.rating}
@@ -74,6 +80,11 @@ function DoctorCard({ doctor }: { doctor: ConsultDoctorListDoctor }) {
         </div>
 
         <p className="truncate text-[11px] leading-[16.5px] text-[#3e494a]">{doctor.specialty}</p>
+        {doctor.profileHref ? (
+          <Link href={doctor.profileHref} className="w-fit py-1 text-xs font-bold text-primary underline underline-offset-4">
+            ดูประวัติแพทย์
+          </Link>
+        ) : null}
 
         <div className="flex flex-wrap gap-1 pt-1.5">
           {doctor.isRecommended ? (

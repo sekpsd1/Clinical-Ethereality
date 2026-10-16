@@ -1,4 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
+import type { Route } from "next";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/consultations/doctor-list/types";
@@ -63,6 +64,7 @@ function mapDoctor(
 ): ConsultDoctorListDoctor {
   return {
     id: doctor.id,
+    profileHref: `/consult/doctors/${doctor.id}` as Route,
     name: getCustomerDoctorDisplayName(doctor.user),
     specialty: doctor.specialty ?? "ปรึกษาออนไลน์",
     tags: ["#Telemedicine", "#VideoChat"],
