@@ -1,12 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { BookingTimeSlotForm } from "@/features/consultations/booking/BookingTimeSlotForm";
 import type { DoctorBookingData } from "@/features/consultations/booking/types";
 import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 import {
-  telemedicineConsentFinalChoices,
+  TELEMEDICINE_CONSENT_DOCUMENT_TITLE,
   telemedicineConsentSections
 } from "@/features/consultations/consent/content";
+import { TelemedicineConsentContent } from "@/features/consultations/consent/TelemedicineConsentContent";
 
 const data: DoctorBookingData = {
   doctor: { id: "cmdoctor123456789012345", name: "แพทย์ทดสอบ", specialty: "เวชกรรม", fee: "800 บาท", avatarUrl: "/doctor.png" },
@@ -34,6 +36,12 @@ const verification = {
 };
 
 describe("telemedicine consent booking UI", () => {
+  it("preserves all 43 source Word paragraphs in order after trimming paragraph-edge whitespace only", () => {
+    const paragraphs = [TELEMEDICINE_CONSENT_DOCUMENT_TITLE, ...telemedicineConsentSections.flatMap((section) => [section.title, ...section.blocks.map((block) => block.text)])];
+    expect(paragraphs).toHaveLength(43);
+    // Independently extracted from the owner-supplied 2026-10-16 DOCX with python-docx.
+    expect(createHash("sha256").update(JSON.stringify(paragraphs)).digest("hex")).toBe("c20253c4298fe8d3ee3de4f9c0fd83f683b3b0998186815c88a649165221fd96");
+  });
   it("shows the fixed 15-minute label in the existing mobile slot layout", () => {
     const html = renderToStaticMarkup(
       <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} />
@@ -44,25 +52,14 @@ describe("telemedicine consent booking UI", () => {
     expect(html).not.toContain("30 นาที");
   });
 
-  it("shows the complete scrollable consent, current disclosure, and acceptance fields to an adult", () => {
+  it("provides a dialog entry and keeps booking disabled before explicit acceptance", () => {
     const html = renderToStaticMarkup(
       <BookingTimeSlotForm data={data} verification={verification} canSelfConsent bookingError={null} />
     );
-    for (const section of telemedicineConsentSections) {
-      expect(html).toContain(section.title);
-      for (const block of section.blocks) {
-        expect(html).toContain(block.text);
-      }
-    }
-    for (const choice of telemedicineConsentFinalChoices) {
-      expect(html).toContain(choice);
-    }
-    expect(html).toContain("เสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส");
-    expect(html).toContain("role=\"region\"");
-    expect(html).toContain("tabindex=\"0\"");
-    expect(html).toContain("aria-labelledby=\"booking-telemedicine-consent-title\"");
-    expect(html).toContain("aria-describedby=\"booking-telemedicine-consent-instructions\"");
-    expect(html).toContain("overflow-y-scroll");
+    expect(html).toContain("อ่านความยินยอม");
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).not.toContain('role="region"');
+    expect(html).not.toContain('checked=""');
     expect(html).toContain("name=\"telemedicineConsentAccepted\"");
     expect(html).toContain(`name="telemedicineConsentVersion" value="${TELEMEDICINE_CONSENT_VERSION}"`);
     expect(html).toContain("required=\"\"");
@@ -79,6 +76,16 @@ describe("telemedicine consent booking UI", () => {
     expect(html).toContain("ผู้มีอายุต่ำกว่า 18 ปีไม่สามารถให้ความยินยอมเองได้");
     expect(html).toContain("ผู้ปกครองตามกฎหมาย");
     expect(html).not.toContain("name=\"telemedicineConsentAccepted\"");
+  });
+
+  it("renders every source paragraph and clearly separates the recording disclosure", () => {
+    const html = renderToStaticMarkup(<TelemedicineConsentContent />);
+    for (const section of telemedicineConsentSections) {
+      expect(html).toContain(section.title);
+      for (const block of section.blocks) expect(html).toContain(block.text);
+    }
+    expect(html).toContain("คำชี้แจงเพิ่มเติมของระบบ แยกจากแบบฟอร์มข้างต้น");
+    expect(html).toContain("เสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส");
   });
 
   it("does not request a new consent when rescheduling the same paid consultation", () => {

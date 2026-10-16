@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 
 const mocks = vi.hoisted(() => ({
   assertPermission: vi.fn(),
@@ -117,7 +118,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     formData.set("availabilityId", "availability-1");
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
     formData.set("telemedicineConsentAccepted", "on");
-    formData.set("telemedicineConsentVersion", "2026-09-09");
+    formData.set("telemedicineConsentVersion", TELEMEDICINE_CONSENT_VERSION);
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow(
       "redirected",
@@ -165,7 +166,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     formData.set("availabilityId", "availability-1");
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
     formData.set("telemedicineConsentAccepted", "on");
-    formData.set("telemedicineConsentVersion", "2026-09-09");
+    formData.set("telemedicineConsentVersion", TELEMEDICINE_CONSENT_VERSION);
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
 
@@ -209,7 +210,7 @@ describe("createConsultationBookingAction booked-duration audit", () => {
     formData.set("scheduledAt", getUpcomingDateForWeekday(1, "09:00").toISOString());
     formData.set("doctorId", selectedDoctorId);
     formData.set("telemedicineConsentAccepted", "on");
-    formData.set("telemedicineConsentVersion", "2026-09-09");
+    formData.set("telemedicineConsentVersion", TELEMEDICINE_CONSENT_VERSION);
 
     await expect(createConsultationBookingAction(formData)).rejects.toThrow("redirected");
 

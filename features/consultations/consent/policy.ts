@@ -1,4 +1,4 @@
-export const TELEMEDICINE_CONSENT_VERSION = "2026-09-09";
+export const TELEMEDICINE_CONSENT_VERSION = "2026-10-16";
 export const TELEMEDICINE_RECORDING_RETENTION_YEARS = 5;
 
 export const TELEMEDICINE_CONSENT_SCOPE = ["audio", "video", "chat_history"] as const;

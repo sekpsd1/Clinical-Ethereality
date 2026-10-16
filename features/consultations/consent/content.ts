@@ -9,10 +9,7 @@ export type TelemedicineConsentSection = {
 };
 
 export const TELEMEDICINE_CONSENT_DOCUMENT_TITLE =
-  "แบบฟอร์มการให้ความยินยอมในการให้บริการ Telemedicine";
-
-export const TELEMEDICINE_CONSENT_DOCUMENT_SUBTITLE =
-  "(Consent Form for Telemedicine Services)";
+  "แบบฟอร์มการให้ความยินยอมในการให้บริการ Telemedicine โดย บางกอกไซโตเจเนติกซ์คลินิกเฉพาะทางด้านเวชกรรมสูตินรีเวช";
 
 export const telemedicineConsentSections = [
   {
@@ -124,19 +121,10 @@ export const telemedicineConsentSections = [
       {
         kind: "paragraph",
         text: "ข้าพเจ้าได้อ่านและเข้าใจรายละเอียดเกี่ยวกับการให้บริการ Telemedicine รวมถึงการเก็บ ใช้ และประมวลผลข้อมูลส่วนบุคคลและข้อมูลสุขภาพแล้ว ข้าพเจ้าได้รับทราบ Privacy Policy และข้อกำหนดการใช้งานที่เกี่ยวข้อง และเข้าใจสิทธิของตนเองตามกฎหมายคุ้มครองข้อมูลส่วนบุคคลแล้ว"
-      },
-      {
-        kind: "paragraph",
-        text: "ข้าพเจ้าขอยืนยันว่า ข้าพเจ้าได้อ่านและเข้าใจรายละเอียดข้างต้นแล้ว และยืนยันความยินยอมในการรับบริการ Telemedicine ตามรายการที่เลือก"
       }
     ]
   }
 ] as const satisfies readonly TelemedicineConsentSection[];
-
-export const telemedicineConsentFinalChoices = [
-  "ยินยอมลงทะเบียนและรับบริการ Telemedicine ผ่าน LINE และยินยอมให้เก็บ ใช้ และประมวลผลข้อมูลตามรายการที่เลือกไว้ข้างต้น",
-  "ไม่ยินยอมลงทะเบียนและรับบริการ Telemedicine"
-] as const;
 
 export const telemedicineCurrentRecordingDisclosure = {
   title: "ข้อมูลการบันทึกที่ระบบใช้จริง",

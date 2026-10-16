@@ -1,7 +1,5 @@
 import {
-  TELEMEDICINE_CONSENT_DOCUMENT_SUBTITLE,
   TELEMEDICINE_CONSENT_DOCUMENT_TITLE,
-  telemedicineConsentFinalChoices,
   telemedicineConsentSections,
   telemedicineCurrentRecordingDisclosure
 } from "@/features/consultations/consent/content";
@@ -13,7 +11,6 @@ export function TelemedicineConsentContent({ titleId }: { titleId?: string }) {
         <h2 id={titleId} className="text-lg font-extrabold leading-7 text-[#191c1e]">
           {TELEMEDICINE_CONSENT_DOCUMENT_TITLE}
         </h2>
-        <p className="mt-1 font-semibold text-[#616363]">{TELEMEDICINE_CONSENT_DOCUMENT_SUBTITLE}</p>
       </header>
 
       {telemedicineConsentSections.map((section) => (
@@ -33,19 +30,8 @@ export function TelemedicineConsentContent({ titleId }: { titleId?: string }) {
         </section>
       ))}
 
-      <section className="space-y-2" aria-labelledby="telemedicine-consent-source-choices">
-        <h3 id="telemedicine-consent-source-choices" className="font-extrabold text-[#191c1e]">
-          รายการยืนยันในแบบฟอร์มต้นฉบับ
-        </h3>
-        {telemedicineConsentFinalChoices.map((choice) => (
-          <p key={choice} className="flex items-start gap-2">
-            <span aria-hidden="true" className="mt-px text-base text-primary">☐</span>
-            <span>{choice}</span>
-          </p>
-        ))}
-      </section>
-
       <section className="space-y-2 border-t border-primary/20 pt-5" aria-labelledby="telemedicine-current-recording-disclosure">
+        <p className="text-xs font-semibold text-[#616363]">คำชี้แจงเพิ่มเติมของระบบ แยกจากแบบฟอร์มข้างต้น</p>
         <h3 id="telemedicine-current-recording-disclosure" className="font-extrabold text-primary">
           {telemedicineCurrentRecordingDisclosure.title}
         </h3>

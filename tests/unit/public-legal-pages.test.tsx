@@ -4,7 +4,6 @@ import ContactPage, { metadata as contactMetadata } from "@/app/contact/page";
 import PrivacyPolicyPage, { metadata as privacyMetadata } from "@/app/privacy-policy/page";
 import TelemedicineConsentPage, { metadata as consentMetadata } from "@/app/telemedicine-consent/page";
 import {
-  telemedicineConsentFinalChoices,
   telemedicineConsentSections
 } from "@/features/consultations/consent/content";
 
@@ -32,7 +31,7 @@ describe("public legal and contact pages", () => {
     expect(privacyHtml).toContain("เก็บรักษา 5 ปี");
   });
 
-  it("publishes all seven source sections, both final choices, and current operational terms", () => {
+  it("publishes all seven source sections and separately labelled operational terms", () => {
     const html = renderToStaticMarkup(<TelemedicineConsentPage />);
     for (const section of telemedicineConsentSections) {
       expect(html).toContain(section.title);
@@ -40,9 +39,7 @@ describe("public legal and contact pages", () => {
         expect(html).toContain(block.text);
       }
     }
-    for (const choice of telemedicineConsentFinalChoices) {
-      expect(html).toContain(choice);
-    }
+    expect(html).toContain("คำชี้แจงเพิ่มเติมของระบบ แยกจากแบบฟอร์มข้างต้น");
     expect(html).toContain("บันทึกเสียง วิดีโอ และประวัติแชทโดยอัตโนมัติทุกเคส");
     expect(html).toContain("ความยินยอมจากการจองเก่ามาใช้แทน");
     expect(html).toContain("ผู้มีอายุต่ำกว่า 18 ปีห้ามให้ความยินยอมด้วยตนเอง");

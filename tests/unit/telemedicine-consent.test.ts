@@ -36,7 +36,7 @@ describe("per-booking telemedicine consent", () => {
     expect(() => assertTelemedicineSelfConsent({
       dateOfBirth: new Date("2012-09-09T00:00:00.000Z"),
       accepted: "on",
-      version: "old-version",
+      version: "2026-09-09",
       now
     })).toThrowError(expect.objectContaining({ code: "CURRENT_VERSION_REQUIRED" }));
   });

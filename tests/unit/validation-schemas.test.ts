@@ -11,6 +11,7 @@ import {
 } from "@/features/consultations/assessment/rules";
 import { submitConsultAssessmentSchema } from "@/features/consultations/assessment/schema";
 import { sendConsultationMessageSchema } from "@/features/consultations/chat/schema";
+import { TELEMEDICINE_CONSENT_VERSION } from "@/features/consultations/consent/policy";
 import { getLegalDocument, getRequiredLegalDocuments } from "@/features/legal/documents";
 import { acceptConsentSchema } from "@/features/legal/schema";
 import { updateProfileContactSchema } from "@/features/profile/schema";
@@ -210,7 +211,7 @@ describe("feature validation schemas", () => {
 
     expect(requiredDocuments).toHaveLength(4);
     expect(getLegalDocument("teleconsultation")).toMatchObject({
-      version: "2026-09-09",
+      version: TELEMEDICINE_CONSENT_VERSION,
       required: false
     });
     expect(getLegalDocument("health_data")?.version).toBe("2026-05-20-draft");
