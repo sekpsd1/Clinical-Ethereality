@@ -3,7 +3,7 @@ import { Search, Star } from "lucide-react";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/consultations/doctor-list/types";
 
-const filterChips = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"];
+const filterChips = ["สูตินรีแพทย์"];
 
 export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
   return (
