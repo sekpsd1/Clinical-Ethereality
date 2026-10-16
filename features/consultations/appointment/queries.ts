@@ -2,6 +2,7 @@ import type { ConsultationStatus } from "@prisma/client";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
+import { getConsultationReceiptHref } from "@/features/consultations/receipt/queries";
 import { assertPermission } from "@/lib/permissions";
 import type { CustomerAppointmentData, CustomerAppointmentDetail } from "@/features/consultations/appointment/types";
 import { hasAdminManualAppointmentIntake } from "@/features/consultations/payment/service";
@@ -234,7 +235,10 @@ export async function getCustomerAppointmentDetail(
     const consultation = await getConsultationRecord(consultationId, session.userId);
 
     return {
-      appointment: consultation ? mapConsultation(consultation) : null
+      appointment: consultation ? {
+        ...mapConsultation(consultation),
+        receiptHref: await getConsultationReceiptHref(session, consultation.id)
+      } : null
     };
   } catch {
     return {

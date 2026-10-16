@@ -43,6 +43,7 @@ function toPublicSession(claims: SessionClaims): PublicSession {
     userId: claims.userId,
     lineUserId: claims.lineUserId,
     role: claims.role,
+    sessionId: claims.sessionId,
     displayName: claims.displayName,
     pictureUrl: claims.pictureUrl,
     expiresAt: new Date(claims.exp * 1000).toISOString()

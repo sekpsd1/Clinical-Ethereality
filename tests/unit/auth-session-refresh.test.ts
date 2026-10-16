@@ -107,6 +107,15 @@ afterEach(() => {
 });
 
 describe("refresh session rotation", () => {
+  it("retains the verified access session ID for private-resource revocation checks", async () => {
+    mocks.cookies.mockResolvedValueOnce({ get: () => ({ value: "valid-access" }) });
+    mocks.verifySessionToken.mockResolvedValueOnce(validClaims({ tokenType: "access" }));
+    await expect(getCurrentSession()).resolves.toMatchObject({
+      userId: "user-1", role: "customer", sessionId: "session-1"
+    });
+    expect(mocks.verifySessionToken).toHaveBeenCalledWith("valid-access", "access");
+  });
+
   it("returns no current session only for an invalid access token", async () => {
     mocks.cookies.mockResolvedValueOnce({
       get: () => ({ value: "invalid-access" })

@@ -1,5 +1,7 @@
 # Consultation receipt: implementation gate
 
+Superseded gate status: Controller17 subsequently approved all five choices, including confirmation-date/account-name wording and the non-statutory reference. Current configured model retained, introspection unavailable and not blocking. Implementation and QA outcome: see `consultation-receipt-local-handoff.md`. The evidence/proposal below is retained as dated design history, not an active approval blocker.
+
 ## Evidence and authority
 
 Controller17 assigned Admin7 local implementation on 2026-10-16, with explicit review before a new dependency, additive schema or legal/numbering decision. Live thread inventory confirms both identities; TASK_CONTROL is corrected only for these two roles. Actual model setting is not exposed by available tools and remains unverified; no model change claimed.

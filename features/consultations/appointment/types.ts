@@ -1,6 +1,7 @@
 import type { ConsultationStatus } from "@prisma/client";
 
 export type CustomerAppointmentDetail = {
+  receiptHref?: string | null;
   id: string;
   doctorName: string;
   doctorSpecialty: string;

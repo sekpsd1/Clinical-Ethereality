@@ -2,6 +2,7 @@ import type { ConsultationStatus } from "@prisma/client";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
+import { getConsultationReceiptHref } from "@/features/consultations/receipt/queries";
 import { assertPermission } from "@/lib/permissions";
 import { getPromptPayInstruction } from "@/lib/payments/promptpay";
 import { paymentSlipEntityType } from "@/features/payments/private-slips";
@@ -159,7 +160,10 @@ export async function getConsultationPaymentData(
     const consultation = await getConsultationRecord(consultationId, session.userId);
 
     return {
-      consultation: consultation ? await mapConsultation(consultation) : null,
+      consultation: consultation ? {
+        ...await mapConsultation(consultation),
+        receiptHref: await getConsultationReceiptHref(session, consultation.id)
+      } : null,
       paymentStatus: consultation ? normalizePaymentStatus(payment) : "not_found"
     };
   } catch {

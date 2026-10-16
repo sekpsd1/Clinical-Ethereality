@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarDays, Clock3, CreditCard, MessageCircle, ShieldCheck
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { CustomerAppointmentData } from "@/features/consultations/appointment/types";
+import { ReceiptDownload } from "@/features/consultations/receipt/ReceiptDownload";
 
 export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
   const appointment = data.appointment;
@@ -91,6 +92,7 @@ export function AppointmentDetail({ data }: { data: CustomerAppointmentData }) {
                 ประวัติแชต
               </Link>
             ) : null}
+            <ReceiptDownload href={appointment.receiptHref} />
           </>
         ) : (
           <StateCard

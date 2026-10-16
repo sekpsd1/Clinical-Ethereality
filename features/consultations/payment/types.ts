@@ -4,6 +4,7 @@ import type { PromptPayInstruction } from "@/lib/payments/promptpay";
 export type ConsultationPaymentStatus = "idle" | "rejected" | "provider_error" | "cooldown" | "invalid" | "expired" | "not_found";
 
 export type ConsultationPaymentDetail = {
+  receiptHref?: string | null;
   id: string;
   doctorName: string;
   doctorSpecialty: string;

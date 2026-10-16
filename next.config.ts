@@ -28,6 +28,14 @@ const configuredStorageImagePattern = getConfiguredStorageImagePattern();
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["pdfkit"],
+  outputFileTracingIncludes: {
+    "/api/consultations/*/receipt": [
+      "./assets/fonts/receipt/**/*",
+      "./node_modules/pdfkit/js/standard-fonts/**/*",
+      "./node_modules/pdfkit/LICENSE"
+    ]
+  },
   typedRoutes: true,
   async headers() {
     return [
