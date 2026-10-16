@@ -1,0 +1,16 @@
+# Customer Doctor profile Production release — 2026-10-17
+
+TASK: Owner-approved Customer Doctor profile release
+STATUS: complete
+IMPLEMENTATION: verified
+RELEASE: deployed
+UAT: partial
+BRANCH: codex/customer-doctor-profile
+COMMIT: 1a5e31a3f4ab92855d5c7461d830b2c9a294dd36 published/deployed; closeout documentation local only
+CHANGED: Consult card photo/name/explicit history links and authenticated Customer professional profile route; stored Admin bio/license/current fee, plain-text escaped biography, empty states, existing assessment-before-booking gate. No schema/price/slot or account changes. Updated PROJECT_STATE/TASK_CONTROL and this closeout.
+CHECKS:22 targeted tests/4 files, lint, TypeScript, local build and synthetic320/390px footer-clearance previews passed. Verified remote baseline2b32125, fast-forward push and Plesk Pull/Deploy each once. Existing17 October incremental/14 October full backups verified. Node24.21.0/production/server.js and absent migration/reconciliation targets checked without exposing environment. Non-migration preflight and root npm ci passed666 packages/20s; Prisma generate only. Initial automated approval blocked isolated Zoom dependency install; no command ran and no workaround attempted. After explicit owner approval, Zoom install passed39 packages/2s; single host build passed68 pages/140 static/24 public files. Read-only artifact/source probe passed all seven flags. First probe falsely assumed manifest key lacked route-group prefix; corrected read-only matching passed without rebuild or source change. Exactly one explicit restart, zero recovery restarts. Health200/ok, unauth profile307 to LINE auth, receipt401/private-no-store, Zoom static200. Current authenticated browser Admin redirects Consult to Admin, not Customer; no impersonation attempted.
+APPROVAL SCOPE: Exact1a5e31a Production release and explicit continuation approval for existing Zoom lockfile dependency preparation, host build and restart. Current configured model retained, actual introspection unavailable. computer-use skill used for Plesk browser operations.
+RESIDUAL STATE: No migration, database restore, booking/payment transaction, environment/provider/Zoom account or scheduler mutation. Prior owner-authorized sample Doctor bios remain clearly marked simulated; this release did not change records. Rollback source2b32125. Screenshot doctor-profile-production-20261017.png saved outside repo in task visualization directory. Closeout docs not implicitly pushed/deployed.
+NEXT ACTION / OWNER: Customer/owner reopen LINE app, Consult, tap photo/name/ดูประวัติแพทย์, verify biography and preserved booking gate. Controller17 review evidence and partial UAT. Replace simulated credentials before real service use.
+RISKS / FOLLOW-UP: Actual Customer/LINE click-through not verified in Admin browser. HTTP probe observed no CSP header on Zoom static index; not changed by profile source diff, cause/baseline not established and requires separate scoped read-only investigation. Do not claim provider/video UAT passed. No response from network-restricted local HTTP attempt was treated as host evidence; approved network retry produced reported status checks.
+NEEDS PLAN REVIEW: yes

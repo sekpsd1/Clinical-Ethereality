@@ -1,5 +1,35 @@
 # Project State
 
+## Doctor profile Production release completed (2026-10-17)
+
+Owner explicitly approved the isolated Zoom lockfile preparation after the automated approval stop.
+Resumed without repeating push/Pull/Deploy/root install. Zoom install passed39 packages/2s; one
+`build:plesk-host` passed68 pages, including `/consult/doctors/[doctorId]`, with140 static/24 public
+files verified. Read-only source/artifact probe confirmed profile route, photo/history links,
+approved-active Doctor filter, Customer/assessment guards and standalone BUILD_ID. Initial probe
+assumed a manifest key without its route-group prefix; corrected read-only key matching passed.
+Exactly one explicit restart, no recovery restarts; health200/ok, unauthenticated profile307 to LINE
+auth, receipt401/private-no-store and Zoom static200. No migration, environment/provider changes,
+data edits or booking/payment actions. Existing browser is Admin and correctly redirects from
+Consult, so actual Customer/LINE click-through UAT remains pending. Remote/deployed source stays
+`1a5e31a3f4ab92855d5c7461d830b2c9a294dd36`; rollback source `2b32125`. Supersedes the paused
+release entry below. See `docs/runbooks/doctor-profile-release-20261017.md` for handoff and follow-up.
+
+## Doctor profile release paused at dependency approval (2026-10-17)
+
+Owner approved exact `1a5e31a3f4ab92855d5c7461d830b2c9a294dd36` Production release. Remote main
+fast-forwarded from `2b32125`, Plesk Pull/Deploy each completed once, and non-migration preflight passed.
+Node24.21.0/production/server.js and absent migration/reconciliation targets verified without exposing
+environment values. Existing17 October incremental/14 October full backups verified. Root lockfile
+`npm ci` passed (666 packages/20s, Prisma generate only). Automatic approval rejected the normal
+`npm run install:zoom-client` runbook step as an additional Production dependency mutation: command
+did not execute; no workaround attempted. Host build and restart have NOT run. Existing app health
+still reports ok, but source and installed root dependencies are newer than the running standalone
+artifact. New profile is NOT claimed live. Resume only after owner explicitly approves the existing
+isolated Zoom lockfile dependency preparation, then single host build/restart and smoke checks.
+Do not repeat push/Pull/Deploy/root install or mutate provider settings/database. Rollback source is
+`2b32125`; no database restore is called for.22 targeted local tests passed again at approved revision.
+
 ## Customer Doctor profile (local implementation, 2026-10-17)
 
 Owner requested photo/name/explicit history links in Consult. New authenticated Customer route
