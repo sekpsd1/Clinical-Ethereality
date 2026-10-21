@@ -1,5 +1,26 @@
 # Project State
 
+## Doctor category consistency Production release (completed, 2026-10-21)
+
+Controller17 conveyed explicit owner push/deploy approval for exact
+`fa771ffe51b01730fb502bbd234235abb0619b89`, including established lockfile/Zoom build preparation.
+Fresh origin/main and Plesk Git baseline1a5e31a were verified; read-only SHA256 checks of four host
+source files matched that baseline. Existing full backup21 October01:14/2.68GB verified. Fast-forward
+push, Pull once and Deploy once; target five-source-file SHA256 probe matchedfa771ff. Node24.22.0
+was already host-selected and left unchanged; production/app-public roots/server.js and absent
+migration/reconciliation targets verified without exposing environment values. Preflight/root npm ci
+(666 packages/21s, Prisma generate only)/Zoom npm ci(39 packages/2s) passed. One host build passed
+68 pages,140 static/24 public files; nine source/artifact checks passed, including shared one-label
+policy on Doctor/Customer and removed missing-data demos. One explicit restart, zero recovery
+restarts. Health200/ok, unauth Doctor/Customer routes307 to LINE auth, receipt401/private-no-store.
+Authenticated Doctor UI attempt was stopped by automatic safety review because it could read patient
+records; no bypass, patient-data read or live fixture creation attempted. Device/authenticated UAT
+remains pending; local320/390px synthetic actual-component evidence does not substitute for it.
+No DB/schema/migration/environment/provider/LINE/Zoom/Drive/scheduler changes or cleanup rerun.
+Rollback source1a5e31a; prefer reviewed forward revert of fa771ff plus established build/restart,
+not DB restore. See `docs/runbooks/doctor-service-category-release-20261021.md`. Supersedes local-only
+release boundary below; unrelated fallback/rating/fee findings remain deferred.
+
 ## Doctor service category consistency (local only, 2026-10-21)
 
 Controller17 assigned Admin7 the Doctor-side static-category defect and cross-surface audit. Remote
