@@ -3,7 +3,7 @@ import { Search, Star } from "lucide-react";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/consultations/doctor-list/types";
 
-const filterChips = ["สูตินรีแพทย์"];
+import { CONSULT_SERVICE_LABELS } from "@/features/consultations/service-labels";
 
 export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
   return (
@@ -24,7 +24,7 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
 
       {data.unavailable ? (
         <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
-          ฐานข้อมูลยังไม่พร้อม แสดงข้อมูลแพทย์ตัวอย่างชั่วคราว
+          ยังโหลดข้อมูลแพทย์ไม่ได้ กรุณาลองใหม่อีกครั้ง
         </div>
       ) : null}
 
@@ -32,7 +32,7 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
         <h1 className="text-center text-lg font-bold text-primary">Telemedicine</h1>
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {filterChips.map((chip, index) => (
+          {CONSULT_SERVICE_LABELS.map((chip, index) => (
             <button
               key={chip}
               type="button"
@@ -49,6 +49,11 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
       </div>
 
       <div className="flex flex-col gap-3 pt-2">
+        {!data.unavailable && data.doctors.length === 0 ? (
+          <p className="rounded-[12px] bg-white/70 px-4 py-3 text-sm leading-6 text-muted">
+            ยังไม่มีแพทย์พร้อมให้บริการ กรุณากลับมาตรวจสอบอีกครั้ง
+          </p>
+        ) : null}
         {data.doctors.map((doctor) => (
           <DoctorCard key={doctor.id} doctor={doctor} />
         ))}

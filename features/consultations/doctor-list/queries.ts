@@ -12,24 +12,6 @@ import { getCustomerDoctorDisplayName } from "@/features/consultations/doctor-di
 
 type ApprovedDoctorRecord = Awaited<ReturnType<typeof getApprovedDoctors>>[number];
 
-const fallbackDoctorBase = {
-  id: "fallback-kamonpat",
-  name: "พญ. กมลภัทร วิจักขณ์พันธ์",
-  specialty: "สูตินรีเวช และเวชศาสตร์มารดาและทารกในครรภ์",
-  tags: ["#Telemedicine", "#VideoChat"],
-  price: "800 บาท / 15 นาที",
-  rating: "4.9",
-  imageSrc: "/images/doctors/kamonpat.jpg",
-  isRecommended: false
-};
-
-function getFallbackDoctor(hasActiveAssessment: boolean): ConsultDoctorListDoctor {
-  return {
-    ...fallbackDoctorBase,
-    bookingHref: hasActiveAssessment ? "/consult/booking/somchai" : "/consult/assessment"
-  };
-}
-
 function getApprovedDoctors() {
   return prisma.doctor.findMany({
     where: {
@@ -106,9 +88,7 @@ export async function getConsultDoctorListData(): Promise<ConsultDoctorListData>
     const hasActiveAssessment = Boolean(activeAssessment);
 
     return {
-      doctors: doctors.length > 0
-        ? doctors.map((doctor) => mapDoctor(doctor, recommendedDoctorId, hasActiveAssessment))
-        : [getFallbackDoctor(hasActiveAssessment)],
+      doctors: doctors.map((doctor) => mapDoctor(doctor, recommendedDoctorId, hasActiveAssessment)),
       activeRecommendation: activeAssessment
         ? {
             topic: activeAssessment.recommendationTopic,
@@ -118,7 +98,7 @@ export async function getConsultDoctorListData(): Promise<ConsultDoctorListData>
     };
   } catch {
     return {
-      doctors: [getFallbackDoctor(false)],
+      doctors: [],
       activeRecommendation: null,
       unavailable: true
     };

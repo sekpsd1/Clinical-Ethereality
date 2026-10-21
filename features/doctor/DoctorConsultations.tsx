@@ -19,7 +19,7 @@ import {
   type DoctorQueueStatus
 } from "@/features/doctor/consultations/queue-order";
 
-const telemedicineServices = ["สูตินารีแพทย์", "HPV/STIs", "ปรึกษาทั่วไป"] as const;
+import { CONSULT_SERVICE_LABELS } from "@/features/consultations/service-labels";
 
 const consultationStatusLabels: Record<string, string> = {
   cancelled: "ยกเลิกแล้ว",
@@ -168,7 +168,7 @@ export function DoctorConsultations({
           Telemedicine
         </h2>
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {telemedicineServices.map((service, index) => (
+          {CONSULT_SERVICE_LABELS.map((service, index) => (
             <span
               key={service}
               className={

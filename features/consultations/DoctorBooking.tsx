@@ -50,7 +50,8 @@ function BookingTopBar() {
 }
 
 function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
-  const doctorName = doctor?.name ?? "พญ. กมลภัทร วิจักขณ์พันธ์";
+  if (!doctor) return null;
+  const doctorName = doctor.name;
 
   return (
     <article className="flex min-h-[276px] flex-col items-center rounded-[24px] border border-[#bdc9ca]/15 bg-white/70 px-5 pb-6 pt-6 text-center shadow-bio-card backdrop-blur-topbar">
@@ -75,7 +76,7 @@ function DoctorBioCard({ doctor }: { doctor: DoctorBookingData["doctor"] }) {
 
       <div className="mt-3 flex max-w-full flex-col items-center gap-2">
         <span className="max-w-full rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-primary">
-          {doctor?.specialty ?? "สูตินรีเวช"}
+          {doctor.specialty || "ยังไม่ระบุสาขา"}
         </span>
         <span className="rounded-full bg-[#dfe0e0]/50 px-4 py-1.5 text-xs font-bold leading-[18px] tracking-normal text-[#616363]">
           ปรึกษาออนไลน์

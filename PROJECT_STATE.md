@@ -1,5 +1,18 @@
 # Project State
 
+## Doctor service category consistency (local only, 2026-10-21)
+
+Controller17 assigned Admin7 the Doctor-side static-category defect and cross-surface audit. Remote
+main was read-only verified exact1a5e31a; local parentd61f12a preserves prior release closeout.
+Doctor queue had its own unconditional three-label array, unrelated to Admin data/customer fix.
+Customer and Doctor navigation now share sole owner-approved `สูตินรีแพทย์`; queue data/status
+filters/counts/permissions unchanged. Discovery now returns honest empty/error states instead of a
+synthetic bookable Doctor; booking suppresses fake bio on null Doctor. No stored specialty changed.
+46 targeted tests passed; synthetic actual-component320/390px screenshots preserve status filters
+and queue text with no overflow. Full audit, deferred ratings/photos/fee and historic presentation
+fallback findings: `docs/runbooks/doctor-service-category-audit-local-20261021.md`.
+Local implementation only, no push/deploy/DB mutation; Production release and device UAT not approved.
+
 ## Doctor profile Production release completed (2026-10-17)
 
 Owner explicitly approved the isolated Zoom lockfile preparation after the automated approval stop.

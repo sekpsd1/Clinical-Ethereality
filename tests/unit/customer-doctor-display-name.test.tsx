@@ -24,6 +24,34 @@ function fixture(fullName: string | null = "นพ. ชื่อจริง ต
 }
 
 describe("Customer Doctor name preference", () => {
+  it("does not invent a Doctor, specialty, price or booking link when none is approved", async () => {
+    mocks.many.mockResolvedValue([]);
+    const data = await getConsultDoctorListData();
+    expect(data.doctors).toEqual([]);
+    const html = renderToStaticMarkup(<ConsultDoctorList data={data} />);
+    expect(html).toContain("ยังไม่มีแพทย์พร้อมให้บริการ");
+    expect(html).not.toContain("กมลภัทร");
+    expect(html).not.toContain("800 บาท");
+    expect(html).not.toContain("จองคำปรึกษา");
+  });
+  it("shows an honest unavailable state rather than a demo on query failure", async () => {
+    mocks.many.mockRejectedValue(new Error("synthetic failure"));
+    const data = await getConsultDoctorListData();
+    expect(data).toEqual({ doctors: [], activeRecommendation: null, unavailable: true });
+    const html = renderToStaticMarkup(<ConsultDoctorList data={data} />);
+    expect(html).toContain("ยังโหลดข้อมูลแพทย์ไม่ได้");
+    expect(html).not.toContain("กมลภัทร");
+    expect(html).not.toContain("แพทย์ตัวอย่าง");
+    expect(html).not.toContain("จองคำปรึกษา");
+  });
+  it("does not invent a Doctor bio when booking query returns no Doctor", () => {
+    const html = renderToStaticMarkup(<DoctorBooking data={{ doctor: null, slots: [] }} verification={{
+      fullName: null, dateOfBirth: null, nationalId: null, phone: null, phoneVerifiedAt: null, isVerified: false
+    }} canSelfConsent={false} />);
+    expect(html).not.toContain("กมลภัทร");
+    expect(html).not.toContain("สูตินรีเวช");
+    expect(html).not.toContain("120+");
+  });
   it.each([
     [{ fullName: "  นพ. ชื่อจริง ตัวอย่าง  ", displayName: "LINE alias" }, "นพ. ชื่อจริง ตัวอย่าง"],
     [{ fullName: null, displayName: "Legacy alias" }, "Legacy alias"],

@@ -166,7 +166,7 @@ describe("Doctor consultation queue", () => {
     ).toContain('data-queue-auto-refresh="false"');
   });
 
-  it("shows the approved Telemedicine services in the requested order", () => {
+  it("shows only the owner-approved category even with no Admin/queue data", () => {
     const data: DoctorConsultationsData = {
       consultations: [],
       prescriptionProducts: [],
@@ -179,16 +179,15 @@ describe("Doctor consultation queue", () => {
 
     const html = renderToStaticMarkup(createElement(DoctorConsultations, { data }));
     const telemedicineIndex = html.indexOf("Telemedicine");
-    const gynecologistIndex = html.indexOf("สูตินารีแพทย์");
-    const hpvStisIndex = html.indexOf("HPV/STIs");
-    const generalConsultationIndex = html.indexOf("ปรึกษาทั่วไป");
+    const gynecologistIndex = html.indexOf("สูตินรีแพทย์");
     const consultationListIndex = html.indexOf("รายการปรึกษา");
 
     expect(telemedicineIndex).toBeGreaterThan(-1);
     expect(gynecologistIndex).toBeGreaterThan(telemedicineIndex);
-    expect(hpvStisIndex).toBeGreaterThan(gynecologistIndex);
-    expect(generalConsultationIndex).toBeGreaterThan(hpvStisIndex);
-    expect(consultationListIndex).toBeGreaterThan(generalConsultationIndex);
+    expect(consultationListIndex).toBeGreaterThan(gynecologistIndex);
+    expect(html).not.toContain("HPV/STIs");
+    expect(html).not.toContain("ปรึกษาทั่วไป");
+    expect(html).not.toContain("สูตินารีแพทย์");
     expect(html).not.toContain("ตรวจ HPV");
   });
 
