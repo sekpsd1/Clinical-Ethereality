@@ -113,6 +113,7 @@ export function AdminCustomerDetail({ data, currentUserId }: { data: AdminCustom
             </p>
           </div>
           <AdminUserActionButtons
+            allowReactivation
             isCurrentUser={customer.id === currentUserId}
             redirectOnDelete="/admin/customers"
             redirectOnRoleChange="/admin/users?status=approved"
