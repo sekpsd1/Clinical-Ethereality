@@ -277,7 +277,7 @@ describe("store catalog component safety", () => {
     expect(html).toContain("สินค้าทั่วไป");
   });
 
-  it("uses the full-card product image as the only detail link and clamps names to two lines", () => {
+  it("keeps one image detail link per product and complete names in stacked cards", () => {
     const products = [
       toListItem(createProduct({ id: "featured", name: "สินค้าแนะนำ", slug: "featured", href: "/store/featured", imageUrl: "/images/featured.png", featured: true })),
       toListItem(createProduct({ id: "standard", name: "สินค้าทั่วไป", slug: "standard", href: "/store/standard" }))
@@ -293,7 +293,10 @@ describe("store catalog component safety", () => {
     expect(html).toContain('aria-label="ดูรายละเอียด สินค้าทั่วไป"');
     expect(html).toContain("rounded-t-[5px]");
     expect(html).toContain("rounded-[5px]");
-    expect(html).toContain("line-clamp-2");
+    expect(html).toContain('data-testid="store-product-list" class="mt-6 grid grid-cols-1 gap-4"');
+    expect(html.match(/data-testid="store-product-card"/g)).toHaveLength(2);
+    expect(html).not.toContain("line-clamp-2");
+    expect(html).not.toContain("w-[46%]");
     expect(html).toContain('class="object-contain"');
     expect(html).not.toContain("ดูสินค้า");
   });
