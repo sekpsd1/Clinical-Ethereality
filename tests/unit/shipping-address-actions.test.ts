@@ -43,7 +43,6 @@ const customerSession: PublicSession = {
 function addressForm(overrides: Record<string, string> = {}): FormData {
   const formData = new FormData();
   const values = {
-    label: "บ้าน",
     recipientName: "ลูกค้า ทดสอบ",
     phone: "0812345678",
     addressLine1: "1 ถนนสุขุมวิท",
@@ -70,12 +69,13 @@ describe("shipping address Server Action", () => {
     mocks.transaction.mockImplementation(async (operation: (tx: typeof mocks.tx) => unknown) => operation(mocks.tx));
   });
 
-  it("creates a canonical address for the active authenticated customer without PII in audit metadata", async () => {
+  it("creates an address without a label and keeps PII out of audit metadata", async () => {
     await expect(saveShippingAddressAction({ status: "idle", message: "" }, addressForm())).resolves.toMatchObject({ status: "success" });
 
     expect(mocks.tx.shippingAddress.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "customer-1",
+        label: "ที่อยู่จัดส่ง",
         province: "กรุงเทพมหานคร",
         district: "คลองเตย",
         subdistrict: "คลองเตย",
@@ -88,6 +88,27 @@ describe("shipping address Server Action", () => {
     );
     expect(JSON.stringify(mocks.audit.mock.calls[0])).not.toContain("ลูกค้า ทดสอบ");
     expect(JSON.stringify(mocks.audit.mock.calls[0])).not.toContain("0812345678");
+  });
+
+  it("preserves a saved label when editing through the simplified form", async () => {
+    mocks.tx.shippingAddress.findFirst.mockResolvedValueOnce({
+      id: "address-1",
+      label: "บ้านเดิม",
+      province: "กรุงเทพมหานคร",
+      district: "คลองเตย",
+      subdistrict: "คลองเตย",
+      postalCode: "10110"
+    });
+    mocks.tx.shippingAddress.update.mockResolvedValueOnce({ id: "address-1", isDefault: true });
+
+    await expect(
+      saveShippingAddressAction({ status: "idle", message: "" }, addressForm({ addressId: "address-1" }))
+    ).resolves.toMatchObject({ status: "success" });
+
+    expect(mocks.tx.shippingAddress.update).toHaveBeenCalledWith({
+      where: { id: "address-1" },
+      data: expect.objectContaining({ label: "บ้านเดิม" })
+    });
   });
 
   it("rejects direct hierarchy tampering before creating an address", async () => {

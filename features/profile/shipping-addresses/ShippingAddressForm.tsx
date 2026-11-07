@@ -15,7 +15,6 @@ const fields: Array<{
   type?: string;
   autoComplete?: string;
 }> = [
-  { name: "label", label: "ชื่อที่อยู่", placeholder: "เช่น บ้าน หรือ ที่ทำงาน" },
   { name: "recipientName", label: "ชื่อผู้รับ", placeholder: "ชื่อ-นามสกุล", autoComplete: "name" },
   { name: "phone", label: "เบอร์โทรศัพท์", placeholder: "0812345678", type: "tel", autoComplete: "tel" },
   { name: "addressLine1", label: "บ้านเลขที่ ถนน ซอย", placeholder: "บ้านเลขที่ อาคาร ถนน ซอย", autoComplete: "address-line1" },

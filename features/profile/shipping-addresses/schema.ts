@@ -12,7 +12,7 @@ export const shippingAddressFormSchema = z.object({
     (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
     z.string().trim().max(191).optional()
   ),
-  label: z.string().trim().min(1, "กรุณาระบุชื่อที่อยู่").max(60),
+  label: z.string().trim().max(60).optional(),
   recipientName: z.string().trim().min(2, "กรุณาระบุชื่อผู้รับ").max(191),
   phone: z.string().trim().regex(/^(?:\+66|0)\d{8,9}$/, "กรุณาระบุเบอร์โทรศัพท์ให้ถูกต้อง"),
   addressLine1: z.string().trim().min(5, "กรุณาระบุบ้านเลขที่และถนน").max(255),

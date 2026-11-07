@@ -8,6 +8,8 @@ describe("shipping address mobile form", () => {
   it("keeps free-text delivery lines and renders dependent Thai geography controls", () => {
     const html = renderToStaticMarkup(createElement(ShippingAddressForm));
 
+    expect(html).not.toContain('name="label"');
+    expect(html.match(/<input[^>]+name="([^"]+)"/)?.[1]).toBe("recipientName");
     expect(html).toContain("บ้านเลขที่ ถนน ซอย");
     expect(html).toContain('name="province"');
     expect(html).toContain('name="district"');

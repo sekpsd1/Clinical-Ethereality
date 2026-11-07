@@ -86,7 +86,7 @@ export async function saveShippingAddressAction(
       }
 
       const data = {
-        label: parsed.data.label,
+        label: parsed.data.label || existing?.label || "ที่อยู่จัดส่ง",
         recipientName: parsed.data.recipientName,
         phone: parsed.data.phone,
         addressLine1: parsed.data.addressLine1,
