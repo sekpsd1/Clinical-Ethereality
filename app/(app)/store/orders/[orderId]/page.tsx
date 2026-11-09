@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { getAppEnv } from "@/lib/env/schema";
 import { CustomerOrderDetail } from "@/features/orders/CustomerOrderDetail";
 import { getCustomerOrders } from "@/features/orders/queries";
 import { getOrderReceiptDetails } from "@/features/orders/receipt";
@@ -9,5 +11,14 @@ export default async function StoreOrderDetailPage({ params }: { params: Promise
   const order = data.orders.find((item) => item.id === orderId || item.orderCode.toLowerCase() === orderId.toLowerCase()) ?? null;
 
   const receiptDetails = order?.paymentStatus === "verified" ? await getOrderReceiptDetails(session, order.id) : null;
-  return <CustomerOrderDetail order={order} unavailable={data.unavailable} receiptDetails={receiptDetails} />;
+  const userAgent = (await headers()).get("user-agent") ?? "";
+  return (
+    <CustomerOrderDetail
+      order={order}
+      unavailable={data.unavailable}
+      receiptDetails={receiptDetails}
+      inLine={/\bLINE\//i.test(userAgent)}
+      liffId={getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID}
+    />
+  );
 }

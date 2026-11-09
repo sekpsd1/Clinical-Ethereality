@@ -1,73 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { useState } from "react";
+import { Download, ExternalLink } from "lucide-react";
+import { loadLiffSdk } from "@/features/auth/liff-sdk";
 
 const buttonClass = "flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-3 text-center text-sm font-bold text-primary ring-1 ring-primary/20 disabled:opacity-60";
 
-export function OrderReceiptDownload({ orderId, orderCode }: { orderId: string; orderCode: string }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+export function OrderReceiptDownload({ orderId, inLine, liffId }: {
+  orderId: string;
+  inLine: boolean;
+  liffId?: string;
+}) {
+  const [opening, setOpening] = useState(false);
+  const [browserUrl, setBrowserUrl] = useState("");
 
-  useEffect(() => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setDownloadUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  async function prepare() {
-    setLoading(true);
-    setMessage("");
+  async function openInBrowser() {
+    const url = new URL(`/store/orders/${encodeURIComponent(orderId)}`, window.location.origin);
+    setBrowserUrl(url.href);
+    setOpening(true);
     try {
-      const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/receipt`, {
-        credentials: "same-origin",
-        cache: "no-store"
-      });
-      if (!response.ok || response.headers.get("Content-Type")?.split(";")[0] !== "application/pdf") {
-        throw new Error("Receipt unavailable");
-      }
-      const pdf = await response.blob();
-      if (await pdf.slice(0, 5).text() !== "%PDF-") throw new Error("Invalid PDF");
-      setFile(new File([pdf], `receipt-${orderCode}.pdf`, { type: "application/pdf" }));
-      setMessage("ไฟล์ PDF พร้อมแล้ว");
+      if (!liffId) throw new Error("LINE LIFF is unavailable");
+      const liff = await loadLiffSdk();
+      await liff.init({ liffId });
+      liff.openWindow({ url: url.href, external: true });
     } catch {
-      setMessage("เตรียมไฟล์ PDF ไม่สำเร็จ กรุณาลองใหม่ หรือเลือกดูใบเสร็จในแอป");
+      // The selectable link remains available if LINE cannot launch a browser.
     } finally {
-      setLoading(false);
+      setOpening(false);
     }
   }
 
-  async function shareFile(preparedFile: File) {
-    try {
-      await navigator.share({ files: [preparedFile] });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setMessage("แชร์ไฟล์ไม่สำเร็จ กรุณาเลือกบันทึก PDF");
-    }
+  if (!inLine) {
+    return (
+      <a href={`/api/orders/${encodeURIComponent(orderId)}/receipt`} download className={buttonClass}>
+        <Download aria-hidden="true" className="size-5 shrink-0" />
+        ดาวน์โหลดใบเสร็จ (PDF)
+      </a>
+    );
   }
 
   return (
     <div className="space-y-3">
-      {file && downloadUrl ? (
-        <>
-          <a href={downloadUrl} download={file.name} className={buttonClass}>
-            <Download aria-hidden="true" className="size-5 shrink-0" />
-            บันทึก PDF
-          </a>
-          {typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] }) ? (
-            <button type="button" onClick={() => void shareFile(file)} className={buttonClass}>แชร์ไฟล์ PDF</button>
-          ) : null}
-        </>
-      ) : (
-        <button type="button" onClick={() => void prepare()} disabled={loading} className={buttonClass}>
-          <Download aria-hidden="true" className="size-5 shrink-0" />
-          {loading ? "กำลังเตรียมไฟล์ PDF…" : "ดาวน์โหลดใบเสร็จ (PDF)"}
-        </button>
-      )}
-      <p role="status" className="text-sm text-[#3e494a] empty:hidden">{message}</p>
+      <button type="button" onClick={() => void openInBrowser()} disabled={opening} className={buttonClass}>
+        <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
+        {opening ? "กำลังเปิดเบราว์เซอร์…" : "เปิดเบราว์เซอร์เพื่อดาวน์โหลด PDF"}
+      </button>
+      <p className="text-sm text-[#3e494a]">
+        หากระบบขอให้เข้าสู่ระบบ ให้ใช้บัญชี LINE เดิม แล้วกดดาวน์โหลดในเบราว์เซอร์
+      </p>
+      {browserUrl ? (
+        <label className="block text-sm text-[#3e494a]">
+          หากเบราว์เซอร์ไม่เปิด ให้คัดลอกลิงก์นี้ไปเปิดใน Chrome หรือ Safari
+          <input
+            readOnly value={browserUrl} onFocus={event => event.currentTarget.select()}
+            className="mt-2 w-full rounded-lg border border-primary/20 bg-white px-3 py-2"
+          />
+        </label>
+      ) : null}
     </div>
   );
 }
