@@ -1,4 +1,4 @@
-import { getVerifiedReceipt } from "@/features/consultations/receipt/model";
+import { getPrintableReceiptAccountName, getVerifiedReceipt } from "@/features/consultations/receipt/model";
 import { hasReceiptGlyphs } from "@/features/consultations/receipt/font-coverage";
 import { ReceiptAccessError } from "@/features/consultations/receipt/queries";
 import type { PublicSession } from "@/lib/auth/types";
@@ -49,10 +49,8 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
     throw new ReceiptAccessError(404);
   }
 
-  const accountName = [order.user.fullName, order.user.displayName]
-    .map(name => name?.trim())
-    .find(name => name && name.length <= 255 && !/[\p{Cc}\p{Cf}]/u.test(name) && hasReceiptGlyphs(name));
-  const receipt = getVerifiedReceipt(payment, accountName ?? "ไม่สามารถแสดงชื่อบัญชีในเอกสาร", "SO");
+  const accountName = getPrintableReceiptAccountName(order.user.fullName, order.user.displayName);
+  const receipt = getVerifiedReceipt(payment, accountName, "SO");
   if (!receipt) throw new ReceiptAccessError(404);
 
   const money = (value: { toString(): string }) => Number(value.toString()).toLocaleString("en-US", {

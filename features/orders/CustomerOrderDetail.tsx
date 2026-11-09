@@ -6,6 +6,7 @@ import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatReceiptDate, receiptIssuer } from "@/features/consultations/receipt/model";
 import type { getOrderReceiptDetails } from "./receipt";
+import { ReceiptImage } from "@/features/consultations/receipt/ReceiptImage";
 import { OrderReceiptDownload } from "./OrderReceiptDownload";
 
 type OrderReceiptDetails = Awaited<ReturnType<typeof getOrderReceiptDetails>>;
@@ -139,6 +140,7 @@ function OrderDetailContent({ order, receiptDetails, browserUrl, liffId }: {
                 })} บาท</p>
               </div>
             </details>
+            <ReceiptImage href={`/api/orders/${encodeURIComponent(order.id)}/receipt`} />
             <OrderReceiptDownload orderId={order.id} browserUrl={browserUrl} liffId={liffId} />
           </div>
         ) : null}

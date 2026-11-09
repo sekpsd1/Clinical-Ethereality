@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { getOwnedConsultationReceipt, ReceiptAccessError } from "@/features/consultations/receipt/queries";
+import { renderReceiptImage } from "@/features/consultations/receipt/image";
 import { renderConsultationReceipt } from "@/features/consultations/receipt/pdf";
 
 export const runtime = "nodejs";
@@ -15,19 +16,22 @@ const privateHeaders = {
   "Vary": "Cookie"
 };
 
-export async function GET(_request: Request, context: { params: Promise<{ consultationId: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ consultationId: string }> }) {
   try {
     const session = await getCurrentSession();
     if (!session) throw new ReceiptAccessError(401);
     const parsed = identifier.safeParse((await context.params).consultationId);
     if (!parsed.success) throw new ReceiptAccessError(404);
     const receipt = await getOwnedConsultationReceipt(session, parsed.data);
-    const pdf = await renderConsultationReceipt(receipt);
-    return new Response(new Uint8Array(pdf), {
+    const asImage = new URL(request.url).searchParams.get("format") === "jpg";
+    const bytes = asImage ? await renderReceiptImage(receipt) : await renderConsultationReceipt(receipt);
+    return new Response(new Uint8Array(bytes), {
       headers: {
         ...privateHeaders,
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="consultation-payment-receipt.pdf"'
+        "Content-Type": asImage ? "image/jpeg" : "application/pdf",
+        "Content-Disposition": asImage
+          ? 'inline; filename="consultation-payment-receipt.jpg"'
+          : 'attachment; filename="consultation-payment-receipt.pdf"'
       }
     });
   } catch (error) {

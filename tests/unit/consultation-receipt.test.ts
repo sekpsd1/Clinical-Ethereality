@@ -74,6 +74,26 @@ describe("private owned receipt download", () => {
     expect(mocks.render).not.toHaveBeenCalled();
     return response;
   }
+  it.each([null, "ทดสอบ😀"])("offers a receipt when the LINE name %s cannot be printed", async displayName => {
+    mocks.user.mockResolvedValue({ fullName: null, displayName });
+    expect(await getConsultationReceiptHref(session, "consult-1")).toBe("/api/consultations/consult-1/receipt");
+    expect((await GET(request, context)).status).toBe(200);
+  });
+
+  it("returns an inline private JPEG for the owner only", async () => {
+    const imageRequest = new Request(request.url + "?format=jpg");
+    const response = await GET(imageRequest, context);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("content-disposition")).toMatch(/^inline;/);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([255, 216, 255]);
+
+    mocks.session.mockResolvedValue(null);
+    expect((await GET(imageRequest, context)).status).toBe(401);
+  });
+
   it("denies no session before querying private data", async () => {
     mocks.session.mockResolvedValue(null);
     await expectDenied(401);

@@ -1,6 +1,6 @@
 import type { PublicSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
-import { getReceiptModel } from "./model";
+import { getPrintableReceiptAccountName, getReceiptModel } from "./model";
 
 export class ReceiptAccessError extends Error {
   constructor(public readonly status: 401 | 403 | 404) {
@@ -22,7 +22,7 @@ export async function getOwnedConsultationReceipt(session: PublicSession | null,
         expiresAt: { gt: new Date() }
       } }
     },
-    select: { displayName: true }
+    select: { fullName: true, displayName: true }
   });
   if (!activeUser) throw new ReceiptAccessError(403);
   const payment = await prisma.payment.findFirst({
@@ -37,7 +37,8 @@ export async function getOwnedConsultationReceipt(session: PublicSession | null,
       normalizedRefundReference: true
     }
   });
-  const receipt = getReceiptModel(payment, consultationId, activeUser.displayName);
+  const accountName = getPrintableReceiptAccountName(activeUser.fullName, activeUser.displayName);
+  const receipt = getReceiptModel(payment, consultationId, accountName);
   if (!receipt) throw new ReceiptAccessError(404);
   return receipt;
 }

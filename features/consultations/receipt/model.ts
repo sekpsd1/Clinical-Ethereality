@@ -31,6 +31,13 @@ export type ConsultationReceipt = {
   channel: "PromptPay";
 };
 
+export function getPrintableReceiptAccountName(...names: (string | null | undefined)[]): string {
+  return names
+    .map(name => name?.trim())
+    .find(name => name && name.length <= 255 && !/[\p{Cc}\p{Cf}]/u.test(name) && hasReceiptGlyphs(name))
+    ?? "ไม่สามารถแสดงชื่อบัญชีในเอกสาร";
+}
+
 export function getReceiptModel(
   payment: ReceiptPayment | null,
   consultationId: string,
