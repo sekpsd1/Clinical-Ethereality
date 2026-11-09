@@ -12,13 +12,17 @@ export default async function StoreOrderDetailPage({ params }: { params: Promise
 
   const receiptDetails = order?.paymentStatus === "verified" ? await getOrderReceiptDetails(session, order.id) : null;
   const userAgent = (await headers()).get("user-agent") ?? "";
+  const env = getAppEnv();
+  const browserUrl = order && receiptDetails && /\bLINE\//i.test(userAgent)
+    ? new URL(`/store/orders/${encodeURIComponent(order.id)}`, env.NEXT_PUBLIC_APP_URL).href
+    : undefined;
   return (
     <CustomerOrderDetail
       order={order}
       unavailable={data.unavailable}
       receiptDetails={receiptDetails}
-      inLine={/\bLINE\//i.test(userAgent)}
-      liffId={getAppEnv().NEXT_PUBLIC_LINE_LIFF_ID}
+      browserUrl={browserUrl}
+      liffId={browserUrl ? env.NEXT_PUBLIC_LINE_LIFF_ID : undefined}
     />
   );
 }

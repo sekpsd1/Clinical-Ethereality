@@ -1,36 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import { loadLiffSdk } from "@/features/auth/liff-sdk";
 
-const buttonClass = "flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-3 text-center text-sm font-bold text-primary ring-1 ring-primary/20 disabled:opacity-60";
+const buttonClass = "flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-3 text-center text-sm font-bold text-primary ring-1 ring-primary/20";
 
-export function OrderReceiptDownload({ orderId, inLine, liffId }: {
+export function OrderReceiptDownload({ orderId, browserUrl, liffId }: {
   orderId: string;
-  inLine: boolean;
+  browserUrl?: string;
   liffId?: string;
 }) {
-  const [opening, setOpening] = useState(false);
-  const [browserUrl, setBrowserUrl] = useState("");
+  const [liffReady, setLiffReady] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  async function openInBrowser() {
-    const url = new URL(`/store/orders/${encodeURIComponent(orderId)}`, window.location.origin);
-    setBrowserUrl(url.href);
-    setOpening(true);
-    try {
-      if (!liffId) throw new Error("LINE LIFF is unavailable");
-      const liff = await loadLiffSdk();
+  useEffect(() => {
+    if (!browserUrl || !liffId) return;
+    let active = true;
+    void loadLiffSdk().then(async liff => {
+      if (!liff.isInClient()) return;
       await liff.init({ liffId });
-      liff.openWindow({ url: url.href, external: true });
-    } catch {
-      // The selectable link remains available if LINE cannot launch a browser.
-    } finally {
-      setOpening(false);
-    }
-  }
+      if (active) setLiffReady(true);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [browserUrl, liffId]);
 
-  if (!inLine) {
+  if (!browserUrl) {
     return (
       <a href={`/api/orders/${encodeURIComponent(orderId)}/receipt`} download className={buttonClass}>
         <Download aria-hidden="true" className="size-5 shrink-0" />
@@ -39,24 +34,46 @@ export function OrderReceiptDownload({ orderId, inLine, liffId }: {
     );
   }
 
+  const orderUrl = browserUrl;
+  const externalUrl = new URL(orderUrl);
+  externalUrl.searchParams.set("openExternalBrowser", "1");
+
+  function openInBrowser(event: MouseEvent<HTMLAnchorElement>) {
+    if (!liffReady || !window.liff) return;
+    try {
+      window.liff.openWindow({ url: orderUrl, external: true });
+      event.preventDefault();
+    } catch {
+      // Keep the link's normal navigation if the LIFF bridge throws.
+    }
+  }
+
+  async function copyOrderUrl() {
+    try {
+      await navigator.clipboard.writeText(orderUrl);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
-      <button type="button" onClick={() => void openInBrowser()} disabled={opening} className={buttonClass}>
+      <a href={externalUrl.href} onClick={openInBrowser} className={buttonClass}>
         <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
-        {opening ? "กำลังเปิดเบราว์เซอร์…" : "เปิดเบราว์เซอร์เพื่อดาวน์โหลด PDF"}
-      </button>
+        เปิดเบราว์เซอร์เพื่อดาวน์โหลด PDF
+      </a>
       <p className="text-sm text-[#3e494a]">
-        หากระบบขอให้เข้าสู่ระบบ ให้ใช้บัญชี LINE เดิม แล้วกดดาวน์โหลดในเบราว์เซอร์
+        หากยังอยู่ใน LINE ให้คัดลอกลิงก์ไปเปิดใน Chrome หรือ Safari เข้าสู่ระบบด้วยบัญชี LINE เดิม แล้วกดดาวน์โหลด
       </p>
-      {browserUrl ? (
-        <label className="block text-sm text-[#3e494a]">
-          หากเบราว์เซอร์ไม่เปิด ให้คัดลอกลิงก์นี้ไปเปิดใน Chrome หรือ Safari
-          <input
-            readOnly value={browserUrl} onFocus={event => event.currentTarget.select()}
-            className="mt-2 w-full rounded-lg border border-primary/20 bg-white px-3 py-2"
-          />
-        </label>
-      ) : null}
+      <button type="button" onClick={() => void copyOrderUrl()} className={buttonClass}>
+        {copied ? "คัดลอกลิงก์แล้ว" : "คัดลอกลิงก์คำสั่งซื้อ"}
+      </button>
+      <input
+        aria-label="ลิงก์คำสั่งซื้อ"
+        readOnly value={orderUrl} onFocus={event => event.currentTarget.select()}
+        className="w-full rounded-lg border border-primary/20 bg-white px-3 py-2 text-sm"
+      />
     </div>
   );
 }

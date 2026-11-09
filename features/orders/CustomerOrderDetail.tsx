@@ -17,11 +17,11 @@ type CustomerOrderDetailProps = {
   order: CustomerOrderItem | null;
   unavailable?: boolean;
   receiptDetails?: OrderReceiptDetails;
-  inLine?: boolean;
+  browserUrl?: string;
   liffId?: string;
 };
 
-export function CustomerOrderDetail({ order, unavailable, receiptDetails, inLine = false, liffId }: CustomerOrderDetailProps) {
+export function CustomerOrderDetail({ order, unavailable, receiptDetails, browserUrl, liffId }: CustomerOrderDetailProps) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[linear-gradient(180deg,#f7f9fb_0%,#eef3f4_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <Header />
@@ -47,7 +47,7 @@ export function CustomerOrderDetail({ order, unavailable, receiptDetails, inLine
           />
         ) : null}
 
-        {order ? <OrderDetailContent order={order} receiptDetails={receiptDetails} inLine={inLine} liffId={liffId} /> : null}
+        {order ? <OrderDetailContent order={order} receiptDetails={receiptDetails} browserUrl={browserUrl} liffId={liffId} /> : null}
       </main>
     </div>
   );
@@ -69,10 +69,10 @@ function Header() {
   );
 }
 
-function OrderDetailContent({ order, receiptDetails, inLine, liffId }: {
+function OrderDetailContent({ order, receiptDetails, browserUrl, liffId }: {
   order: CustomerOrderItem;
   receiptDetails?: OrderReceiptDetails;
-  inLine: boolean;
+  browserUrl?: string;
   liffId?: string;
 }) {
   return (
@@ -139,7 +139,7 @@ function OrderDetailContent({ order, receiptDetails, inLine, liffId }: {
                 })} บาท</p>
               </div>
             </details>
-            <OrderReceiptDownload orderId={order.id} inLine={inLine} liffId={liffId} />
+            <OrderReceiptDownload orderId={order.id} browserUrl={browserUrl} liffId={liffId} />
           </div>
         ) : null}
       </section>
