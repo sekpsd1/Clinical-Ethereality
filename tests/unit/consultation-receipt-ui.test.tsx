@@ -9,7 +9,7 @@ describe("receipt download action", () => {
   });
   it("navigates to the JPG attachment without relying on the browser download attribute", () => {
     const html = renderToStaticMarkup(<ReceiptImage href="/api/consultations/owned/receipt" />);
-    expect(html).toContain('href="/api/consultations/owned/receipt?format=jpg&amp;download=1"');
+    expect(html).toContain('href="/api/consultations/owned/receipt?format=jpg&amp;download=1&amp;handoff=1"');
     expect(html).not.toContain('download=""');
     expect(html).toContain("ดาวน์โหลดใบเสร็จ JPG");
     expect(html).not.toMatch(/<form|target=|prefetch|type="submit"/);

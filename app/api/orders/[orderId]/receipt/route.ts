@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { ReceiptAccessError } from "@/features/consultations/receipt/queries";
 import { getOwnedOrderReceipt } from "@/features/orders/receipt";
+import { readReceiptDownloadTicket, redirectToReceiptAttachment } from "@/features/consultations/receipt/download-ticket";
 import { renderReceiptImage } from "@/features/consultations/receipt/image";
 import { renderConsultationReceipt } from "@/features/consultations/receipt/pdf";
 
@@ -19,14 +20,21 @@ const privateHeaders = {
 
 export async function GET(request: Request, context: { params: Promise<{ orderId: string }> }) {
   try {
-    const session = await getCurrentSession();
-    if (!session) throw new ReceiptAccessError(401);
     const parsed = identifier.safeParse((await context.params).orderId);
     if (!parsed.success) throw new ReceiptAccessError(404);
-    const { receipt, order } = await getOwnedOrderReceipt(session, parsed.data);
     const options = new URL(request.url).searchParams;
     const asImage = options.get("format") === "jpg";
     const disposition = options.get("download") === "1" ? "attachment" : "inline";
+    const resource = "orders/" + parsed.data;
+    const currentSession = await getCurrentSession();
+    const session = currentSession ?? (asImage && disposition === "attachment"
+      ? readReceiptDownloadTicket(options.get("ticket"), resource)
+      : null);
+    if (!session) throw new ReceiptAccessError(401);
+    const { receipt, order } = await getOwnedOrderReceipt(session, parsed.data);
+    if (asImage && disposition === "attachment" && options.get("handoff") === "1" && currentSession) {
+      return redirectToReceiptAttachment(currentSession, resource, privateHeaders);
+    }
     const bytes = asImage ? await renderReceiptImage(receipt, order) : await renderConsultationReceipt(receipt, order);
     return new Response(new Uint8Array(bytes), {
       headers: {

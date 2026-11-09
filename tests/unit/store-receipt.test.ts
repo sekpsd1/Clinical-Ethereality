@@ -34,6 +34,38 @@ describe("Store receipt download", () => {
     mocks.order.mockResolvedValue(fixture());
   });
 
+  it("hands off the JPG to a downloader without cookies using a scoped, expiring ticket", async () => {
+    vi.stubEnv("JWT_SECRET", "test-secret-with-at-least-thirty-two-characters");
+    try {
+      const handoff = await GET(new Request(request.url + "?format=jpg&download=1&handoff=1"), context);
+      expect(handoff.status).toBe(303);
+      const target = new URL(handoff.headers.get("location")!, request.url);
+      expect(target.origin).toBe(new URL(request.url).origin);
+
+      mocks.session.mockResolvedValue(null);
+      const download = await GET(new Request(target), context);
+      expect(download.status).toBe(200);
+      expect(download.headers.get("content-type")).toBe("image/jpeg");
+      expect((await GET(new Request(target), { params: Promise.resolve({ orderId: "other-order" }) })).status).toBe(401);
+
+      target.searchParams.delete("download");
+      expect((await GET(new Request(target), context)).status).toBe(401);
+      target.searchParams.set("download", "1");
+
+      mocks.order.mockResolvedValueOnce(null);
+      expect((await GET(new Request(target), context)).status).toBe(404);
+
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 46_000);
+      try {
+        expect((await GET(new Request(target), context)).status).toBe(401);
+      } finally {
+        clock.mockRestore();
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("returns an inline private JPEG for the owner only", async () => {
     const imageRequest = new Request(request.url + "?format=jpg");
     const response = await GET(imageRequest, context);
