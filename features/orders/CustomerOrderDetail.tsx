@@ -7,7 +7,6 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatReceiptDate, receiptIssuer } from "@/features/consultations/receipt/model";
 import type { getOrderReceiptDetails } from "./receipt";
 import { ReceiptImage } from "@/features/consultations/receipt/ReceiptImage";
-import { OrderReceiptDownload } from "./OrderReceiptDownload";
 
 type OrderReceiptDetails = Awaited<ReturnType<typeof getOrderReceiptDetails>>;
 import { CustomerOrderCancellation } from "@/features/orders/CustomerOrderCancellation";
@@ -18,11 +17,9 @@ type CustomerOrderDetailProps = {
   order: CustomerOrderItem | null;
   unavailable?: boolean;
   receiptDetails?: OrderReceiptDetails;
-  browserUrl?: string;
-  liffId?: string;
 };
 
-export function CustomerOrderDetail({ order, unavailable, receiptDetails, browserUrl, liffId }: CustomerOrderDetailProps) {
+export function CustomerOrderDetail({ order, unavailable, receiptDetails }: CustomerOrderDetailProps) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[linear-gradient(180deg,#f7f9fb_0%,#eef3f4_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <Header />
@@ -48,7 +45,7 @@ export function CustomerOrderDetail({ order, unavailable, receiptDetails, browse
           />
         ) : null}
 
-        {order ? <OrderDetailContent order={order} receiptDetails={receiptDetails} browserUrl={browserUrl} liffId={liffId} /> : null}
+        {order ? <OrderDetailContent order={order} receiptDetails={receiptDetails} /> : null}
       </main>
     </div>
   );
@@ -70,11 +67,9 @@ function Header() {
   );
 }
 
-function OrderDetailContent({ order, receiptDetails, browserUrl, liffId }: {
+function OrderDetailContent({ order, receiptDetails }: {
   order: CustomerOrderItem;
   receiptDetails?: OrderReceiptDetails;
-  browserUrl?: string;
-  liffId?: string;
 }) {
   return (
     <div className="space-y-6">
@@ -141,7 +136,6 @@ function OrderDetailContent({ order, receiptDetails, browserUrl, liffId }: {
               </div>
             </details>
             <ReceiptImage href={`/api/orders/${encodeURIComponent(order.id)}/receipt`} />
-            <OrderReceiptDownload orderId={order.id} browserUrl={browserUrl} liffId={liffId} />
           </div>
         ) : null}
       </section>

@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DoctorAvatar } from "@/features/consultations/DoctorAvatar";
 import { ConsultationSlipVerification } from "@/features/consultations/payment/ConsultationSlipVerification";
 import { PrivateSlipUpload } from "@/features/payments/PrivateSlipUpload";
-import { ReceiptDownload } from "@/features/consultations/receipt/ReceiptDownload";
+import { ReceiptImage } from "@/features/consultations/receipt/ReceiptImage";
 import type {
   ConsultationPaymentData,
   ConsultationPaymentDetail,
@@ -48,7 +48,7 @@ export function ConsultPaymentCheckout({
             <PaymentStatusNotice data={data} />
             <BookingSummaryCard consultation={consultation} />
             <ConsultationPaymentStatusCard consultation={consultation} paymentStatus={data.paymentStatus} />
-            <ReceiptDownload href={consultation.receiptHref} />
+            <ReceiptImage href={consultation.receiptHref} />
 
             {consultation.status === "scheduled" || consultation.status === "live" ? (
               <PaymentStateCard

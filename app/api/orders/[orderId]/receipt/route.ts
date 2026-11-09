@@ -24,14 +24,16 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
     const parsed = identifier.safeParse((await context.params).orderId);
     if (!parsed.success) throw new ReceiptAccessError(404);
     const { receipt, order } = await getOwnedOrderReceipt(session, parsed.data);
-    const asImage = new URL(request.url).searchParams.get("format") === "jpg";
+    const options = new URL(request.url).searchParams;
+    const asImage = options.get("format") === "jpg";
+    const disposition = options.get("download") === "1" ? "attachment" : "inline";
     const bytes = asImage ? await renderReceiptImage(receipt, order) : await renderConsultationReceipt(receipt, order);
     return new Response(new Uint8Array(bytes), {
       headers: {
         ...privateHeaders,
         "Content-Type": asImage ? "image/jpeg" : "application/pdf",
         "Content-Disposition": asImage
-          ? 'inline; filename="store-payment-receipt.jpg"'
+          ? `${disposition}; filename="store-payment-receipt.jpg"`
           : 'attachment; filename="store-payment-receipt.pdf"'
       }
     });

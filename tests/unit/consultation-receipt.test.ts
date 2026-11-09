@@ -90,6 +90,10 @@ describe("private owned receipt download", () => {
     const bytes = new Uint8Array(await response.arrayBuffer());
     expect(Array.from(bytes.slice(0, 3))).toEqual([255, 216, 255]);
 
+    const download = await GET(new Request(imageRequest.url + "&download=1"), context);
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-disposition")).toMatch(/^attachment;.*\.jpg/);
+
     mocks.session.mockResolvedValue(null);
     expect((await GET(imageRequest, context)).status).toBe(401);
   });
