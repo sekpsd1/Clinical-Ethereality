@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/orders/[orderId]/receipt/route";
-import { getOrderReceiptHref } from "@/features/orders/receipt";
+import { getOrderReceiptDetails } from "@/features/orders/receipt";
 import type { ReceiptPayment } from "@/features/consultations/receipt/model";
 
 const mocks = vi.hoisted(() => ({ session: vi.fn(), order: vi.fn() }));
@@ -43,12 +43,12 @@ describe("Store receipt download", () => {
     const bytes = Buffer.from(await response.arrayBuffer());
     expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
     expect(bytes.toString("latin1")).toContain("NotoSansThai");
-    expect(await getOrderReceiptHref(session, "order-1")).toBe("/api/orders/order-1/receipt");
+    expect(await getOrderReceiptDetails(session, "order-1")).toMatchObject({ receipt: { amount: "150.00" } });
   });
 
   it.each([null, "", "ทดสอบ😀", "测试"])("keeps the receipt available when account name %s cannot be printed", async displayName => {
     mocks.order.mockResolvedValue({ ...fixture(), user: { fullName: null, displayName } });
-    expect(await getOrderReceiptHref(session, "order-1")).toBe("/api/orders/order-1/receipt");
+    expect(await getOrderReceiptDetails(session, "order-1")).toMatchObject({ receipt: { amount: "150.00" } });
     expect((await GET(request, context)).status).toBe(200);
   });
 
@@ -82,7 +82,7 @@ describe("Store receipt download", () => {
     { consultationId: "consultation-1" }
   ])("withholds button and PDF for ineligible payment %o", async overrides => {
     mocks.order.mockResolvedValue(fixture(overrides));
-    expect(await getOrderReceiptHref(session, "order-1")).toBeNull();
+    expect(await getOrderReceiptDetails(session, "order-1")).toBeNull();
     expect((await GET(request, context)).status).toBe(404);
   });
 });

@@ -69,10 +69,9 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
   return { receipt, order: { code: getOrderCode(orderId), lines } };
 }
 
-export async function getOrderReceiptHref(session: PublicSession, orderId: string) {
+export async function getOrderReceiptDetails(session: PublicSession, orderId: string) {
   try {
-    await getOwnedOrderReceipt(session, orderId);
-    return `/api/orders/${encodeURIComponent(orderId)}/receipt`;
+    return await getOwnedOrderReceipt(session, orderId);
   } catch {
     return null;
   }
