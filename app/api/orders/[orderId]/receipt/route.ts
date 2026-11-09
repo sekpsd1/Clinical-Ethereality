@@ -32,6 +32,7 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
       headers: {
         ...privateHeaders,
         "Content-Type": asImage ? "image/jpeg" : "application/pdf",
+        "Content-Length": String(bytes.byteLength),
         "Content-Disposition": asImage
           ? `${disposition}; filename="store-payment-receipt.jpg"`
           : 'attachment; filename="store-payment-receipt.pdf"'

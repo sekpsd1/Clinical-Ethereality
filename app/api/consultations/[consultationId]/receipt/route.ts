@@ -31,6 +31,7 @@ export async function GET(request: Request, context: { params: Promise<{ consult
       headers: {
         ...privateHeaders,
         "Content-Type": asImage ? "image/jpeg" : "application/pdf",
+        "Content-Length": String(bytes.byteLength),
         "Content-Disposition": asImage
           ? `${disposition}; filename="consultation-payment-receipt.jpg"`
           : 'attachment; filename="consultation-payment-receipt.pdf"'
