@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { PublicSession } from "@/lib/auth/types";
 import { getQrDataUrlFromPayload } from "@/lib/payments/promptpay";
 import { isPaymentReadyForProviderVerification } from "@/features/payments/service";
-import type { CustomerOrderItem, CustomerOrdersData, CustomerOrderTrackingStep } from "@/features/orders/types";
+import { getOrderCode, type CustomerOrderItem, type CustomerOrdersData, type CustomerOrderTrackingStep } from "@/features/orders/types";
 
 type CustomerOrderRecord = Awaited<ReturnType<typeof getOrdersForCustomer>>[number];
 type ExternalPrescriptionAttachmentSummary = {
@@ -85,10 +85,6 @@ function formatDate(date: Date): string {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(date);
-}
-
-function getOrderCode(orderId: string): string {
-  return `CE-${orderId.slice(-6).toUpperCase()}`;
 }
 
 function getStatusTone(status: OrderStatus): CustomerOrderItem["statusTone"] {

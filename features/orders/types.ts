@@ -44,3 +44,7 @@ export type CustomerOrdersData = {
   };
   unavailable?: boolean;
 };
+
+export function getOrderCode(orderId: string): string {
+  return `CE-${orderId.slice(-6).toUpperCase()}`;
+}

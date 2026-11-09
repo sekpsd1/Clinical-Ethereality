@@ -6,10 +6,13 @@ import { hasReceiptGlyphs } from "./font-coverage";
 const fontRoot = path.join(process.cwd(), "assets", "fonts", "receipt");
 
 /** In-memory generation only. No patient content enters file storage or PDF metadata. */
-export async function renderConsultationReceipt(receipt: ConsultationReceipt): Promise<Buffer> {
+export async function renderConsultationReceipt(
+  receipt: ConsultationReceipt,
+  order?: { code: string; lines: string[] }
+): Promise<Buffer> {
   const doc = new PDFDocument({
     size: "A4", margin: 48, autoFirstPage: true,
-    info: { Title: "Consultation payment receipt", Author: "Bangkok Cytogenetics Clinic" }
+    info: { Title: order ? "Store payment receipt" : "Consultation payment receipt", Author: "Bangkok Cytogenetics Clinic" }
   });
   const chunks: Buffer[] = [];
   const complete = new Promise<Buffer>((resolve, reject) => {
@@ -89,7 +92,7 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
     doc.y = 63;
     text("BANGKOK CYTOGENETICS CLINIC", 9, true, { color: teal });
     doc.y = 91;
-    text("ใบเสร็จรับเงินค่าปรึกษา", 23, true, { color: teal });
+    text(order ? "ใบเสร็จรับเงินค่าสินค้า" : "ใบเสร็จรับเงินค่าปรึกษา", 23, true, { color: teal });
     doc.y = Math.max(doc.y + 5, 151);
     text(receiptIssuer.name, 12, true, { gap: 4 });
     text(receiptIssuer.address, 10, false, { color: muted });
@@ -109,6 +112,12 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
     text("ชื่อผู้ชำระตามบัญชีผู้ใช้", 9, false, { color: muted, gap: 2 });
     text(receipt.payerAccountName, 12, false, { gap: 0 });
 
+    if (order) {
+      doc.y += 16;
+      text(`คำสั่งซื้อ ${order.code}`, 11, true);
+      for (const line of order.lines) text(line, 10);
+    }
+
     // All receipt inputs are bounded; reserve a complete table rather than splitting rows.
     if (doc.y + 200 > doc.page.height - 140) doc.addPage();
     const tableY = doc.y + 24;
@@ -118,7 +127,7 @@ export async function renderConsultationReceipt(receipt: ConsultationReceipt): P
     doc.y = tableY + 7;
     text("จำนวนเงิน (THB)", 10, true, { x: 350, width: pageWidth - 316, align: "right", gap: 0 });
     doc.y = tableY + 45;
-    text("ค่าปรึกษาแพทย์", 12, false, { x: 62, width: 270, gap: 0 });
+    text(order ? "ค่าสินค้าตามคำสั่งซื้อ" : "ค่าปรึกษาแพทย์", 12, false, { x: 62, width: 270, gap: 0 });
     doc.y = tableY + 45;
     text(paid, 12, false, { x: 350, width: pageWidth - 316, align: "right", gap: 0 });
     const totalY = tableY + 84;

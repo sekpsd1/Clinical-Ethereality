@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
       "./assets/fonts/receipt/**/*",
       "./node_modules/pdfkit/js/standard-fonts/**/*",
       "./node_modules/pdfkit/LICENSE"
+    ],
+    "/api/orders/*/receipt": [
+      "./assets/fonts/receipt/**/*",
+      "./node_modules/pdfkit/js/standard-fonts/**/*",
+      "./node_modules/pdfkit/LICENSE"
     ]
   },
   typedRoutes: true,

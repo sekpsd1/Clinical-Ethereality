@@ -36,9 +36,17 @@ export function getReceiptModel(
   consultationId: string,
   payerAccountName: string | null
 ): ConsultationReceipt | null {
+  if (payment?.consultationId !== consultationId || payment.orderId !== null) return null;
+  return getVerifiedReceipt(payment, payerAccountName, "CP");
+}
+
+export function getVerifiedReceipt(
+  payment: ReceiptPayment | null,
+  payerAccountName: string | null,
+  prefix: "CP" | "SO"
+): ConsultationReceipt | null {
   if (
     !payment || payment.status !== "verified" || payment.method !== "promptpay" ||
-    payment.consultationId !== consultationId || payment.orderId !== null ||
     !/^[A-Za-z0-9_-]{1,80}$/.test(payment.id) ||
     [payment.refundAmount, payment.refundReason, payment.refundedAt, payment.refundedById,
       payment.refundTransactionReference, payment.normalizedRefundReference].some(value => value != null) ||
@@ -53,7 +61,7 @@ export function getReceiptModel(
   if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) return null;
   const [whole, fraction = ""] = amount.split(".");
   return {
-    reference: `CP-${payment.id}`,
+    reference: `${prefix}-${payment.id}`,
     confirmedAt: payment.reviewedAt,
     payerAccountName: payerAccountName.trim(),
     amount: `${whole}.${fraction.padEnd(2, "0")}`,

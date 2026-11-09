@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderTrackingTimeline } from "@/components/ui/OrderTrackingTimeline";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ReceiptDownload } from "@/features/consultations/receipt/ReceiptDownload";
 import { CustomerOrderCancellation } from "@/features/orders/CustomerOrderCancellation";
 import type { CustomerOrderItem } from "@/features/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
@@ -11,9 +12,10 @@ import { formatShippingAddress } from "@/features/profile/shipping-addresses/typ
 type CustomerOrderDetailProps = {
   order: CustomerOrderItem | null;
   unavailable?: boolean;
+  receiptHref?: string | null;
 };
 
-export function CustomerOrderDetail({ order, unavailable }: CustomerOrderDetailProps) {
+export function CustomerOrderDetail({ order, unavailable, receiptHref }: CustomerOrderDetailProps) {
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-[linear-gradient(180deg,#f7f9fb_0%,#eef3f4_100%)] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#191c1e]">
       <Header />
@@ -39,7 +41,7 @@ export function CustomerOrderDetail({ order, unavailable }: CustomerOrderDetailP
           />
         ) : null}
 
-        {order ? <OrderDetailContent order={order} /> : null}
+        {order ? <OrderDetailContent order={order} receiptHref={receiptHref} /> : null}
       </main>
     </div>
   );
@@ -61,7 +63,7 @@ function Header() {
   );
 }
 
-function OrderDetailContent({ order }: { order: CustomerOrderItem }) {
+function OrderDetailContent({ order, receiptHref }: { order: CustomerOrderItem; receiptHref?: string | null }) {
   return (
     <div className="space-y-6">
       <section className="rounded-[24px] border border-white/40 bg-white/75 p-6 shadow-[0_12px_40px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
@@ -107,6 +109,11 @@ function OrderDetailContent({ order }: { order: CustomerOrderItem }) {
           </div>
         </div>
         <OrderTrackingTimeline steps={order.steps} />
+        {receiptHref ? (
+          <div className="mt-5">
+            <ReceiptDownload href={receiptHref} label="ดาวน์โหลดใบเสร็จ (PDF)" />
+          </div>
+        ) : null}
       </section>
 
       {order.paymentVerificationRequired ? (
