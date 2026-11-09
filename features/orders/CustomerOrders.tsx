@@ -74,7 +74,7 @@ function OrderCard({ order }: { order: CustomerOrderItem }) {
     <article className="rounded-[24px] border border-white/40 bg-white/70 p-5 shadow-[0_10px_30px_rgba(0,96,103,0.05)] backdrop-blur-[24px]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#6e797a]">{order.orderCode}</p>
+          <p className="text-sm font-bold text-primary">เลขคำสั่งซื้อ <span className="whitespace-nowrap">{order.orderCode}</span></p>
           <h2 className="mt-2 truncate text-base font-extrabold text-[#191c1e]">{order.itemSummary}</h2>
           <p className="mt-1 text-xs font-medium text-[#3e494a]">
             {order.itemCount} รายการ / อัปเดต {order.updatedAt}

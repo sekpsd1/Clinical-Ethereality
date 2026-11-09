@@ -67,7 +67,7 @@ function OrderDetailContent({ order, receiptHref }: { order: CustomerOrderItem; 
   return (
     <div className="space-y-6">
       <section className="rounded-[24px] border border-white/40 bg-white/75 p-6 shadow-[0_12px_40px_rgba(0,96,103,0.08)] backdrop-blur-[24px]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#6e797a]">{order.orderCode}</p>
+        <p className="text-sm font-bold text-primary">เลขคำสั่งซื้อ <span className="whitespace-nowrap">{order.orderCode}</span></p>
         <h1 className="mt-3 text-[24px] font-extrabold leading-7 text-primary">{order.itemSummary}</h1>
         <p className="mt-2 text-sm leading-6 text-[#3e494a]">
           {order.itemCount} รายการ / อัปเดตล่าสุด {order.updatedAt}
@@ -108,6 +108,9 @@ function OrderDetailContent({ order, receiptHref }: { order: CustomerOrderItem; 
             <p className="mt-1 text-xs leading-5 text-[#6e797a]">เก็บประวัติคำสั่งซื้อ การชำระเงิน และการจัดส่งให้ตรวจสอบย้อนหลังได้</p>
           </div>
         </div>
+        <p className="mb-5 rounded-xl bg-primary/5 px-4 py-3 text-sm font-bold text-primary">
+          เลขคำสั่งซื้อ <span className="whitespace-nowrap">{order.orderCode}</span>
+        </p>
         <OrderTrackingTimeline steps={order.steps} />
         {receiptHref ? (
           <div className="mt-5">
