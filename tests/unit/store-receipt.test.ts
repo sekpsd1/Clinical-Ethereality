@@ -46,6 +46,12 @@ describe("Store receipt download", () => {
     expect(await getOrderReceiptHref(session, "order-1")).toBe("/api/orders/order-1/receipt");
   });
 
+  it.each([null, "", "ทดสอบ😀", "测试"])("keeps the receipt available when account name %s cannot be printed", async displayName => {
+    mocks.order.mockResolvedValue({ ...fixture(), user: { fullName: null, displayName } });
+    expect(await getOrderReceiptHref(session, "order-1")).toBe("/api/orders/order-1/receipt");
+    expect((await GET(request, context)).status).toBe(200);
+  });
+
   it("scopes the order lookup to the customer and an active bound session", async () => {
     mocks.order.mockResolvedValue(null);
     expect((await GET(request, context)).status).toBe(404);

@@ -276,6 +276,8 @@ export async function reviewPaymentAction(
 
   revalidatePath("/admin");
   revalidatePath("/admin/payments");
+  revalidatePath("/store/orders");
+  revalidatePath("/store/orders/[orderId]", "page");
 
   return {
     status: "success",

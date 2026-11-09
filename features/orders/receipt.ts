@@ -25,7 +25,7 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
       }
     },
     select: {
-      user: { select: { displayName: true } },
+      user: { select: { fullName: true, displayName: true } },
       shippingTotal: true,
       discountTotal: true,
       items: {
@@ -49,7 +49,10 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
     throw new ReceiptAccessError(404);
   }
 
-  const receipt = getVerifiedReceipt(payment, order.user.displayName, "SO");
+  const accountName = [order.user.fullName, order.user.displayName]
+    .map(name => name?.trim())
+    .find(name => name && name.length <= 255 && !/[\p{Cc}\p{Cf}]/u.test(name) && hasReceiptGlyphs(name));
+  const receipt = getVerifiedReceipt(payment, accountName ?? "ไม่สามารถแสดงชื่อบัญชีในเอกสาร", "SO");
   if (!receipt) throw new ReceiptAccessError(404);
 
   const money = (value: { toString(): string }) => Number(value.toString()).toLocaleString("en-US", {
