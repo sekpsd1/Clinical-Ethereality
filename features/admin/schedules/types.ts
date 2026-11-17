@@ -53,7 +53,6 @@ export type AdminSchedulesData = {
   slots: AdminDoctorAvailabilitySlot[];
   dateOverrides: AdminDoctorAvailabilityDateOverride[];
   appointmentCalendar: AdminAppointmentCalendarData;
-  manualAppointmentPatients: AdminManualAppointmentPatient[];
   summary: {
     activeDoctors: number;
     activeSlots: number;

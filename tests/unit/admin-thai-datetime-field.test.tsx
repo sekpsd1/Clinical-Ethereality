@@ -59,7 +59,7 @@ describe("Admin Thai date/time input", () => {
   });
 
   it("uses the same input in Admin manual appointment intake", () => {
-    const html = renderToStaticMarkup(<AdminManualAppointmentIntakeForm patients={[]} slot={slot} />);
+    const html = renderToStaticMarkup(<AdminManualAppointmentIntakeForm slot={slot} />);
     expect(html).toContain("DD/MM/YYYY");
     expect(html).toContain("HH:mm");
     expect(html).toContain('name="transferredAt"');

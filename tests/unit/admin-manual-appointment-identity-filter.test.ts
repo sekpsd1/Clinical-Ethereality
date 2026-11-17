@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
   availabilityFindMany: vi.fn(),
   overrideFindMany: vi.fn(),
   consultationFindMany: vi.fn(),
-  userFindMany: vi.fn()
+  queryRaw: vi.fn(),
+  requireAdminSession: vi.fn(),
+  assertPermission: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }));
@@ -15,10 +17,14 @@ vi.mock("@/lib/db/prisma", () => ({
     doctorAvailability: { findMany: mocks.availabilityFindMany },
     doctorAvailabilityDateOverride: { findMany: mocks.overrideFindMany },
     consultation: { findMany: mocks.consultationFindMany },
-    user: { findMany: mocks.userFindMany }
+    $queryRaw: mocks.queryRaw
   }
 }));
 
+vi.mock("@/lib/auth/guards", () => ({ requireAdminSession: mocks.requireAdminSession }));
+vi.mock("@/lib/permissions", () => ({ assertPermission: mocks.assertPermission }));
+
+import { searchManualAppointmentPatients } from "@/features/admin/schedules/manual-patient-search";
 import { getAdminSchedules } from "@/features/admin/schedules/queries";
 
 describe("Admin manual appointment patient filter", () => {
@@ -28,35 +34,33 @@ describe("Admin manual appointment patient filter", () => {
     mocks.availabilityFindMany.mockResolvedValue([]);
     mocks.overrideFindMany.mockResolvedValue([]);
     mocks.consultationFindMany.mockResolvedValue([]);
-    mocks.userFindMany.mockResolvedValue([]);
+    mocks.queryRaw.mockResolvedValue([]);
+    mocks.requireAdminSession.mockResolvedValue({ userId: "synthetic-admin" });
   });
 
-  it("offers only active customers with the complete verified identity set including national ID", async () => {
-    mocks.userFindMany.mockResolvedValueOnce([
-      { id: "patient-valid", fullName: "Valid Patient", nationalId: "1101700203450" },
-      { id: "patient-invalid", fullName: "Invalid Patient", nationalId: "123" }
-    ]);
-
-    const data = await getAdminSchedules({ date: "2030-01-01" });
-
-    expect(mocks.userFindMany).toHaveBeenCalledWith({
-      where: {
-        role: "customer",
-        status: "active",
-        fullName: { not: null },
-        nationalId: { not: null },
-        dateOfBirth: { not: null },
-        phone: { not: null },
-        normalizedPhone: { not: null },
-        phoneVerifiedAt: { not: null }
-      },
-      orderBy: { fullName: "asc" },
-      take: 100,
-      select: { id: true, fullName: true, nationalId: true }
+  it("searches the eligible population by literal Thai name and returns only a bounded list", async () => {
+    const patients = Array.from({ length: 21 }, (_, index) => ({ id: String(index), name: "ชื่อทดสอบ" }));
+    mocks.queryRaw.mockResolvedValueOnce(patients);
+    await expect(searchManualAppointmentPatients("  ชื่อ%  ")).resolves.toEqual({
+      patients: patients.slice(0, 20), hasMore: true
     });
-    expect(data.manualAppointmentPatients).toEqual([
-      { id: "patient-valid", name: "Valid Patient" }
-    ]);
+    expect(mocks.assertPermission).toHaveBeenCalledWith({ userId: "synthetic-admin" }, "consultation:manual-create");
+    const [parts, name, limit] = mocks.queryRaw.mock.calls[0];
+    expect(name).toBe("ชื่อ%");
+    expect(limit).toBe(21);
+    const sql = parts.join("?");
+    for (const predicate of [
+      "SELECT id, fullName AS name", "role = 'customer'", "status = 'active'",
+      "INSTR(fullName, ?) > 0", "nationalId REGEXP", "dateOfBirth IS NOT NULL",
+      "phone <> ''", "normalizedPhone <> ''", "phoneVerifiedAt IS NOT NULL"
+    ]) expect(sql).toContain(predicate);
+  });
+
+  it("does not query for short names or callers denied manual intake permission", async () => {
+    await expect(searchManualAppointmentPatients("ก")).resolves.toEqual({ patients: [], hasMore: false });
+    mocks.assertPermission.mockImplementationOnce(() => { throw new Error("Forbidden"); });
+    await expect(searchManualAppointmentPatients("ชื่อทดสอบ")).rejects.toThrow("Forbidden");
+    expect(mocks.queryRaw).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -7,7 +7,7 @@ import { AdminCalendarSlotDrawer } from "@/features/admin/AdminCalendarSlotDrawe
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildAdminCalendarTimeRows } from "@/features/admin/schedules/calendar-grid";
 import { moveCalendarDate } from "@/features/admin/schedules/calendar-navigation";
-import type { AdminAppointmentCalendarData, AdminAppointmentCalendarSlot, AdminDoctorAvailabilityDateOverride, AdminDoctorOption, AdminManualAppointmentPatient } from "@/features/admin/schedules/types";
+import type { AdminAppointmentCalendarData, AdminAppointmentCalendarSlot, AdminDoctorAvailabilityDateOverride, AdminDoctorOption } from "@/features/admin/schedules/types";
 import { NEW_CONSULTATION_DURATION_MINUTES } from "@/features/consultations/duration-policy";
 
 const statusPresentation = {
@@ -19,7 +19,7 @@ const statusPresentation = {
   closed: { label: "-", tone: "neutral", className: "border-border bg-surface text-muted" }
 } as const;
 
-export function AdminAppointmentCalendar({ data, manualAppointmentPatients, workingHoursDoctors, dateOverrides }: { data: AdminAppointmentCalendarData; manualAppointmentPatients: AdminManualAppointmentPatient[]; workingHoursDoctors: AdminDoctorOption[]; dateOverrides: AdminDoctorAvailabilityDateOverride[] }) {
+export function AdminAppointmentCalendar({ data, workingHoursDoctors, dateOverrides }: { data: AdminAppointmentCalendarData; workingHoursDoctors: AdminDoctorOption[]; dateOverrides: AdminDoctorAvailabilityDateOverride[] }) {
   const [selectedSlot, setSelectedSlot] = useState<{ dateValue: string; slot: AdminAppointmentCalendarSlot } | null>(null);
   const calendarHref = (date: string, view = data.view) => ({ pathname: "/admin/schedules", query: { doctor: data.selectedDoctorId, date, view }, hash: "doctor-schedule" });
   const timeRows = useMemo(() => buildAdminCalendarTimeRows(data.days.flatMap((day) => day.slots.map((slot) => slot.timeLabel))), [data.days]);
@@ -34,7 +34,7 @@ export function AdminAppointmentCalendar({ data, manualAppointmentPatients, work
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3"><div className="flex gap-1">{(["day", "week", "month"] as const).map((view) => <Link key={view} href={calendarHref(data.dateValue, view)} className={`rounded-[8px] px-3 py-2 text-xs font-bold ${data.view === view ? "bg-primary text-white" : "bg-surface text-primary"}`}>{view === "day" ? "วัน" : view === "week" ? "สัปดาห์" : "เดือน"}</Link>)}</div><div className="flex items-center gap-2 text-xs font-bold text-text"><Link href={calendarHref(moveCalendarDate(data.dateValue, data.view, -1))} className="rounded-[8px] border border-border px-2 py-1">ก่อนหน้า</Link><span>{data.dateLabel}</span><Link href={calendarHref(moveCalendarDate(data.dateValue, data.view, 1))} className="rounded-[8px] border border-border px-2 py-1">ถัดไป</Link></div></div>
       {data.view === "month" ? <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{data.days.map((day) => { const availableCount = day.slots.filter((slot) => slot.status === "available").length; return <Link key={day.dateValue} href={calendarHref(day.dateValue, "day")} className="rounded-[8px] border border-border bg-white p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold text-text">{day.dateLabel}</p><StatusBadge tone={availableCount ? "success" : "neutral"}>{availableCount} ช่วงว่าง</StatusBadge></div><p className="mt-2 text-xs text-muted">{availableCount ? "มีเวลารับนัด" : "-"}</p></Link>; })}</div> : selectedDoctor ? <ScheduleGrid days={gridDays} doctor={selectedDoctor} timeRows={timeRows} gridTemplateColumns={gridTemplateColumns} onSelect={(dateValue, slot) => setSelectedSlot({ dateValue, slot })} /> : null}
     </>}
-    {selectedSlot ? <AdminCalendarSlotDrawer dateValue={selectedSlot.dateValue} patients={manualAppointmentPatients} slot={selectedSlot.slot} doctors={workingHoursDoctors} overrides={dateOverrides} onClose={() => setSelectedSlot(null)} /> : null}
+    {selectedSlot ? <AdminCalendarSlotDrawer dateValue={selectedSlot.dateValue} slot={selectedSlot.slot} doctors={workingHoursDoctors} overrides={dateOverrides} onClose={() => setSelectedSlot(null)} /> : null}
   </section>;
 }
 

@@ -28,7 +28,6 @@ describe("Admin manual appointment clarity", () => {
     const manualHtml = renderToStaticMarkup(
       <AdminCalendarSlotDrawer
         dateValue="2030-01-01"
-        patients={[]}
         slot={pendingSlot}
         doctors={[]}
         overrides={[]}
@@ -38,7 +37,6 @@ describe("Admin manual appointment clarity", () => {
     const ordinaryHtml = renderToStaticMarkup(
       <AdminCalendarSlotDrawer
         dateValue="2030-01-01"
-        patients={[]}
         slot={{ ...pendingSlot, statusLabel: "รอชำระเงิน", manualAppointmentReviewPending: false }}
         doctors={[]}
         overrides={[]}

@@ -30,7 +30,7 @@ export function AdminSchedules({ data, editSlotId }: { data: AdminSchedulesData;
         </section>
       ) : null}
 
-      <AdminAppointmentCalendar data={data.appointmentCalendar} manualAppointmentPatients={data.manualAppointmentPatients} workingHoursDoctors={data.doctors} dateOverrides={data.dateOverrides} />
+      <AdminAppointmentCalendar data={data.appointmentCalendar} workingHoursDoctors={data.doctors} dateOverrides={data.dateOverrides} />
 
       <AdminDeactivateAllDoctorSchedules doctorCount={data.doctors.length} />
 
