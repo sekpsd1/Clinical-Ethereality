@@ -36,7 +36,7 @@ describe("Consult entry after a UAT account reset", () => {
   it("sends a stale access token through LINE login when its User was deleted", async () => {
     mocks.findFirst.mockResolvedValue(null);
 
-    await expect(ConsultPage()).rejects.toThrow("REDIRECT:/auth/line?next=%2Fconsult");
+    await expect(ConsultPage({})).rejects.toThrow("REDIRECT:/auth/line?next=%2Fconsult");
     expect(mocks.findFirst).toHaveBeenCalledWith({
       where: {
         id: "customer-old",
@@ -52,7 +52,7 @@ describe("Consult entry after a UAT account reset", () => {
   it("loads Consult normally while the access identity still has an active customer row", async () => {
     mocks.findFirst.mockResolvedValue({ id: "customer-old" });
 
-    await expect(ConsultPage()).resolves.toBeTruthy();
+    await expect(ConsultPage({})).resolves.toBeTruthy();
     expect(mocks.redirect).not.toHaveBeenCalled();
     expect(mocks.getData).toHaveBeenCalledOnce();
   });

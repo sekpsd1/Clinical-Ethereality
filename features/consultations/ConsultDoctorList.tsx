@@ -5,7 +5,34 @@ import type { ConsultDoctorListData, ConsultDoctorListDoctor } from "@/features/
 
 import { CONSULT_SERVICE_LABELS } from "@/features/consultations/service-labels";
 
-export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
+const categories = [
+  { id: "all", label: "ทั้งหมด", href: "/consult" },
+  { id: "gynecology", label: CONSULT_SERVICE_LABELS[0], href: "/consult?specialty=gynecology" },
+  { id: "genetics", label: "พันธุศาสตร์", href: "/consult?specialty=genetics" }
+] as const;
+
+const specialtyCategories = new Map<string, "gynecology" | "genetics">([
+  ["สูตินรีแพทย์", "gynecology"],
+  ["สูตินรีเวช", "gynecology"],
+  ["สูตินรีเวชทั่วไป", "gynecology"],
+  ["สูติศาสตร์และนรีเวชวิทยา", "gynecology"],
+  ["พันธุศาสตร์", "genetics"],
+  ["พันธุศาสตร์คลินิก", "genetics"]
+]);
+
+function getDoctorCategory(doctor: ConsultDoctorListDoctor) {
+  const specialty = doctor.specialty.normalize("NFC").trim().replace(/\s+/g, " ");
+  return specialtyCategories.get(specialty) ?? "all";
+}
+
+export function ConsultDoctorList({ data, category = "all" }: {
+  data: ConsultDoctorListData;
+  category?: typeof categories[number]["id"];
+}) {
+  const visibleDoctors = category === "all" ? data.doctors : data.doctors.filter(doctor => getDoctorCategory(doctor) === category);
+  const recommended = data.doctors.find(doctor => doctor.isRecommended);
+  const recommendedCategory = recommended && categories.find(item => item.id === getDoctorCategory(recommended));
+  const categoryLabel = categories.find(item => item.id === category)?.label;
   return (
     <section className="flex flex-col gap-4">
       <label className="flex min-h-12 items-center rounded-full bg-[#e6e8ea] px-4 text-sm text-[#3e494a]/60">
@@ -19,6 +46,11 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
           <p className="mt-1">
             หัวข้อ {data.activeRecommendation.topic} เหมาะกับ {data.activeRecommendation.specialty}
           </p>
+          {category !== "all" && recommendedCategory && recommendedCategory.id !== category ? (
+            <Link href={recommendedCategory.href} className="mt-1 inline-block font-bold text-primary underline">
+              ดูแพทย์ที่แนะนำในรายการ {recommendedCategory.label}
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
@@ -31,30 +63,31 @@ export function ConsultDoctorList({ data }: { data: ConsultDoctorListData }) {
       <div className="flex flex-col gap-2">
         <h1 className="text-center text-lg font-bold text-primary">Telemedicine</h1>
 
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CONSULT_SERVICE_LABELS.map((chip, index) => (
-            <button
-              key={chip}
-              type="button"
+        <nav aria-label="สาขาแพทย์" className="flex flex-wrap gap-2 pb-1">
+          {categories.map(item => (
+            <Link
+              key={item.id}
+              href={item.href}
+              aria-current={item.id === category ? "page" : undefined}
               className={
-                index === 0
-                  ? "min-h-8 shrink-0 rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
-                  : "min-h-8 shrink-0 rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
+                item.id === category
+                  ? "inline-flex min-h-8 shrink-0 items-center rounded-full bg-primary px-4 text-xs font-bold text-white shadow-chip"
+                  : "inline-flex min-h-8 shrink-0 items-center rounded-full border border-[#bdc9ca]/30 bg-white px-[17px] text-xs font-bold text-primary"
               }
             >
-              {chip}
-            </button>
+              {item.label}
+            </Link>
           ))}
-        </div>
+        </nav>
       </div>
 
       <div className="flex flex-col gap-3 pt-2">
-        {!data.unavailable && data.doctors.length === 0 ? (
+        {!data.unavailable && visibleDoctors.length === 0 ? (
           <p className="rounded-[12px] bg-white/70 px-4 py-3 text-sm leading-6 text-muted">
-            ยังไม่มีแพทย์พร้อมให้บริการ กรุณากลับมาตรวจสอบอีกครั้ง
+            ยังไม่มีแพทย์พร้อมให้บริการ{category !== "all" ? (" ในหมวด " + categoryLabel) : ""} กรุณากลับมาตรวจสอบอีกครั้ง
           </p>
         ) : null}
-        {data.doctors.map((doctor) => (
+        {visibleDoctors.map((doctor) => (
           <DoctorCard key={doctor.id} doctor={doctor} />
         ))}
       </div>

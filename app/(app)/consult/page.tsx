@@ -6,11 +6,16 @@ import { getConsultDoctorListData } from "@/features/consultations/doctor-list/q
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
-export default async function ConsultPage() {
+export default async function ConsultPage({ searchParams }: {
+  searchParams?: Promise<{ specialty?: string | string[] }>;
+}) {
+  const specialty = (await searchParams)?.specialty;
+  const category = specialty === "genetics" || specialty === "gynecology" ? specialty : "all";
+  const returnPath = category === "all" ? "/consult" : "/consult?specialty=" + category;
   const session = await getCurrentSession();
 
   if (!session) {
-    redirect("/auth/line?next=%2Fconsult");
+    redirect(("/auth/line?next=" + encodeURIComponent(returnPath)) as Route);
   }
 
   if (session.role !== "customer") {
@@ -28,10 +33,10 @@ export default async function ConsultPage() {
   });
 
   if (!persistedCustomer) {
-    redirect("/auth/line?next=%2Fconsult");
+    redirect(("/auth/line?next=" + encodeURIComponent(returnPath)) as Route);
   }
 
   const data = await getConsultDoctorListData();
 
-  return <ConsultDoctorList data={data} />;
+  return <ConsultDoctorList data={data} category={category} />;
 }
