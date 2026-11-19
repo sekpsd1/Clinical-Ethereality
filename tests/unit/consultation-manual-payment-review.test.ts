@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyManualAppointmentPaymentDecision,
   applyManualConsultationPaymentReview,
@@ -12,6 +12,8 @@ import { manualConsultationPaymentReviewSchema } from "@/features/admin/payments
 
 const now = new Date("2026-09-05T06:00:00.000Z");
 const scheduledAt = new Date("2026-09-06T02:00:00.000Z");
+
+afterEach(() => vi.unstubAllEnvs());
 
 function txMock(overrides: {
   consultationStatus?:
@@ -224,6 +226,8 @@ describe("manual consultation payment review", () => {
   });
 
   it("locks consultation then payment, verifies the payment, and retains an active slot", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
     const tx = txMock();
 
     const outcome = await applyManualConsultationPaymentReview(
@@ -247,6 +251,7 @@ describe("manual consultation payment review", () => {
       expect.objectContaining({ data: { status: "scheduled" } })
     );
     expect(tx.notification.create).toHaveBeenCalledTimes(2);
+    expect(tx.notification.create.mock.calls.filter(([argument]) => argument.data.metadataJson?.lineBookingAlert)).toHaveLength(1);
     expect(tx.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -578,6 +583,7 @@ function preparedEvidence() {
 
 describe("admin manual appointment payment intake and review", () => {
   it("creates only pending records with a 15-minute snapshot from legacy availability", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
     const tx = intakeTxMock();
 
     const result = await createManualAppointmentPaymentIntake(
@@ -634,6 +640,7 @@ describe("admin manual appointment payment intake and review", () => {
         })
       })
     });
+    expect(tx.notification.create.mock.calls.some(([argument]) => argument.data.metadataJson?.lineBookingAlert)).toBe(false);
     expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
       "transactionReference"
     );
@@ -752,6 +759,8 @@ describe("admin manual appointment payment intake and review", () => {
   });
 
   it("verifies an eligible manual appointment without fabricating provider failure", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
     const tx = txMock({ verificationPayload: manualAppointmentPayload() });
 
     const result = await applyManualAppointmentPaymentDecision(
@@ -769,6 +778,7 @@ describe("admin manual appointment payment intake and review", () => {
     );
 
     expect(result).toBe("scheduled");
+    expect(tx.notification.create.mock.calls.filter(([argument]) => argument.data.metadataJson?.lineBookingAlert)).toHaveLength(1);
     expect(tx.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -794,6 +804,7 @@ describe("admin manual appointment payment intake and review", () => {
   });
 
   it("keeps verified funds and requires rescheduling when the Admin-created slot expired", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
     const tx = txMock({
       expiresAt: new Date("2026-09-05T05:59:59.000Z"),
       verificationPayload: manualAppointmentPayload()
@@ -814,6 +825,7 @@ describe("admin manual appointment payment intake and review", () => {
     );
 
     expect(result).toBe("reschedule_required");
+    expect(tx.notification.create.mock.calls.some(([argument]) => argument.data.metadataJson?.lineBookingAlert)).toBe(false);
     expect(tx.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "verified" }) })
     );

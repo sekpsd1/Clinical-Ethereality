@@ -1,4 +1,5 @@
 import { Prisma, type ConsultationStatus } from "@prisma/client";
+import { bookingLineAlertMetadata } from "@/features/notifications/line-booking-alert";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import { mergePaymentVerificationPayload } from "@/features/payments/service";
 import { normalizePaymentTransactionReference } from "@/features/payments/transaction-reference";
@@ -1186,7 +1187,13 @@ async function applyConsultationPaymentReviewDecision(
         body: "การชำระเงินได้รับการยืนยันแล้ว กรุณาตรวจคิวปรึกษา",
         metadataJson: {
           consultationId: consultation.id,
-          href: "/doctor/consultations"
+          href: "/doctor/consultations",
+          ...bookingLineAlertMetadata({
+            doctorId: consultation.doctorId,
+            doctorUserId: consultation.doctor.userId,
+            scheduledAt: consultation.scheduledAt,
+            bookedDurationMinutes: consultation.bookedDurationMinutes
+          }, now)
         }
       }
     });

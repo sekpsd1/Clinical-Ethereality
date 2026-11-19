@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { bookingLineAlertMetadata } from "@/features/notifications/line-booking-alert";
 import { Prisma, type ConsultationStatus } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/audit-log";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
@@ -459,7 +460,13 @@ export async function applyConsultationPaymentVerification(
           body: "การชำระเงินได้รับการยืนยันแล้ว กรุณาตรวจคิวปรึกษา",
           metadataJson: {
             consultationId: input.consultation.id,
-            href: "/doctor/consultations"
+            href: "/doctor/consultations",
+            ...bookingLineAlertMetadata({
+              doctorId: currentConsultation.doctorId,
+              doctorUserId: currentConsultation.doctor.userId,
+              scheduledAt: currentConsultation.scheduledAt,
+              bookedDurationMinutes: currentConsultation.bookedDurationMinutes
+            }, reviewedAt)
           }
         }
       });

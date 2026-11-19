@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "job:line-booking-alerts": "node scripts/line-booking-alert-runner.cjs",
     "job:recording-archive": "node scripts/recording-archive-runner.cjs",
     "dev": "next dev",
     "build": "next build",

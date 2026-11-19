@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyConsultationPaymentVerification,
   assertConsultationReadyForPaymentVerification,
@@ -14,6 +14,8 @@ import {
   ProviderVerificationUnavailableError
 } from "@/features/payments/service";
 import type { SlipVerificationResult } from "@/lib/payments/slip-verification";
+
+afterEach(() => vi.unstubAllEnvs());
 
 function consultation(overrides: Partial<ConsultationPaymentSnapshot> = {}): ConsultationPaymentSnapshot {
   return {
@@ -86,6 +88,36 @@ function txMock() {
 }
 
 describe("consultation payment verification service", () => {
+  it("marks only a newly scheduled verified payment for durable LINE dispatch", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
+    const tx = txMock();
+    await applyConsultationPaymentVerification(tx as never, {
+      actorId: "patient-1", consultation: consultation(),
+      evidence: { amount: 900, qrPayload: "qr-payload" }, result: result()
+    });
+    const notices = tx.notification.create.mock.calls.map(([argument]) => argument.data);
+    const marked = notices.filter((notice) => notice.metadataJson?.lineBookingAlert);
+    expect(marked).toHaveLength(1);
+    expect(marked[0].userId).toBe("doctor-user-1");
+    expect(marked[0].metadataJson.lineBookingAlert.recipients.map((recipient: { userId: string }) => recipient.userId))
+      .toEqual(["doctor-user-1", "admin-1"]);
+  });
+
+  it("does not mark rejected or expired paid slots for LINE dispatch", async () => {
+    vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    for (const verified of [true, false]) {
+      const tx = txMock();
+      const current = await tx.consultation.findUnique();
+      current.slotLock.expiresAt = new Date("2000-01-01T00:00:00Z");
+      tx.consultation.findUnique.mockResolvedValue(current);
+      await applyConsultationPaymentVerification(tx as never, {
+        actorId: "patient-1", consultation: consultation(),
+        evidence: { amount: 900 }, result: result({ ok: verified, status: verified ? "verified" : "rejected" })
+      });
+      expect(tx.notification.create.mock.calls.some(([argument]) => argument.data.metadataJson?.lineBookingAlert)).toBe(false);
+    }
+  });
   it("maps verified slip checks to scheduled consultations", () => {
     expect(getConsultationPaymentVerificationTransition(true)).toEqual({
       auditAction: "consultation.payment_verified",
