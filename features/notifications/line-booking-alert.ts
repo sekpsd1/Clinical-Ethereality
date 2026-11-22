@@ -16,6 +16,7 @@ const recipientSchema = z.object({
 
 export const bookingAlertSchema = z.object({
   version: z.literal(1),
+  mode: z.enum(["all", "test"]).default("all"),
   status: z.enum(["pending", "processing", "done"]),
   nextAttemptAt: z.number(),
   lease: z.string().nullable(),
@@ -29,20 +30,59 @@ export const bookingAlertSchema = z.object({
 export type BookingAlert = z.infer<typeof bookingAlertSchema>;
 export type BookingAlertRecipient = BookingAlert["recipients"][number];
 
+const testScopeSchema = z.object({
+  consultationId: z.string().min(1),
+  patientId: z.string().min(1),
+  doctorId: z.string().min(1),
+  adminUserId: z.string().min(1),
+  startsAt: z.string().datetime(),
+  expiresAt: z.string().datetime()
+}).strict();
+
+type TestScope = z.infer<typeof testScopeSchema>;
+type AlertMode = { kind: "all"; adminUserId: string } | { kind: "test"; scope: TestScope; adminUserId: string };
+type BookingIdentity = Pick<TestScope, "consultationId" | "patientId" | "doctorId">;
+
+export function getBookingAlertMode(now: Date): AlertMode | null {
+  if (process.env.ENABLE_LINE_BOOKING_ALERTS !== "true") return null;
+  const adminUserId = process.env.LINE_BOOKING_ALERT_ADMIN_USER_ID?.trim() ?? "";
+  if (process.env.LINE_BOOKING_ALERT_MODE === "all") return { kind: "all", adminUserId };
+  if (process.env.LINE_BOOKING_ALERT_MODE !== "test" || !adminUserId) return null;
+
+  try {
+    const { success, data } = testScopeSchema.safeParse(JSON.parse(process.env.LINE_BOOKING_ALERT_TEST_SCOPE ?? ""));
+    if (!success || data.adminUserId !== adminUserId) return null;
+    const start = Date.parse(data.startsAt);
+    const end = Date.parse(data.expiresAt);
+    if (now.getTime() < start || now.getTime() >= end || end - start > 60 * 60_000) return null;
+    return { kind: "test", scope: data, adminUserId };
+  } catch {
+    return null;
+  }
+}
+
+export function isBookingInAlertScope(mode: AlertMode, booking: BookingIdentity): boolean {
+  return mode.kind === "all" || (
+    mode.scope.consultationId === booking.consultationId &&
+    mode.scope.patientId === booking.patientId &&
+    mode.scope.doctorId === booking.doctorId
+  );
+}
+
 // Added only to the existing doctor notification in the successful payment
 // transaction. Old notifications and disabled confirmations never become jobs.
-export function bookingLineAlertMetadata(input: {
-  doctorId: string;
+export function bookingLineAlertMetadata(input: BookingIdentity & {
   doctorUserId: string;
   scheduledAt: Date | null;
   bookedDurationMinutes: number | null;
 }, now = new Date()): { lineBookingAlert?: BookingAlert } {
-  if (process.env.ENABLE_LINE_BOOKING_ALERTS !== "true" || !input.scheduledAt ||
+  const mode = getBookingAlertMode(now);
+  if (!mode || !isBookingInAlertScope(mode, input) || !input.scheduledAt ||
     !Number.isFinite(input.scheduledAt.getTime()) || input.scheduledAt <= now) return {};
 
   const recipients: BookingAlert["recipients"] = [
     { role: "doctor", userId: input.doctorUserId },
-    { role: "admin", userId: process.env.LINE_BOOKING_ALERT_ADMIN_USER_ID?.trim() ?? "" }
+    { role: "admin", userId: mode.adminUserId }
   ].map((recipient) => ({
     ...recipient,
     role: recipient.role as "doctor" | "admin",
@@ -51,10 +91,11 @@ export function bookingLineAlertMetadata(input: {
   }));
 
   return { lineBookingAlert: {
-    version: 1, status: "pending", nextAttemptAt: now.getTime(), lease: null,
+    version: 1, mode: mode.kind, status: "pending", nextAttemptAt: now.getTime(), lease: null,
     doctorId: input.doctorId, scheduledAt: input.scheduledAt.toISOString(),
     durationMinutes: getBookedConsultationDurationMinutes(input.bookedDurationMinutes),
-    expiresAt: Math.min(input.scheduledAt.getTime(), now.getTime() + 23 * 60 * 60 * 1000),
+    expiresAt: Math.min(input.scheduledAt.getTime(), now.getTime() + 23 * 60 * 60 * 1000,
+      mode.kind === "test" ? Date.parse(mode.scope.expiresAt) : Number.POSITIVE_INFINITY),
     recipients
   } };
 }

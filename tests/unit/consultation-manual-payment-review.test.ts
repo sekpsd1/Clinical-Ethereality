@@ -227,6 +227,7 @@ describe("manual consultation payment review", () => {
 
   it("locks consultation then payment, verifies the payment, and retains an active slot", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
     const tx = txMock();
 
@@ -584,6 +585,7 @@ function preparedEvidence() {
 describe("admin manual appointment payment intake and review", () => {
   it("creates only pending records with a 15-minute snapshot from legacy availability", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     const tx = intakeTxMock();
 
     const result = await createManualAppointmentPaymentIntake(
@@ -760,6 +762,7 @@ describe("admin manual appointment payment intake and review", () => {
 
   it("verifies an eligible manual appointment without fabricating provider failure", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
     const tx = txMock({ verificationPayload: manualAppointmentPayload() });
 
@@ -805,6 +808,7 @@ describe("admin manual appointment payment intake and review", () => {
 
   it("keeps verified funds and requires rescheduling when the Admin-created slot expired", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     const tx = txMock({
       expiresAt: new Date("2026-09-05T05:59:59.000Z"),
       verificationPayload: manualAppointmentPayload()

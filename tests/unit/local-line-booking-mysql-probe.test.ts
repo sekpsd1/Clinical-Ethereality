@@ -26,6 +26,7 @@ describe.skipIf(process.env.RUN_LINE_BOOKING_MYSQL_TESTS !== "true")("LINE booki
     disposableDatabaseVerified = true;
     vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Network transport prohibited in this probe."); }));
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", adminId);
     vi.stubEnv("LINE_MESSAGING_CHANNEL_ACCESS_TOKEN", "fake-token");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://clinic.example.test");
@@ -63,6 +64,7 @@ describe.skipIf(process.env.RUN_LINE_BOOKING_MYSQL_TESTS !== "true")("LINE booki
     await prisma.notification.create({ data: {
       id, userId: doctorId, type: "consultation", title: "Synthetic",
       metadataJson: { consultationId: id, ...bookingLineAlertMetadata({
+        consultationId: id, patientId,
         doctorId: consultation.doctorId, doctorUserId: doctorId, scheduledAt, bookedDurationMinutes: 15
       }, now) }
     } });
@@ -110,5 +112,28 @@ describe.skipIf(process.env.RUN_LINE_BOOKING_MYSQL_TESTS !== "true")("LINE booki
     expect(await prisma.notification.count({ where: { id: `line-alert-attention:${id}`, userId: adminId } })).toBe(1);
     expect(await runLineBookingAlerts(now)).toMatchObject({ claimed: 0, attentionRequired: 1 });
     expect(transport).toHaveBeenCalledTimes(2);
+  });
+
+  it("isolates one approved test job from all-mode jobs and stops when the window expires", async () => {
+    const otherId = await addJob("probe-other");
+    const testId = `probe-scoped-${runId}`;
+    const expiresAt = new Date(now.getTime() + 60_000);
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", JSON.stringify({
+      consultationId: testId, patientId, doctorId: doctorProfileId, adminUserId: adminId,
+      startsAt: now.toISOString(), expiresAt: expiresAt.toISOString()
+    }));
+    try {
+      await addJob("probe-scoped");
+      transport.mockReset().mockResolvedValue("accepted");
+      expect(await runLineBookingAlerts(now)).toMatchObject({ claimed: 1, accepted: 2 });
+      expect((await readJob(testId)).status).toBe("done");
+      expect((await readJob(otherId)).status).toBe("pending");
+      expect((await runLineBookingAlerts(expiresAt)).disabled).toBe(true);
+      expect(transport).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
+      vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", "");
+    }
   });
 });

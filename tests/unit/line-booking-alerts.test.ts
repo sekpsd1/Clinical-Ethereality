@@ -20,12 +20,17 @@ const now = new Date("2026-11-20T09:00:00.000Z");
 const scheduledAt = new Date("2026-11-21T16:45:00.000Z");
 const doctorLineId = `U${"a".repeat(32)}`;
 const adminLineId = `U${"b".repeat(32)}`;
+const bookingIdentity = { consultationId: "consultation-test", patientId: "patient-test", doctorId: "doctor-profile" };
+const testScope = {
+  ...bookingIdentity, adminUserId: "admin-user",
+  startsAt: now.toISOString(), expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString()
+};
 type Job = { id: string; metadataJson: Prisma.JsonObject; readAt?: Date };
 type TestUser = { role: string; status: string; lineUserId: string; doctorProfile: { status: string } | null };
 const jobs = new Map<string, Job>();
 const users = new Map<string, TestUser>();
 let consultation: {
-  status: string; doctorId: string; scheduledAt: Date; bookedDurationMinutes: number | null;
+  status: string; patientId: string; doctorId: string; scheduledAt: Date; bookedDurationMinutes: number | null;
   doctor: { userId: string; status: string }; payment: { status: string };
 };
 
@@ -38,7 +43,7 @@ function alertFor(id = "doctor-notification"): BookingAlert {
 }
 
 function seedJob(): Job {
-  const metadata = bookingLineAlertMetadata({ doctorId: "doctor-profile", doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: 15 }, now);
+  const metadata = bookingLineAlertMetadata({ ...bookingIdentity, doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: 15 }, now);
   const job = { id: "doctor-notification", metadataJson: clone({ consultationId: "consultation-test", href: "/doctor/consultations", ...metadata }) as Prisma.JsonObject };
   jobs.set(job.id, job);
   return job;
@@ -47,20 +52,22 @@ function seedJob(): Job {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+  vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
   vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-user");
   vi.stubEnv("LINE_MESSAGING_CHANNEL_ACCESS_TOKEN", "mock-access-token");
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://clinic.example");
   jobs.clear(); users.clear();
   users.set("doctor-user", { role: "doctor", status: "active", lineUserId: doctorLineId, doctorProfile: { status: "approved" } });
   users.set("admin-user", { role: "admin", status: "active", lineUserId: adminLineId, doctorProfile: null });
-  consultation = { status: "scheduled", doctorId: "doctor-profile", scheduledAt, bookedDurationMinutes: 15,
+  consultation = { status: "scheduled", patientId: bookingIdentity.patientId, doctorId: "doctor-profile", scheduledAt, bookedDurationMinutes: 15,
     doctor: { userId: "doctor-user", status: "approved" }, payment: { status: "verified" } };
   mocks.findConsultation.mockImplementation(async () => consultation);
   mocks.findUser.mockImplementation(async ({ where }: { where: { id: string } }) => users.get(where.id) ?? null);
-  mocks.findJobs.mockImplementation(async (_query: TemplateStringsArray, dueAt: number) => {
+  mocks.findJobs.mockImplementation(async (_query: TemplateStringsArray, dueAt: number, mode: string, testId: string | null) => {
     return [...jobs.values()].filter((job) => {
       const alert = job.metadataJson.lineBookingAlert as unknown as BookingAlert;
-      return alert.version === 1 && ["pending", "processing"].includes(alert.status) && alert.nextAttemptAt <= dueAt;
+      return alert.version === 1 && ["pending", "processing"].includes(alert.status) && alert.nextAttemptAt <= dueAt &&
+        (alert.mode ?? "all") === mode && (!testId || job.metadataJson.consultationId === testId);
     }).map(clone);
   });
   // The database receives immutable JSON snapshots. Exact CAS equality catches
@@ -83,7 +90,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("confirmed booking LINE marker and minimal message", () => {
   it("does not mark disabled, missing, invalid, or already-started bookings", () => {
-    const input = { doctorId: "doctor-profile", doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: 15 };
+    const input = { ...bookingIdentity, doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: 15 };
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "false");
     expect(bookingLineAlertMetadata(input, now)).toEqual({});
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
@@ -114,8 +121,63 @@ describe("confirmed booking LINE marker and minimal message", () => {
   });
 
   it.each([15, 30, 45, 60, null])("uses authoritative booked duration %s including the legacy fallback", (duration) => {
-    const marker = bookingLineAlertMetadata({ doctorId: "doctor-profile", doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: duration }, now);
+    const marker = bookingLineAlertMetadata({ ...bookingIdentity, doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: duration }, now);
     expect(marker.lineBookingAlert?.durationMinutes).toBe(duration ?? 30);
+  });
+});
+
+describe("one-appointment LINE alert test mode", () => {
+  const input = { ...bookingIdentity, doctorUserId: "doctor-user", scheduledAt, bookedDurationMinutes: 15 };
+
+  it("queues only the exact consultation, customer and doctor inside the configured window", () => {
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", JSON.stringify(testScope));
+    expect(bookingLineAlertMetadata(input, now).lineBookingAlert).toMatchObject({
+      mode: "test", expiresAt: Date.parse(testScope.expiresAt)
+    });
+    for (const field of ["consultationId", "patientId", "doctorId"] as const) {
+      expect(bookingLineAlertMetadata({ ...input, [field]: "unexpected" }, now)).toEqual({});
+    }
+    for (const outsideWindow of [new Date(now.getTime() - 1), new Date(testScope.expiresAt)]) {
+      expect(bookingLineAlertMetadata(input, outsideWindow)).toEqual({});
+    }
+  });
+
+  it("fails closed on absent mode, malformed scope and Admin mismatch", async () => {
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "");
+    expect(bookingLineAlertMetadata(input, now)).toEqual({});
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", "invalid");
+    expect((await runLineBookingAlerts(now)).disabled).toBe(true);
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", JSON.stringify({ ...testScope, adminUserId: "unexpected-admin" }));
+    expect(bookingLineAlertMetadata(input, now)).toEqual({});
+    expect((await runLineBookingAlerts(now)).disabled).toBe(true);
+    expect(mocks.findJobs).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the customer before dispatch and cannot move test jobs into all mode", async () => {
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", JSON.stringify(testScope));
+    seedJob();
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
+    expect((await runLineBookingAlerts(now)).claimed).toBe(0);
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    consultation.patientId = "different-customer";
+    expect((await runLineBookingAlerts(now)).accepted).toBe(0);
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the scope immediately before each call and stops if it closes mid-job", async () => {
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "test");
+    vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", JSON.stringify(testScope));
+    seedJob();
+    mocks.push.mockImplementationOnce(async () => {
+      vi.stubEnv("LINE_BOOKING_ALERT_TEST_SCOPE", "");
+      return "accepted";
+    });
+    expect((await runLineBookingAlerts(now)).accepted).toBe(1);
+    expect(mocks.push).toHaveBeenCalledTimes(1);
   });
 });
 

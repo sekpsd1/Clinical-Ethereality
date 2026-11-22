@@ -90,6 +90,7 @@ function txMock() {
 describe("consultation payment verification service", () => {
   it("marks only a newly scheduled verified payment for durable LINE dispatch", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", "admin-1");
     const tx = txMock();
     await applyConsultationPaymentVerification(tx as never, {
@@ -106,6 +107,7 @@ describe("consultation payment verification service", () => {
 
   it("does not mark rejected or expired paid slots for LINE dispatch", async () => {
     vi.stubEnv("ENABLE_LINE_BOOKING_ALERTS", "true");
+    vi.stubEnv("LINE_BOOKING_ALERT_MODE", "all");
     for (const verified of [true, false]) {
       const tx = txMock();
       const current = await tx.consultation.findUnique();

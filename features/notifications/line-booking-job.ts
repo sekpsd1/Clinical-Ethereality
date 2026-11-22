@@ -3,7 +3,7 @@ import type { Notification, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { pushLineBookingAlert } from "@/lib/notifications/line-push";
 import { getBookedConsultationDurationMinutes } from "@/features/consultations/duration-policy";
-import { bookingAlertSchema, formatBookingAlert, type BookingAlert, type BookingAlertRecipient } from "./line-booking-alert";
+import { bookingAlertSchema, formatBookingAlert, getBookingAlertMode, isBookingInAlertScope, type BookingAlert, type BookingAlertRecipient } from "./line-booking-alert";
 
 const leaseMilliseconds = 60_000;
 const lineUserIdPattern = /^U[0-9a-f]{32}$/i;
@@ -54,7 +54,9 @@ export async function runLineBookingAlerts(now = new Date()) {
   const startedAt = Date.now();
   const currentTime = () => now.getTime() + Date.now() - startedAt;
   const result = { disabled: false, claimed: 0, accepted: 0, deferred: 0, attentionRequired: 0 };
-  if (process.env.ENABLE_LINE_BOOKING_ALERTS !== "true") return { ...result, disabled: true };
+  const mode = getBookingAlertMode(now);
+  if (!mode) return { ...result, disabled: true };
+  const testConsultationId = mode.kind === "test" ? mode.scope.consultationId : null;
   const token = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
   const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL;
   if (!token || !configuredOrigin) throw new Error("LINE booking alerts are not configured.");
@@ -71,6 +73,8 @@ export async function runLineBookingAlerts(now = new Date()) {
       AND JSON_TYPE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.nextAttemptAt')) IN ('INTEGER', 'UNSIGNED INTEGER')
       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.nextAttemptAt')) AS UNSIGNED) <= ${now.getTime()}
       AND JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.status')) IN ('pending', 'processing')
+      AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.mode')), 'all') = ${mode.kind}
+      AND (${testConsultationId} IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.consultationId')) = ${testConsultationId})
     ORDER BY createdAt, id
     LIMIT 2
   `;
@@ -80,6 +84,8 @@ export async function runLineBookingAlerts(now = new Date()) {
     const parsed = bookingAlertSchema.safeParse(metadata.lineBookingAlert);
     if (!parsed.success) { result.attentionRequired++; continue; }
     const alert = parsed.data;
+    const consultationId = typeof metadata.consultationId === "string" ? metadata.consultationId : "";
+    if (alert.mode !== mode.kind || (testConsultationId && consultationId !== testConsultationId)) continue;
     alert.status = "processing";
     alert.lease = randomUUID();
     alert.nextAttemptAt = currentTime() + leaseMilliseconds;
@@ -88,22 +94,27 @@ export async function runLineBookingAlerts(now = new Date()) {
     metadata = claimed;
     result.claimed++;
 
-    const consultationId = typeof metadata.consultationId === "string" ? metadata.consultationId : "";
     const consultation = await prisma.consultation.findUnique({
       where: { id: consultationId },
-      select: { status: true, doctorId: true, scheduledAt: true, bookedDurationMinutes: true,
+      select: { status: true, patientId: true, doctorId: true, scheduledAt: true, bookedDurationMinutes: true,
         doctor: { select: { userId: true, status: true } }, payment: { select: { status: true } } }
     });
     const current = consultation?.status === "scheduled" && consultation.payment?.status === "verified" &&
       consultation.doctorId === alert.doctorId && consultation.doctor.status === "approved" &&
       consultation.scheduledAt?.toISOString() === alert.scheduledAt &&
       getBookedConsultationDurationMinutes(consultation.bookedDurationMinutes) === alert.durationMinutes;
+    const isStillInScope = () => {
+      const activeMode = getBookingAlertMode(new Date(currentTime()));
+      return activeMode && activeMode.kind === alert.mode && consultation &&
+        isBookingInAlertScope(activeMode, { consultationId, patientId: consultation.patientId, doctorId: consultation.doctorId }) &&
+        (activeMode.kind === "all" || alert.recipients.some(({ role, userId }) => role === "admin" && userId === activeMode.adminUserId));
+    };
     const usedLineIds = new Set<string>();
     let lostLease = false;
     for (const recipient of alert.recipients) {
       if (recipient.lineUserId) usedLineIds.add(recipient.lineUserId);
       if (recipient.status !== "pending") continue;
-      if (!current || currentTime() >= alert.expiresAt) {
+      if (!current || !isStillInScope() || currentTime() >= alert.expiresAt) {
         recipient.status = "skipped"; recipient.error = "booking_changed_or_expired";
         continue;
       }
@@ -127,6 +138,10 @@ export async function runLineBookingAlerts(now = new Date()) {
       const persisted = await replaceState(job.id, metadata, alert);
       if (!persisted) { lostLease = true; break; }
       metadata = persisted;
+      if (!isStillInScope() || currentTime() >= alert.expiresAt) {
+        recipient.status = "skipped"; recipient.error = "booking_changed_or_expired";
+        continue;
+      }
       const outcome = await pushLineBookingAlert({ token, lineUserId, retryKey: recipient.retryKey, text: recipient.text });
       if (outcome === "accepted") { recipient.status = "accepted"; result.accepted++; }
       else if (outcome === "failed" || recipient.attempts >= 8) {

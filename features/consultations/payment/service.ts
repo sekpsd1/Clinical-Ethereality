@@ -462,6 +462,8 @@ export async function applyConsultationPaymentVerification(
             consultationId: input.consultation.id,
             href: "/doctor/consultations",
             ...bookingLineAlertMetadata({
+              consultationId: input.consultation.id,
+              patientId: input.consultation.patientId,
               doctorId: currentConsultation.doctorId,
               doctorUserId: currentConsultation.doctor.userId,
               scheduledAt: currentConsultation.scheduledAt,

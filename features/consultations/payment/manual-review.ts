@@ -1189,6 +1189,8 @@ async function applyConsultationPaymentReviewDecision(
           consultationId: consultation.id,
           href: "/doctor/consultations",
           ...bookingLineAlertMetadata({
+            consultationId: consultation.id,
+            patientId: consultation.patientId,
             doctorId: consultation.doctorId,
             doctorUserId: consultation.doctor.userId,
             scheduledAt: consultation.scheduledAt,
