@@ -10,6 +10,14 @@ const lineUserIdPattern = /^U[0-9a-f]{32}$/i;
 type Metadata = Prisma.JsonObject;
 
 function asMetadata(value: Prisma.JsonValue): Metadata {
+  // MariaDB exposes JSON columns as text in raw query results.
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as Prisma.JsonValue;
+    } catch {
+      return {};
+    }
+  }
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 

@@ -200,6 +200,24 @@ describe("durable LINE booking dispatcher", () => {
     expect(mocks.push).toHaveBeenCalledTimes(2);
   });
 
+  it("claims MariaDB text metadata and persists both accepted recipients", async () => {
+    const job = seedJob();
+    mocks.findJobs.mockResolvedValueOnce([{ id: job.id, metadataJson: JSON.stringify(job.metadataJson) }]);
+
+    expect(await runLineBookingAlerts(now)).toMatchObject({ claimed: 1, accepted: 2, attentionRequired: 0 });
+    expect(mocks.push.mock.calls.map(([payload]) => payload.lineUserId)).toEqual([doctorLineId, adminLineId]);
+    expect(alertFor().status).toBe("done");
+  });
+
+  it.each(["{", "null", "[]"])("reports unusable raw metadata without sending (%s)", async (metadataJson) => {
+    const job = seedJob();
+    mocks.findJobs.mockResolvedValueOnce([{ id: job.id, metadataJson }]);
+
+    expect(await runLineBookingAlerts(now)).toMatchObject({ claimed: 0, accepted: 0, attentionRequired: 1 });
+    expect(mocks.updateJobs).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
   it("retries only the missed recipient with the identical persisted key, LINE ID, and text", async () => {
     seedJob(); mocks.push.mockResolvedValueOnce("retry").mockResolvedValueOnce("accepted");
     expect(await runLineBookingAlerts(now)).toMatchObject({ accepted: 1, deferred: 1 });
