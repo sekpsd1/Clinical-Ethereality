@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import type { Notification, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { pushLineBookingAlert } from "@/lib/notifications/line-push";
 import { getBookedConsultationDurationMinutes } from "@/features/consultations/duration-policy";
@@ -61,17 +61,19 @@ export async function runLineBookingAlerts(now = new Date()) {
   const origin = new URL(configuredOrigin);
   if (origin.protocol !== "https:" || origin.username || origin.password) throw new Error("Invalid LINE booking alert origin.");
 
-  const jobs = await prisma.notification.findMany({
-    where: {
-      channel: "in_app", type: "consultation",
-      AND: [
-        { metadataJson: { path: "$.lineBookingAlert.version", equals: 1 } },
-        { metadataJson: { path: "$.lineBookingAlert.nextAttemptAt", lte: now.getTime() } },
-        { OR: ["pending", "processing"].map((status) => ({ metadataJson: { path: "$.lineBookingAlert.status", equals: status } })) }
-      ]
-    },
-    select: { id: true, metadataJson: true }, orderBy: { createdAt: "asc" }, take: 2
-  });
+  // Prisma's MySQL JSON range filter misses integer millisecond timestamps.
+  // Compare the extracted timestamp as an integer and bind the cutoff.
+  const jobs = await prisma.$queryRaw<Pick<Notification, "id" | "metadataJson">[]>`
+    SELECT id, metadataJson
+    FROM Notification
+    WHERE channel = 'in_app' AND type = 'consultation'
+      AND JSON_EXTRACT(metadataJson, '$.lineBookingAlert.version') = 1
+      AND JSON_TYPE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.nextAttemptAt')) IN ('INTEGER', 'UNSIGNED INTEGER')
+      AND CAST(JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.nextAttemptAt')) AS UNSIGNED) <= ${now.getTime()}
+      AND JSON_UNQUOTE(JSON_EXTRACT(metadataJson, '$.lineBookingAlert.status')) IN ('pending', 'processing')
+    ORDER BY createdAt, id
+    LIMIT 2
+  `;
 
   for (const job of jobs) {
     let metadata = asMetadata(job.metadataJson);

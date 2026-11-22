@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: {
-  notification: { findMany: mocks.findJobs, updateMany: mocks.updateJobs, count: mocks.countJobs, upsert: mocks.upsertNotification },
+  $queryRaw: mocks.findJobs,
+  notification: { updateMany: mocks.updateJobs, count: mocks.countJobs, upsert: mocks.upsertNotification },
   consultation: { findUnique: mocks.findConsultation }, user: { findUnique: mocks.findUser }
 } }));
 vi.mock("@/lib/notifications/line-push", () => ({ pushLineBookingAlert: mocks.push }));
@@ -56,8 +57,7 @@ beforeEach(() => {
     doctor: { userId: "doctor-user", status: "approved" }, payment: { status: "verified" } };
   mocks.findConsultation.mockImplementation(async () => consultation);
   mocks.findUser.mockImplementation(async ({ where }: { where: { id: string } }) => users.get(where.id) ?? null);
-  mocks.findJobs.mockImplementation(async (query: { where: { AND: Array<unknown> } }) => {
-    const dueAt = (query.where.AND[1] as { metadataJson: { lte: number } }).metadataJson.lte;
+  mocks.findJobs.mockImplementation(async (_query: TemplateStringsArray, dueAt: number) => {
     return [...jobs.values()].filter((job) => {
       const alert = job.metadataJson.lineBookingAlert as unknown as BookingAlert;
       return alert.version === 1 && ["pending", "processing"].includes(alert.status) && alert.nextAttemptAt <= dueAt;
@@ -200,8 +200,7 @@ describe("durable LINE booking dispatcher", () => {
   it("dispatches pending work even after the doctor marks the in-app notification read", async () => {
     seedJob().readAt = new Date(now.getTime() - 1000);
     expect(await runLineBookingAlerts(now)).toMatchObject({ accepted: 2, claimed: 1 });
-    expect(mocks.findJobs.mock.calls[0][0].where).not.toHaveProperty("readAt");
-    expect(JSON.stringify(mocks.findJobs.mock.calls[0][0].where)).not.toContain("readAt");
+    expect(mocks.findJobs.mock.calls[0][0].join("")).not.toContain("readAt");
     expect(jobs.get("doctor-notification")!.readAt).toEqual(new Date(now.getTime() - 1000));
   });
 
