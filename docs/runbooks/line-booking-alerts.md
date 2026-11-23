@@ -38,6 +38,16 @@ Reading a notification changes only its read status. Existing user or consultati
 
 Roll back by disabling the flag and scheduler, then reverting the scoped release through the normal Plesk build/restart procedure if needed. Retain durable metadata for investigation. Re-enabling does not backfill unmarked bookings. Existing unaccepted marked work may resume only in its original mode and within its original deadline. Full rollout requires explicit `LINE_BOOKING_ALERT_MODE=all`.
 
+## Direct Messaging API test without payment
+
+This temporary test uses the application's configured OA token, the existing push transport and two explicitly approved accounts. It does not run the booking dispatcher or create an appointment, payment or notification row. A passing result confirms LINE accepted the message. Ask each approved recipient to confirm receipt on their device. The verified-payment booking flow needs separate end-to-end acceptance.
+
+1. Obtain explicit release approval and explicit authorization for one test message each to the exact Doctor and Admin. Verify each account and its current LINE linkage in the authorized operator workflow. Keep booking alerts off throughout this test.
+2. Set `LINE_BOOKING_ALERT_SMOKE_SCOPE` in Plesk Secrets for a single window of at most 15 minutes. Supply UTC ISO timestamps in `startsAt` and `expiresAt`, a private random 32-byte hex `sendKey`, and exactly two entries named `doctor` and `admin`. Each entry contains the application's `userId`, the verified `lineUserId` and a distinct UUID `retryKey`. Never record live values in Git or operator logs.
+3. Use the approved private runner to POST to `/api/jobs/line-booking-alert-smoke` with `x-clinical-job-secret` and `x-clinical-line-smoke-action: preflight`. Pass only if the response is `ready`. The route checks the approved roles, pinned LINE IDs, the OA Basic ID `@vwe9449c` and profile reachability. It sends nothing in preflight.
+4. In the same window, make at most one deliberate `send` request. Use the same headers, set `x-clinical-line-smoke-action: send` and supply the private `x-clinical-line-smoke-key`. Only the fixed Thai test text can be sent. Keep the scope and retry keys unchanged. If the outcome is unknown, check both recipient devices and report the ambiguity instead of sending again.
+5. Remove the scope and private one-time runner material, reload the app and check the endpoint returns 404. Keep the scheduled task inactive and confirm app health. Remove the temporary route in a subsequent approved release after acceptance.
+
 ## Local validation
 
 Unit tests use synthetic users, dates, keys and mocked transport and Prisma. The opt-in MySQL tests use real Prisma with a disposable loopback database and mock LINE. Initialize an empty local MySQL 8 database named `line_alert_probe` with the disposable user `probe` and password `local_probe_only`. Point `DATABASE_URL` at `127.0.0.1` with its mapped port, run `prisma db push --skip-generate` against that database, set `RUN_LINE_BOOKING_MYSQL_TESTS=true`, then run `npm exec vitest run tests/unit/local-line-booking-mysql-probe.test.ts`. Use a fresh database and run the suite once at a time.
