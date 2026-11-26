@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
 import { getAdminReceiptHref } from "@/features/admin/documents/receipt";
+import { documentQueuePageSize, getDocumentQueuePagination } from "@/features/admin/document-queue-pagination";
 import { receiptPaymentSelect } from "@/features/consultations/receipt/model";
 import {
   getConsultationManualReviewEvidenceAttachmentId,
@@ -17,12 +18,11 @@ import {
 
 type PaymentWithContext = Awaited<ReturnType<typeof getPaymentsForAdmin>>[number];
 
-function getPaymentsForAdmin() {
+function getPaymentsForAdmin(page: number) {
   return prisma.payment.findMany({
-    orderBy: {
-      updatedAt: "desc"
-    },
-    take: 50,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * documentQueuePageSize,
+    take: documentQueuePageSize,
     select: {
       ...receiptPaymentSelect,
       verificationPayload: true,
@@ -338,11 +338,13 @@ function mapPayment(
   };
 }
 
-export async function getAdminPayments(): Promise<AdminPaymentsData> {
+export async function getAdminPayments(requestedPage = 1): Promise<AdminPaymentsData> {
   noStore();
 
   try {
-    const [payments, refundReadiness] = await Promise.all([getPaymentsForAdmin(), getManualStoreRefundReadiness()]);
+    const [total, refundReadiness] = await Promise.all([prisma.payment.count(), getManualStoreRefundReadiness()]);
+    const pagination = getDocumentQueuePagination(total, requestedPage);
+    const payments = await getPaymentsForAdmin(pagination.page);
     const consultationPaymentIds = payments
       .filter((payment) => payment.consultationId)
       .map((payment) => payment.id);
@@ -386,6 +388,7 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
 
     return {
       payments: paymentItems,
+      pagination,
       summary: {
         pendingSlip: paymentItems.filter((payment) => payment.status === "pending_slip").length,
         pendingReview: paymentItems.filter((payment) => payment.status === "pending_review").length,
@@ -397,6 +400,7 @@ export async function getAdminPayments(): Promise<AdminPaymentsData> {
   } catch {
     return {
       payments: [],
+      pagination: { page: 1, totalPages: 1 },
       summary: {
         pendingSlip: 0,
         pendingReview: 0,

@@ -1,6 +1,7 @@
 import type { PaymentStatus } from "@prisma/client";
 import type { ManualRefundReadiness } from "@/features/payments/refund-readiness";
 import type { ConsultationManualReviewReasonCode } from "@/features/consultations/payment/manual-review";
+import type { DocumentQueuePagination } from "@/features/admin/document-queue-pagination";
 
 export type AdminPaymentQueueItem = {
   id: string;
@@ -38,6 +39,7 @@ export type AdminPaymentQueueItem = {
 
 export type AdminPaymentsData = {
   payments: AdminPaymentQueueItem[];
+  pagination: DocumentQueuePagination;
   summary: {
     pendingSlip: number;
     pendingReview: number;

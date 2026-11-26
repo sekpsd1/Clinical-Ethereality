@@ -6,7 +6,9 @@ Admin 8 added private consultation and Store PDF receipt downloads to Admin Paym
 
 Admin Orders can download a UTF-8 HTML shipping document and open a print preview from the immutable order address snapshot. The document contains the recipient name, phone and mailing address. Missing or incomplete snapshots show a warning and have no document action. Each document route requires an active Admin account and a live bound session, and returns private no-store headers.
 
-Local verification used a disposable MariaDB database and synthetic payments, users and shipping snapshots. It covered pending-to-verified receipt eligibility, both existing customer receipt routes and ownership, role/revocation checks, Chrome downloads, and the print preview at mobile size. Integration and Production release require separate owner authorization.
+Admin Payments and Orders paginate every 50 records so older document links remain accessible. Lists sort by update time and then record ID, and the status counts describe the current page.
+
+Local verification used a disposable MariaDB database and synthetic payments, users and shipping snapshots. It covered pending-to-verified receipt eligibility, both existing customer receipt routes and ownership, and role/revocation checks. With 50 newer records in each list, Chrome at mobile size navigated to page 2 and downloaded both receipts, downloaded the order address and invoked the print preview. The 111 targeted tests, lint, typecheck and build passed. Integration and Production release require separate owner authorization.
 
 ## Doctor category consistency Production release (completed, 2026-10-21)
 

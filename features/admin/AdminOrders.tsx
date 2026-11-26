@@ -3,6 +3,7 @@ import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
 import { AdminDocumentLink } from "@/features/admin/AdminDocumentLink";
+import { AdminDocumentQueuePagination } from "@/features/admin/AdminDocumentQueuePagination";
 import { hasPrintableShippingAddress } from "@/features/admin/documents/shipping-address";
 import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
@@ -88,6 +89,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
       </section>
 
       <section className="grid grid-cols-3 gap-2">
+        {data.pagination.totalPages > 1 ? <p className="col-span-full text-xs font-semibold text-muted">สรุปสถานะในหน้านี้</p> : null}
         {summaryItems.map((item) => (
           <div key={item.label} className="rounded-[8px] border border-border bg-white/85 p-3 shadow-payment-card">
             <p className="font-headline text-2xl font-bold text-text">{item.value}</p>
@@ -100,6 +102,7 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <AdminDocumentQueuePagination path="/admin/orders" label="แบ่งหน้าคำสั่งซื้อ" pagination={data.pagination} />
         <div className="flex items-center justify-between">
           <h2 className="font-headline text-lg font-bold text-text">รายการคำสั่งซื้อ</h2>
           <StatusBadge tone={data.unavailable ? "danger" : "success"}>

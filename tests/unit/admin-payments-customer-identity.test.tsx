@@ -6,6 +6,7 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn()
   },
   payment: {
+    count: vi.fn(),
     findMany: vi.fn()
   }
 }));
@@ -61,7 +62,23 @@ function createPayment(
 describe("Admin Payments customer identity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.payment.count.mockResolvedValue(1);
     prismaMock.fileAttachment.findMany.mockResolvedValue([]);
+  });
+
+  it("queries and links to older payment pages in a stable order", async () => {
+    prismaMock.payment.count.mockResolvedValue(101);
+    prismaMock.payment.findMany.mockResolvedValue([createPayment()]);
+
+    const data = await getAdminPayments(2);
+    expect(data.pagination).toEqual({ page: 2, totalPages: 3 });
+    expect(prismaMock.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      skip: 50, take: 50, orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
+    }));
+
+    const html = renderToStaticMarkup(<AdminPayments data={data} />);
+    expect(html).toContain('href="/admin/payments?page=1"');
+    expect(html).toContain('href="/admin/payments?page=3"');
   });
 
   it("renders the stored profile display name and phone with a redacted operational payment summary", async () => {

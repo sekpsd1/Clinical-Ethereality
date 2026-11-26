@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
   order: {
+    count: vi.fn(),
     findMany: vi.fn()
   },
   fileAttachment: {
@@ -68,8 +69,24 @@ function createOrder(
 describe("Admin Orders customer identity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.order.count.mockResolvedValue(1);
     prismaMock.fileAttachment.findMany.mockResolvedValue([]);
     prismaMock.auditLog.findMany.mockResolvedValue([]);
+  });
+
+  it("queries and links to older order pages in a stable order", async () => {
+    prismaMock.order.count.mockResolvedValue(51);
+    prismaMock.order.findMany.mockResolvedValue([createOrder()]);
+
+    const data = await getAdminOrders(3);
+    expect(data.pagination).toEqual({ page: 2, totalPages: 2 });
+    expect(prismaMock.order.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      skip: 50, take: 50, orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
+    }));
+
+    const html = renderToStaticMarkup(<AdminOrders data={data} />);
+    expect(html).toContain('href="/admin/orders?page=1"');
+    expect(html).not.toContain('/admin/orders?page=3');
   });
 
   it("labels profile and shipping recipient phone numbers separately without exposing the raw LINE ID", async () => {

@@ -1,5 +1,6 @@
 import type { OrderStatus, ShipmentStatus } from "@prisma/client";
 import type { OrderShippingAddressView } from "@/features/profile/shipping-addresses/types";
+import type { DocumentQueuePagination } from "@/features/admin/document-queue-pagination";
 
 export type AdminOrderFulfillmentHistoryItem = {
   action: "order.mark_preparing" | "order.mark_shipped" | "order.mark_delivered";
@@ -34,6 +35,7 @@ export type AdminOrderQueueItem = {
 
 export type AdminOrdersData = {
   orders: AdminOrderQueueItem[];
+  pagination: DocumentQueuePagination;
   summary: {
     needsPreparation: number;
     inFulfillment: number;

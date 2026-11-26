@@ -7,6 +7,7 @@ import type {
 } from "@/features/admin/orders/types";
 import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
 import { getAdminReceiptHref } from "@/features/admin/documents/receipt";
+import { documentQueuePageSize, getDocumentQueuePagination } from "@/features/admin/document-queue-pagination";
 
 type OrderWithDetails = Awaited<ReturnType<typeof getOrdersForAdmin>>[number];
 type ExternalPrescriptionAttachmentSummary = {
@@ -21,12 +22,11 @@ const fulfillmentAuditActions = [
   "order.mark_delivered"
 ] as const;
 
-function getOrdersForAdmin() {
+function getOrdersForAdmin(page: number) {
   return prisma.order.findMany({
-    orderBy: {
-      updatedAt: "desc"
-    },
-    take: 50,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * documentQueuePageSize,
+    take: documentQueuePageSize,
     include: {
       user: {
         select: {
@@ -211,11 +211,12 @@ function mapFulfillmentHistory(
   }, new Map<string, AdminOrderFulfillmentHistoryItem[]>());
 }
 
-export async function getAdminOrders(): Promise<AdminOrdersData> {
+export async function getAdminOrders(requestedPage = 1): Promise<AdminOrdersData> {
   noStore();
 
   try {
-    const orders = await getOrdersForAdmin();
+    const pagination = getDocumentQueuePagination(await prisma.order.count(), requestedPage);
+    const orders = await getOrdersForAdmin(pagination.page);
     const orderIds = orders.map((order) => order.id);
     const [attachments, fulfillmentAuditLogs] = orderIds.length > 0
       ? await Promise.all([
@@ -266,6 +267,7 @@ export async function getAdminOrders(): Promise<AdminOrdersData> {
 
     return {
       orders: orderItems,
+      pagination,
       summary: {
         needsPreparation: orderItems.filter((order) => order.status === "paid").length,
         inFulfillment: orderItems.filter((order) => order.status === "preparing").length,
@@ -275,6 +277,7 @@ export async function getAdminOrders(): Promise<AdminOrdersData> {
   } catch {
     return {
       orders: [],
+      pagination: { page: 1, totalPages: 1 },
       summary: {
         needsPreparation: 0,
         inFulfillment: 0,
