@@ -53,6 +53,14 @@ function providerPaths() {
   return provider.mock.calls.map(([url]) => new URL(url).pathname);
 }
 
+function useAdminOnlyScope() {
+  const { startsAt, expiresAt, sendKey, admin: recipient } = scope;
+  vi.stubEnv("LINE_BOOKING_ALERT_SMOKE_SCOPE", JSON.stringify({
+    mode: "admin-only", startsAt, expiresAt, sendKey, admin: recipient
+  }));
+  vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", recipient.userId);
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-23T04:05:00.000Z"));
@@ -91,6 +99,42 @@ afterEach(() => {
 });
 
 describe("LINE booking smoke route", () => {
+  it("preflights only the configured admin and uses the same single-recipient retry key on replay", async () => {
+    useAdminOnlyScope();
+    const preflight = await POST(request());
+    expect(await preflight.json()).toEqual({ ok: true, result: { state: "ready" } });
+    expect(mocks.findUsers).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: [scope.admin.userId] } }
+    }));
+    expect(providerPaths()).toEqual(["/v2/bot/info", `/v2/bot/profile/${scope.admin.lineUserId}`]);
+
+    for (const response of await Promise.all([POST(request("send")), POST(request("send"))])) {
+      expect(await response.json()).toEqual({ ok: true, result: { state: "attempted", admin: "accepted" } });
+    }
+    const pushes = provider.mock.calls.filter(([url]) => new URL(url).pathname === pushPath);
+    expect(pushes).toHaveLength(2);
+    for (const [, init] of pushes) {
+      expect(new Headers(init?.headers).get("X-Line-Retry-Key")).toBe(scope.admin.retryKey);
+      expect(JSON.parse(String(init?.body))).toEqual({
+        to: scope.admin.lineUserId, messages: [{ type: "text", text: "ทดสอบการรับแจ้งเตือนจากคลินิก" }]
+      });
+    }
+  });
+
+  it.each([undefined, "other-admin"])("rejects a single recipient outside the configured admin (%s)", async (configured) => {
+    useAdminOnlyScope();
+    vi.stubEnv("LINE_BOOKING_ALERT_ADMIN_USER_ID", configured);
+    expect((await POST(request("send"))).status).toBe(409);
+    expect(mocks.findUsers).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
+  });
+
+  it("rejects a mixed admin-only and doctor scope", async () => {
+    vi.stubEnv("LINE_BOOKING_ALERT_SMOKE_SCOPE", JSON.stringify({ ...scope, mode: "admin-only" }));
+    expect((await POST(request("send"))).status).toBe(404);
+    expect(provider).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["missing scope", undefined],
     ["malformed JSON", "}"],

@@ -11,17 +11,21 @@ const recipientSchema = z.object({
   retryKey: z.string().uuid()
 }).strict();
 
-const scopeSchema = z.object({
+const baseScopeSchema = z.object({
   startsAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   sendKey: z.string().regex(/^[0-9a-f]{64}$/),
-  doctor: recipientSchema,
   admin: recipientSchema
-}).strict().refine(({ doctor, admin }) =>
+}).strict();
+const pairScopeSchema = baseScopeSchema.extend({ doctor: recipientSchema }).refine(({ doctor, admin }) =>
   doctor.userId !== admin.userId &&
   doctor.lineUserId.toLowerCase() !== admin.lineUserId.toLowerCase() &&
   doctor.retryKey.toLowerCase() !== admin.retryKey.toLowerCase()
 );
+const scopeSchema = z.union([
+  pairScopeSchema,
+  baseScopeSchema.extend({ mode: z.literal("admin-only") })
+]);
 
 function getSmokeScope() {
   if (process.env.ENABLE_LINE_BOOKING_ALERTS === "true") return null;
@@ -78,14 +82,20 @@ export async function runLineBookingSmoke(headers: Headers) {
 
   const token = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
   if (!token) return { status: 503, body: { ok: false, result: { state: "token_unavailable" } } };
+  const doctorScope = "doctor" in scope ? scope.doctor : null;
+  if (!doctorScope && scope.admin.userId !== process.env.LINE_BOOKING_ALERT_ADMIN_USER_ID?.trim()) {
+    return { status: 409, body: { ok: false, result: { state: "recipient_mismatch" } } };
+  }
+  const targets = doctorScope ? [doctorScope, scope.admin] : [scope.admin];
   const users = await prisma.user.findMany({
-    where: { id: { in: [scope.doctor.userId, scope.admin.userId] } },
+    where: { id: { in: targets.map((recipient) => recipient.userId) } },
     select: { id: true, role: true, status: true, lineUserId: true, doctorProfile: { select: { status: true } } }
   });
-  const doctor = users.find((user) => user.id === scope.doctor.userId);
+  const doctor = doctorScope && users.find((user) => user.id === doctorScope.userId);
   const admin = users.find((user) => user.id === scope.admin.userId);
-  if (doctor?.role !== "doctor" || doctor.status !== "active" || doctor.doctorProfile?.status !== "approved" ||
-    doctor.lineUserId !== scope.doctor.lineUserId || admin?.role !== "admin" || admin.status !== "active" ||
+  if ((doctorScope && (!doctor || doctor.role !== "doctor" || doctor.status !== "active" ||
+    doctor.doctorProfile?.status !== "approved" || doctor.lineUserId !== doctorScope.lineUserId)) ||
+    admin?.role !== "admin" || admin.status !== "active" ||
     admin.lineUserId !== scope.admin.lineUserId) {
     return { status: 409, body: { ok: false, result: { state: "recipient_mismatch" } } };
   }
@@ -93,26 +103,25 @@ export async function runLineBookingSmoke(headers: Headers) {
   if (await readLineIdentity("info", token, "basicId") !== "@vwe9449c") {
     return { status: 502, body: { ok: false, result: { state: "oa_unverified" } } };
   }
-  const [doctorProfile, adminProfile] = await Promise.all([
-    readLineIdentity(`profile/${scope.doctor.lineUserId}`, token, "userId"),
-    readLineIdentity(`profile/${scope.admin.lineUserId}`, token, "userId")
-  ]);
-  if (doctorProfile !== scope.doctor.lineUserId || adminProfile !== scope.admin.lineUserId) {
+  const profiles = await Promise.all(targets.map((recipient) =>
+    readLineIdentity(`profile/${recipient.lineUserId}`, token, "userId")
+  ));
+  if (!targets.every((recipient, index) => profiles[index] === recipient.lineUserId)) {
     return { status: 409, body: { ok: false, result: { state: "profile_unverified" } } };
   }
   if (Date.now() >= Date.parse(scope.expiresAt)) return { status: 404, body: { ok: false } };
   if (action === "preflight") return { status: 200, body: { ok: true, result: { state: "ready" } } };
 
   // Fixed per-recipient retry keys deduplicate concurrent calls at LINE within this short window.
-  const [doctorOutcome, adminOutcome] = await Promise.all([
-    pushLineBookingAlert({ token, lineUserId: scope.doctor.lineUserId, retryKey: scope.doctor.retryKey, text: smokeText }),
-    pushLineBookingAlert({ token, lineUserId: scope.admin.lineUserId, retryKey: scope.admin.retryKey, text: smokeText })
-  ]);
+  const sendOrder = doctorScope ? [scope.admin, doctorScope] : [scope.admin];
+  const [adminOutcome, doctorOutcome] = await Promise.all(sendOrder.map(
+    ({ lineUserId, retryKey }) => pushLineBookingAlert({ token, lineUserId, retryKey, text: smokeText })
+  ));
   return {
     status: 200,
     body: {
-      ok: doctorOutcome === "accepted" && adminOutcome === "accepted",
-      result: { state: "attempted", doctor: doctorOutcome, admin: adminOutcome }
+      ok: adminOutcome === "accepted" && (!doctorScope || doctorOutcome === "accepted"),
+      result: { state: "attempted", ...(doctorScope ? { doctor: doctorOutcome } : {}), admin: adminOutcome }
     }
   };
 }
