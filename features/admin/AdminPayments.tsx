@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminPaymentReviewButtons } from "@/features/admin/AdminPaymentReviewButtons";
 import { AdminPaymentRefundForm } from "@/features/admin/AdminPaymentRefundForm";
 import { AdminConsultationPaymentReviewForm } from "@/features/admin/AdminConsultationPaymentReviewForm";
+import { AdminDocumentLink } from "@/features/admin/AdminDocumentLink";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 
 const statusLabels: Record<string, string> = {
@@ -176,6 +177,13 @@ export function AdminPayments({ data }: { data: AdminPaymentsData }) {
                 </p>
                 {payment.status === "pending_review" && payment.canManualReview ? <AdminPaymentReviewButtons payment={payment} /> : null}
               </div>
+              {payment.receiptHref ? (
+                <div className="mt-3">
+                  <AdminDocumentLink href={payment.receiptHref}>
+                    {payment.orderId ? "ดาวน์โหลดใบเสร็จค่าสินค้า" : "ดาวน์โหลดใบเสร็จค่าปรึกษา"}
+                  </AdminDocumentLink>
+                </div>
+              ) : null}
               {payment.status === "verified" && payment.orderId ? (
                 <AdminPaymentRefundForm payment={payment} readiness={data.refundReadiness} />
               ) : null}

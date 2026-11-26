@@ -1,6 +1,6 @@
 import type { PublicSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
-import { getPrintableReceiptAccountName, getReceiptModel } from "./model";
+import { getPrintableReceiptAccountName, getReceiptModel, receiptPaymentSelect } from "./model";
 
 export class ReceiptAccessError extends Error {
   constructor(public readonly status: 401 | 403 | 404) {
@@ -30,12 +30,7 @@ export async function getOwnedConsultationReceipt(session: PublicSession | null,
       consultationId, orderId: null,
       consultation: { is: { id: consultationId, patientId: session.userId } }
     },
-    select: {
-      id: true, consultationId: true, orderId: true, status: true, method: true,
-      amount: true, reviewedAt: true, refundAmount: true, refundReason: true,
-      refundedAt: true, refundedById: true, refundTransactionReference: true,
-      normalizedRefundReference: true
-    }
+    select: receiptPaymentSelect
   });
   const accountName = getPrintableReceiptAccountName(activeUser.fullName, activeUser.displayName);
   const receipt = getReceiptModel(payment, consultationId, accountName);

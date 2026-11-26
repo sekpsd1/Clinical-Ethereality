@@ -22,6 +22,7 @@ const payment: AdminPaymentQueueItem = {
   amount: "900 บาท",
   amountInput: "900.00",
   adminEvidenceHref: null,
+  receiptHref: null,
   refundAmountInput: "900.00",
   status: "pending_review",
   methodLabel: "PromptPay",

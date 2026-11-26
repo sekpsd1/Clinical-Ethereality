@@ -25,21 +25,19 @@ function getConfiguredStorageImagePattern(): URL | null {
 }
 
 const configuredStorageImagePattern = getConfiguredStorageImagePattern();
+const receiptRuntimeFiles = [
+  "./assets/fonts/receipt/**/*",
+  "./node_modules/pdfkit/js/standard-fonts/**/*",
+  "./node_modules/pdfkit/LICENSE"
+];
 
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
-    "/api/consultations/*/receipt": [
-      "./assets/fonts/receipt/**/*",
-      "./node_modules/pdfkit/js/standard-fonts/**/*",
-      "./node_modules/pdfkit/LICENSE"
-    ],
-    "/api/orders/*/receipt": [
-      "./assets/fonts/receipt/**/*",
-      "./node_modules/pdfkit/js/standard-fonts/**/*",
-      "./node_modules/pdfkit/LICENSE"
-    ]
+    "/api/consultations/*/receipt": receiptRuntimeFiles,
+    "/api/orders/*/receipt": receiptRuntimeFiles,
+    "/api/admin/payments/*/receipt": receiptRuntimeFiles
   },
   typedRoutes: true,
   async headers() {

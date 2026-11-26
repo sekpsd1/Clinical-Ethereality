@@ -1,5 +1,13 @@
 # Project State
 
+## Admin payment receipts and shipping address documents (local, 2026-11-26)
+
+Admin 8 added private consultation and Store PDF receipt downloads to Admin Payments, with the Store receipt also available from Admin Orders. Receipt downloads target the exact payment and reuse the existing renderer and verified-payment rules. Customer routes retain their owner checks.
+
+Admin Orders can download a UTF-8 HTML shipping document and open a print preview from the immutable order address snapshot. The document contains the recipient name, phone and mailing address. Missing or incomplete snapshots show a warning and have no document action. Each document route requires an active Admin account and a live bound session, and returns private no-store headers.
+
+Local verification used a disposable MariaDB database and synthetic payments, users and shipping snapshots. It covered pending-to-verified receipt eligibility, both existing customer receipt routes and ownership, role/revocation checks, Chrome downloads, and the print preview at mobile size. Integration and Production release require separate owner authorization.
+
 ## Doctor category consistency Production release (completed, 2026-10-21)
 
 Controller17 conveyed explicit owner push/deploy approval for exact

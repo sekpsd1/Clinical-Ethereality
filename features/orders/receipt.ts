@@ -1,9 +1,22 @@
-import { getPrintableReceiptAccountName, getVerifiedReceipt } from "@/features/consultations/receipt/model";
+import type { OrderStatus, Prisma } from "@prisma/client";
+import { getPrintableReceiptAccountName, getVerifiedReceipt, receiptPaymentSelect, type ReceiptPayment } from "@/features/consultations/receipt/model";
 import { hasReceiptGlyphs } from "@/features/consultations/receipt/font-coverage";
 import { ReceiptAccessError } from "@/features/consultations/receipt/queries";
 import type { PublicSession } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { getOrderCode } from "./types";
+
+export const paidOrderReceiptStatuses: OrderStatus[] = ["paid", "preparing", "shipped", "delivered"];
+
+export const orderReceiptSelect = {
+  user: { select: { fullName: true, displayName: true } },
+  shippingTotal: true,
+  discountTotal: true,
+  items: {
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { quantity: true, lineTotal: true, product: { select: { name: true } } }
+  }
+} satisfies Prisma.OrderSelect;
 
 export async function getOwnedOrderReceipt(session: PublicSession | null, orderId: string) {
   if (!session) throw new ReceiptAccessError(401);
@@ -15,7 +28,7 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
     where: {
       id: orderId,
       userId: session.userId,
-      status: { in: ["paid", "preparing", "shipped", "delivered"] },
+      status: { in: paidOrderReceiptStatuses },
       user: {
         role: "customer", status: "active",
         authSessions: { some: {
@@ -25,26 +38,22 @@ export async function getOwnedOrderReceipt(session: PublicSession | null, orderI
       }
     },
     select: {
-      user: { select: { fullName: true, displayName: true } },
-      shippingTotal: true,
-      discountTotal: true,
-      items: {
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: { quantity: true, lineTotal: true, product: { select: { name: true } } }
-      },
+      ...orderReceiptSelect,
       payments: {
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take: 1,
-        select: {
-          id: true, orderId: true, consultationId: true, status: true, method: true,
-          amount: true, reviewedAt: true, refundAmount: true, refundReason: true,
-          refundedAt: true, refundedById: true, refundTransactionReference: true,
-          normalizedRefundReference: true
-        }
+        select: receiptPaymentSelect
       }
     }
   });
-  const payment = order?.payments[0];
+  return buildOrderReceipt(orderId, order, order?.payments[0]);
+}
+
+export function buildOrderReceipt(
+  orderId: string,
+  order: Prisma.OrderGetPayload<{ select: typeof orderReceiptSelect }> | null,
+  payment: ReceiptPayment | undefined
+) {
   if (!order || !payment || payment.orderId !== orderId || payment.consultationId !== null) {
     throw new ReceiptAccessError(404);
   }

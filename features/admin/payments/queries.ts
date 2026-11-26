@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { AdminPaymentQueueItem, AdminPaymentsData } from "@/features/admin/payments/types";
 import { getManualStoreRefundReadiness } from "@/features/payments/refund-readiness";
+import { getAdminReceiptHref } from "@/features/admin/documents/receipt";
+import { receiptPaymentSelect } from "@/features/consultations/receipt/model";
 import {
   getConsultationManualReviewEvidenceAttachmentId,
   getConsultationProviderFailure,
@@ -22,17 +24,12 @@ function getPaymentsForAdmin() {
     },
     take: 50,
     select: {
-      id: true,
-      orderId: true,
-      consultationId: true,
-      amount: true,
-      method: true,
-      status: true,
+      ...receiptPaymentSelect,
       verificationPayload: true,
       createdAt: true,
-      reviewedAt: true,
       order: {
         select: {
+          status: true,
           user: {
             select: {
               displayName: true,
@@ -323,6 +320,7 @@ function mapPayment(
         ? `/api/admin/payments/evidence/${adminEvidenceAttachmentId}`
         : null,
     refundAmountInput: payment.amount.toString(),
+    receiptHref: getAdminReceiptHref(payment, payment.order?.status),
     status: payment.status,
     methodLabel: payment.method === "promptpay" ? "PromptPay" : payment.method,
     providerLabel: summary.providerLabel,

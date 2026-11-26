@@ -15,6 +15,7 @@ export type AdminPaymentQueueItem = {
   amount: string;
   amountInput: string;
   adminEvidenceHref: string | null;
+  receiptHref: string | null;
   refundAmountInput: string;
   status: PaymentStatus;
   methodLabel: string;

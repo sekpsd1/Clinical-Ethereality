@@ -6,6 +6,7 @@ import type {
   AdminOrdersData
 } from "@/features/admin/orders/types";
 import { formatPrescriptionItem, parsePrescriptionItems } from "@/features/prescriptions/items";
+import { getAdminReceiptHref } from "@/features/admin/documents/receipt";
 
 type OrderWithDetails = Awaited<ReturnType<typeof getOrdersForAdmin>>[number];
 type ExternalPrescriptionAttachmentSummary = {
@@ -49,9 +50,7 @@ function getOrdersForAdmin() {
         }
       },
       payments: {
-        orderBy: {
-          updatedAt: "desc"
-        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take: 1
       },
       shipments: {
@@ -160,6 +159,7 @@ function mapOrder(
     externalPrescriptionFileName: externalPrescription.fileName,
     externalPrescriptionAttachmentCount: externalPrescription.count,
     paymentStatus: payment?.status ?? "ไม่มีข้อมูลชำระเงิน",
+    receiptHref: getAdminReceiptHref(payment, order.status),
     shippingAddress: order.shippingAddress ? {
       label: order.shippingAddress.label,
       recipientName: order.shippingAddress.recipientName,

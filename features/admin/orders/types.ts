@@ -22,6 +22,7 @@ export type AdminOrderQueueItem = {
   externalPrescriptionFileName: string | null;
   externalPrescriptionAttachmentCount: number;
   paymentStatus: string;
+  receiptHref: string | null;
   shippingAddress: OrderShippingAddressView | null;
   shipmentId: string | null;
   shipmentStatus: ShipmentStatus | null;

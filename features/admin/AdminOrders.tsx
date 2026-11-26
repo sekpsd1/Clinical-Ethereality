@@ -2,6 +2,8 @@ import { ClipboardCheck, ClipboardList, CreditCard, History, MapPin, Phone, Truc
 import { InfoTile } from "@/components/ui/InfoTile";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminOrderActionButtons } from "@/features/admin/AdminOrderActionButtons";
+import { AdminDocumentLink } from "@/features/admin/AdminDocumentLink";
+import { hasPrintableShippingAddress } from "@/features/admin/documents/shipping-address";
 import type { AdminOrderQueueItem, AdminOrdersData } from "@/features/admin/orders/types";
 import { formatShippingAddress } from "@/features/profile/shipping-addresses/types";
 
@@ -113,6 +115,8 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
 
         {data.orders.map((order) => {
           const tone = getStatusTone(order.status);
+          const address = hasPrintableShippingAddress(order.shippingAddress) ? order.shippingAddress : null;
+          const addressHref = `/api/admin/orders/${encodeURIComponent(order.id)}/shipping-address`;
 
           return (
             <article key={order.id} className="rounded-[8px] border border-border bg-white/85 p-4 shadow-payment-card">
@@ -154,6 +158,11 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
 
               <div className="mt-4 text-xs">
                 <InfoTile label="ยอดรวม" value={order.total} icon={<CreditCard aria-hidden="true" className="size-3.5" strokeWidth={2.1} />} />
+                {order.receiptHref ? (
+                  <div className="mt-2">
+                    <AdminDocumentLink href={order.receiptHref}>ดาวน์โหลดใบเสร็จค่าสินค้า</AdminDocumentLink>
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt-4 rounded-[8px] bg-primary/5 p-3">
@@ -167,9 +176,25 @@ export function AdminOrders({ data }: { data: AdminOrdersData }) {
                 </div>
               </div>
 
-              <div className={`mt-3 rounded-[8px] p-3 ${order.shippingAddress ? "bg-primary/5" : "border border-danger/20 bg-danger/5"}`}>
+              <div className={`mt-3 rounded-[8px] p-3 ${address ? "bg-primary/5" : "border border-danger/20 bg-danger/5"}`}>
                 <p className="flex items-center gap-2 text-[11px] font-bold text-text"><MapPin aria-hidden="true" className="size-3.5 text-primary" />ที่อยู่จัดส่งของคำสั่งซื้อ</p>
-                {order.shippingAddress ? <><p className="mt-2 text-xs font-bold text-text">ผู้รับพัสดุ: {order.shippingAddress.recipientName}</p><p className="mt-1 text-xs font-semibold text-text">เบอร์ผู้รับพัสดุ: {order.shippingAddress.phone}</p><p className="mt-1 text-xs leading-5 text-muted">{formatShippingAddress(order.shippingAddress)}</p></> : <p className="mt-2 text-xs font-bold leading-5 text-danger">คำสั่งซื้อเดิมไม่มี snapshot กรุณาตรวจสอบก่อนจัดส่ง</p>}
+                {address ? (
+                  <>
+                    <p className="mt-2 text-xs font-bold text-text">ผู้รับพัสดุ: {address.recipientName}</p>
+                    <p className="mt-1 text-xs font-semibold text-text">เบอร์ผู้รับพัสดุ: {address.phone}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted">{formatShippingAddress(address)}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <AdminDocumentLink href={`${addressHref}?download=1`}>
+                        ดาวน์โหลดที่อยู่
+                      </AdminDocumentLink>
+                      <AdminDocumentLink href={addressHref} print>
+                        พิมพ์ที่อยู่
+                      </AdminDocumentLink>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-xs font-bold leading-5 text-danger">ไม่มีที่อยู่จัดส่งที่ครบถ้วน กรุณาตรวจสอบก่อนจัดส่ง</p>
+                )}
               </div>
 
               {order.fulfillmentHistory.length > 0 ? (

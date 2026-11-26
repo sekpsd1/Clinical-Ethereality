@@ -14,7 +14,9 @@ export type ShippingAddressView = {
 
 export type OrderShippingAddressView = Omit<ShippingAddressView, "id" | "isDefault">;
 
-export function formatShippingAddress(address: OrderShippingAddressView): string {
+export function formatShippingAddress(
+  address: Omit<OrderShippingAddressView, "label" | "recipientName" | "phone">
+): string {
   const isBangkok = address.province.trim() === "กรุงเทพมหานคร";
   return [
     address.addressLine1,
